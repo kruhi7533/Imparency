@@ -80,6 +80,7 @@ model NGOProfile {
   description        String
   website            String?
   foundedYear        Int
+  adminNote          String?
   isDeleted          Boolean            @default(false)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt

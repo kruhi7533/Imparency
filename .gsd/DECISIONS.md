@@ -104,4 +104,43 @@ Lightweight, serverless-friendly, and fits easily inside Vercel's 50MB function 
 
 ---
 
+## Phase 2 Decisions
+
+**Date:** 2026-06-16
+
+### Onboarding & Verification Workflow
+- **Onboarding States:** The NGO Profile dashboard will show a stepper matching three distinct states based on `verificationStatus`:
+  1. `PENDING`: Timeline displays Submitted → Under Review → Verified. Full project options are disabled.
+  2. `REJECTED`: Dashboard blocks actions, shows the `adminNote` reason for rejection, and provides a "Resubmit Documents" button which resets status back to `PENDING`.
+  3. `VERIFIED`: Grants full dashboard capabilities.
+- **Admin Note Requirement:** Admins must supply a written `adminNote` when performing approvals/rejections. For approval, a default "All documents verified successfully" note is provided and remains editable. Rejections require a custom explanation. This note is saved to the `NGOProfile` database record.
+- **Access Control:** Middleware and API guards block project publishing/creation for pending/rejected NGOs.
+
+### File Uploads & Validation
+- **MIME & Size Limits:** Checked directly in API Route Handlers using `request.formData()` before uploading:
+  - NGO docs: Max 10MB per file, max 3 files (PDF only).
+  - Project cover image: Max 2MB, exactly 1 file (JPEG/PNG/WebP).
+  - Milestone proof: Max 5MB per file, max 5 files (JPEG/PNG/WebP/PDF).
+- Invalid uploads are rejected with 400 Bad Request.
+
+### Resend Email Integration
+- **Fallback Log:** If `RESEND_API_KEY` is missing in development, log the email's to/subject/body elements directly to the console instead of throwing errors.
+- **Email Types:**
+  - NGO Onboarding Approval (dashboard redirect link)
+  - NGO Onboarding Rejection (admin notes, resubmission instructions)
+  - Project Published Confirmation (NGO confirmation)
+  - New Project Published Alert (sent to all followers of the NGO)
+
+### Milestone Builder UI
+- **Allocation Rule:** The sum of all milestone target amounts must equal exactly the project target. The UI shows a live running total (e.g. "₹45,000 of ₹50,000 allocated") with a progress bar. The "Publish" action is locked until allocation reaches 100%.
+- **Sequential numbered builder:** NGO builds ordered milestones in sequence. Cards collect Title, Description, Target Amount, Deadline, and Proof Type Required (dropdown: Photo Evidence / Receipt + Photo / Document Upload / Any).
+
+### Discovery & Public Profile Design
+- **Typography:** **Inter** is the primary font family for ImpactBridge.
+- **`/discover` Layout:** Top cause category pill filters, left desktop sidebar with filters (checkboxes, location search, sorting by Health Score, Newest, Most Funded, and Most Active), 3x grid display showing NGO health scores (green 80+, yellow 50-79, red < 50), active project count, and follow buttons. Supports infinite scroll pagination.
+- **`/ngo/[id]` Layout:** Banner header, prominent health score stats, Follow button, cause tags, location. Tabs show Active Projects / Completed Projects / Impact Story / About. Metric bars breakdown: fund utilization, milestone completion, proof speed, and donor return.
+- **Micro-animations:** Hover card lift (`translateY(-2px)` + shadow), smooth tab toggles, skeleton layouts on load, and Health Score numerical count-up on mount (150-200ms duration).
+
+---
+
 *Last updated: 2026-06-16*
