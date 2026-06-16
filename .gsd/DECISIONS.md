@@ -78,4 +78,30 @@ Lightweight, serverless-friendly, and fits easily inside Vercel's 50MB function 
 
 ---
 
+## Phase 1 Decisions
+
+**Date:** 2026-06-16
+
+### Scope & Database
+- **Schema & Relations:** We will implement all 10 schema tables (`User`, `NGOProfile`, `Project`, `Milestone`, `MilestoneProof`, `Donation`, `ImpactReport`, `NGOFollower`, `Notification`, `TaxReceipt`) in this phase.
+- **Donor Model:** Donors do not have a separate profile table; they are `User` records with `role: DONOR`. We will add `pan_number` (optional, String), `phone` (optional, String), `city` (optional, String), and `total_donated` (Decimal, default 0) to `User` to avoid queries.
+- **Timestamps:** Every table uses `DateTime @default(now())` for creation and `updatedAt @updatedAt` for modifications.
+- **Money representation:** All monetary fields use `Decimal` with precision 10 and scale 2 to avoid float errors.
+- **Soft Deletes:** `Project` and `NGOProfile` support soft deletion via `isDeleted Boolean @default(false)`. Hard deletes are avoided.
+- **Neon Pools:** Use the Neon pooled connection string for API route database calls (serverless environment friendly) and direct connection strings for migrations.
+
+### Auth & Route Protection
+- **JWT & Session Enrichment:** NextAuth.js JWT and Session objects are enriched with `id`, `role`, and `ngoProfileId` (which is null for donors and admins) to prevent redundant database fetches.
+- **Hashing:** Password hashing uses `bcryptjs`.
+- **Global & Route Protection:** Approach A: Global middleware in `middleware.ts` intercepts `/ngo/*`, `/admin/*`, `/donor/*` according to session roles. API routes utilize a reusable `withRole(role)` guard wrapper in `lib/auth-guards.ts` as a second defensive layer.
+
+### File Storage Utility
+- **Local/S3 Adapter:** Built in `lib/storage.ts`. Local storage (`/public/uploads/`) is utilized in development (`STORAGE_PROVIDER=local`) and S3/R2 client is initialized for production.
+- **UUID Filenames:** Uploaded files are renamed using UUID v4 to avoid naming collisions (e.g. `{uuid}.{ext}`). A `deleteFile(url)` helper is exposed to clean up obsolete uploads.
+
+### Rate Limiting
+- **PostgreSQL Rate Limiter:** Custom database-backed rate-limiting using a `RateLimitLog` table (`id`, `identifier` (IP/email), `route`, `request_count`, `window_start`). Applied to `/api/auth/login`, `/api/auth/register`, and `/api/auth/forgot-password`. Logs are checked against a window limit (e.g. 5 hits / 15m for login) and old logs pruned automatically.
+
+---
+
 *Last updated: 2026-06-16*
