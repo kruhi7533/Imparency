@@ -2,18 +2,29 @@ import { Resend } from "resend";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
+interface Attachment {
+  content?: string | Buffer;
+  filename: string;
+  path?: string;
+  contentType?: string;
+}
+
 interface SendEmailParams {
   to: string;
   subject: string;
   body: string;
+  attachments?: Attachment[];
 }
 
-async function sendEmail({ to, subject, body }: SendEmailParams) {
+async function sendEmail({ to, subject, body, attachments }: SendEmailParams) {
   if (!resend) {
     console.log("\n==================================================");
     console.log(" MOCK EMAIL DISPATCHED (RESEND_API_KEY missing)");
     console.log(` To:      ${to}`);
     console.log(` Subject: ${subject}`);
+    if (attachments && attachments.length > 0) {
+      console.log(` Attachments: ${attachments.map(a => a.filename).join(", ")}`);
+    }
     console.log("--------------------------------------------------");
     console.log(body);
     console.log("==================================================\n");
@@ -26,6 +37,7 @@ async function sendEmail({ to, subject, body }: SendEmailParams) {
       to,
       subject,
       html: body.replace(/\n/g, "<br/>"),
+      attachments: attachments || undefined,
     });
     return { success: true, data };
   } catch (err: any) {
@@ -62,4 +74,29 @@ export async function sendNewProjectAlertEmail(
   const subject = `New Project from ${orgName}: "${projectTitle}"`;
   const body = `Hi ${donorName},\n\nAn NGO you follow, ${orgName}, has just launched a new fundraising project: "${projectTitle}".\n\nVisit the project page to view their milestones and make a donation:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/projects/${projectId}\n\nBest regards,\nThe ImpactBridge Team`;
   return sendEmail({ to, subject, body });
+}
+
+export async function sendReceiptEmail(
+  to: string,
+  donorName: string,
+  receiptNumber: string,
+  receiptUrl: string,
+  amount: number,
+  projectTitle: string,
+  pdfBuffer: Buffer
+) {
+  const subject = `Your Donation Receipt ${receiptNumber} for ${projectTitle}`;
+  const body = `Hi ${donorName},\n\nThank you for your generous donation of ₹${amount.toLocaleString("en-IN")} towards the project "${projectTitle}".\n\nYour donation is eligible for 50% tax exemption under Section 80G of the Income Tax Act. We have auto-generated your official tax receipt.\n\nReceipt Number: ${receiptNumber}\nAmount: ₹${amount.toLocaleString("en-IN")}\nProject: ${projectTitle}\n\nYou can download the receipt directly from the link below:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}${receiptUrl}\n\nWe have also attached a copy of the PDF receipt to this email.\n\nThank you for supporting transparency in philanthropy!\n\nBest regards,\nThe ImpactBridge Team`;
+
+  return sendEmail({
+    to,
+    subject,
+    body,
+    attachments: [
+      {
+        filename: `${receiptNumber}.pdf`,
+        content: pdfBuffer,
+      },
+    ],
+  });
 }
