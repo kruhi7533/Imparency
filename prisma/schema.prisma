@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  DONOR
+  NGO
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  PAUSED
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  PROOF_SUBMITTED
+  VERIFIED
+  COMPLETED
+}
+
+enum DonationStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(DONOR)
+  name         String   @default("Anonymous")
+  avatar       String?
+  googleId     String?  @unique
+  panNumber    String?
+  phone        String?
+  city         String?
+  totalDonated Decimal  @default(0.00) @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ngoProfile     NGOProfile?
+  donations      Donation[]
+  notifications  Notification[]
+  impactReports  ImpactReport[]
+  followers      NGOFollower[]
+  milestoneProofs MilestoneProof[]
+}
+
+model NGOProfile {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id])
+  orgName            String
+  registrationNumber String             @unique
+  panNumber          String             @unique
+  address            String
+  causeCategories    String[]
+  verificationStatus VerificationStatus @default(PENDING)
+  healthScore        Decimal            @default(100.00) @db.Decimal(5, 2)
+  documents          String[]
+  description        String
+  website            String?
+  foundedYear        Int
+  isDeleted          Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  projects  Project[]
+  followers NGOFollower[]
+}
+
+model Project {
+  id            String        @id @default(uuid())
+  ngoId         String
+  ngo           NGOProfile    @relation(fields: [ngoId], references: [id])
+  title         String
+  description   String
+  causeCategory String
+  targetAmount  Decimal       @db.Decimal(10, 2)
+  raisedAmount  Decimal       @default(0.00) @db.Decimal(10, 2)
+  status        ProjectStatus @default(DRAFT)
+  coverImage    String
+  location      String
+  isDeleted     Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  milestones Milestone[]
+  donations  Donation[]
+}
+
+model Milestone {
+  id            String          @id @default(uuid())
+  projectId     String
+  project       Project         @relation(fields: [projectId], references: [id])
+  title         String
+  description   String
+  targetAmount  Decimal         @db.Decimal(10, 2)
+  deadline      DateTime
+  status        MilestoneStatus @default(PENDING)
+  sequenceOrder Int
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  proofs        MilestoneProof[]
+  impactReports ImpactReport[]
+}
+
+model MilestoneProof {
+  id                 String    @id @default(uuid())
+  milestoneId        String
+  milestone          Milestone @relation(fields: [milestoneId], references: [id])
+  submittedById      String
+  submittedBy        User      @relation(fields: [submittedById], references: [id])
+  description        String
+  mediaUrls          String[]
+  documentUrls       String[]
+  aiValidationResult String?
+  aiValidationScore  Int?
+  submittedAt        DateTime  @default(now())
+}
+
+model Donation {
+  id                String         @id @default(uuid())
+  donorId           String
+  donor             User           @relation(fields: [donorId], references: [id])
+  projectId         String
+  project           Project        @relation(fields: [projectId], references: [id])
+  amount            Decimal        @db.Decimal(10, 2)
+  razorpayOrderId   String
+  razorpayPaymentId String?
+  status            DonationStatus @default(PENDING)
+  receiptUrl        String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  impactReports ImpactReport[]
+  taxReceipt    TaxReceipt?
+}
+
+model ImpactReport {
+  id                   String    @id @default(uuid())
+  donationId           String
+  donation             Donation  @relation(fields: [donationId], references: [id])
+  milestoneId          String
+  milestone            Milestone @relation(fields: [milestoneId], references: [id])
+  donorId              String
+  donor                User      @relation(fields: [donorId], references: [id])
+  aiGeneratedNarrative String
+  sentAt               DateTime  @default(now())
+  readAt               DateTime?
+}
+
+model NGOFollower {
+  donorId    String
+  donor      User       @relation(fields: [donorId], references: [id])
+  ngoId      String
+  ngo        NGOProfile @relation(fields: [ngoId], references: [id])
+  followedAt DateTime   @default(now())
+
+  @@id([donorId, ngoId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model TaxReceipt {
+  id            String   @id @default(uuid())
+  donationId    String   @unique
+  donation      Donation @relation(fields: [donationId], references: [id])
+  receiptNumber String   @unique
+  financialYear String
+  pdfUrl        String
+  issuedAt      DateTime @default(now())
+}
+
+model RateLimitLog {
+  id           String   @id @default(uuid())
+  identifier   String
+  route        String
+  requestCount Int      @default(1)
+  windowStart  DateTime @default(now())
+}
