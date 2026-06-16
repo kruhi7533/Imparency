@@ -3,10 +3,10 @@
 ## User Authentication & Role Management
 | ID | Requirement | Source | Status |
 |----|-------------|--------|--------|
-| REQ-01 | NextAuth.js setup supporting JWT strategy, Credentials provider (email/password), and Google OAuth. | SPEC User Roles | Pending |
-| REQ-02 | Role-based authorization supporting `DONOR`, `NGO`, and `ADMIN` roles. | SPEC User Roles | Pending |
-| REQ-03 | Role-based API route middleware preventing unauthorized access (e.g., donors cannot call NGO endpoints, NGOs cannot call Admin endpoints). | SPEC Constraints | Pending |
-| REQ-04 | Rate limiting on authentication routes (login, registration, password reset). | SPEC Constraints | Pending |
+| REQ-01 | NextAuth.js setup supporting JWT strategy, Credentials provider (email/password), and Google OAuth. | SPEC User Roles | Complete |
+| REQ-02 | Role-based authorization supporting `DONOR`, `NGO`, and `ADMIN` roles. | SPEC User Roles | Complete |
+| REQ-03 | Role-based API route middleware preventing unauthorized access (e.g., donors cannot call NGO endpoints, NGOs cannot call Admin endpoints). | SPEC Constraints | Complete |
+| REQ-04 | Rate limiting on authentication routes (login, registration, password reset). | SPEC Constraints | Complete |
 
 ## NGO Profile & Onboarding Workflow
 | ID | Requirement | Source | Status |
@@ -32,7 +32,7 @@
 ## Milestone Proof Submission & Gemini AI Validation
 | ID | Requirement | Source | Status |
 |----|-------------|--------|--------|
-| REQ-14 | Storage interface abstraction supporting Local File storage in development (uploading to `/public/uploads/`) and AWS S3/Cloudflare R2 in production. | SPEC Constraints | Pending |
+| REQ-14 | Storage interface abstraction supporting Local File storage in development (uploading to `/public/uploads/`) and AWS S3/Cloudflare R2 in production. | SPEC Constraints | Complete |
 | REQ-15 | NGO milestone completion form supporting image/document proof uploads (photos, receipts, reports) and descriptions. | SPEC Goal 1 | Pending |
 | REQ-16 | Gemini API integration to analyze uploaded proof files against the milestone's specific objective, producing a validation score (0-100) and structured reasoning. | SPEC Goal 1 | Pending |
 | REQ-17 | Automative validation handling: scores >= 70 mark milestone as `COMPLETED` and trigger reports; scores < 70 mark milestone as `PROOF_SUBMITTED` / `UNDER_REVIEW` and route to the Admin dashboard for override. | SPEC Goal 1 | Pending |
