@@ -1,6 +1,6 @@
 # ROADMAP.md
 
-> **Current Phase**: Not started
+> **Current Phase**: Phase 3: Donations & 80G Tax Receipts
 > **Milestone**: v1.0
 
 ## Must-Haves (from SPEC)
@@ -25,7 +25,7 @@
 **Requirements**: REQ-01, REQ-02, REQ-03, REQ-04, REQ-14
 
 ### Phase 2: NGO Profiles, Onboarding & Projects
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Develop the NGO registration workflow, Admin document review panel, and the Project & Milestone sequence creation dashboards, alongside discovery and profile pages.
 **Requirements**: REQ-05, REQ-06, REQ-07, REQ-08, REQ-09, REQ-10, REQ-24
 

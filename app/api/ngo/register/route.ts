@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   try {
     // 1. Guard check: only NGO users can register
     const { authorized, response, session } = await verifySessionRole("NGO");
-    if (!authorized || !session) return response;
+    if (!authorized) return response;
 
     const userId = session.user.id;
 

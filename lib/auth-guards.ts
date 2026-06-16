@@ -8,7 +8,10 @@ import { Role } from "@prisma/client";
  * If unauthorized or forbidden, returns a Next.js JSON response ready to be returned from the API route.
  * Otherwise, returns the session data.
  */
-export async function verifySessionRole(requiredRole?: Role) {
+export async function verifySessionRole(requiredRole?: Role): Promise<
+  | { authorized: true; response: null; session: any }
+  | { authorized: false; response: NextResponse; session: null }
+> {
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {

@@ -11,16 +11,16 @@
 ## NGO Profile & Onboarding Workflow
 | ID | Requirement | Source | Status |
 |----|-------------|--------|--------|
-| REQ-05 | NGO registration form collecting registration number, PAN, address, cause categories, website, founded year, description, and PDF document uploads (verification docs). | SPEC Goal 5 | Pending |
-| REQ-06 | Admin verification dashboard allowing admins to view pending registrations, download submitted docs, and mark NGOs as `VERIFIED` or `REJECTED`. | SPEC Goal 5 | Pending |
-| REQ-07 | Email confirmation sent to NGOs via Resend upon verification or rejection. | SPEC Goal 5 | Pending |
+| REQ-05 | NGO registration form collecting registration number, PAN, address, cause categories, website, founded year, description, and PDF document uploads (verification docs). | SPEC Goal 5 | Complete |
+| REQ-06 | Admin verification dashboard allowing admins to view pending registrations, download submitted docs, and mark NGOs as `VERIFIED` or `REJECTED`. | SPEC Goal 5 | Complete |
+| REQ-07 | Email confirmation sent to NGOs via Resend upon verification or rejection. | SPEC Goal 5 | Complete |
 
 ## Project & Milestone Builder
 | ID | Requirement | Source | Status |
 |----|-------------|--------|--------|
-| REQ-08 | NGO project creation dashboard containing title, description, cause category, target amount, location, cover image upload, and milestone builder. | SPEC Goal 1 | Pending |
-| REQ-09 | Milestone sequence builder allowing NGOs to specify a ordered chain of milestones with title, description, target amount, deadline, and proof type required. | SPEC Goal 1 | Pending |
-| REQ-10 | Project Discovery page with filters by cause categories, location, NGO health score, and status (`ACTIVE`, `COMPLETED`). | SPEC Goal 3 | Pending |
+| REQ-08 | NGO project creation dashboard containing title, description, cause category, target amount, location, cover image upload, and milestone builder. | SPEC Goal 1 | Complete |
+| REQ-09 | Milestone sequence builder allowing NGOs to specify a ordered chain of milestones with title, description, target amount, deadline, and proof type required. | SPEC Goal 1 | Complete |
+| REQ-10 | Project Discovery page with filters by cause categories, location, NGO health score, and status (`ACTIVE`, `COMPLETED`). | SPEC Goal 3 | Complete |
 
 ## Payment Gateway & 80G Tax Receipt Generation
 | ID | Requirement | Source | Status |
@@ -54,6 +54,6 @@
 | ID | Requirement | Source | Status |
 |----|-------------|--------|--------|
 | REQ-23 | Donor Impact Portfolio dashboard displaying summary analytics (total donated, lives impacted), followed NGOs feed, active funded projects, and downloadable receipts. | SPEC Goal 3 | Pending |
-| REQ-24 | NGO Public Profile page with public health score details, active/completed projects, historical milestones, and testimonials. | SPEC Goal 3 | Pending |
+| REQ-24 | NGO Public Profile page with public health score details, active/completed projects, historical milestones, and testimonials. | SPEC Goal 3 | Complete |
 | REQ-25 | CSR Dashboard for corporate donors presenting consolidated impact reports, compliance-ready exports, and utilization certificates. | SPEC Goal 4 | Pending |
 | REQ-26 | Admin Dashboard displaying platform-wide donation statistics, pending verifications, flagged milestone reviews, and fraud alerts. | SPEC Goal 5 | Pending |
