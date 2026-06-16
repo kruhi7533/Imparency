@@ -202,6 +202,65 @@ Lightweight, serverless-friendly, and fits easily inside Vercel's 50MB function 
 ### Payload Restrictions
 - Inline base64 payload size capped at 20MB across all files combined to prevent Gemini API limits.
 
+## Phase 5 Decisions
+
+**Date:** 2026-06-17
+
+### NGO Health Score Engine
+- **Weightage & Formula**: The total score of 100 is computed as follows:
+  - *Fund Utilization Rate (30% weight)*: `(total raised amount - pending milestone funds) / total raised amount * 100`.
+  - *Milestone Completion Rate (30% weight)*: `(milestones in COMPLETED status / total milestones) * 100`.
+  - *Proof Submission Speed (20% weight)*: `100 - (average_delay_days * 5)` with a minimum of 0. Early submissions (before deadline) are capped at a delay of 0 days.
+  - *Donor Return Rate (20% weight)*: `(unique donors with 2+ donations to this NGO / total unique donors) * 100`.
+- **Weight Redistribution**: If any metric is skipped due to insufficient data (e.g. `total_raised = 0`, `total_milestones = 0`, `total_unique_donors < 5`, or no proofs submitted yet), its weight is divided equally among the remaining active metrics.
+- **Starting Score**: Defaults to `null`. Newly registered NGOs display "New NGO — Score Pending" on their profile and discovery cards instead of a numeric badge until they complete at least 1 milestone and acquire at least 3 unique donors.
+- **Storage**: The score breakdown is stored as a JSON field `healthScoreBreakdown` on `NGOProfile` alongside the aggregate `healthScore` number.
+- **Triggers**: Event-driven recalculation via `recalculateNGOHealthScore(ngoId)` utility called synchronously inside `prisma.$transaction` from:
+  - Razorpay webhook (new donation -> donor return rate changes)
+  - NGO proof submission (milestone status updates)
+  - Admin review API (milestone approved/rejected)
+
+### CSR / Corporate Donor Support
+- **Schema Updates**: Add `companyName String?`, `isCorporate Boolean @default(false)`, and `gstNumber String?` to the `User` model.
+- **CSR Portal**: Standard `DONOR` role users with `isCorporate = true` get a dedicated "CSR Portal" tab in their donor dashboard.
+- **Features**:
+  - Aggregate donation summary by financial year.
+  - Project-wise breakdown table (NGO name, amount, milestones completed/pending, AI proof scores).
+  - Downloadable Utilization Certificate PDF per financial year (using `@react-pdf/renderer` pattern).
+  - Export to CSV button for the compliance table.
+
+### Fraud Alerts Engine
+- **Schema**: Create a `FraudAlert` table: `id`, `type` (String), `entityId` (String), `entityType` (String: NGO/DONOR/DONATION), `description` (String), `severity` (LOW/MEDIUM/HIGH), `resolved` (Boolean, default false), `resolutionNote` (String?), `createdAt`.
+- **Triggers**:
+  - *HIGH severity*:
+    - Duplicate PAN number used in multiple user registration attempts.
+    - NGO submits milestone proof that Gemini scores below 40.
+    - Same NGO gets two consecutive Gemini scores below 40 (triggers auto-suspension of proof submissions and alerts admin).
+  - *MEDIUM severity*:
+    - Milestone deadline exceeded by >30 days with no proof submitted.
+    - NGO has raised funds but has zero milestone activity for 60+ days.
+    - Single donor makes >5 donations in <10 minutes.
+  - *LOW severity*:
+    - NGO proof submission speed average delay >14 days across 3+ milestones.
+- **Admin Management**: Unresolved alerts table sorted by severity descending, with a "Resolve" action requiring written notes.
+
+### Platform-Wide Analytics
+- Computed directly via Prisma aggregation queries:
+  - Total donations (today / week / month / FY).
+  - NGO status counts (active, pending, rejected).
+  - Donor counts (total and corporate).
+  - Average platform health score.
+  - Top 5 NGOs by funds raised.
+  - Top 5 projects by donor count.
+  - Platform-wide milestone completion rate.
+  - Fraud alerts counts.
+
+### UI Polish
+- **Skeleton Screens**: Enforced on NGO discovery grid, donor portfolio, NGO public profile, admin dashboard, and CSR portal during loading states using a loading skeleton.
+- **Error Boundaries**: Major page sections wrapped in React error boundaries with user-friendly retry buttons.
+- **Mobile Responsiveness**: Sidebar filter collapses to bottom drawer, all tables are horizontally scrollable cards, and project page donate button is sticky at the bottom.
+- **Empty States**: Explicit empty states for all listings.
+
 ---
 
 *Last updated: 2026-06-17*
