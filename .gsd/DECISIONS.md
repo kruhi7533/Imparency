@@ -169,6 +169,39 @@ Lightweight, serverless-friendly, and fits easily inside Vercel's 50MB function 
 ### Mock Testing
 - **Local Webhook Endpoint:** Build a mock endpoint `/api/test/mock-webhook` to emulate and test webhook execution in local development. Disable this endpoint in production using `NODE_ENV` checks.
 
+## Phase 4 Decisions
+
+**Date:** 2026-06-17
+
+### Scope
+- **Gemini SDK & Model:** Use `@google/genai` library with the `gemini-2.5-flash` model for high-speed, multimodal verification and text generation.
+- **Structured Validation:** Force structured validation outputs using a JSON schema for proof validation: `{ score: number, reasoning: string, flags: string[], suggestion?: string }`.
+- **FCM Fallback:** Push notifications will fall back to terminal console logging in development if credentials are absent. Staged in `Notification` DB table.
+- **Narratives generation:** Run per-donor narrative generation in a parallel batch (`Promise.allSettled`) to avoid stopping all reports if a single generation fails.
+
+### Approach
+- **Prompt Engineering:**
+  - *Proof Validation:* Evaluate relevance, completeness, authenticity, and budget matching using the detailed auditing prompt.
+  - *Narrative Generator:* Write warm, personalized, 3-4 sentence maximum impact summaries without corporate cliché. Reference donor specific share percentage.
+- **Admin Review Panel (`/admin/proof-review`):**
+  - Show milestones in `PROOF_SUBMITTED` state with full details (AI score, reasoning, flags, proof files, NGO text).
+  - Admin Actions: **Approve** (sets milestone to COMPLETED, kicks off narrative generation and alerts) or **Reject** (sets milestone to IN_PROGRESS, requiring a mandatory written reason, sends alerts).
+  - Historical audit tab displaying previously validated proofs.
+- **Notifications Triggers:**
+  - Milestone completed -> Donors (Push + Email with narrative).
+  - Admin approves proof -> NGO (Push + Email).
+  - Admin rejects proof -> NGO (Push + Email with reason).
+  - NGO publishes project -> Followers (Push + Email).
+  - New Donation -> NGO (Push only).
+  - Save all push logs to `Notification` table for in-app bell dropdown.
+
+### Dependencies
+- Install `@google/genai` and `firebase-admin`.
+- Configure `experimental.serverExternalPackages: ['@google/genai', 'firebase-admin', '@react-pdf/renderer']` in `next.config.mjs` and execute under the Node.js runtime.
+
+### Payload Restrictions
+- Inline base64 payload size capped at 20MB across all files combined to prevent Gemini API limits.
+
 ---
 
 *Last updated: 2026-06-17*
