@@ -53,6 +53,7 @@ model User {
   panNumber    String?
   phone        String?
   city         String?
+  billingAddress String?
   totalDonated Decimal  @default(0.00) @db.Decimal(10, 2)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
