@@ -5,6 +5,7 @@ import { uploadFile } from "@/lib/storage";
 import { validateMilestoneProof } from "@/lib/gemini/validate-proof";
 import { Role } from "@prisma/client";
 import { triggerMilestoneCompleted } from "@/lib/notification-triggers";
+import { recalculateNGOHealthScore } from "@/lib/ngo-health";
 
 export const runtime = "nodejs";
 
@@ -60,6 +61,10 @@ export async function POST(request: Request) {
 
     if (!user?.ngoProfile || user.ngoProfile.verificationStatus !== "VERIFIED") {
       return NextResponse.json({ error: "Only verified NGO profiles can submit proofs" }, { status: 403 });
+    }
+
+    if (user.ngoProfile.isSuspended) {
+      return NextResponse.json({ error: "Your NGO profile has been suspended from submitting proofs" }, { status: 403 });
     }
 
     // Fetch milestone and project
@@ -129,6 +134,13 @@ export async function POST(request: Request) {
       where: { id: milestone.id },
       data: { status: finalStatus },
     });
+
+    // Recalculate NGO health score
+    try {
+      await recalculateNGOHealthScore(user.ngoProfile.id);
+    } catch (healthErr) {
+      console.error("Failed to recalculate health score on proof submission:", healthErr);
+    }
 
     console.log(`Milestone proof submitted for ${milestone.id}. AI Score: ${validationResult.score}. Status: ${finalStatus}`);
 

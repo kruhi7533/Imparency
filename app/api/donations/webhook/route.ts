@@ -178,6 +178,14 @@ export async function POST(request: Request) {
       console.error("Failed to trigger new donation notification:", triggerErr);
     }
 
+    // Recalculate NGO health score
+    try {
+      const { recalculateNGOHealthScore } = require("@/lib/ngo-health");
+      await recalculateNGOHealthScore(donation.project.ngoId);
+    } catch (healthErr) {
+      console.error("Failed to recalculate health score on webhook donation:", healthErr);
+    }
+
     return NextResponse.json({ success: true, receiptNumber, pdfUrl }, { status: 200 });
 
   } catch (err: any) {

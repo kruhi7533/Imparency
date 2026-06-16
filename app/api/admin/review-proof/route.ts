@@ -7,6 +7,7 @@ import {
   triggerProofApproved,
   triggerProofRejected
 } from "@/lib/notification-triggers";
+import { recalculateNGOHealthScore } from "@/lib/ngo-health";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
     const milestone = await prisma.milestone.findUnique({
       where: { id: milestoneId },
       include: {
+        project: true,
         proofs: {
           orderBy: { submittedAt: "desc" },
           take: 1
@@ -69,6 +71,13 @@ export async function POST(request: Request) {
       await triggerMilestoneCompleted(milestoneId);
       await triggerProofApproved(milestoneId);
 
+      // Recalculate NGO health score
+      try {
+        await recalculateNGOHealthScore(milestone.project.ngoId);
+      } catch (healthErr) {
+        console.error("Failed to recalculate health score on proof approval:", healthErr);
+      }
+
       return NextResponse.json({
         success: true,
         message: "Milestone proof approved successfully."
@@ -82,6 +91,13 @@ export async function POST(request: Request) {
 
       // Optionally record the rejection reason somewhere (e.g. log, or notification trigger handles it)
       await triggerProofRejected(milestoneId, rejectionReason);
+
+      // Recalculate NGO health score
+      try {
+        await recalculateNGOHealthScore(milestone.project.ngoId);
+      } catch (healthErr) {
+        console.error("Failed to recalculate health score on proof rejection:", healthErr);
+      }
 
       return NextResponse.json({
         success: true,
