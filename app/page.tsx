@@ -17,34 +17,7 @@ export default function Home() {
       {/* Background Gradients */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] bg-gradient-to-b from-emerald-500/10 via-transparent to-transparent blur-3xl pointer-events-none -z-10" />
 
-      {/* Header / Navbar */}
-      <header className="border-b border-gray-900 bg-gray-950/80 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent tracking-tight">
-              ImpactBridge
-            </span>
-            <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20">
-              Trust-First
-            </span>
-          </div>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm font-bold text-gray-400">
-            <Link href="/discover" className="hover:text-white transition">Discover NGOs</Link>
-            <Link href="/ngo/register" className="hover:text-white transition">NGO Registration</Link>
-            <Link href="/admin/dashboard" className="hover:text-white transition">Admin Panel</Link>
-          </nav>
-
-          <div className="flex items-center gap-4">
-            <Link
-              href="/discover"
-              className="bg-emerald-600 hover:bg-emerald-700 px-5 py-2.5 rounded-xl text-sm font-extrabold shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
-            >
-              Explore Campaigns
-            </Link>
-          </div>
-        </div>
-      </header>
 
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 text-center space-y-8">
