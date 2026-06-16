@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import DashboardClient from "./DashboardClient";
 
 export default async function NGODashboardPage() {
   const session = await getServerSession(authOptions);
@@ -21,6 +22,11 @@ export default async function NGODashboardPage() {
     include: {
       projects: {
         where: { isDeleted: false },
+        include: {
+          milestones: {
+            orderBy: { sequenceOrder: "asc" },
+          },
+        },
         orderBy: { createdAt: "desc" },
       },
     },
@@ -185,84 +191,7 @@ export default async function NGODashboardPage() {
               </Link>
             </div>
 
-            {/* Projects Grid */}
-            {profile.projects.length === 0 ? (
-              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-sm">
-                <span className="text-4xl mb-4 block">📦</span>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No active projects</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                  You haven't launched any fundraising campaigns yet. Launch your first project to define milestones and collect verified donations.
-                </p>
-                <Link
-                  href="/ngo/projects/new"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition text-sm"
-                >
-                  Create Project
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {profile.projects.map((project) => (
-                  <div
-                    key={project.id}
-                    className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition duration-200"
-                  >
-                    <div className="h-40 bg-gray-200 dark:bg-gray-800 relative">
-                      {project.coverImage ? (
-                        <img
-                          src={project.coverImage}
-                          alt={project.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold">
-                          ImpactBridge Cover
-                        </div>
-                      )}
-                      <span className={`absolute top-3 right-3 text-xs font-bold px-2 py-0.5 rounded-full ${
-                        project.status === "ACTIVE"
-                          ? "bg-emerald-500 text-white"
-                          : project.status === "DRAFT"
-                          ? "bg-gray-500 text-white"
-                          : "bg-amber-500 text-white"
-                      }`}>
-                        {project.status}
-                      </span>
-                    </div>
-
-                    <div className="p-5">
-                      <span className="text-xs font-bold uppercase text-emerald-600 tracking-wider">
-                        {project.causeCategory}
-                      </span>
-                      <h4 className="text-lg font-extrabold text-gray-900 dark:text-white mt-1 line-clamp-1">
-                        {project.title}
-                      </h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                        {project.description}
-                      </p>
-
-                      <div className="mt-4">
-                        <div className="flex justify-between text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
-                          <span>Raised: ₹{Number(project.raisedAmount).toLocaleString()}</span>
-                          <span>Target: ₹{Number(project.targetAmount).toLocaleString()}</span>
-                        </div>
-                        <div className="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-                          <div
-                            className="bg-emerald-600 h-full rounded-full"
-                            style={{
-                              width: `${Math.min(
-                                100,
-                                (Number(project.raisedAmount) / Number(project.targetAmount)) * 100
-                              )}%`,
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <DashboardClient initialProjects={profile.projects as any} />
           </div>
         )}
       </main>

@@ -170,6 +170,14 @@ export async function POST(request: Request) {
 
     console.log(`Donation ${donation.id} resolved successfully. Receipt issued: ${receiptNumber}`);
 
+    // Trigger push notification to NGO
+    try {
+      const { triggerNewDonationReceived } = require("@/lib/notification-triggers");
+      await triggerNewDonationReceived(donation.id);
+    } catch (triggerErr) {
+      console.error("Failed to trigger new donation notification:", triggerErr);
+    }
+
     return NextResponse.json({ success: true, receiptNumber, pdfUrl }, { status: 200 });
 
   } catch (err: any) {

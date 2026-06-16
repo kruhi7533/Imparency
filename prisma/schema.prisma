@@ -55,6 +55,7 @@ model User {
   city         String?
   billingAddress String?
   totalDonated Decimal  @default(0.00) @db.Decimal(10, 2)
+  fcmToken     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

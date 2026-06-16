@@ -162,6 +162,14 @@ export async function POST(request: Request) {
     // 9. Send confirmation email to NGO owner
     await sendProjectPublishedEmail(profile.user.email, profile.orgName, newProject.title);
 
+    // Trigger push & email notifications to all followers of this NGO
+    try {
+      const { triggerFollowedNGONewProject } = require("@/lib/notification-triggers");
+      await triggerFollowedNGONewProject(profile.id, newProject.id);
+    } catch (triggerErr) {
+      console.error("Failed to trigger new project follower notifications:", triggerErr);
+    }
+
     return NextResponse.json({ success: true, projectId: newProject.id });
   } catch (err: any) {
     console.error("Project Publishing Error:", err);

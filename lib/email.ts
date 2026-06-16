@@ -100,3 +100,38 @@ export async function sendReceiptEmail(
     ],
   });
 }
+
+export async function sendMilestoneCompletedEmail(
+  to: string,
+  donorName: string,
+  projectTitle: string,
+  ngoName: string,
+  milestoneTitle: string,
+  narrative: string
+) {
+  const subject = `Milestone Completed: "${milestoneTitle}" - ${projectTitle}`;
+  const body = `Hi ${donorName},\n\nWe have exciting news! ${ngoName} has successfully completed the milestone "${milestoneTitle}" for the project "${projectTitle}".\n\nHere is how your contribution made an impact:\n\n${narrative}\n\nThank you for making a difference.\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendProofApprovedEmail(
+  to: string,
+  orgName: string,
+  milestoneTitle: string
+) {
+  const subject = `Milestone proof APPROVED: "${milestoneTitle}"`;
+  const body = `Hi there,\n\nWe are pleased to inform you that the milestone completion proof you submitted for "${milestoneTitle}" has been approved.\n\nDonors of this project have been notified of your success and sent their personalized impact narrative updates.\n\nKeep up the great work!\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendProofRejectedEmail(
+  to: string,
+  orgName: string,
+  milestoneTitle: string,
+  reason: string
+) {
+  const subject = `Milestone proof REJECTED: "${milestoneTitle}"`;
+  const body = `Hi there,\n\nWe are writing to let you know that the milestone completion proof you submitted for "${milestoneTitle}" was not approved by our review team.\n\nReason for rejection:\n"${reason}"\n\nPlease address this feedback, update your completion evidence, and resubmit it from your dashboard.\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
