@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { getIndianFinancialYear } from "@/lib/finance-utils";
+import { generateReceiptBuffer } from "@/lib/receipt-generator";
+import { uploadFile } from "@/lib/storage";
+import { sendReceiptEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -42,7 +45,6 @@ export async function POST(request: Request) {
 
     const razorpayOrderId = paymentEntity?.order_id || orderEntity?.id;
     const razorpayPaymentId = paymentEntity?.id;
-    const amountInPaise = paymentEntity?.amount;
 
     if (!razorpayOrderId) {
       return NextResponse.json({ error: "Order ID not found in payload" }, { status: 400 });
@@ -58,9 +60,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // Find the pending donation
+    // Find the pending donation with full relations
     const donation = await prisma.donation.findFirst({
       where: { razorpayOrderId },
+      include: {
+        donor: true,
+        project: {
+          include: {
+            ngo: true,
+          },
+        },
+      },
     });
 
     if (!donation) {
@@ -103,8 +113,26 @@ export async function POST(request: Request) {
     const seq = String(count + 1).padStart(5, "0");
     const receiptNumber = `IB-FY${shortYear}-${seq}`;
 
-    // Placeholders for PDF URL (will be updated fully in Plan 3.4)
-    const pdfUrl = `/uploads/receipts/${donation.id}/${receiptNumber}.pdf`;
+    // Generate PDF buffer using react-pdf/renderer
+    const pdfBuffer = await generateReceiptBuffer(
+      {
+        id: donation.id,
+        amount: Number(donation.amount),
+        createdAt: donation.createdAt,
+        razorpayPaymentId: razorpayPaymentId || null,
+      },
+      {
+        receiptNumber,
+        financialYear: fy,
+        issuedAt: now,
+      },
+      donation.donor,
+      donation.project.ngo,
+      donation.project
+    );
+
+    // Upload PDF using file storage adapter
+    const pdfUrl = await uploadFile(pdfBuffer, `${receiptNumber}.pdf`, `receipts/${donation.id}`);
 
     // Write TaxReceipt database record
     await prisma.taxReceipt.create({
@@ -113,6 +141,7 @@ export async function POST(request: Request) {
         receiptNumber,
         financialYear: fy,
         pdfUrl,
+        issuedAt: now,
       },
     });
 
@@ -124,9 +153,24 @@ export async function POST(request: Request) {
       },
     });
 
+    // Send confirmation email via Resend
+    try {
+      await sendReceiptEmail(
+        donation.donor.email,
+        donation.donor.name,
+        receiptNumber,
+        pdfUrl,
+        Number(donation.amount),
+        donation.project.title,
+        pdfBuffer
+      );
+    } catch (emailErr) {
+      console.error("Failed to send receipt email:", emailErr);
+    }
+
     console.log(`Donation ${donation.id} resolved successfully. Receipt issued: ${receiptNumber}`);
 
-    return NextResponse.json({ success: true, receiptNumber }, { status: 200 });
+    return NextResponse.json({ success: true, receiptNumber, pdfUrl }, { status: 200 });
 
   } catch (err: any) {
     console.error("Webhook processing error:", err);

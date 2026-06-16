@@ -141,6 +141,34 @@ Lightweight, serverless-friendly, and fits easily inside Vercel's 50MB function 
 - **`/ngo/[id]` Layout:** Banner header, prominent health score stats, Follow button, cause tags, location. Tabs show Active Projects / Completed Projects / Impact Story / About. Metric bars breakdown: fund utilization, milestone completion, proof speed, and donor return.
 - **Micro-animations:** Hover card lift (`translateY(-2px)` + shadow), smooth tab toggles, skeleton layouts on load, and Health Score numerical count-up on mount (150-200ms duration).
 
+## Phase 3 Decisions
+
+**Date:** 2026-06-17
+
+### Scope
+- **Donor Details for 80G:** Before initiating Razorpay checkout, the UI will verify that the donor's profile includes **Full Name**, **PAN Number** (validated with regex `/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/`), and **Full Billing Address** (street, city, state, pincode). If any are missing, a pre-donation modal will collect and save them directly to the `User` record.
+- **Client Checkout & Polling:** The client loads Razorpay's Standard Checkout script. On success callback, the user is redirected to a pending page `/donor/donations/[donationId]/pending` that polls `/api/donations/[donationId]/status` every 3 seconds (up to 10 times) until the status is resolved to `SUCCESS` or `FAILED`.
+- **Webhook-Driven Resolution:** Webhooks with verified signatures are the single source of truth for updating donation status to `SUCCESS` and triggering receipt generation.
+
+### Approach
+- **Generate & Archive on Webhook:** Upon receiving a verified Razorpay `payment.captured` or `order.paid` webhook, the platform will:
+  1. Verify the signature with HMAC SHA256.
+  2. Guard against duplicate webhook delivery using the payment ID.
+  3. Compute the Indian Financial Year (using `getIndianFinancialYear`).
+  4. Generate a unique receipt number: `IB-FY{shortYear}-{paddedSequence}` based on counting existing receipts in the DB.
+  5. Generate the PDF server-side via `@react-pdf/renderer`.
+  6. Store the PDF using the file storage adapter to path `receipts/{donationId}/{receiptNumber}.pdf`.
+  7. Record the `TaxReceipt` entry in the database.
+  8. Dispatch a confirmation email via Resend with the PDF attached/linked.
+  9. Increment `User.totalDonated` with the donation amount.
+
+### Dependencies & Configuration
+- **Libraries:** Install `razorpay` and `@react-pdf/renderer`.
+- **Bundler Settings:** Configure `serverExternalPackages: ['@react-pdf/renderer']` in Next.js configuration to bypass edge-runtime restrictions, and enforce `export const runtime = 'nodejs'` on all PDF generation API routes.
+
+### Mock Testing
+- **Local Webhook Endpoint:** Build a mock endpoint `/api/test/mock-webhook` to emulate and test webhook execution in local development. Disable this endpoint in production using `NODE_ENV` checks.
+
 ---
 
-*Last updated: 2026-06-16*
+*Last updated: 2026-06-17*
