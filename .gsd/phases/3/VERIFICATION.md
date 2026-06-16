@@ -1,52 +1,49 @@
-# Phase 3 Verification Report
-
-## Verdict: PASS
-
-All Phase 3 requirements have been implemented and validated empirically via in-process integration testing.
-
+---
+phase: 3
+verified_at: 2026-06-17T00:35:00+05:30
+verdict: PASS
 ---
 
-## Must-Haves Verification
+# Phase 3 Verification Report
 
-### 1. Razorpay Gateway Integration
-- **Requirement:** REQ-11 & Checkout Flow
-- **Status:** Verified
-- **Evidence:** 
-  - Dynamic loading of Razorpay checkout script implemented in `app/components/DonateModal.tsx`.
-  - Server-side Order creation API implemented in `app/api/donations/create-order/route.ts` using the official `razorpay` Node SDK.
-  - Verification of active project status and validation of user's billing details (Full Name, PAN, Billing Address) before checkout.
+## Summary
+5/5 must-haves verified
 
-### 2. Secure Webhook Validation
-- **Requirement:** REQ-12 & Signature Verification
-- **Status:** Verified
-- **Evidence:**
-  - HMAC SHA256 signature verification using the `RAZORPAY_WEBHOOK_SECRET` implemented in `app/api/donations/webhook/route.ts`.
-  - Duplicate delivery guard check (idempotency check) using the Razorpay Payment ID.
-  - Polling status endpoint `app/api/donations/[donationId]/status/route.ts` is implemented and verified.
-  - End-to-end integration test successfully verified signature verification and resolution.
+## Must-Haves
 
-### 3. Automated 80G Tax Receipt PDF Generation
-- **Requirement:** REQ-13 & `@react-pdf/renderer`
-- **Status:** Verified
-- **Evidence:**
-  - `@react-pdf/renderer` configured for Node.js API routes inside `next.config.mjs` (avoiding edge runtime failures).
-  - Premium PDF layout implemented in `lib/receipt-generator.tsx` including logo, receipt metadata, financial year, donor billing info, donation amount in figures & words, and the mandatory tax exemption declarations.
-  - PDF buffer is uploaded via the file storage adapter and stored under path `receipts/{donationId}/{receiptNumber}.pdf`.
-  - Integration test validated that the output PDF file is generated and successfully saved locally.
+### ✅ Razorpay Gateway Integration
+**Status:** PASS
+**Evidence:**
+- Client-side checkout popup integrated via dynamic loading of `https://checkout.razorpay.com/v1/checkout.js` in `app/components/DonateModal.tsx`.
+- Server-side Order generation API `app/api/donations/create-order/route.ts` utilizing `razorpay` SDK basic authentication.
+- Compiles cleanly and passes TypeScript checks.
 
-### 4. Donor Impact Portfolio Dashboard
-- **Requirement:** REQ-23
-- **Status:** Verified
-- **Evidence:**
-  - Premium dashboard implemented in `app/donor/portfolio/page.tsx` displaying:
-    * Donor total contributed stats.
-    * Active supported campaigns and progress metrics.
-    * Followed NGOs feed.
-    * Chronological Donations Ledger containing direct download links to generated PDF receipts.
+### ✅ Secure Webhook Validation
+**Status:** PASS
+**Evidence:**
+- HMAC SHA256 signature verification matching `x-razorpay-signature` and `RAZORPAY_WEBHOOK_SECRET` implemented in `app/api/donations/webhook/route.ts`.
+- Duplicate webhook prevention (idempotency checks on payment ID) and pending polling status endpoint `/api/donations/[donationId]/status` are fully implemented.
+- End-to-end integration test (`test-phase3-integration.ts`) executed successfully, confirming correct webhook signature validation and status resolution.
 
-### 5. Resend Email Dispatch
-- **Requirement:** REQ-19 / Receipt confirmation
-- **Status:** Verified
-- **Evidence:**
-  - `sendReceiptEmail` helper implemented in `lib/email.ts` with support for attachments.
-  - Webhook resolution triggers receipt dispatch attaching the PDF buffer directly to the email.
+### ✅ Automated 80G Tax Receipt PDF Generation
+**Status:** PASS
+**Evidence:**
+- `@react-pdf/renderer` successfully configured for server-side execution via Next.js `serverExternalPackages` in `next.config.mjs`.
+- PDF receipt template laid out in `lib/receipt-generator.tsx` detailing NGO and Donor info (including PAN validation), Indian financial year, donation amount (converted to words via `amountToWords` utility), and tax deduction declarations.
+- PDF buffer uploaded and stored under path `receipts/{donationId}/{receiptNumber}.pdf` using the file storage adapter.
+- Integration test proved that the PDF is correctly written to public/uploads directory.
+
+### ✅ Donor Impact Portfolio Dashboard
+**Status:** PASS
+**Evidence:**
+- Premium dashboard implemented at `app/donor/portfolio/page.tsx`.
+- Successfully retrieves and displays donor total contribution metrics, active campaign progress bars, followed NGOs feed, and the chronological Donations Ledger with direct receipt downloads.
+
+### ✅ Resend Email Dispatch
+**Status:** PASS
+**Evidence:**
+- Support for PDF attachments added to the common `sendEmail` helper in `lib/email.ts`.
+- `sendReceiptEmail` helper implemented and executed upon webhook payment captured events, successfully attaching the generated PDF receipt.
+
+## Verdict
+PASS
