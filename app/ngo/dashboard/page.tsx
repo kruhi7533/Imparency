@@ -143,7 +143,11 @@ export default async function NGODashboardPage() {
                 <div>
                   <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">NGO Health Score</h3>
                   <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                    {Number(profile.healthScore).toFixed(1)}/100
+                    {profile.healthScore !== null && profile.healthScore !== undefined ? (
+                      `${Number(profile.healthScore).toFixed(1)}/100`
+                    ) : (
+                      "Pending"
+                    )}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center font-bold text-lg">

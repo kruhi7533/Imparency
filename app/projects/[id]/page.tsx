@@ -172,9 +172,15 @@ export default async function ProjectPage({
                   <Link href={`/ngo/${project.ngo.id}`} className="text-sm font-extrabold text-gray-900 dark:text-white hover:text-emerald-600 transition block">
                     {project.ngo.orgName}
                   </Link>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50 mt-1">
-                    Health Score: {Number(project.ngo.healthScore).toFixed(0)}/100
-                  </span>
+                  {project.ngo.healthScore !== null && project.ngo.healthScore !== undefined ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50 mt-1">
+                      Health Score: {Number(project.ngo.healthScore).toFixed(0)}/100
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block bg-gray-50 dark:bg-gray-800 text-gray-500 border border-gray-200 dark:border-gray-700 mt-1">
+                      New NGO — Score Pending
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -183,6 +189,9 @@ export default async function ProjectPage({
 
         </div>
       </div>
+
+      {/* Mobile spacer to prevent sticky bottom bar overlap */}
+      <div className="h-20 lg:hidden"></div>
     </div>
   );
 }

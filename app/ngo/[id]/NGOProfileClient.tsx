@@ -22,6 +22,7 @@ interface NGO {
   causeCategories: string[];
   address: string;
   healthScore: any; // Decimal
+  healthScoreBreakdown: any; // Json
   description: string;
   website: string | null;
   foundedYear: number;
@@ -48,13 +49,18 @@ export default function NGOProfileClient({
   const [followersCount, setFollowersCount] = useState(initialFollowersCount);
   
   // Health score count-up animation state
-  const targetHealth = Number(ngo.healthScore);
-  const [animatedScore, setAnimatedScore] = useState(0);
+  const targetHealth = ngo.healthScore !== null && ngo.healthScore !== undefined ? Number(ngo.healthScore) : null;
+  const [animatedScore, setAnimatedScore] = useState<number | null>(null);
 
   useEffect(() => {
+    if (targetHealth === null) {
+      setAnimatedScore(null);
+      return;
+    }
+    
     let start = 0;
     const duration = 1000; // 1s animation duration
-    const stepTime = Math.abs(Math.floor(duration / targetHealth));
+    const stepTime = targetHealth > 0 ? Math.abs(Math.floor(duration / targetHealth)) : 1000;
     
     const timer = setInterval(() => {
       start += 1;
@@ -96,12 +102,14 @@ export default function NGOProfileClient({
   const completedProjects = ngo.projects ? (ngo as any).projects.filter((p: Project) => p.status === "COMPLETED") : [];
   const totalRaised = ngo.projects ? (ngo as any).projects.reduce((sum: number, p: Project) => sum + Number(p.raisedAmount), 0) : 0;
 
-  // Mock Health metrics for display
+  // Extract real Health metrics from breakdown for display
+  const breakdown = ngo.healthScoreBreakdown ? (typeof ngo.healthScoreBreakdown === 'string' ? JSON.parse(ngo.healthScoreBreakdown) : ngo.healthScoreBreakdown) : null;
+
   const metrics = [
-    { label: "Fund Utilization Rate", val: 92 },
-    { label: "Milestone Completion Rate", val: 88 },
-    { label: "Average Proof Submission Speed", val: 95 },
-    { label: "Donor Return Rate", val: 75 },
+    { label: "Fund Utilization Rate", val: breakdown?.utilization?.score ?? null },
+    { label: "Milestone Completion Rate", val: breakdown?.completion?.score ?? null },
+    { label: "Average Proof Submission Speed", val: breakdown?.speed?.score ?? null },
+    { label: "Donor Return Rate", val: breakdown?.donorReturn?.score ?? null },
   ];
 
   return (
@@ -326,29 +334,42 @@ export default function NGOProfileClient({
               
               {/* Animated Big Score */}
               <div className="text-center py-6 border-b border-gray-100 dark:border-gray-800 mb-6">
-                <span className="text-5xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
-                  {animatedScore.toFixed(0)}
-                </span>
-                <span className="text-gray-400 text-sm font-bold">/100</span>
+                {animatedScore !== null ? (
+                  <>
+                    <span className="text-5xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+                      {animatedScore.toFixed(0)}
+                    </span>
+                    <span className="text-gray-400 text-sm font-bold">/100</span>
+                  </>
+                ) : (
+                  <span className="text-lg font-black text-gray-500 dark:text-gray-400 tracking-tight block">
+                    New NGO — Score Pending
+                  </span>
+                )}
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 font-medium">Auto-computed NGO Health Score</p>
               </div>
 
               {/* Metrics Progress bars */}
               <div className="space-y-5">
-                {metrics.map((metric) => (
-                  <div key={metric.label}>
-                    <div className="flex justify-between text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
-                      <span>{metric.label}</span>
-                      <span>{metric.val}%</span>
+                {metrics.map((metric) => {
+                  const hasVal = metric.val !== null && metric.val !== undefined;
+                  const displayVal = hasVal ? `${Number(metric.val).toFixed(0)}%` : "Pending";
+                  const widthPercent = hasVal ? Number(metric.val) : 0;
+                  return (
+                    <div key={metric.label}>
+                      <div className="flex justify-between text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                        <span>{metric.label}</span>
+                        <span>{displayVal}</span>
+                      </div>
+                      <div className="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+                        <div
+                          className="bg-emerald-600 h-full rounded-full transition-all duration-1000 ease-out"
+                          style={{ width: `${widthPercent}%` }}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-emerald-600 h-full rounded-full transition-all duration-1000 ease-out"
-                        style={{ width: `${metric.val}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

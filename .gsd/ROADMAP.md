@@ -1,21 +1,21 @@
 # ROADMAP.md
 
-> **Current Phase**: Phase 3: Donations & 80G Tax Receipts
+> **Current Phase**: Phase 5: Health Score Engine, CSR & Polish (Complete)
 > **Milestone**: v1.0
 
 ## Must-Haves (from SPEC)
-- [ ] Role-based NextAuth.js authentication (DONOR, NGO, ADMIN)
-- [ ] NGO document upload & Admin verification dashboard
-- [ ] Project & Milestone sequence builder
-- [ ] Razorpay payment integration with webhook validation
-- [ ] Serverless-friendly 80G tax receipt PDF auto-generation
-- [ ] Storage abstraction with local upload and S3/R2 support
-- [ ] Gemini API milestone proof validation (with admin manual override)
-- [ ] Gemini-generated personalized donor impact narratives
-- [ ] Resend email and FCM push notifications for milestone updates
-- [ ] Automated NGO Health Score recalculation engine
-- [ ] Donor Impact Portfolio, NGO Discovery with filtering, and NGO Public Profiles
-- [ ] CSR Corporate Dashboard and comprehensive Admin Panel
+- [x] Role-based NextAuth.js authentication (DONOR, NGO, ADMIN)
+- [x] NGO document upload & Admin verification dashboard
+- [x] Project & Milestone sequence builder
+- [x] Razorpay payment integration with webhook validation
+- [x] Serverless-friendly 80G tax receipt PDF auto-generation
+- [x] Storage abstraction with local upload and S3/R2 support
+- [x] Gemini API milestone proof validation (with admin manual override)
+- [x] Gemini-generated personalized donor impact narratives
+- [x] Resend email and FCM push notifications for milestone updates
+- [x] Automated NGO Health Score recalculation engine
+- [x] Donor Impact Portfolio, NGO Discovery with filtering, and NGO Public Profiles
+- [x] CSR Corporate Dashboard and comprehensive Admin Panel
 
 ## Phases
 
@@ -40,6 +40,6 @@
 **Requirements**: REQ-15, REQ-16, REQ-17, REQ-18, REQ-19, REQ-20
 
 ### Phase 5: Health Score Engine, CSR & Polish
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Build the NGO Health Score recalculation engine, the CSR Corporate dashboard, platform-wide analytics/fraud controls, and complete UI polish (skeleton states, error handling, mobile responsiveness).
 **Requirements**: REQ-21, REQ-22, REQ-25, REQ-26

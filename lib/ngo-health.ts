@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export async function recalculateNGOHealthScore(ngoId: string): Promise<void> {
   console.time(`healthScore-${ngoId}`);
@@ -118,7 +119,7 @@ export async function recalculateNGOHealthScore(ngoId: string): Promise<void> {
           where: { id: ngoId },
           data: {
             healthScore: null,
-            healthScoreBreakdown: null
+            healthScoreBreakdown: Prisma.DbNull
           }
         });
         console.log(`NGO ${ngoId} health score set to Pending (New NGO: ${completedMilestonesCount} completed milestones, ${totalUniqueDonors} unique donors)`);
@@ -152,7 +153,7 @@ export async function recalculateNGOHealthScore(ngoId: string): Promise<void> {
           where: { id: ngoId },
           data: {
             healthScore: null,
-            healthScoreBreakdown: null
+            healthScoreBreakdown: Prisma.DbNull
           }
         });
         return;

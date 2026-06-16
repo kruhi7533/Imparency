@@ -80,7 +80,7 @@ model NGOProfile {
   address            String
   causeCategories    String[]
   verificationStatus VerificationStatus @default(PENDING)
-  healthScore        Decimal            @default(100.00) @db.Decimal(5, 2)
+  healthScore        Decimal?           @db.Decimal(5, 2)
   healthScoreBreakdown Json?
   isSuspended          Boolean            @default(false)
   documents          String[]

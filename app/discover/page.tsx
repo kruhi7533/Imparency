@@ -42,6 +42,7 @@ export default function DiscoverPage() {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // Trigger initial fetch and filter reset
   useEffect(() => {
@@ -229,10 +230,22 @@ export default function DiscoverPage() {
 
       {/* Main Discover Layout */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        
+        {/* Mobile Filter Button */}
+        <div className="lg:hidden flex justify-between items-center bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 rounded-xl shadow-sm mb-6">
+          <span className="text-xs font-bold text-gray-500">Filter & Sort</span>
+          <button
+            onClick={() => setShowMobileFilters(true)}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition"
+          >
+            Show Filters
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           
-          {/* Left Filter Sidebar */}
-          <aside className="space-y-6">
+          {/* Desktop Filter Sidebar */}
+          <aside className="hidden lg:block space-y-6">
             
             {/* Sort Filter */}
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
@@ -279,6 +292,75 @@ export default function DiscoverPage() {
 
           </aside>
 
+          {/* Mobile Filter Drawer Overlay */}
+          {showMobileFilters && (
+            <div className="fixed inset-0 bg-black/55 z-50 lg:hidden flex justify-end">
+              <div className="bg-white dark:bg-gray-900 w-80 h-full p-6 overflow-y-auto space-y-6 shadow-xl relative animate-in slide-in-from-right duration-250">
+                <button
+                  onClick={() => setShowMobileFilters(false)}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg font-bold"
+                >
+                  ✕
+                </button>
+                <h2 className="text-base font-black text-gray-900 dark:text-white pb-3 border-b border-gray-100 dark:border-gray-800">
+                  Filters
+                </h2>
+                
+                {/* Sort Filter */}
+                <div className="space-y-2">
+                  <h3 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Sort Results</h3>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-755 rounded-lg bg-white dark:bg-gray-900 dark:text-white text-xs focus:outline-none"
+                  >
+                    <option value="healthScore">NGO Health Score</option>
+                    <option value="newest">Newest Registered</option>
+                  </select>
+                </div>
+
+                {/* Location Filter */}
+                <div className="space-y-2">
+                  <h3 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Filter by Location</h3>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="City or State..."
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-755 rounded-lg bg-transparent dark:text-white text-xs focus:outline-none"
+                  />
+                </div>
+
+                {/* Cause Categories Checkbox Filter */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Focus Sectors</h3>
+                  <div className="space-y-2.5">
+                    {CAUSE_CATEGORIES.map((cause) => (
+                      <label key={cause} className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-600 dark:text-gray-400 select-none">
+                        <input
+                          type="checkbox"
+                          checked={selectedCauses.includes(cause)}
+                          onChange={() => handleCauseCheckboxChange(cause)}
+                          className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 dark:bg-gray-800 dark:border-gray-700"
+                        />
+                        {cause}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <button
+                    onClick={() => setShowMobileFilters(false)}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 rounded-xl text-xs shadow-md transition"
+                  >
+                    Apply Filters
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Right Main Grid */}
           <div className="lg:col-span-3 space-y-8">
             
@@ -319,9 +401,15 @@ export default function DiscoverPage() {
                       <div>
                         {/* Health Score Badge */}
                         <div className="flex justify-between items-center mb-3">
-                          <span className={`text-[10px] font-extrabold px-2 py-0.5 border rounded-full ${getHealthBadgeClass(ngo.healthScore)}`}>
-                            Health: {ngo.healthScore.toFixed(0)}
-                          </span>
+                          {ngo.healthScore !== null && ngo.healthScore !== undefined ? (
+                            <span className={`text-[10px] font-extrabold px-2 py-0.5 border rounded-full ${getHealthBadgeClass(ngo.healthScore)}`}>
+                              Health: {ngo.healthScore.toFixed(0)}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 border rounded-full bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700">
+                              New NGO — Score Pending
+                            </span>
+                          )}
                           <span className="text-[10px] font-semibold text-gray-400">{ngo.address.split(",").slice(-2).join(",").trim()}</span>
                         </div>
 
