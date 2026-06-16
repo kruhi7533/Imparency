@@ -186,6 +186,14 @@ export async function POST(request: Request) {
       console.error("Failed to recalculate health score on webhook donation:", healthErr);
     }
 
+    // Check donation rate fraud alerts
+    try {
+      const { checkDonationRate } = require("@/lib/fraud-alerts");
+      await checkDonationRate(donation.donorId);
+    } catch (fraudErr) {
+      console.error("Failed to run donation rate fraud check:", fraudErr);
+    }
+
     return NextResponse.json({ success: true, receiptNumber, pdfUrl }, { status: 200 });
 
   } catch (err: any) {

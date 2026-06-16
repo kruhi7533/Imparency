@@ -127,6 +127,14 @@ export async function POST(request: Request) {
       },
     });
 
+    // Run Gemini score fraud alert checks
+    try {
+      const { checkGeminiScore } = require("@/lib/fraud-alerts");
+      await checkGeminiScore(milestone.id, validationResult.score);
+    } catch (fraudErr) {
+      console.error("Failed to run Gemini score fraud check:", fraudErr);
+    }
+
     // Resolve milestone status based on AI score
     const finalStatus = validationResult.score >= 70 ? "COMPLETED" : "PROOF_SUBMITTED";
 

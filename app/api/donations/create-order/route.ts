@@ -57,6 +57,14 @@ export async function POST(request: Request) {
           billingAddress: finalAddress,
         },
       });
+
+      // Run PAN usage fraud check
+      try {
+        const { checkPANUsage } = require("@/lib/fraud-alerts");
+        await checkPANUsage(finalPan, userId);
+      } catch (panErr) {
+        console.error("Failed to run PAN usage fraud check:", panErr);
+      }
     }
 
     const project = await prisma.project.findUnique({
