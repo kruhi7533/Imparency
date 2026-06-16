@@ -96,9 +96,9 @@ export async function deleteFile(fileUrl: string): Promise<void> {
       const filePath = path.join(process.cwd(), "public", fileUrl);
       try {
         await fs.unlink(filePath);
-      } catch (err: any) {
+      } catch (err) {
         // If file already deleted or doesn't exist, ignore
-        if (err.code !== "ENOENT") {
+        if (err && typeof err === "object" && "code" in err && err.code !== "ENOENT") {
           throw err;
         }
       }
