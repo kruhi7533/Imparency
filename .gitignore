@@ -1,17 +1,8 @@
-# GSD State Files
-.gsd/ARCHITECTURE.md
-.gsd/DECISIONS.md
-.gsd/JOURNAL.md
-.gsd/ROADMAP.md
-.gsd/SPEC.md
-.gsd/STACK.md
+# GSD Session-Specific Files (Ignored to prevent merge conflicts)
 .gsd/STATE.md
+.gsd/JOURNAL.md
 .gsd/TODO.md
 
 # OS generated
 Thumbs.db
 .DS_Store
- 
-.gsd/STATE.md
-.gsd/JOURNAL.md
-.gsd/TODO.md
