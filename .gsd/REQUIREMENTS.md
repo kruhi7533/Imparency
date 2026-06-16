@@ -25,9 +25,9 @@
 ## Payment Gateway & 80G Tax Receipt Generation
 | ID | Requirement | Source | Status |
 |----|-------------|--------|--------|
-| REQ-11 | Razorpay gateway integration for secure donations via UPI, cards, and netbanking. | SPEC Goal 3 | Pending |
-| REQ-12 | Razorpay webhook endpoint with signature verification for processing payment confirmations. | SPEC Constraints | Pending |
-| REQ-13 | Automated PDF generation of 80G tax receipts using `@react-pdf/renderer` containing donation details, PAN, NGO details, registration numbers, and tax declarations. | SPEC Goal 3 | Pending |
+| REQ-11 | Razorpay gateway integration for secure donations via UPI, cards, and netbanking. | SPEC Goal 3 | Complete |
+| REQ-12 | Razorpay webhook endpoint with signature verification for processing payment confirmations. | SPEC Constraints | Complete |
+| REQ-13 | Automated PDF generation of 80G tax receipts using `@react-pdf/renderer` containing donation details, PAN, NGO details, registration numbers, and tax declarations. | SPEC Goal 3 | Complete |
 
 ## Milestone Proof Submission & Gemini AI Validation
 | ID | Requirement | Source | Status |
@@ -53,7 +53,7 @@
 ## Portfolios & Dashboards
 | ID | Requirement | Source | Status |
 |----|-------------|--------|--------|
-| REQ-23 | Donor Impact Portfolio dashboard displaying summary analytics (total donated, lives impacted), followed NGOs feed, active funded projects, and downloadable receipts. | SPEC Goal 3 | Pending |
+| REQ-23 | Donor Impact Portfolio dashboard displaying summary analytics (total donated, lives impacted), followed NGOs feed, active funded projects, and downloadable receipts. | SPEC Goal 3 | Complete |
 | REQ-24 | NGO Public Profile page with public health score details, active/completed projects, historical milestones, and testimonials. | SPEC Goal 3 | Complete |
 | REQ-25 | CSR Dashboard for corporate donors presenting consolidated impact reports, compliance-ready exports, and utilization certificates. | SPEC Goal 4 | Pending |
 | REQ-26 | Admin Dashboard displaying platform-wide donation statistics, pending verifications, flagged milestone reviews, and fraud alerts. | SPEC Goal 5 | Pending |
