@@ -24,7 +24,10 @@ export async function POST(request: Request) {
     // 3. Find NGO profile and its owner
     const ngo = await prisma.nGOProfile.findUnique({
       where: { id: ngoId },
-      include: { user: { select: { email: true } } },
+      include: {
+        user: { select: { email: true } },
+        screening: { select: { flags: true } },
+      },
     });
 
     if (!ngo) {
@@ -41,13 +44,34 @@ export async function POST(request: Request) {
 
     const noteText = adminNote ? adminNote.trim() : "All documents verified successfully.";
 
+    // On rejection, turn the terse admin note + AI flags into clear, actionable
+    // guidance the NGO can act on. Degrades to the raw note on any failure.
+    let ngoFacingNote = noteText;
+    if (action === "REJECT") {
+      try {
+        const { composeRejectionGuidance } = await import("@/lib/gemini/explain-rejection");
+        const aiReport = (ngo.ai_verification_report as any) || null;
+        const screeningFlags = (ngo.screening?.flags as any) || [];
+        const aiFlags = Array.isArray(aiReport?.flags) ? aiReport.flags : [];
+        ngoFacingNote = await composeRejectionGuidance({
+          orgName: ngo.orgName,
+          adminNote: noteText,
+          aiSummary: aiReport?.summary || null,
+          flags: [...aiFlags, ...screeningFlags],
+        });
+      } catch (guidanceErr) {
+        console.error("Failed to compose rejection guidance:", guidanceErr);
+        ngoFacingNote = noteText;
+      }
+    }
+
     // 4. Update status in database
     const updatedStatus = action === "APPROVE" ? "VERIFIED" : "REJECTED";
     await prisma.nGOProfile.update({
       where: { id: ngoId },
       data: {
         verificationStatus: updatedStatus,
-        adminNote: noteText,
+        adminNote: ngoFacingNote,
       },
     });
 
@@ -55,7 +79,7 @@ export async function POST(request: Request) {
     if (action === "APPROVE") {
       await sendNGOApprovalEmail(ngo.user.email, ngo.orgName);
     } else {
-      await sendNGORejectionEmail(ngo.user.email, ngo.orgName, noteText);
+      await sendNGORejectionEmail(ngo.user.email, ngo.orgName, ngoFacingNote);
     }
 
     return NextResponse.json({ success: true });

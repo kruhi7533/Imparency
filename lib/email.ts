@@ -1,6 +1,18 @@
 import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+// Gmail SMTP transport — only built when a Gmail App Password is configured.
+const gmailTransport = process.env.GMAIL_APP_PASSWORD
+  ? nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD,
+      },
+    })
+  : null;
 
 interface Attachment {
   content?: string | Buffer;
@@ -17,33 +29,55 @@ interface SendEmailParams {
 }
 
 async function sendEmail({ to, subject, body, attachments }: SendEmailParams) {
-  if (!resend) {
-    console.log("\n==================================================");
-    console.log(" MOCK EMAIL DISPATCHED (RESEND_API_KEY missing)");
-    console.log(` To:      ${to}`);
-    console.log(` Subject: ${subject}`);
-    if (attachments && attachments.length > 0) {
-      console.log(` Attachments: ${attachments.map(a => a.filename).join(", ")}`);
+  const html = body.replace(/\n/g, "<br/>");
+
+  // 1. Gmail SMTP — preferred when a Gmail App Password is configured.
+  if (gmailTransport) {
+    try {
+      const info = await gmailTransport.sendMail({
+        from: `ImpactBridge <${process.env.GMAIL_USER}>`,
+        to,
+        subject,
+        text: body,
+        html,
+        attachments: attachments || undefined,
+      });
+      return { success: true, data: info };
+    } catch (err: any) {
+      console.error("Failed to send email via Gmail:", err);
+      return { success: false, error: err.message };
     }
-    console.log("--------------------------------------------------");
-    console.log(body);
-    console.log("==================================================\n");
-    return { success: true, mock: true };
   }
 
-  try {
-    const data = await resend.emails.send({
-      from: "ImpactBridge <onboarding@resend.dev>", // default Resend sandbox domain
-      to,
-      subject,
-      html: body.replace(/\n/g, "<br/>"),
-      attachments: attachments || undefined,
-    });
-    return { success: true, data };
-  } catch (err: any) {
-    console.error("Failed to send email via Resend:", err);
-    return { success: false, error: err.message };
+  // 2. Resend — fallback when RESEND_API_KEY is set.
+  if (resend) {
+    try {
+      const data = await resend.emails.send({
+        from: process.env.RESEND_FROM_EMAIL || "ImpactBridge <onboarding@resend.dev>", // default Resend sandbox domain
+        to,
+        subject,
+        html,
+        attachments: attachments || undefined,
+      });
+      return { success: true, data };
+    } catch (err: any) {
+      console.error("Failed to send email via Resend:", err);
+      return { success: false, error: err.message };
+    }
   }
+
+  // 3. Mock — no transport configured, log to console.
+  console.log("\n==================================================");
+  console.log(" MOCK EMAIL DISPATCHED (no GMAIL_APP_PASSWORD or RESEND_API_KEY)");
+  console.log(` To:      ${to}`);
+  console.log(` Subject: ${subject}`);
+  if (attachments && attachments.length > 0) {
+    console.log(` Attachments: ${attachments.map(a => a.filename).join(", ")}`);
+  }
+  console.log("--------------------------------------------------");
+  console.log(body);
+  console.log("==================================================\n");
+  return { success: true, mock: true };
 }
 
 export async function sendNGOApprovalEmail(to: string, orgName: string) {
