@@ -45,12 +45,7 @@ export default function Navbar() {
 
         {/* Center: Contextual Navigation Links */}
         <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-gray-400">
-          <Link href="/discover" className={`hover:text-white transition ${pathname === "/discover" ? "text-white" : ""}`}>
-            Discover NGOs
-          </Link>
-          
-          {/* NGO role specific links */}
-          {session?.user?.role === "NGO" && (
+          {session?.user?.role === "NGO" ? (
             <>
               <Link href="/ngo/dashboard" className={`hover:text-white transition ${pathname === "/ngo/dashboard" ? "text-white" : ""}`}>
                 NGO Dashboard
@@ -58,21 +53,31 @@ export default function Navbar() {
               <Link href="/ngo/projects/new" className={`hover:text-white transition ${pathname === "/ngo/projects/new" ? "text-white" : ""}`}>
                 Launch Project
               </Link>
+              <span className="text-gray-700 select-none">|</span>
+              <Link href="/discover" className={`text-gray-500 font-medium hover:text-gray-300 transition ${pathname === "/discover" ? "text-white font-bold" : ""}`}>
+                Discover NGOs
+              </Link>
             </>
-          )}
+          ) : (
+            <>
+              <Link href="/discover" className={`hover:text-white transition ${pathname === "/discover" ? "text-white" : ""}`}>
+                Discover NGOs
+              </Link>
+              
+              {/* Admin role specific links */}
+              {session?.user?.role === "ADMIN" && (
+                <Link href="/admin/dashboard" className={`hover:text-white transition ${pathname === "/admin/dashboard" ? "text-white" : ""}`}>
+                  Admin Verifications
+                </Link>
+              )}
 
-          {/* Admin role specific links */}
-          {session?.user?.role === "ADMIN" && (
-            <Link href="/admin/dashboard" className={`hover:text-white transition ${pathname === "/admin/dashboard" ? "text-white" : ""}`}>
-              Admin Verifications
-            </Link>
-          )}
-
-          {/* Fallback general links for guests / donors */}
-          {!session?.user && (
-            <Link href="/ngo/register" className={`hover:text-white transition ${pathname === "/ngo/register" ? "text-white" : ""}`}>
-              NGO Onboarding
-            </Link>
+              {/* Fallback general links for guests / donors */}
+              {!session?.user && (
+                <Link href="/ngo/register" className={`hover:text-white transition ${pathname === "/ngo/register" ? "text-white" : ""}`}>
+                  NGO Onboarding
+                </Link>
+              )}
+            </>
           )}
         </nav>
 

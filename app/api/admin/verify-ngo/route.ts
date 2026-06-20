@@ -31,6 +31,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "NGO Profile not found" }, { status: 404 });
     }
 
+    // Server-side friction: require justification note to override LIKELY_FRAUD
+    if (action === "APPROVE" && ngo.ai_verification_report) {
+      const report = ngo.ai_verification_report as any;
+      if (report.recommendation === "LIKELY_FRAUD" && (!adminNote || !adminNote.trim())) {
+        return NextResponse.json({ error: "Justification note is required to override AI fraud warning." }, { status: 400 });
+      }
+    }
+
     const noteText = adminNote ? adminNote.trim() : "All documents verified successfully.";
 
     // 4. Update status in database

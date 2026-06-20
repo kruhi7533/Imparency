@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import SubmitProofModal from "./SubmitProofModal";
+import ShareProjectModal from "@/app/components/ShareProjectModal";
 
 interface Milestone {
   id: string;
@@ -36,6 +37,7 @@ export default function DashboardClient({ initialProjects }: DashboardClientProp
   const [projects] = useState<Project[]>(initialProjects);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [activeMilestone, setActiveMilestone] = useState<{ id: string; title: string } | null>(null);
+  const [sharingProject, setSharingProject] = useState<Project | null>(null);
 
   const toggleExpandProject = (projectId: string) => {
     setExpandedProjectId((prev) => (prev === projectId ? null : projectId));
@@ -106,6 +108,18 @@ export default function DashboardClient({ initialProjects }: DashboardClientProp
                         <div className="bg-emerald-600 h-full rounded-full" style={{ width: `${percent}%` }}></div>
                       </div>
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSharingProject(project);
+                      }}
+                      className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+                      title="Share Campaign"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+                      </svg>
+                    </button>
                     <span 
                       className="text-gray-400 text-lg transition-transform duration-200" 
                       style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
@@ -191,6 +205,18 @@ export default function DashboardClient({ initialProjects }: DashboardClientProp
           milestoneTitle={activeMilestone.title}
           onClose={() => setActiveMilestone(null)}
           onSuccess={handleSuccess}
+        />
+      )}
+
+      {sharingProject && (
+        <ShareProjectModal
+          isOpen={!!sharingProject}
+          onClose={() => setSharingProject(null)}
+          projectId={sharingProject.id}
+          projectTitle={sharingProject.title}
+          targetAmount={sharingProject.targetAmount}
+          causeCategory={sharingProject.causeCategory}
+          location={sharingProject.location}
         />
       )}
     </div>

@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import DatePicker from "@/app/components/DatePicker";
+import ShareProjectModal from "@/app/components/ShareProjectModal";
 
 const CAUSE_CATEGORIES = [
   "Education",
@@ -33,6 +35,8 @@ export default function NewProjectPage() {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
+  const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [causeCategory, setCauseCategory] = useState("Education");
   const [targetAmount, setTargetAmount] = useState("");
@@ -65,12 +69,20 @@ export default function NewProjectPage() {
     );
   }
 
-  // Calculate allocated running sum
-  const projectTarget = parseFloat(targetAmount) || 0;
-  const totalAllocated = milestones.reduce((sum, m) => {
-    const val = parseFloat(m.targetAmount) || 0;
-    return sum + val;
-  }, 0);
+  const [projectTarget, setProjectTarget] = useState(0);
+  const [totalAllocated, setTotalAllocated] = useState(0);
+
+  useEffect(() => {
+    setProjectTarget(parseFloat(targetAmount) || 0);
+  }, [targetAmount]);
+
+  useEffect(() => {
+    const total = milestones.reduce((sum, m) => {
+      const val = parseFloat(m.targetAmount) || 0;
+      return sum + val;
+    }, 0);
+    setTotalAllocated(total);
+  }, [milestones]);
 
   const allocationPct = projectTarget > 0 ? (totalAllocated / projectTarget) * 100 : 0;
   const isAllocationValid = projectTarget > 0 && totalAllocated === projectTarget;
@@ -159,10 +171,9 @@ export default function NewProjectPage() {
         throw new Error(result.error || "Failed to publish project");
       }
 
+      setCreatedProjectId(result.projectId);
+      setIsShareOpen(true);
       setSuccess(true);
-      setTimeout(() => {
-        router.push("/ngo/dashboard");
-      }, 2000);
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
     } finally {
@@ -189,7 +200,7 @@ export default function NewProjectPage() {
 
         {success && (
           <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-950/30 border-l-4 border-emerald-500 rounded text-sm text-emerald-700 dark:text-emerald-300">
-            Project published successfully! Redirecting to dashboard...
+            Project published successfully!
           </div>
         )}
 
@@ -328,19 +339,28 @@ export default function NewProjectPage() {
               {milestones.map((milestone, idx) => (
                 <div
                   key={idx}
-                  className="bg-gray-50/50 dark:bg-gray-900/30 rounded-xl p-6 border border-gray-200/60 dark:border-gray-800/80 relative"
+                  className="bg-gray-50/50 dark:bg-gray-900/30 rounded-xl p-6 border border-gray-200/60 dark:border-gray-800/80 relative pr-12"
                 >
-                  <div className="flex justify-between items-center mb-4 border-b border-gray-200/50 dark:border-gray-800/50 pb-2">
-                    <span className="text-sm font-bold text-emerald-600">Milestone {idx + 1}</span>
-                    {milestones.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMilestone(idx)}
-                        className="text-red-500 hover:text-red-600 text-xs font-bold transition"
-                      >
-                        Remove
-                      </button>
-                    )}
+                  {/* Absolute positioned Remove/Trash button */}
+                  {milestones.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMilestone(idx)}
+                      className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                      title="Remove Milestone"
+                    >
+                      <svg className="w-5 h-5 fill-none stroke-current" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
+
+                  {/* Card Header with sequencing badge */}
+                  <div className="flex items-center gap-2 mb-4 border-b border-gray-200/50 dark:border-gray-800/50 pb-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-400 font-extrabold text-xs">
+                      {idx + 1}
+                    </span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">Milestone {idx + 1}</span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -374,13 +394,11 @@ export default function NewProjectPage() {
 
                     <div>
                       <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Deadline *</label>
-                      <input
-                        type="date"
-                        min={new Date().toISOString().split("T")[0]}
+                      <DatePicker
                         value={milestone.deadline}
-                        onChange={(e) => handleMilestoneChange(idx, "deadline", e.target.value)}
-                        className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        required
+                        onChange={(val) => handleMilestoneChange(idx, "deadline", val)}
+                        min={new Date().toISOString().split("T")[0]}
+                        placeholder="Select deadline"
                       />
                     </div>
 
@@ -415,12 +433,42 @@ export default function NewProjectPage() {
             </div>
           </div>
 
-          {/* Form Actions */}
-          <div className="pt-6 border-t border-gray-200 dark:border-gray-800">
+          {/* Sticky Allocation Tracker & Form Actions */}
+          <div className="pt-6 border-t border-gray-200 dark:border-gray-800 space-y-4">
+            
+            {/* Sticky/visible Allocation Tracker */}
+            <div className="sticky bottom-4 z-20 bg-white/95 dark:bg-gray-900/95 backdrop-blur border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-lg flex flex-col gap-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">Milestone Allocation Tracker</span>
+                <span className={`text-xs font-black ${
+                  isAllocationValid 
+                    ? "text-emerald-600 dark:text-emerald-400" 
+                    : totalAllocated > projectTarget 
+                    ? "text-red-500" 
+                    : "text-teal-600 dark:text-teal-400"
+                }`}>
+                  ₹{totalAllocated.toLocaleString()} of ₹{projectTarget.toLocaleString()} allocated ({projectTarget > 0 ? allocationPct.toFixed(1) : "0.0"}%)
+                </span>
+              </div>
+              
+              <div className="w-full bg-gray-200 dark:bg-gray-800 h-2.5 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    isAllocationValid
+                      ? "bg-emerald-500"
+                      : totalAllocated > projectTarget
+                      ? "bg-red-500"
+                      : "bg-teal-500"
+                  }`}
+                  style={{ width: `${Math.min(100, projectTarget > 0 ? allocationPct : 0)}%` }}
+                ></div>
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={loading || success || !isAllocationValid}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -431,9 +479,42 @@ export default function NewProjectPage() {
                 "Publish Project & Milestones"
               )}
             </button>
+
+            {/* Helper Validation text below the button */}
+            {!isAllocationValid && (
+              <p className={`text-xs text-center font-bold ${totalAllocated > projectTarget ? "text-red-500" : "text-amber-500"}`}>
+                {projectTarget === 0 ? (
+                  "Please enter a valid Project Target Amount above to start allocating milestones."
+                ) : totalAllocated < projectTarget ? (
+                  `Add milestones totaling ₹${(projectTarget - totalAllocated).toLocaleString()} more to publish`
+                ) : (
+                  `Remove ₹${(totalAllocated - projectTarget).toLocaleString()} to publish`
+                )}
+              </p>
+            )}
+            {isAllocationValid && (
+              <p className="text-xs text-center text-emerald-600 dark:text-emerald-400 font-bold">
+                ✓ Milestone targets match project target exactly. Ready to publish!
+              </p>
+            )}
           </div>
         </form>
       </div>
+
+      {createdProjectId && (
+        <ShareProjectModal
+          isOpen={isShareOpen}
+          onClose={() => {
+            setIsShareOpen(false);
+            router.push("/ngo/dashboard");
+          }}
+          projectId={createdProjectId}
+          projectTitle={title}
+          targetAmount={targetAmount}
+          causeCategory={causeCategory}
+          location={location}
+        />
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { Check } from "lucide-react";
 
 const CAUSE_CATEGORIES = [
   "Education",
@@ -35,6 +36,11 @@ export default function NGORegistrationPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // Individual file error states
+  const [regError, setRegError] = useState("");
+  const [panError, setPanError] = useState("");
+  const [taxError, setTaxError] = useState("");
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -59,21 +65,29 @@ export default function NGORegistrationPage() {
     );
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<File | null>>) => {
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: React.Dispatch<React.SetStateAction<File | null>>,
+    setErrorKey: React.Dispatch<React.SetStateAction<string>>
+  ) => {
+    setErrorKey("");
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       if (file.type !== "application/pdf") {
-        setError("Only PDF documents are allowed for verification");
+        setErrorKey("Only PDF documents are allowed for verification");
+        setter(null);
         e.target.value = ""; // Clear input
         return;
       }
       if (file.size > 10 * 1024 * 1024) {
-        setError("File size must not exceed 10MB");
+        setErrorKey("File size must not exceed 10MB");
+        setter(null);
         e.target.value = "";
         return;
       }
-      setError("");
       setter(file);
+    } else {
+      setter(null);
     }
   };
 
@@ -243,29 +257,29 @@ export default function NGORegistrationPage() {
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Cause Categories * (Select all that apply)</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
-              {CAUSE_CATEGORIES.map((cause) => (
-                <label
-                  key={cause}
-                  className={`flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer text-sm font-medium transition select-none ${
-                    selectedCauses.includes(cause)
-                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                      : "border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedCauses.includes(cause)}
-                    onChange={() => handleCheckboxChange(cause)}
-                    className="hidden"
-                  />
-                  {cause}
-                </label>
-              ))}
+              {CAUSE_CATEGORIES.map((cause) => {
+                const isSelected = selectedCauses.includes(cause);
+                return (
+                  <button
+                    key={cause}
+                    type="button"
+                    onClick={() => handleCheckboxChange(cause)}
+                    className={`flex items-center justify-center gap-2 px-4 py-2 border rounded-lg cursor-pointer text-sm font-medium transition select-none ${
+                      isSelected
+                        ? "border-emerald-600 bg-emerald-600 text-white dark:border-emerald-600 dark:bg-emerald-600 dark:text-white font-bold"
+                        : "border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    }`}
+                  >
+                    {isSelected && <Check className="w-4 h-4 text-white shrink-0 font-black" />}
+                    {cause}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">About Organization * (Description)</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">About Organization (Description) *</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -281,51 +295,125 @@ export default function NGORegistrationPage() {
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Upload all 3 required files in PDF format (Max size: 10MB per file).</p>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Certificate of Registration *</label>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => handleFileChange(e, setRegFile)}
-                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 dark:file:bg-emerald-950/30 dark:file:text-emerald-400 hover:file:bg-emerald-100 cursor-pointer"
-                  required
-                />
+              
+              {/* Certificate of Registration */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Certificate of Registration *
+                </label>
+                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-955/10 transition group text-center min-h-[120px]">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => handleFileChange(e, setRegFile, setRegError)}
+                    className="hidden"
+                    required={!regFile}
+                  />
+                  {regFile ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                        <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 20 20">
+                          <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                        </svg>
+                        <span className="text-xs font-bold line-clamp-1 max-w-[150px]">{regFile.name}</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400">Click to change file</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Choose PDF Document</span>
+                      <span className="block text-[10px] text-gray-400">No file chosen</span>
+                    </div>
+                  )}
+                </label>
+                {regError && (
+                  <p className="text-xs text-red-500 mt-1 font-medium">{regError}</p>
+                )}
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">NGO PAN Card Copy *</label>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => handleFileChange(e, setPanFile)}
-                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 dark:file:bg-emerald-950/30 dark:file:text-emerald-400 hover:file:bg-emerald-100 cursor-pointer"
-                  required
-                />
+              {/* NGO PAN Card Copy */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  NGO PAN Card Copy *
+                </label>
+                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-955/10 transition group text-center min-h-[120px]">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => handleFileChange(e, setPanFile, setPanError)}
+                    className="hidden"
+                    required={!panFile}
+                  />
+                  {panFile ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                        <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 20 20">
+                          <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                        </svg>
+                        <span className="text-xs font-bold line-clamp-1 max-w-[150px]">{panFile.name}</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400">Click to change file</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Choose PDF Document</span>
+                      <span className="block text-[10px] text-gray-400">No file chosen</span>
+                    </div>
+                  )}
+                </label>
+                {panError && (
+                  <p className="text-xs text-red-500 mt-1 font-medium">{panError}</p>
+                )}
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">80G Registration Copy *</label>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => handleFileChange(e, setTaxFile)}
-                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 dark:file:bg-emerald-950/30 dark:file:text-emerald-400 hover:file:bg-emerald-100 cursor-pointer"
-                  required
-                />
+              {/* 80G Registration Copy */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  80G Registration Copy *
+                </label>
+                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-955/10 transition group text-center min-h-[120px]">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => handleFileChange(e, setTaxFile, setTaxError)}
+                    className="hidden"
+                    required={!taxFile}
+                  />
+                  {taxFile ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                        <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 20 20">
+                          <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                        </svg>
+                        <span className="text-xs font-bold line-clamp-1 max-w-[150px]">{taxFile.name}</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400">Click to change file</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Choose PDF Document</span>
+                      <span className="block text-[10px] text-gray-400">No file chosen</span>
+                    </div>
+                  )}
+                </label>
+                {taxError && (
+                  <p className="text-xs text-red-500 mt-1 font-medium">{taxError}</p>
+                )}
               </div>
+
             </div>
           </div>
 
           <div className="pt-4">
             <button
               type="submit"
-              disabled={loading || success}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-emerald-600/10 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition duration-200 flex items-center justify-center gap-2"
+              disabled={loading || success || !!regError || !!panError || !!taxError}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-emerald-600/10 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Submitting documents...
+                  Submitting Documents...
                 </>
               ) : (
                 "Submit Registration Documents"

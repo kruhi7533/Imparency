@@ -42,22 +42,7 @@ export default async function NGODashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
       
-      {/* Top Navbar */}
-      <nav className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-6 py-4 flex justify-between items-center shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-black text-emerald-600 tracking-tight">ImpactBridge</span>
-          <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full font-bold">NGO Panel</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{profile.orgName}</span>
-          <Link
-            href="/api/auth/signout"
-            className="text-xs font-semibold text-gray-500 hover:text-red-500 transition"
-          >
-            Logout
-          </Link>
-        </div>
-      </nav>
+
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">

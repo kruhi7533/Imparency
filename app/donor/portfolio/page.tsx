@@ -208,7 +208,7 @@ export default async function DonorPortfolioPage() {
     ngo: {
       id: f.ngo.id,
       orgName: f.ngo.orgName,
-      healthScore: f.ngo.healthScore ? Number(f.ngo.healthScore) : null,
+      healthScore: f.ngo.healthScore !== null ? Number(f.ngo.healthScore) : null,
       description: f.ngo.description,
       causeCategories: f.ngo.causeCategories
     }

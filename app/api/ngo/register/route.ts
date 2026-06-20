@@ -135,9 +135,55 @@ export async function POST(request: Request) {
           description,
           documents: uploadedUrls,
           verificationStatus: "PENDING",
-          healthScore: 100.00,
+          healthScore: null,
         }
       });
+    }
+
+    // Trigger AI Document Verification Agent
+    let aiReport = null;
+    try {
+      const { verifyNGODocuments } = require("@/lib/gemini/verify-ngo-docs");
+      const regBuffer = Buffer.from(await regFile!.arrayBuffer());
+      const panBuffer = Buffer.from(await panFile!.arrayBuffer());
+      const taxBuffer = Buffer.from(await taxFile!.arrayBuffer());
+
+      aiReport = await verifyNGODocuments(
+        profile.id,
+        orgName,
+        registrationNumber,
+        panNumber,
+        [
+          { buffer: regBuffer, filename: regFile!.name, mimeType: "application/pdf" },
+          { buffer: panBuffer, filename: panFile!.name, mimeType: "application/pdf" },
+          { buffer: taxBuffer, filename: taxFile!.name, mimeType: "application/pdf" }
+        ]
+      );
+
+      if (aiReport) {
+        await prisma.nGOProfile.update({
+          where: { id: profile.id },
+          data: {
+            ai_verification_report: aiReport
+          }
+        });
+
+        // Trigger fraud agent integration if likely fraud or any flag has severity === HIGH
+        const hasHighFlag = Array.isArray(aiReport.flags) && aiReport.flags.some((f: any) => f.severity === "HIGH");
+        if (aiReport.recommendation === "LIKELY_FRAUD" || hasHighFlag) {
+          const { createFraudAlert } = require("@/lib/fraud-alerts");
+          await createFraudAlert(
+            "AI_DOCUMENT_VERIFICATION",
+            profile.id,
+            "NGO",
+            aiReport.summary || "AI document verification marked profile as LIKELY_FRAUD.",
+            "HIGH"
+          );
+        }
+      }
+    } catch (aiErr) {
+      console.error("AI Document Verification failed:", aiErr);
+      // Fail gracefully: let the admin proceed with manual review
     }
 
     return NextResponse.json({ success: true, profileId: profile.id });

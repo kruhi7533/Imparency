@@ -95,7 +95,7 @@ export async function GET(request: Request) {
         orgName: ngo.orgName,
         causeCategories: ngo.causeCategories,
         address: ngo.address,
-        healthScore: Number(ngo.healthScore),
+        healthScore: ngo.healthScore !== null ? Number(ngo.healthScore) : null,
         description: ngo.description,
         activeProjectsCount,
         totalRaised,

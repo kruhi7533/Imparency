@@ -82,6 +82,7 @@ model NGOProfile {
   verificationStatus VerificationStatus @default(PENDING)
   healthScore        Decimal?           @db.Decimal(5, 2)
   healthScoreBreakdown Json?
+  ai_verification_report Json?
   isSuspended          Boolean            @default(false)
   documents          String[]
   description        String

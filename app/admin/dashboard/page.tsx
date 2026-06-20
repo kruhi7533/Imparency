@@ -31,6 +31,7 @@ export default async function AdminDashboardPage() {
       foundedYear: true,
       documents: true,
       createdAt: true,
+      ai_verification_report: true,
       user: {
         select: {
           email: true,
