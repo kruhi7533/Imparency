@@ -7,7 +7,7 @@ export default withAuth(
     const path = req.nextUrl.pathname;
 
     // Route guards based on user role
-    if (path.startsWith("/ngo") && token?.role !== "NGO") {
+    if ((path.startsWith("/ngo/dashboard") || path.startsWith("/ngo/projects")) && token?.role !== "NGO") {
       return NextResponse.redirect(new URL("/unauthorized", req.url));
     }
     if (path.startsWith("/admin") && token?.role !== "ADMIN") {
@@ -28,5 +28,10 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/ngo/:path*", "/admin/:path*", "/donor/:path*"],
+  matcher: [
+    "/ngo/dashboard/:path*",
+    "/ngo/projects/:path*",
+    "/admin/:path*",
+    "/donor/:path*"
+  ],
 };
