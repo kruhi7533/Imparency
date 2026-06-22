@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import DatePicker from "@/app/components/DatePicker";
 import ShareProjectModal from "@/app/components/ShareProjectModal";
 import AIGenerateField from "@/app/components/AIGenerateField";
@@ -24,53 +23,70 @@ const PROOF_TYPES = [
 ];
 
 interface MilestoneInput {
+  id?: string;
   title: string;
   description: string;
   targetAmount: string;
   deadline: string;
   proofType: string;
+  status?: string;
 }
 
-export default function NewProjectPage() {
-  const { data: session, status } = useSession();
+interface EditProjectClientProps {
+  project: {
+    id: string;
+    title: string;
+    description: string;
+    problem_statement: string;
+    expected_outcome: string;
+    causeCategory: string;
+    targetAmount: number;
+    raisedAmount: number;
+    location: string;
+    coverImage: string;
+    milestones: Array<{
+      id: string;
+      title: string;
+      description: string;
+      targetAmount: string;
+      deadline: string;
+      status: string;
+    }>;
+  };
+}
+
+export default function EditProjectClient({ project }: EditProjectClientProps) {
   const router = useRouter();
 
-  const [title, setTitle] = useState("");
-  const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
-  const [isShareOpen, setIsShareOpen] = useState(false);
-  const [description, setDescription] = useState("");
-  const [problemStatement, setProblemStatement] = useState("");
-  const [expectedOutcome, setExpectedOutcome] = useState("");
-  const [causeCategory, setCauseCategory] = useState("Education");
-  const [targetAmount, setTargetAmount] = useState("");
-  const [location, setLocation] = useState("");
-  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const isLocked = project.raisedAmount > 0;
 
-  // Milestones state
-  const [milestones, setMilestones] = useState<MilestoneInput[]>([
-    { title: "", description: "", targetAmount: "", deadline: "", proofType: "Photo Evidence" },
-  ]);
+  const [title, setTitle] = useState(project.title);
+  const [description, setDescription] = useState(project.description);
+  const [problemStatement, setProblemStatement] = useState(project.problem_statement);
+  const [expectedOutcome, setExpectedOutcome] = useState(project.expected_outcome);
+  const [causeCategory, setCauseCategory] = useState(project.causeCategory);
+  const [targetAmount, setTargetAmount] = useState(project.targetAmount.toString());
+  const [location, setLocation] = useState(project.location);
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string>(project.coverImage);
+
+  // Milestones state prefilled
+  const [milestones, setMilestones] = useState<MilestoneInput[]>(
+    project.milestones.map((m) => ({
+      id: m.id,
+      title: m.title,
+      description: m.description,
+      targetAmount: m.targetAmount,
+      deadline: m.deadline,
+      proofType: "Photo Evidence",
+      status: m.status,
+    }))
+  );
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-
-  // Validate NGO role
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-    } else if (session?.user && session.user.role !== "NGO") {
-      router.push("/unauthorized");
-    }
-  }, [session, status, router]);
-
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
-      </div>
-    );
-  }
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   const [projectTarget, setProjectTarget] = useState(0);
   const [totalAllocated, setTotalAllocated] = useState(0);
@@ -90,69 +106,8 @@ export default function NewProjectPage() {
   const allocationPct = projectTarget > 0 ? (totalAllocated / projectTarget) * 100 : 0;
   const isAllocationValid = projectTarget > 0 && totalAllocated === projectTarget;
 
-  const [suggesting, setSuggesting] = useState(false);
-
-  const isSuggestEnabled =
-    title.trim() !== "" &&
-    causeCategory !== "" &&
-    parseFloat(targetAmount) > 0 &&
-    description.trim() !== "";
-
-  const handleSuggestMilestones = async () => {
-    if (!isSuggestEnabled) return;
-
-    const isDefaultEmpty =
-      milestones.length === 1 &&
-      milestones[0].title.trim() === "" &&
-      milestones[0].description.trim() === "" &&
-      milestones[0].targetAmount.trim() === "" &&
-      milestones[0].deadline.trim() === "";
-
-    if (!isDefaultEmpty) {
-      const confirmOverwrite = window.confirm(
-        "This will replace your current milestones with AI suggestions. Continue?"
-      );
-      if (!confirmOverwrite) return;
-    }
-
-    setSuggesting(true);
-    setError("");
-
-    try {
-      const response = await fetch("/api/ai/suggest-milestones", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          project_title: title.trim(),
-          cause_category: causeCategory,
-          target_amount: targetAmount,
-          description: description.trim(),
-          problem_statement: problemStatement.trim(),
-          expected_outcome: expectedOutcome.trim(),
-          location: location.trim(),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to generate suggestions");
-      }
-
-      if (data.milestones && Array.isArray(data.milestones)) {
-        setMilestones(data.milestones);
-      } else {
-        throw new Error("Invalid response format received from AI");
-      }
-    } catch (err: any) {
-      console.error("AI milestone suggestion error:", err);
-      setError(err.message || "Couldn't generate suggestions, please add milestones manually.");
-    } finally {
-      setSuggesting(false);
-    }
-  };
-
   const handleAddMilestone = () => {
+    if (isLocked) return;
     setMilestones((prev) => [
       ...prev,
       { title: "", description: "", targetAmount: "", deadline: "", proofType: "Photo Evidence" },
@@ -160,11 +115,12 @@ export default function NewProjectPage() {
   };
 
   const handleRemoveMilestone = (index: number) => {
-    if (milestones.length === 1) return;
+    if (isLocked || milestones.length === 1) return;
     setMilestones((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleMilestoneChange = (index: number, field: keyof MilestoneInput, value: string) => {
+    if (isLocked) return;
     setMilestones((prev) =>
       prev.map((m, i) => (i === index ? { ...m, [field]: value } : m))
     );
@@ -185,6 +141,7 @@ export default function NewProjectPage() {
       }
       setError("");
       setCoverImage(file);
+      setCoverImagePreview(URL.createObjectURL(file));
     }
   };
 
@@ -193,25 +150,27 @@ export default function NewProjectPage() {
     setError("");
     setLoading(true);
 
-    if (!title || !description || !targetAmount || !location || !coverImage) {
-      setError("Please complete all basic project details and cover image.");
+    if (!title || !description || !targetAmount || !location) {
+      setError("Please complete all required project details.");
       setLoading(false);
       return;
     }
 
-    if (!isAllocationValid) {
+    if (!isLocked && !isAllocationValid) {
       setError("Project targeting validation failed. Milestones must sum up to the total target exactly.");
       setLoading(false);
       return;
     }
 
-    // Validate milestone fields
-    for (let i = 0; i < milestones.length; i++) {
-      const m = milestones[i];
-      if (!m.title || !m.description || !m.targetAmount || !m.deadline) {
-        setError(`Please fill in all details for Milestone ${i + 1}`);
-        setLoading(false);
-        return;
+    // Validate milestone fields if editable
+    if (!isLocked) {
+      for (let i = 0; i < milestones.length; i++) {
+        const m = milestones[i];
+        if (!m.title || !m.description || !m.targetAmount || !m.deadline) {
+          setError(`Please fill in all details for Milestone ${i + 1}`);
+          setLoading(false);
+          return;
+        }
       }
     }
 
@@ -222,25 +181,31 @@ export default function NewProjectPage() {
       formData.append("problemStatement", problemStatement);
       formData.append("expectedOutcome", expectedOutcome);
       formData.append("causeCategory", causeCategory);
-      formData.append("targetAmount", targetAmount);
       formData.append("location", location);
-      formData.append("coverImage", coverImage);
-      formData.append("milestones", JSON.stringify(milestones));
+      
+      if (coverImage) {
+        formData.append("coverImage", coverImage);
+      }
 
-      const response = await fetch("/api/ngo/projects", {
-        method: "POST",
+      if (!isLocked) {
+        formData.append("targetAmount", targetAmount);
+        formData.append("milestones", JSON.stringify(milestones));
+      }
+
+      const response = await fetch(`/api/ngo/projects/${project.id}`, {
+        method: "PATCH",
         body: formData,
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to publish project");
+        throw new Error(result.error || "Failed to update project");
       }
 
-      setCreatedProjectId(result.projectId);
-      setIsShareOpen(true);
       setSuccess(true);
+      router.push("/ngo/dashboard");
+      router.refresh();
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
     } finally {
@@ -252,11 +217,22 @@ export default function NewProjectPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-12 px-4 sm:px-6 lg:px-8 font-sans transition-colors duration-200">
       <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-8 sm:p-10 relative overflow-hidden">
         
-        <div className="mb-8 border-b border-gray-100 dark:border-gray-800 pb-5">
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Launch New Project</h1>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Define your campaign parameters and sequence milestones. Milestone targets must allocate the total project budget exactly.
-          </p>
+        <div className="mb-8 border-b border-gray-100 dark:border-gray-800 pb-5 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Edit Campaign</h1>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              {isLocked 
+                ? "This campaign has received donations. Budget and milestones are locked to protect donor transparency." 
+                : "Modify campaign parameters and sequence milestones. Milestones must sum up to target exactly."}
+            </p>
+          </div>
+          <button 
+            type="button" 
+            onClick={() => router.push("/ngo/dashboard")} 
+            className="px-4 py-2 border border-gray-300 dark:border-gray-700 hover:bg-gray-150 dark:hover:bg-gray-850 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-300 transition"
+          >
+            Back to Dashboard
+          </button>
         </div>
 
         {error && (
@@ -267,7 +243,7 @@ export default function NewProjectPage() {
 
         {success && (
           <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-950/30 border-l-4 border-emerald-500 rounded text-sm text-emerald-700 dark:text-emerald-300">
-            Project published successfully!
+            Campaign updated successfully!
           </div>
         )}
 
@@ -295,7 +271,8 @@ export default function NewProjectPage() {
                 <select
                   value={causeCategory}
                   onChange={(e) => setCauseCategory(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  disabled={isLocked}
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {CAUSE_CATEGORIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
@@ -312,7 +289,8 @@ export default function NewProjectPage() {
                     min="1"
                     value={targetAmount}
                     onChange={(e) => setTargetAmount(e.target.value)}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                    disabled={isLocked}
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
                     placeholder="e.g. 50000"
                     required
                   />
@@ -402,13 +380,17 @@ export default function NewProjectPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Cover Image * (Max size: 2MB)</label>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Cover Image (Optional, leave blank to keep current)</label>
+              {coverImagePreview && (
+                <div className="mb-3 w-48 h-28 relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800">
+                  <img src={coverImagePreview} alt="Cover Preview" className="w-full h-full object-cover" />
+                </div>
+              )}
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
                 className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 dark:file:bg-emerald-950/30 dark:file:text-emerald-400 hover:file:bg-emerald-100 cursor-pointer"
-                required
               />
             </div>
           </div>
@@ -418,105 +400,72 @@ export default function NewProjectPage() {
             <div className="flex justify-between items-start">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">2. Sequential Milestone Builder</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Milestones run in chronological order. Add goals sequentially.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {isLocked 
+                    ? "Milestones cannot be altered as donations have already been made."
+                    : "Milestones run in chronological order. Add goals sequentially."}
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <div title={isSuggestEnabled ? "" : "Fill in project details above first."} className="inline-block">
-                  <button
-                    type="button"
-                    onClick={handleSuggestMilestones}
-                    disabled={!isSuggestEnabled || suggesting}
-                    className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 font-bold py-2 px-4 rounded-lg text-xs transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {suggesting ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-emerald-700 dark:text-emerald-400" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Generating milestones...
-                      </>
-                    ) : (
-                      "✨ Suggest Milestones with AI"
-                    )}
-                  </button>
-                </div>
+              {!isLocked && (
                 <button
                   type="button"
                   onClick={handleAddMilestone}
-                  className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold py-2 px-4 rounded-lg text-xs transition"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition"
                 >
-                  + Add Milestone
+                  + Add Milestone Goal
                 </button>
-              </div>
+              )}
             </div>
 
-            {/* Live progress Allocation tracker */}
-            {projectTarget > 0 && (
-              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-5 border border-gray-100 dark:border-gray-800/80">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Target Budget Allocation:</span>
-                  <span className={`text-xs font-bold ${isAllocationValid ? "text-emerald-600" : totalAllocated > projectTarget ? "text-red-500" : "text-amber-500"}`}>
-                    ₹{totalAllocated.toLocaleString()} of ₹{projectTarget.toLocaleString()} allocated ({allocationPct.toFixed(1)}%)
+            {/* Total allocated target match tracker */}
+            {!isLocked && (
+              <div className="p-4 bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800/60 rounded-xl space-y-3">
+                <div className="flex justify-between items-center text-xs font-semibold">
+                  <span className="text-gray-600 dark:text-gray-450">Milestones Allocated: ₹{totalAllocated.toLocaleString()} / ₹{projectTarget.toLocaleString()}</span>
+                  <span className={isAllocationValid ? "text-emerald-600" : "text-red-500"}>
+                    {isAllocationValid ? "✓ Balanced Target!" : "✗ Allocations Mismatch"}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-800 h-2.5 rounded-full overflow-hidden">
+                <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      isAllocationValid
-                        ? "bg-emerald-600"
-                        : totalAllocated > projectTarget
-                        ? "bg-red-500"
-                        : "bg-amber-500"
-                    }`}
+                    className={`h-full rounded-full transition-all duration-300 ${isAllocationValid ? "bg-emerald-600" : "bg-red-500"}`}
                     style={{ width: `${Math.min(100, allocationPct)}%` }}
                   ></div>
                 </div>
-                {!isAllocationValid && (
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 font-medium">
-                    * The publish button is locked until the milestone total matches ₹{projectTarget.toLocaleString()} exactly.
-                  </p>
-                )}
               </div>
             )}
 
-            {/* Milestone Cards List */}
+            {/* List of Milestones */}
             <div className="space-y-6">
               {milestones.map((milestone, idx) => (
                 <div
                   key={idx}
-                  className="bg-gray-50/50 dark:bg-gray-900/30 rounded-xl p-6 border border-gray-200/60 dark:border-gray-800/80 relative pr-12"
+                  className="p-5 border border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50/50 dark:bg-gray-900/30 space-y-4 relative"
                 >
-                  {/* Absolute positioned Remove/Trash button */}
-                  {milestones.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveMilestone(idx)}
-                      className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                      title="Remove Milestone"
-                    >
-                      <svg className="w-5 h-5 fill-none stroke-current" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  )}
-
-                  {/* Card Header with sequencing badge */}
-                  <div className="flex items-center gap-2 mb-4 border-b border-gray-200/50 dark:border-gray-800/50 pb-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-400 font-extrabold text-xs">
-                      {idx + 1}
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 rounded-full">
+                      Goal #{idx + 1}
                     </span>
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">Milestone {idx + 1}</span>
+                    {!isLocked && milestones.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMilestone(idx)}
+                        className="text-xs font-bold text-red-500 hover:text-red-650"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Milestone Title *</label>
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Goal Title *</label>
                       <input
                         type="text"
                         value={milestone.title}
                         onChange={(e) => handleMilestoneChange(idx, "title", e.target.value)}
-                        className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        disabled={isLocked}
+                        className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
                         placeholder="e.g. Purchase 500 textbooks"
                         required
                       />
@@ -531,7 +480,8 @@ export default function NewProjectPage() {
                           min="1"
                           value={milestone.targetAmount}
                           onChange={(e) => handleMilestoneChange(idx, "targetAmount", e.target.value)}
-                          className="w-full pl-7 pr-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          disabled={isLocked}
+                          className="w-full pl-7 pr-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
                           placeholder="e.g. 15000"
                           required
                         />
@@ -543,6 +493,7 @@ export default function NewProjectPage() {
                       <DatePicker
                         value={milestone.deadline}
                         onChange={(val) => handleMilestoneChange(idx, "deadline", val)}
+                        disabled={isLocked}
                         min={new Date().toISOString().split("T")[0]}
                         placeholder="Select deadline"
                       />
@@ -553,7 +504,8 @@ export default function NewProjectPage() {
                       <select
                         value={milestone.proofType}
                         onChange={(e) => handleMilestoneChange(idx, "proofType", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        disabled={isLocked}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {PROOF_TYPES.map((p) => (
                           <option key={p} value={p}>{p}</option>
@@ -572,6 +524,7 @@ export default function NewProjectPage() {
                         targetAmount={milestone.targetAmount || 0}
                         currentValue={milestone.description}
                         onGenerated={(val) => handleMilestoneChange(idx, "description", val)}
+                        disabled={isLocked}
                         milestoneTitle={milestone.title || `Milestone ${idx + 1}`}
                         proofTypeRequired={milestone.proofType}
                         parentProjectTitle={title}
@@ -580,8 +533,9 @@ export default function NewProjectPage() {
                     <textarea
                       value={milestone.description}
                       onChange={(e) => handleMilestoneChange(idx, "description", e.target.value)}
+                      disabled={isLocked}
                       rows={2}
-                      className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                      className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
                       placeholder="e.g. Buy and distribute physical textbooks to primary students..."
                       required
                     />
@@ -592,88 +546,26 @@ export default function NewProjectPage() {
             </div>
           </div>
 
-          {/* Sticky Allocation Tracker & Form Actions */}
-          <div className="pt-6 border-t border-gray-200 dark:border-gray-800 space-y-4">
-            
-            {/* Sticky/visible Allocation Tracker */}
-            <div className="sticky bottom-4 z-20 bg-white/95 dark:bg-gray-900/95 backdrop-blur border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-lg flex flex-col gap-2">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">Milestone Allocation Tracker</span>
-                <span className={`text-xs font-black ${
-                  isAllocationValid 
-                    ? "text-emerald-600 dark:text-emerald-400" 
-                    : totalAllocated > projectTarget 
-                    ? "text-red-500" 
-                    : "text-teal-600 dark:text-teal-400"
-                }`}>
-                  ₹{totalAllocated.toLocaleString()} of ₹{projectTarget.toLocaleString()} allocated ({projectTarget > 0 ? allocationPct.toFixed(1) : "0.0"}%)
-                </span>
-              </div>
-              
-              <div className="w-full bg-gray-200 dark:bg-gray-800 h-2.5 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${
-                    isAllocationValid
-                      ? "bg-emerald-500"
-                      : totalAllocated > projectTarget
-                      ? "bg-red-500"
-                      : "bg-teal-500"
-                  }`}
-                  style={{ width: `${Math.min(100, projectTarget > 0 ? allocationPct : 0)}%` }}
-                ></div>
-              </div>
-            </div>
-
+          <div className="border-t border-gray-200 dark:border-gray-800 pt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => router.push("/ngo/dashboard")}
+              className="px-5 py-2.5 border border-gray-300 dark:border-gray-700 hover:bg-gray-150 dark:hover:bg-gray-850 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 transition"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
-              disabled={loading || success || !isAllocationValid}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+              disabled={loading || (!isLocked && !isAllocationValid)}
+              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Publishing Project...
-                </>
-              ) : (
-                "Publish Project & Milestones"
-              )}
+              {loading ? "Saving Changes..." : "Save Changes"}
             </button>
-
-            {/* Helper Validation text below the button */}
-            {!isAllocationValid && (
-              <p className={`text-xs text-center font-bold ${totalAllocated > projectTarget ? "text-red-500" : "text-amber-500"}`}>
-                {projectTarget === 0 ? (
-                  "Please enter a valid Project Target Amount above to start allocating milestones."
-                ) : totalAllocated < projectTarget ? (
-                  `Add milestones totaling ₹${(projectTarget - totalAllocated).toLocaleString()} more to publish`
-                ) : (
-                  `Remove ₹${(totalAllocated - projectTarget).toLocaleString()} to publish`
-                )}
-              </p>
-            )}
-            {isAllocationValid && (
-              <p className="text-xs text-center text-emerald-600 dark:text-emerald-400 font-bold">
-                ✓ Milestone targets match project target exactly. Ready to publish!
-              </p>
-            )}
           </div>
-        </form>
-      </div>
 
-      {createdProjectId && (
-        <ShareProjectModal
-          isOpen={isShareOpen}
-          onClose={() => {
-            setIsShareOpen(false);
-            router.push("/ngo/dashboard");
-          }}
-          projectId={createdProjectId}
-          projectTitle={title}
-          targetAmount={targetAmount}
-          causeCategory={causeCategory}
-          location={location}
-        />
-      )}
+        </form>
+
+      </div>
     </div>
   );
 }

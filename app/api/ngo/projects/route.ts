@@ -38,6 +38,8 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
+    const problemStatement = formData.get("problemStatement") as string | null;
+    const expectedOutcome = formData.get("expectedOutcome") as string | null;
     const causeCategory = formData.get("causeCategory") as string;
     const targetAmountStr = formData.get("targetAmount") as string;
     const location = formData.get("location") as string;
@@ -138,6 +140,8 @@ export async function POST(request: Request) {
           status: "ACTIVE", // Automatically publish project as ACTIVE
           coverImage: coverImageUrl,
           location: location.trim(),
+          problem_statement: problemStatement ? problemStatement.trim() : null,
+          expected_outcome: expectedOutcome ? expectedOutcome.trim() : null,
         }
       });
 

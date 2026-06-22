@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import ProjectClient from "./ProjectClient";
 import Link from "next/link";
 import Navbar from "@/app/components/Navbar";
+import ProjectCoverImage from "@/app/components/ProjectCoverImage";
 
 export const dynamic = "force-dynamic";
 
@@ -49,10 +50,11 @@ export default async function ProjectPage({
       
       {/* Cover Banner */}
       <div className="h-80 w-full relative overflow-hidden">
-        <img
+        <ProjectCoverImage
           src={project.coverImage}
           alt={project.title}
-          className="w-full h-full object-cover"
+          causeCategory={project.causeCategory}
+          className="w-full h-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-black/40"></div>
         <div className="absolute bottom-6 left-0 right-0 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -73,11 +75,33 @@ export default async function ProjectPage({
           
           {/* Main Info */}
           <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">About Campaign</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
-                {project.description}
-              </p>
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white pb-3 border-b border-gray-100 dark:border-gray-800">Campaign Aim</h2>
+              
+              {project.problem_statement && (
+                <div className="space-y-1.5">
+                  <h3 className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">The Problem</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+                    {project.problem_statement}
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <h3 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Our Goal</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+                  {project.description}
+                </p>
+              </div>
+
+              {project.expected_outcome && (
+                <div className="space-y-1.5">
+                  <h3 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Expected Outcome</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+                    {project.expected_outcome}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Milestones Stepper */}
