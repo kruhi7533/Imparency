@@ -24,6 +24,12 @@ export default async function ProjectPage({
       },
       milestones: {
         orderBy: { sequenceOrder: "asc" },
+        include: {
+          proofs: {
+            orderBy: { submittedAt: "desc" },
+            take: 1,
+          },
+        },
       },
     },
   });
@@ -88,6 +94,7 @@ export default async function ProjectPage({
                 {project.milestones.map((milestone, idx) => {
                   const isCompleted = milestone.status === "COMPLETED" || milestone.status === "VERIFIED";
                   const isPending = milestone.status === "PENDING";
+                  const latestProof = milestone.proofs?.[0];
                   return (
                     <div key={milestone.id} className="relative pl-8">
                       {/* Step Indicator Dot */}
@@ -119,10 +126,97 @@ export default async function ProjectPage({
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           {milestone.description}
                         </p>
-                        <div className="flex flex-wrap justify-between text-[10px] font-bold text-gray-400 pt-1">
+                        <div className="flex flex-wrap justify-between text-[10px] font-bold text-gray-400 pt-1 pb-1">
                           <span>Target Allocation: ₹{Number(milestone.targetAmount).toLocaleString()}</span>
                           <span>Deadline: {new Date(milestone.deadline).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                         </div>
+
+                        {/* Proof of Utilization Inspector */}
+                        {latestProof && (
+                          <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-150 dark:border-gray-800/80 rounded-xl space-y-3.5">
+                            <div className="flex items-center justify-between border-b border-gray-200/60 dark:border-gray-800/60 pb-2">
+                              <span className="text-[10px] font-extrabold text-gray-450 dark:text-gray-400 uppercase tracking-wider">
+                                Proof of Utilization
+                              </span>
+                              {latestProof.aiValidationScore !== null && (
+                                <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border ${
+                                  latestProof.aiValidationScore >= 70
+                                    ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-150 dark:border-emerald-900/30"
+                                    : "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-150 dark:border-amber-900/30"
+                                }`}>
+                                  AI Audit: {latestProof.aiValidationScore}/100
+                                </span>
+                              )}
+                            </div>
+
+                            {/* NGO Description */}
+                            <div className="space-y-1">
+                              <span className="text-[9px] font-extrabold text-gray-400 block uppercase tracking-wider">NGO Submission Note:</span>
+                              <p className="text-xs text-gray-700 dark:text-gray-300 italic">
+                                "{latestProof.description}"
+                              </p>
+                            </div>
+
+                            {/* Attachments */}
+                            {((latestProof.mediaUrls && latestProof.mediaUrls.length > 0) || 
+                              (latestProof.documentUrls && latestProof.documentUrls.length > 0)) && (
+                              <div className="space-y-1.5">
+                                <span className="text-[9px] font-extrabold text-gray-400 block uppercase tracking-wider">Attached Evidence:</span>
+                                <div className="flex flex-wrap gap-2">
+                                  {/* Media (Images) */}
+                                  {latestProof.mediaUrls?.map((url, i) => (
+                                    <a
+                                      key={url}
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="group block relative w-16 h-16 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden hover:scale-105 transition shadow-sm"
+                                    >
+                                      <img
+                                        src={url}
+                                        alt={`Evidence ${i + 1}`}
+                                        className="w-full h-full object-cover"
+                                      />
+                                      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[10px] text-white font-bold">
+                                        View
+                                      </div>
+                                    </a>
+                                  ))}
+                                  
+                                  {/* Documents (PDFs, etc) */}
+                                  {latestProof.documentUrls?.map((url, i) => {
+                                    const fileName = url.split('/').pop() || `Document ${i + 1}`;
+                                    return (
+                                      <a
+                                        key={url}
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 rounded-xl text-[10px] text-gray-600 dark:text-gray-400 font-bold shadow-sm transition max-w-[200px]"
+                                      >
+                                        <span className="text-xs">📄</span>
+                                        <span className="truncate">{fileName}</span>
+                                      </a>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* AI Verification Feedback */}
+                            {latestProof.aiValidationResult && (
+                              <details className="group border border-gray-200/70 dark:border-gray-800 rounded-xl overflow-hidden bg-white dark:bg-gray-950">
+                                <summary className="flex items-center justify-between px-3 py-2 cursor-pointer select-none text-[9px] font-extrabold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/50 uppercase tracking-wider">
+                                  <span>🤖 Gemini AI Validation Report</span>
+                                  <span className="text-xs group-open:rotate-180 transition-transform">▼</span>
+                                </summary>
+                                <div className="px-3 py-2.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap font-mono">
+                                  {latestProof.aiValidationResult}
+                                </div>
+                              </details>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
