@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import ProjectClient from "./ProjectClient";
 import Link from "next/link";
-import Navbar from "@/app/components/Navbar";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +50,6 @@ export default async function ProjectPage({
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
-      <Navbar />
       
       {/* Cover Banner */}
       <div className="h-80 w-full relative overflow-hidden">

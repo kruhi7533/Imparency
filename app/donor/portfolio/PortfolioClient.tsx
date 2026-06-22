@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import Navbar from "@/app/components/Navbar";
 
 interface Donation {
   id: string;
@@ -125,7 +124,6 @@ export default function PortfolioClient({
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
-      <Navbar />
 
       {/* Hero Header */}
       <section className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
