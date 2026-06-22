@@ -63,6 +63,13 @@ export default function Navbar() {
               <Link href="/discover" className={`hover:text-white transition ${pathname === "/discover" ? "text-white" : ""}`}>
                 Discover NGOs
               </Link>
+
+              {/* Donor role specific links */}
+              {session?.user?.role === "DONOR" && (
+                <Link href="/donor/portfolio" className={`hover:text-white transition ${pathname === "/donor/portfolio" ? "text-white" : ""}`}>
+                  My Impact Portfolio
+                </Link>
+              )}
               
               {/* Admin role specific links */}
               {session?.user?.role === "ADMIN" && (
@@ -71,7 +78,7 @@ export default function Navbar() {
                 </Link>
               )}
 
-              {/* Fallback general links for guests / donors */}
+              {/* Fallback general links for guests */}
               {!session?.user && (
                 <Link href="/ngo/register" className={`hover:text-white transition ${pathname === "/ngo/register" ? "text-white" : ""}`}>
                   NGO Onboarding
