@@ -37,6 +37,19 @@ export default async function AdminDashboardPage() {
           email: true,
         },
       },
+      screening: {
+        select: {
+          summary: true,
+          extractedFields: true,
+          documentChecklist: true,
+          consistencyOk: true,
+          flags: true,
+          recommendation: true,
+          confidence: true,
+          status: true,
+          updatedAt: true,
+        },
+      },
     },
     orderBy: { createdAt: "asc" },
   });

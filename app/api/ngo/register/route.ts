@@ -186,6 +186,17 @@ export async function POST(request: Request) {
       // Fail gracefully: let the admin proceed with manual review
     }
 
+    // Fire-and-forget NGO pre-screening (do NOT await — keep submission fast).
+    // This only writes a summary record; it never changes verification status.
+    try {
+      const { runAndStoreNgoScreening } = require("@/lib/screening-runner");
+      runAndStoreNgoScreening(profile.id).catch((screenErr: any) =>
+        console.error("Background NGO screening failed:", screenErr)
+      );
+    } catch (triggerErr) {
+      console.error("Failed to trigger NGO screening:", triggerErr);
+    }
+
     return NextResponse.json({ success: true, profileId: profile.id });
   } catch (err: any) {
     console.error("NGO Registration Error:", err);

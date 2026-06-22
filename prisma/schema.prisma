@@ -97,6 +97,7 @@ model NGOProfile {
 
   projects  Project[]
   followers NGOFollower[]
+  screening NgoScreening?
 }
 
 model Project {
@@ -220,6 +221,22 @@ model RateLimitLog {
   route        String
   requestCount Int      @default(1)
   windowStart  DateTime @default(now())
+}
+
+model NgoScreening {
+  id                String     @id @default(uuid())
+  ngoId             String     @unique
+  ngo               NGOProfile @relation(fields: [ngoId], references: [id])
+  summary           String
+  extractedFields   Json
+  documentChecklist Json
+  consistencyOk     Boolean
+  flags             Json
+  recommendation    String   // LOOKS_CLEAR | NEEDS_REVIEW | LOOKS_PROBLEMATIC
+  confidence        Float
+  status            String   @default("PENDING") // PENDING | READY | FAILED
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model FraudAlert {
