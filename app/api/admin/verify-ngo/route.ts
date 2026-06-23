@@ -6,8 +6,9 @@ import { sendNGOApprovalEmail, sendNGORejectionEmail } from "@/lib/email";
 export async function POST(request: Request) {
   try {
     // 1. Guard check: only Admin users can verify NGOs
-    const { authorized, response } = await verifySessionRole("ADMIN");
+    const { authorized, response, session } = await verifySessionRole("ADMIN");
     if (!authorized) return response;
+    const adminId = session.user.id;
 
     // 2. Parse body
     const body = await request.json();
@@ -27,6 +28,7 @@ export async function POST(request: Request) {
       include: {
         user: { select: { email: true } },
         screening: { select: { flags: true } },
+        compliance: { select: { id: true, a12DocumentUrl: true } },
       },
     });
 
@@ -74,6 +76,51 @@ export async function POST(request: Request) {
         adminNote: ngoFacingNote,
       },
     });
+
+    // 4b. On approval, record per-document compliance verification + audit trail.
+    // The core docs (Registration, PAN, 80G) were all reviewed together, so they're
+    // marked verified now. 12A only counts if a 12A document was actually supplied.
+    // FCRA has its own lifecycle and is approved separately in the FCRA review queue.
+    if (action === "APPROVE") {
+      try {
+        const now = new Date();
+        const has12A = !!ngo.compliance?.a12DocumentUrl;
+        const compliance = await prisma.nGOCompliance.upsert({
+          where: { ngoId },
+          update: {
+            panVerified: true,
+            panVerifiedAt: now,
+            registrationVerified: true,
+            registrationVerifiedAt: now,
+            eightyGVerified: true,
+            eightyGVerifiedAt: now,
+            ...(has12A ? { a12Verified: true, a12VerifiedAt: now } : {}),
+            verifiedById: adminId,
+          },
+          create: {
+            ngoId,
+            panVerified: true,
+            panVerifiedAt: now,
+            registrationVerified: true,
+            registrationVerifiedAt: now,
+            eightyGVerified: true,
+            eightyGVerifiedAt: now,
+            verifiedById: adminId,
+          },
+        });
+
+        const { logComplianceEvent } = await import("@/lib/ngo-compliance");
+        await logComplianceEvent(compliance.id, "REGISTRATION_VERIFIED", "Registration certificate verified.", adminId);
+        await logComplianceEvent(compliance.id, "PAN_VERIFIED", "PAN verified.", adminId);
+        await logComplianceEvent(compliance.id, "80G_VERIFIED", "80G certificate verified.", adminId);
+        if (has12A) {
+          await logComplianceEvent(compliance.id, "12A_VERIFIED", "12A certificate verified.", adminId);
+        }
+      } catch (complianceErr) {
+        console.error("Failed to record compliance verification:", complianceErr);
+        // Non-fatal: the NGO is still approved.
+      }
+    }
 
     // 5. Send notification email to NGO owner
     if (action === "APPROVE") {

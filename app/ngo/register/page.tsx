@@ -32,6 +32,11 @@ export default function NGORegistrationPage() {
   const [panFile, setPanFile] = useState<File | null>(null);
   const [taxFile, setTaxFile] = useState<File | null>(null);
 
+  // Optional compliance documents
+  const [a12File, setA12File] = useState<File | null>(null);
+  const [fcraFile, setFcraFile] = useState<File | null>(null);
+  const [fcraNumber, setFcraNumber] = useState("");
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -40,6 +45,8 @@ export default function NGORegistrationPage() {
   const [regError, setRegError] = useState("");
   const [panError, setPanError] = useState("");
   const [taxError, setTaxError] = useState("");
+  const [a12Error, setA12Error] = useState("");
+  const [fcraError, setFcraError] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -128,6 +135,11 @@ export default function NGORegistrationPage() {
       formData.append("regFile", regFile);
       formData.append("panFile", panFile);
       formData.append("taxFile", taxFile);
+
+      // Optional compliance documents
+      if (a12File) formData.append("a12File", a12File);
+      if (fcraFile) formData.append("fcraFile", fcraFile);
+      if (fcraNumber.trim()) formData.append("fcraNumber", fcraNumber.trim());
 
       const response = await fetch("/api/ngo/register", {
         method: "POST",
@@ -404,10 +416,105 @@ export default function NGORegistrationPage() {
             </div>
           </div>
 
+          {/* Optional compliance documents */}
+          <div className="border-t border-gray-200 dark:border-gray-800 pt-6">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+              Additional Compliance <span className="text-xs font-semibold text-gray-400">(Optional)</span>
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              Add these if you have them — they strengthen your public Compliance Score and donor trust. You can also add them later.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              {/* 12A Registration Copy (optional) */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  12A Registration Copy
+                </label>
+                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-955/10 transition group text-center min-h-[120px]">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => handleFileChange(e, setA12File, setA12Error)}
+                    className="hidden"
+                  />
+                  {a12File ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                        <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 20 20">
+                          <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                        </svg>
+                        <span className="text-xs font-bold line-clamp-1 max-w-[150px]">{a12File.name}</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400">Click to change file</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Choose PDF Document</span>
+                      <span className="block text-[10px] text-gray-400">No file chosen</span>
+                    </div>
+                  )}
+                </label>
+                {a12Error && (
+                  <p className="text-xs text-red-500 mt-1 font-medium">{a12Error}</p>
+                )}
+              </div>
+
+              {/* FCRA Certificate (optional) */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  FCRA Certificate
+                </label>
+                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-955/10 transition group text-center min-h-[120px]">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => handleFileChange(e, setFcraFile, setFcraError)}
+                    className="hidden"
+                  />
+                  {fcraFile ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                        <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 20 20">
+                          <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                        </svg>
+                        <span className="text-xs font-bold line-clamp-1 max-w-[150px]">{fcraFile.name}</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400">Click to change file</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Choose PDF Document</span>
+                      <span className="block text-[10px] text-gray-400">Only if registered for foreign contributions</span>
+                    </div>
+                  )}
+                </label>
+                {fcraError && (
+                  <p className="text-xs text-red-500 mt-1 font-medium">{fcraError}</p>
+                )}
+              </div>
+            </div>
+
+            {/* FCRA registration number */}
+            <div className="mt-6 md:max-w-sm">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                FCRA Registration Number
+              </label>
+              <input
+                type="text"
+                value={fcraNumber}
+                onChange={(e) => setFcraNumber(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                placeholder="e.g. 094421234"
+              />
+            </div>
+          </div>
+
           <div className="pt-4">
             <button
               type="submit"
-              disabled={loading || success || !!regError || !!panError || !!taxError}
+              disabled={loading || success || !!regError || !!panError || !!taxError || !!a12Error || !!fcraError}
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-emerald-600/10 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 flex items-center justify-center gap-2"
             >
               {loading ? (

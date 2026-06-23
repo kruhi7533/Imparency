@@ -25,8 +25,8 @@ export default async function AdminFraudAlertsPage() {
     console.error("Failed to run platform-wide fraud checks on page load:", err);
   }
 
-  // Fetch all unresolved fraud alerts
-  const unresolvedAlerts = await prisma.fraudAlert.findMany({
+  // Fetch all unresolved alerts split by category
+  const allUnresolved = await prisma.fraudAlert.findMany({
     where: { resolved: false },
     orderBy: { createdAt: "desc" }
   });
@@ -40,20 +40,18 @@ export default async function AdminFraudAlertsPage() {
 
   // Custom sort unresolved by severity (HIGH -> MEDIUM -> LOW)
   const severityRank: Record<string, number> = { HIGH: 1, MEDIUM: 2, LOW: 3 };
-  const sortedUnresolved = [...unresolvedAlerts].sort(
+  const sorted = [...allUnresolved].sort(
     (a, b) => (severityRank[a.severity] || 4) - (severityRank[b.severity] || 4)
   );
 
-  // Serialize dates
-  const serializedUnresolved = sortedUnresolved.map((a) => ({
-    ...a,
-    createdAt: a.createdAt.toISOString()
-  }));
+  const unresolvedDocErrors = sorted.filter(a => a.alertCategory === "DOCUMENT_ERROR");
+  const unresolvedFraudAlerts = sorted.filter(a => a.alertCategory !== "DOCUMENT_ERROR");
 
-  const serializedResolved = resolvedAlerts.map((a) => ({
-    ...a,
-    createdAt: a.createdAt.toISOString()
-  }));
+  const serialize = (a: typeof allUnresolved[0]) => ({ ...a, createdAt: a.createdAt.toISOString() });
+
+  const serializedDocErrors = unresolvedDocErrors.map(serialize);
+  const serializedFraudAlerts = unresolvedFraudAlerts.map(serialize);
+  const serializedResolved = resolvedAlerts.map(serialize);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
@@ -68,6 +66,7 @@ export default async function AdminFraudAlertsPage() {
             <a href="/admin/dashboard" className="text-gray-500 hover:text-emerald-600 transition">NGO Verification</a>
             <a href="/admin/proof-review" className="text-gray-500 hover:text-emerald-600 transition">Proof Review</a>
             <a href="/admin/fraud-alerts" className="text-emerald-600 hover:text-emerald-700 transition underline decoration-2 underline-offset-4">Fraud Alerts</a>
+            <a href="/admin/fcra-review" className="text-gray-500 hover:text-emerald-600 transition">FCRA Review</a>
           </div>
           <div className="h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
           <div className="flex items-center gap-4">
@@ -92,7 +91,8 @@ export default async function AdminFraudAlertsPage() {
         </div>
 
         <FraudAlertsClient
-          initialUnresolved={serializedUnresolved}
+          initialDocErrors={serializedDocErrors}
+          initialFraudAlerts={serializedFraudAlerts}
           initialResolved={serializedResolved}
         />
       </main>

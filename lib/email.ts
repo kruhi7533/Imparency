@@ -169,3 +169,89 @@ export async function sendProofRejectedEmail(
   return sendEmail({ to, subject, body });
 }
 
+// ─── FCRA compliance emails ───────────────────────────────────────────────────
+
+export async function sendFcraApprovalEmail(to: string, orgName: string) {
+  const subject = `FCRA verified for ${orgName} on ImpactBridge`;
+  const body = `Hi there,\n\nGood news — the FCRA registration you submitted for "${orgName}" has been reviewed and verified by our team.\n\nYour public profile now displays an active FCRA compliance badge, letting donors abroad know you are authorised to receive foreign contributions. This also strengthens your Compliance Score.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendFcraRejectionEmail(to: string, orgName: string, reason: string) {
+  const subject = `Update regarding your FCRA submission for ${orgName}`;
+  const body = `Hi there,\n\nThank you for submitting your FCRA registration for "${orgName}".\n\nUnfortunately our team could not verify it at this time for the following reason:\n\n"${reason}"\n\nPlease review the feedback and re-submit a clear copy of your FCRA certificate from your dashboard.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendFcraReuploadEmail(to: string, orgName: string, reason: string) {
+  const subject = `Action needed: re-upload your FCRA certificate for ${orgName}`;
+  const body = `Hi there,\n\nWe've started reviewing the FCRA registration for "${orgName}" but need a clearer or corrected document before we can verify it:\n\n"${reason}"\n\nPlease re-upload your FCRA certificate from your dashboard at your earliest convenience.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendFcraExpiryReminderEmail(to: string, orgName: string, daysLeft: number) {
+  const expired = daysLeft <= 0;
+  const subject = expired
+    ? `Your FCRA registration for ${orgName} has expired`
+    : `Your FCRA registration for ${orgName} expires in ${daysLeft} days`;
+  const body = expired
+    ? `Hi there,\n\nThe FCRA registration on record for "${orgName}" has now expired. Your public profile reflects this, and donors abroad will see that you cannot currently receive foreign contributions.\n\nPlease renew your FCRA registration and upload the updated certificate from your dashboard to restore your active status.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`
+    : `Hi there,\n\nThis is a reminder that the FCRA registration for "${orgName}" will expire in ${daysLeft} days. Donors abroad rely on an active FCRA status to contribute.\n\nPlease begin your renewal and upload the updated certificate from your dashboard before it lapses.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendAdminFcraExpiryDigest(
+  adminEmail: string,
+  items: { orgName: string; status: string; daysLeft: number }[]
+) {
+  const list = items
+    .map((i) => `  • ${i.orgName} — ${i.status.replace(/_/g, " ")} (${i.daysLeft <= 0 ? "expired" : i.daysLeft + " days left"})`)
+    .join("\n");
+  const subject = `[FCRA] ${items.length} certificate${items.length > 1 ? "s" : ""} expiring or expired`;
+  const body = `Hi Admin,\n\nThe following NGO FCRA registration${items.length > 1 ? "s have" : " has"} changed compliance state and may need follow-up:\n\n${list}\n\nReview them here:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/admin/fcra-review\n\nBest regards,\nImpactBridge System`;
+  return sendEmail({ to: adminEmail, subject, body });
+}
+
+// ─── Admin reminder emails ────────────────────────────────────────────────────
+
+export async function sendAdminPendingNGOsReminder(
+  adminEmail: string,
+  ngos: { orgName: string; email: string; daysPending: number }[]
+) {
+  const list = ngos.map(n => `  • ${n.orgName} (${n.email}) — pending for ${n.daysPending} days`).join("\n");
+  const subject = `[Action Required] ${ngos.length} NGO application${ngos.length > 1 ? "s" : ""} awaiting your review`;
+  const body = `Hi Admin,\n\nThe following NGO application${ngos.length > 1 ? "s have" : " has"} been sitting in the verification queue for more than 5 days without a decision:\n\n${list}\n\nPlease log in to the admin panel and review them:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/admin/dashboard\n\nBest regards,\nImpactBridge System`;
+  return sendEmail({ to: adminEmail, subject, body });
+}
+
+export async function sendAdminUnreviewedProofsReminder(
+  adminEmail: string,
+  proofs: { milestoneTitle: string; orgName: string; daysWaiting: number }[]
+) {
+  const list = proofs.map(p => `  • "${p.milestoneTitle}" by ${p.orgName} — waiting ${p.daysWaiting} days`).join("\n");
+  const subject = `[Action Required] ${proofs.length} milestone proof${proofs.length > 1 ? "s" : ""} awaiting review`;
+  const body = `Hi Admin,\n\nThe following milestone proof submission${proofs.length > 1 ? "s have" : " has"} not been reviewed for more than 3 days:\n\n${list}\n\nPlease log in to review and approve or reject them:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/admin/proof-review\n\nBest regards,\nImpactBridge System`;
+  return sendEmail({ to: adminEmail, subject, body });
+}
+
+export async function sendAdminUnresolvedFraudAlertsReminder(
+  adminEmail: string,
+  alerts: { type: string; orgOrDonor: string; daysOpen: number }[]
+) {
+  const list = alerts.map(a => `  • ${a.type.replace(/_/g, " ")} — ${a.orgOrDonor} (open for ${a.daysOpen} days)`).join("\n");
+  const subject = `[Urgent] ${alerts.length} fraud alert${alerts.length > 1 ? "s" : ""} unresolved for 7+ days`;
+  const body = `Hi Admin,\n\nThe following high-priority fraud alert${alerts.length > 1 ? "s have" : " has"} been open for more than 7 days without resolution:\n\n${list}\n\nThese require your immediate attention. Please investigate and resolve:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/admin/fraud-alerts\n\nBest regards,\nImpactBridge System`;
+  return sendEmail({ to: adminEmail, subject, body });
+}
+
+export async function sendNGODocumentReminderEmail(
+  ngoEmail: string,
+  orgName: string,
+  issues: string[]
+) {
+  const list = issues.map(i => `  • ${i}`).join("\n");
+  const subject = `Reminder: Your NGO registration documents need attention`;
+  const body = `Hi there,\n\nThis is a reminder that your NGO registration for "${orgName}" has been pending for 7 days due to the following document issue${issues.length > 1 ? "s" : ""}:\n\n${list}\n\nPlease log in to your dashboard and resubmit the correct documents to complete your verification:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/register\n\nIf you have already resubmitted, please ignore this message.\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to: ngoEmail, subject, body });
+}
+
