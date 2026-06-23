@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed": "npx tsx scripts/seed-demo.ts",
+    "clear-demo": "npx tsx scripts/clear-demo.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1069.0",

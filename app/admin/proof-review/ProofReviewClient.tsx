@@ -51,18 +51,36 @@ interface Milestone {
   proofs: Proof[];
 }
 
+interface AuditRecord {
+  id: string;
+  action: string;
+  note: string | null;
+  aiScore: number | null;
+  reviewedAt: string;
+  admin: { name: string; email: string };
+  milestone: {
+    id: string;
+    title: string;
+    sequenceOrder: number;
+    project: {
+      title: string;
+      ngo: { orgName: string };
+    };
+  };
+}
+
 interface ProofReviewClientProps {
   initialPending: Milestone[];
-  initialHistory: Milestone[];
+  initialAudit: AuditRecord[];
 }
 
 export default function ProofReviewClient({
   initialPending,
-  initialHistory,
+  initialAudit,
 }: ProofReviewClientProps) {
   const router = useRouter();
   const [pendingList, setPendingList] = useState<Milestone[]>(initialPending);
-  const [historyList, setHistoryList] = useState<Milestone[]>(initialHistory);
+  const [auditList, setAuditList] = useState<AuditRecord[]>(initialAudit);
 
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
 
@@ -119,19 +137,26 @@ export default function ProofReviewClient({
       }
 
       // Update state
-      if (actionType === "APPROVE") {
-        // Remove from pending
-        setPendingList((prev) => prev.filter((m) => m.id !== selectedMilestone.id));
-        // Add to history (local mock update)
-        const approvedMilestone = {
-          ...selectedMilestone,
-          status: "COMPLETED",
-        };
-        setHistoryList((prev) => [approvedMilestone, ...prev]);
-      } else {
-        // Reject resets milestone to IN_PROGRESS, remove from pending
-        setPendingList((prev) => prev.filter((m) => m.id !== selectedMilestone.id));
-      }
+      setPendingList((prev) => prev.filter((m) => m.id !== selectedMilestone.id));
+      // Optimistically add to audit trail
+      const latestProof = selectedMilestone.proofs[0];
+      setAuditList((prev) => [{
+        id: Date.now().toString(),
+        action: actionType === "APPROVE" ? "APPROVED" : "REJECTED",
+        note: actionType === "REJECT" ? rejectionReason.trim() : null,
+        aiScore: latestProof?.aiValidationScore ?? null,
+        reviewedAt: new Date().toISOString(),
+        admin: { name: "You", email: "" },
+        milestone: {
+          id: selectedMilestone.id,
+          title: selectedMilestone.title,
+          sequenceOrder: selectedMilestone.sequenceOrder,
+          project: {
+            title: selectedMilestone.project.title,
+            ngo: { orgName: selectedMilestone.project.ngo.orgName }
+          }
+        }
+      }, ...prev]);
 
       closeModal();
       router.refresh();
@@ -179,9 +204,9 @@ export default function ProofReviewClient({
               : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
           }`}
         >
-          <span>Audit History</span>
+          <span>Audit Trail</span>
           <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs px-2 py-0.5 rounded-full font-bold">
-            {historyList.length}
+            {auditList.length}
           </span>
         </button>
       </div>
@@ -375,13 +400,13 @@ export default function ProofReviewClient({
           </div>
         )
       ) : (
-        /* History tab content */
-        historyList.length === 0 ? (
+        /* Audit Trail tab */
+        auditList.length === 0 ? (
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-sm">
-            <span className="text-4xl mb-4 block">📂</span>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">History is empty</h3>
+            <span className="text-4xl mb-4 block">📋</span>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No decisions recorded yet</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              No milestones have been completed and audited yet.
+              Every approval and rejection will appear here with the admin name, timestamp, AI score, and reason.
             </p>
           </div>
         ) : (
@@ -390,91 +415,70 @@ export default function ProofReviewClient({
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
                 <thead className="bg-gray-50 dark:bg-gray-800/50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Milestone & Project</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">NGO Statement & Files</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">AI Audit</th>
-                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Decision</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Milestone & Campaign</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reviewed By</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">AI Score at Review</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Note / Reason</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reviewed At</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                  {historyList.map((milestone) => {
-                    const latestProof = milestone.proofs[0];
-                    return (
-                      <tr key={milestone.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition">
-                        <td className="px-6 py-4 max-w-xs">
-                          <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                            Milestone #{milestone.sequenceOrder}
-                          </div>
-                          <div className="text-sm font-bold text-gray-900 dark:text-white truncate" title={milestone.title}>
-                            {milestone.title}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate" title={milestone.project.title}>
-                            Campaign: {milestone.project.title}
-                          </div>
-                          <div className="text-xs text-gray-400 mt-0.5">
-                            NGO: {milestone.project.ngo.orgName}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 max-w-md">
-                          {latestProof ? (
-                            <>
-                              <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2" title={latestProof.description}>
-                                {latestProof.description}
-                              </p>
-                              <div className="flex flex-wrap gap-2 mt-2">
-                                {latestProof.mediaUrls.map((url, idx) => (
-                                  <a
-                                    key={url}
-                                    href={url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[10px] text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-bold underline"
-                                  >
-                                    Image {idx + 1}
-                                  </a>
-                                ))}
-                                {latestProof.documentUrls.map((url, idx) => (
-                                  <a
-                                    key={url}
-                                    href={url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[10px] text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-bold underline"
-                                  >
-                                    Doc {idx + 1} (PDF)
-                                  </a>
-                                ))}
-                              </div>
-                            </>
-                          ) : (
-                            <span className="text-xs text-gray-400 italic">No proof files submitted</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {latestProof && latestProof.aiValidationScore !== null ? (
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`text-sm font-bold px-2 py-0.5 rounded ${
-                                  latestProof.aiValidationScore >= 70
-                                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                                    : "bg-yellow-50 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400"
-                                }`}
-                              >
-                                AI Score: {latestProof.aiValidationScore}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-400 italic">No data</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <span className="text-xs px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 rounded-full font-bold">
-                            {milestone.status}
+                  {auditList.map((record) => (
+                    <tr key={record.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full ${
+                          record.action === "APPROVED"
+                            ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                            : "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400"
+                        }`}>
+                          {record.action}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 max-w-xs">
+                        <div className="text-xs font-bold text-gray-900 dark:text-white truncate" title={record.milestone.title}>
+                          #{record.milestone.sequenceOrder} — {record.milestone.title}
+                        </div>
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                          {record.milestone.project.title}
+                        </div>
+                        <div className="text-[10px] text-gray-400">
+                          {record.milestone.project.ngo.orgName}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-xs font-bold text-gray-900 dark:text-white">{record.admin.name}</div>
+                        <div className="text-[10px] text-gray-400">{record.admin.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {record.aiScore !== null ? (
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                            record.aiScore >= 70
+                              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                              : record.aiScore >= 50
+                              ? "bg-yellow-50 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400"
+                              : "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400"
+                          }`}>
+                            {record.aiScore}/100
                           </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 max-w-xs">
+                        {record.note ? (
+                          <p className="text-xs text-gray-600 dark:text-gray-400 italic line-clamp-2" title={record.note}>
+                            "{record.note}"
+                          </p>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(record.reviewedAt).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

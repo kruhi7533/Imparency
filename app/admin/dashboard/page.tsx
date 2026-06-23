@@ -179,6 +179,7 @@ export default async function AdminDashboardPage() {
                 </span>
               )}
             </a>
+            <a href="/admin/fcra-review" className="text-gray-500 hover:text-emerald-600 transition">FCRA Review</a>
           </div>
           <div className="h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
           <div className="flex items-center gap-4">
