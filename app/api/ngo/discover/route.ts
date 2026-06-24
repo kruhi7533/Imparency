@@ -67,6 +67,8 @@ export async function GET(request: Request) {
         healthScore: true,
         description: true,
         createdAt: true,
+        logo_url: true,
+        cover_image_url: true,
         projects: {
           where: { isDeleted: false, status: "ACTIVE" },
           select: {
@@ -100,6 +102,8 @@ export async function GET(request: Request) {
         activeProjectsCount,
         totalRaised,
         followersCount: ngo._count.followers,
+        logo_url: ngo.logo_url,
+        cover_image_url: ngo.cover_image_url,
       };
     });
 

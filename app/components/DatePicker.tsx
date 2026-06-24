@@ -7,6 +7,7 @@ interface DatePickerProps {
   onChange: (value: string) => void;
   min?: string; // YYYY-MM-DD
   placeholder?: string;
+  disabled?: boolean;
 }
 
 const MONTHS = [
@@ -16,7 +17,7 @@ const MONTHS = [
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-export default function DatePicker({ value, onChange, min, placeholder = "Select date" }: DatePickerProps) {
+export default function DatePicker({ value, onChange, min, placeholder = "Select date", disabled = false }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   
   // Parse initial values
@@ -107,8 +108,11 @@ export default function DatePicker({ value, onChange, min, placeholder = "Select
     <div className="relative w-full" ref={containerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-left transition"
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen((prev) => !prev)}
+        className={`w-full flex items-center justify-between px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-left transition ${
+          disabled ? "opacity-60 cursor-not-allowed bg-gray-50 dark:bg-gray-800/40" : ""
+        }`}
       >
         <span className={!value ? "text-gray-400 dark:text-gray-500" : ""}>{getDisplayDate()}</span>
         <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

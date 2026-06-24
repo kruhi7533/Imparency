@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import ProjectCoverImage from "@/app/components/ProjectCoverImage";
 
 interface Project {
   id: string;
@@ -27,6 +28,9 @@ interface NGO {
   website: string | null;
   foundedYear: number;
   projects?: Project[];
+  logo_url?: string | null;
+  registrationNumber: string;
+  panNumber: string;
 }
 
 interface NGOProfileClientProps {
@@ -126,9 +130,17 @@ export default function NGOProfileClient({
           <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center">
             
             {/* Logo Avatar Place-holder */}
-            <div className="w-24 h-24 bg-emerald-600 text-white rounded-2xl flex items-center justify-center font-black text-4xl shadow-md border-4 border-white dark:border-gray-900">
-              {ngo.orgName.charAt(0)}
-            </div>
+            {ngo.logo_url ? (
+              <img
+                src={ngo.logo_url}
+                alt={ngo.orgName}
+                className="w-24 h-24 rounded-2xl object-cover shadow-md border-4 border-white dark:border-gray-900"
+              />
+            ) : (
+              <div className="w-24 h-24 bg-emerald-600 text-white rounded-2xl flex items-center justify-center font-black text-4xl shadow-md border-4 border-white dark:border-gray-900">
+                {ngo.orgName.charAt(0)}
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 flex-wrap">
@@ -220,7 +232,7 @@ export default function NGOProfileClient({
                           className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-150"
                         >
                           <div className="h-40 bg-gray-200 dark:bg-gray-800 relative">
-                            <img src={project.coverImage} alt={project.title} className="w-full h-full object-cover" />
+                            <ProjectCoverImage src={project.coverImage} alt={project.title} causeCategory={project.causeCategory} className="w-full h-full object-cover object-center" />
                           </div>
                           <div className="p-5 space-y-3">
                             <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{project.causeCategory}</span>
@@ -260,7 +272,7 @@ export default function NGOProfileClient({
                     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center shadow-sm">
                       <span className="text-3xl mb-3 block">📦</span>
                       <h4 className="text-sm font-bold text-gray-900 dark:text-white">No Completed Campaigns</h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">This NGO hasn't completed any fundraising projects on the platform yet.</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">No completed campaigns yet — check back as milestones are achieved</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -271,7 +283,7 @@ export default function NGOProfileClient({
                         >
                           <div>
                             <div className="h-40 bg-gray-200 dark:bg-gray-800 relative">
-                              <img src={project.coverImage} alt={project.title} className="w-full h-full object-cover grayscale" />
+                              <ProjectCoverImage src={project.coverImage} alt={project.title} causeCategory={project.causeCategory} className="w-full h-full object-cover object-center grayscale" />
                               <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 bg-gray-900/80 text-white rounded-full">Completed</span>
                             </div>
                             <div className="p-5 space-y-2">
@@ -300,12 +312,11 @@ export default function NGOProfileClient({
               {activeTab === "story" && (
                 <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-8 shadow-sm space-y-4">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white">Our Impact Story</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                    At {ngo.orgName}, we believe in creating long-term, self-sustaining changes. Through our focus categories: {ngo.causeCategories.join(", ")}, we have consistently reached remote communities, distributing supplies and establishing localized care centers.
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                    Our partnership with ImpactBridge ensures that every single rupee you donate is tracked against transparent, audited milestones. By submitting receipts, photos, and live beneficiary validations, we aim to ensure complete trust in every rupee donated.
-                  </p>
+                  <div className="bg-gray-50 dark:bg-gray-800/20 border border-gray-100 dark:border-gray-800/50 rounded-xl p-8 text-center w-full">
+                    <span className="text-3xl mb-3 block">📖</span>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">No Impact Story Shared</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">This NGO hasn't shared their impact story yet.</p>
+                  </div>
                 </div>
               )}
 
@@ -323,6 +334,14 @@ export default function NGOProfileClient({
                     <div>
                       <strong className="block text-xs text-gray-400 font-semibold mb-0.5">Focus Cause Areas</strong>
                       {ngo.causeCategories.join(", ")}
+                    </div>
+                    <div>
+                      <strong className="block text-xs text-gray-400 font-semibold mb-0.5">Registration Number</strong>
+                      {ngo.registrationNumber}
+                    </div>
+                    <div>
+                      <strong className="block text-xs text-gray-400 font-semibold mb-0.5">PAN Number</strong>
+                      {ngo.panNumber}
                     </div>
                     <div className="col-span-2">
                       <strong className="block text-xs text-gray-400 font-semibold mb-0.5">HQ Address</strong>

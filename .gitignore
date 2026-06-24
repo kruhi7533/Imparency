@@ -44,3 +44,5 @@ next-env.d.ts
 
 # local uploads
 /public/uploads/
+sample-ngo-docs/
+scripts/

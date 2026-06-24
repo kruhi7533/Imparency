@@ -3,6 +3,25 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
+interface ScreeningChecklistEntry {
+  present: boolean;
+  readable: boolean;
+  note?: string;
+}
+
+interface NgoScreening {
+  summary: string;
+  extractedFields: any;
+  // Prisma returns these Json columns as JsonValue; treated loosely at render time.
+  documentChecklist: any;
+  consistencyOk: boolean;
+  flags: any;
+  recommendation: string; // LOOKS_CLEAR | NEEDS_REVIEW | LOOKS_PROBLEMATIC
+  confidence: number;
+  status: string; // PENDING | READY | FAILED
+  updatedAt: Date;
+}
+
 interface NGO {
   id: string;
   orgName: string;
@@ -15,6 +34,7 @@ interface NGO {
   documents: string[];
   createdAt: Date;
   ai_verification_report?: any;
+  screening?: NgoScreening | null;
   user: {
     email: string;
   };
@@ -39,6 +59,78 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [reminderSending, setReminderSending] = useState(false);
+  const [reminderResult, setReminderResult] = useState<string | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [filterRec, setFilterRec] = useState<"ALL" | "LOOKS_CLEAR" | "NEEDS_REVIEW" | "LOOKS_PROBLEMATIC">("ALL");
+
+  const filteredNgos = ngos.filter((ngo) => {
+    const q = search.toLowerCase();
+    const matchesSearch =
+      !q ||
+      ngo.orgName.toLowerCase().includes(q) ||
+      ngo.user.email.toLowerCase().includes(q) ||
+      ngo.registrationNumber.toLowerCase().includes(q) ||
+      ngo.panNumber.toLowerCase().includes(q);
+
+    const rec = ngo.ai_verification_report?.recommendation ?? ngo.screening?.recommendation ?? null;
+    const matchesFilter = filterRec === "ALL" || rec === filterRec;
+
+    return matchesSearch && matchesFilter;
+  });
+
+  const sendReminders = async () => {
+    setReminderSending(true);
+    setReminderResult(null);
+    try {
+      const res = await fetch("/api/admin/send-reminders", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      const r = data.results;
+      const parts = [];
+      if (r.pendingNGOs?.sent) parts.push(`${r.pendingNGOs.count} pending NGO reminder(s)`);
+      if (r.unreviewedProofs?.sent) parts.push(`${r.unreviewedProofs.count} proof reminder(s)`);
+      if (r.fraudAlerts?.sent) parts.push(`${r.fraudAlerts.count} fraud alert reminder(s)`);
+      if (r.documentErrors?.sent) parts.push(`${r.documentErrors.count} document error reminder(s)`);
+      setReminderResult(parts.length > 0 ? `Sent: ${parts.join(", ")}` : "No reminders needed right now.");
+    } catch (err: any) {
+      setReminderResult("Error: " + err.message);
+    } finally {
+      setReminderSending(false);
+    }
+  };
+
+  // Pre-screening state (surfacing only — never changes NGO status).
+  const [screenings, setScreenings] = useState<Record<string, NgoScreening>>(() => {
+    const init: Record<string, NgoScreening> = {};
+    initialPendingNGOs.forEach((n) => {
+      if (n.screening) init[n.id] = n.screening;
+    });
+    return init;
+  });
+  const [screeningLoadingId, setScreeningLoadingId] = useState<string | null>(null);
+
+  const runScreening = async (ngoId: string) => {
+    setScreeningLoadingId(ngoId);
+    try {
+      const res = await fetch("/api/admin/screen-ngo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ngoId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Screening failed");
+      if (data.screening) {
+        setScreenings((prev) => ({ ...prev, [ngoId]: data.screening }));
+      }
+    } catch (err) {
+      console.error("Run screening error:", err);
+    } finally {
+      setScreeningLoadingId(null);
+    }
+  };
 
   const openModal = (ngo: NGO, type: "APPROVE" | "REJECT") => {
     setSelectedNgo(ngo);
@@ -96,6 +188,160 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const renderScreeningPanel = (ngo: NGO) => {
+    const screening = screenings[ngo.id] || ngo.screening || null;
+    const isBusy = screeningLoadingId === ngo.id;
+
+    const honestNote = (
+      <p className="text-[10px] text-gray-500 dark:text-gray-400 italic mt-2">
+        Mechanical checks only — does not confirm documents are genuine. Admin judgment required.
+      </p>
+    );
+
+    // No record yet, or in progress → show "in progress" + Run screening.
+    if (!screening || screening.status === "PENDING") {
+      return (
+        <div className="border border-indigo-200/60 dark:border-indigo-900/40 rounded-2xl p-5 bg-indigo-50/40 dark:bg-indigo-950/10 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-1.5">
+              🔎 Pre-Screening Summary
+            </h4>
+            <button
+              onClick={() => runScreening(ngo.id)}
+              disabled={isBusy}
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition flex items-center gap-1.5"
+            >
+              {isBusy && <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>}
+              {screening?.status === "PENDING" ? "Pre-screening in progress…" : "Run screening"}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">
+            {screening?.status === "PENDING"
+              ? "The agent is reading the submitted documents. Click to refresh once it finishes."
+              : "No pre-screening summary yet. Run it to get an organized overview before deciding."}
+          </p>
+          {honestNote}
+        </div>
+      );
+    }
+
+    // READY or FAILED → render the full summary.
+    const rec = screening.recommendation;
+    let recBadgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/50";
+    let recLabel = "Needs Review";
+    if (rec === "LOOKS_CLEAR") {
+      recBadgeClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/50";
+      recLabel = "Looks Clear";
+    } else if (rec === "LOOKS_PROBLEMATIC") {
+      recBadgeClass = "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400 border border-red-200/50 dark:border-red-900/50";
+      recLabel = "Looks Problematic";
+    }
+
+    const confidencePct = Math.round((screening.confidence || 0) * 100);
+    const checklist = screening.documentChecklist || {};
+    const checklistLabels: Record<string, string> = {
+      registrationCertificate: "Registration Certificate",
+      panCard: "PAN Card",
+      taxExemption80G: "80G Tax Exemption",
+    };
+
+    return (
+      <div className="border border-indigo-200/60 dark:border-indigo-900/40 rounded-2xl p-5 bg-indigo-50/40 dark:bg-indigo-950/10 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-indigo-100 dark:border-indigo-900/30 pb-3">
+          <h4 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-1.5">
+            🔎 Pre-Screening Summary
+            {screening.status === "FAILED" && (
+              <span className="text-[10px] font-bold text-red-500 ml-1">(failed)</span>
+            )}
+          </h4>
+          <div className="flex items-center gap-3">
+            <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${recBadgeClass}`}>
+              {recLabel} · {confidencePct}%
+            </span>
+            <button
+              onClick={() => runScreening(ngo.id)}
+              disabled={isBusy}
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 disabled:opacity-50 text-gray-600 dark:text-gray-300 text-xs font-bold py-1.5 px-3 rounded-lg transition flex items-center gap-1.5"
+            >
+              {isBusy && <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500"></div>}
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {/* One-line summary */}
+        <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
+          {screening.summary}
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Document checklist */}
+          <div className="bg-white/60 dark:bg-gray-950/20 p-3.5 rounded-xl border border-gray-100 dark:border-gray-850">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Document Checklist</span>
+            <div className="space-y-2">
+              {Object.keys(checklistLabels).map((key) => {
+                const entry = checklist[key];
+                const ok = entry?.present && entry?.readable;
+                return (
+                  <div key={key} className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-gray-600 dark:text-gray-300">{checklistLabels[key]}</span>
+                    <span className={ok ? "text-emerald-600 font-extrabold" : "text-red-500 font-extrabold"}>
+                      {entry?.present ? (entry?.readable ? "✓ Present & readable" : "⚠ Present, unreadable") : "✗ Missing"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Consistency + extracted */}
+          <div className="bg-white/60 dark:bg-gray-950/20 p-3.5 rounded-xl border border-gray-100 dark:border-gray-850 text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Name Consistency</span>
+              <span className={screening.consistencyOk ? "text-emerald-600 font-extrabold" : "text-amber-600 font-extrabold"}>
+                {screening.consistencyOk ? "✓ Consistent" : "⚠ Discrepancy"}
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] text-gray-400 font-semibold block">Extracted Name</span>
+              <span className="font-bold text-gray-900 dark:text-white">{screening.extractedFields?.name || "N/A"}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-[10px] text-gray-400 font-semibold block">Extracted PAN</span>
+                <span className="font-bold text-gray-900 dark:text-white">{screening.extractedFields?.pan || "N/A"}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-gray-400 font-semibold block">Extracted Reg No</span>
+                <span className="font-bold text-gray-900 dark:text-white">{screening.extractedFields?.registrationNo || "N/A"}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Flags */}
+        {screening.flags && screening.flags.length > 0 && (
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Flags</span>
+            {screening.flags.map((flag: { severity: string; issue: string }, fIdx: number) => {
+              let badgeClass = "bg-gray-100 text-gray-600";
+              if (flag.severity === "HIGH") badgeClass = "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400";
+              else if (flag.severity === "MEDIUM") badgeClass = "bg-amber-100 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400";
+              return (
+                <div key={fIdx} className="flex items-start gap-2 text-xs bg-white/50 dark:bg-gray-950/10 p-2 rounded-lg border border-gray-100 dark:border-gray-850">
+                  <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0 ${badgeClass}`}>{flag.severity}</span>
+                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{flag.issue}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {honestNote}
+      </div>
+    );
   };
 
   const renderAiPreCheckPanel = (ngo: NGO) => {
@@ -256,6 +502,74 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
 
   return (
     <div className="space-y-6">
+
+      {/* Reminder trigger — for demo and manual use */}
+      <div className="flex items-center gap-4 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+        <div className="flex-1">
+          <p className="text-sm font-bold text-blue-900 dark:text-blue-200">Admin Reminder System</p>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+            Sends reminder emails for: pending NGOs (&gt;5 days), unreviewed proofs (&gt;3 days), unresolved fraud alerts (&gt;7 days), and NGO document errors (&gt;7 days).
+          </p>
+          {reminderResult && (
+            <p className={`text-xs font-semibold mt-1.5 ${reminderResult.startsWith("Error") ? "text-red-600" : "text-emerald-600"}`}>
+              {reminderResult}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={sendReminders}
+          disabled={reminderSending}
+          className="shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition"
+        >
+          {reminderSending ? "Sending..." : "Send Reminders Now"}
+        </button>
+      </div>
+
+      {/* Search + Filter bar */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input
+            type="text"
+            placeholder="Search by org name, email, reg number, PAN..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {(["ALL", "LOOKS_CLEAR", "NEEDS_REVIEW", "LOOKS_PROBLEMATIC"] as const).map((val) => {
+            const labels: Record<string, string> = { ALL: "All", LOOKS_CLEAR: "Clear", NEEDS_REVIEW: "Needs Review", LOOKS_PROBLEMATIC: "Problematic" };
+            const colors: Record<string, string> = {
+              ALL: filterRec === "ALL" ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
+              LOOKS_CLEAR: filterRec === "LOOKS_CLEAR" ? "bg-emerald-600 text-white" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
+              NEEDS_REVIEW: filterRec === "NEEDS_REVIEW" ? "bg-amber-500 text-white" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
+              LOOKS_PROBLEMATIC: filterRec === "LOOKS_PROBLEMATIC" ? "bg-red-600 text-white" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
+            };
+            return (
+              <button key={val} onClick={() => setFilterRec(val)} className={`px-3 py-2 text-xs font-bold rounded-xl transition ${colors[val]}`}>
+                {labels[val]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Results count */}
+      {(search || filterRec !== "ALL") && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Showing {filteredNgos.length} of {ngos.length} applications
+          {search && <span> matching <span className="font-semibold text-gray-700 dark:text-gray-300">"{search}"</span></span>}
+        </p>
+      )}
+
       {ngos.length === 0 ? (
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-sm">
           <span className="text-4xl mb-4 block">🎉</span>
@@ -263,6 +577,17 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
           <p className="text-sm text-gray-500 dark:text-gray-400">
             There are currently no pending NGO registration documents awaiting review.
           </p>
+        </div>
+      ) : filteredNgos.length === 0 ? (
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-sm">
+          <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/>
+          </svg>
+          <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">No results found</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">No NGOs match your search or filter. Try adjusting your criteria.</p>
+          <button onClick={() => { setSearch(""); setFilterRec("ALL"); }} className="mt-4 text-xs font-semibold text-emerald-600 hover:underline">
+            Clear filters
+          </button>
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
@@ -277,7 +602,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                {ngos.map((ngo) => (
+                {filteredNgos.map((ngo) => (
                   <React.Fragment key={ngo.id}>
                     <tr className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
                       <td className="px-6 py-4">
@@ -336,7 +661,8 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                     </tr>
                     {expandedNgoId === ngo.id && (
                       <tr>
-                        <td colSpan={4} className="bg-gray-50/30 dark:bg-gray-950/10 px-8 py-5 border-b border-gray-200 dark:border-gray-800">
+                        <td colSpan={4} className="bg-gray-50/30 dark:bg-gray-950/10 px-8 py-5 border-b border-gray-200 dark:border-gray-800 space-y-5">
+                          {renderScreeningPanel(ngo)}
                           {renderAiPreCheckPanel(ngo)}
                         </td>
                       </tr>

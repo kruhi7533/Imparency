@@ -119,69 +119,7 @@ export default async function NGODashboardPage() {
 
         {/* State 3: VERIFIED (Full Dashboard) */}
         {status === "VERIFIED" && (
-          <div className="space-y-8">
-            
-            {/* Health Score Overview & Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
-              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">NGO Health Score</h3>
-                  <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                    {profile.healthScore !== null && profile.healthScore !== undefined ? (
-                      `${Number(profile.healthScore).toFixed(1)}/100`
-                    ) : (
-                      "Pending"
-                    )}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center font-bold text-lg">
-                  Score
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Active Projects</h3>
-                  <p className="text-3xl font-black text-gray-900 dark:text-white mt-1">
-                    {profile.projects.filter(p => p.status === "ACTIVE").length}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center">
-                  📚
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Funds Raised</h3>
-                  <p className="text-3xl font-black text-gray-900 dark:text-white mt-1">
-                    ₹{profile.projects.reduce((sum, p) => sum + Number(p.raisedAmount), 0).toLocaleString()}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-400 rounded-full flex items-center justify-center text-lg">
-                  ₹
-                </div>
-              </div>
-
-            </div>
-
-            {/* Projects Section Header */}
-            <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-800 pb-4">
-              <div>
-                <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">Fundraising Projects</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your campaigns and sequence milestones.</p>
-              </div>
-              <Link
-                href="/ngo/projects/new"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition text-sm flex items-center gap-1"
-              >
-                <span>+</span> Launch New Project
-              </Link>
-            </div>
-
-            <DashboardClient initialProjects={profile.projects as any} />
-          </div>
+          <DashboardClient profile={profile as any} />
         )}
       </main>
     </div>

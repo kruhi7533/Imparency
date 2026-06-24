@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DatePicker from "@/app/components/DatePicker";
 import ShareProjectModal from "@/app/components/ShareProjectModal";
+import AIGenerateField from "@/app/components/AIGenerateField";
 
 const CAUSE_CATEGORIES = [
   "Education",
@@ -38,6 +39,8 @@ export default function NewProjectPage() {
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [description, setDescription] = useState("");
+  const [problemStatement, setProblemStatement] = useState("");
+  const [expectedOutcome, setExpectedOutcome] = useState("");
   const [causeCategory, setCauseCategory] = useState("Education");
   const [targetAmount, setTargetAmount] = useState("");
   const [location, setLocation] = useState("");
@@ -86,6 +89,68 @@ export default function NewProjectPage() {
 
   const allocationPct = projectTarget > 0 ? (totalAllocated / projectTarget) * 100 : 0;
   const isAllocationValid = projectTarget > 0 && totalAllocated === projectTarget;
+
+  const [suggesting, setSuggesting] = useState(false);
+
+  const isSuggestEnabled =
+    title.trim() !== "" &&
+    causeCategory !== "" &&
+    parseFloat(targetAmount) > 0 &&
+    description.trim() !== "";
+
+  const handleSuggestMilestones = async () => {
+    if (!isSuggestEnabled) return;
+
+    const isDefaultEmpty =
+      milestones.length === 1 &&
+      milestones[0].title.trim() === "" &&
+      milestones[0].description.trim() === "" &&
+      milestones[0].targetAmount.trim() === "" &&
+      milestones[0].deadline.trim() === "";
+
+    if (!isDefaultEmpty) {
+      const confirmOverwrite = window.confirm(
+        "This will replace your current milestones with AI suggestions. Continue?"
+      );
+      if (!confirmOverwrite) return;
+    }
+
+    setSuggesting(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/ai/suggest-milestones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          project_title: title.trim(),
+          cause_category: causeCategory,
+          target_amount: targetAmount,
+          description: description.trim(),
+          problem_statement: problemStatement.trim(),
+          expected_outcome: expectedOutcome.trim(),
+          location: location.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate suggestions");
+      }
+
+      if (data.milestones && Array.isArray(data.milestones)) {
+        setMilestones(data.milestones);
+      } else {
+        throw new Error("Invalid response format received from AI");
+      }
+    } catch (err: any) {
+      console.error("AI milestone suggestion error:", err);
+      setError(err.message || "Couldn't generate suggestions, please add milestones manually.");
+    } finally {
+      setSuggesting(false);
+    }
+  };
 
   const handleAddMilestone = () => {
     setMilestones((prev) => [
@@ -154,6 +219,8 @@ export default function NewProjectPage() {
       const formData = new FormData();
       formData.append("title", title);
       formData.append("description", description);
+      formData.append("problemStatement", problemStatement);
+      formData.append("expectedOutcome", expectedOutcome);
       formData.append("causeCategory", causeCategory);
       formData.append("targetAmount", targetAmount);
       formData.append("location", location);
@@ -266,7 +333,18 @@ export default function NewProjectPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Description *</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Description *</label>
+                <AIGenerateField
+                  fieldType="description"
+                  title={title}
+                  causeCategory={causeCategory}
+                  targetAmount={targetAmount}
+                  location={location}
+                  currentValue={description}
+                  onGenerated={setDescription}
+                />
+              </div>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -275,6 +353,52 @@ export default function NewProjectPage() {
                 placeholder="Describe the scope, objectives, and impact goals of this project..."
                 required
               />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Problem Statement (Optional)</label>
+                <AIGenerateField
+                  fieldType="problem_statement"
+                  title={title}
+                  causeCategory={causeCategory}
+                  targetAmount={targetAmount}
+                  location={location}
+                  currentValue={problemStatement}
+                  onGenerated={setProblemStatement}
+                />
+              </div>
+              <textarea
+                value={problemStatement}
+                onChange={(e) => setProblemStatement(e.target.value)}
+                rows={3}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
+                placeholder="What issue or gap does this campaign address? e.g., '200 children in Dharavi lack access to basic learning materials...'"
+              />
+              <p className="text-[11px] text-gray-500 mt-1">Adding this helps donors understand your campaign's purpose and builds trust.</p>
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Expected Outcome (Optional)</label>
+                <AIGenerateField
+                  fieldType="expected_outcome"
+                  title={title}
+                  causeCategory={causeCategory}
+                  targetAmount={targetAmount}
+                  location={location}
+                  currentValue={expectedOutcome}
+                  onGenerated={setExpectedOutcome}
+                />
+              </div>
+              <textarea
+                value={expectedOutcome}
+                onChange={(e) => setExpectedOutcome(e.target.value)}
+                rows={3}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
+                placeholder="What does success look like once this campaign is complete? e.g., 'Improved school attendance and literacy among 200 children...'"
+              />
+              <p className="text-[11px] text-gray-500 mt-1">Adding this helps donors understand your campaign's purpose and builds trust.</p>
             </div>
 
             <div>
@@ -296,13 +420,35 @@ export default function NewProjectPage() {
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">2. Sequential Milestone Builder</h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Milestones run in chronological order. Add goals sequentially.</p>
               </div>
-              <button
-                type="button"
-                onClick={handleAddMilestone}
-                className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold py-2 px-4 rounded-lg text-xs transition"
-              >
-                + Add Milestone
-              </button>
+              <div className="flex items-center gap-2">
+                <div title={isSuggestEnabled ? "" : "Fill in project details above first."} className="inline-block">
+                  <button
+                    type="button"
+                    onClick={handleSuggestMilestones}
+                    disabled={!isSuggestEnabled || suggesting}
+                    className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 font-bold py-2 px-4 rounded-lg text-xs transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {suggesting ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-emerald-700 dark:text-emerald-400" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Generating milestones...
+                      </>
+                    ) : (
+                      "✨ Suggest Milestones with AI"
+                    )}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddMilestone}
+                  className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold py-2 px-4 rounded-lg text-xs transition"
+                >
+                  + Add Milestone
+                </button>
+              </div>
             </div>
 
             {/* Live progress Allocation tracker */}
@@ -417,7 +563,20 @@ export default function NewProjectPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Description *</label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400">Description *</label>
+                      <AIGenerateField
+                        fieldType="milestone_description"
+                        title={milestone.title || `Milestone ${idx + 1}`}
+                        causeCategory={causeCategory}
+                        targetAmount={milestone.targetAmount || 0}
+                        currentValue={milestone.description}
+                        onGenerated={(val) => handleMilestoneChange(idx, "description", val)}
+                        milestoneTitle={milestone.title || `Milestone ${idx + 1}`}
+                        proofTypeRequired={milestone.proofType}
+                        parentProjectTitle={title}
+                      />
+                    </div>
                     <textarea
                       value={milestone.description}
                       onChange={(e) => handleMilestoneChange(idx, "description", e.target.value)}

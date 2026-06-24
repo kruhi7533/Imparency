@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { MapPin, Briefcase, IndianRupee } from "lucide-react";
 
 const CAUSE_CATEGORIES = [
   "Education",
@@ -18,12 +18,14 @@ interface NGOData {
   orgName: string;
   causeCategories: string[];
   address: string;
-  healthScore: number;
+  healthScore: number | null;
   description: string;
   activeProjectsCount: number;
   totalRaised: number;
   followersCount: number;
   isFollowed?: boolean;
+  logo_url?: string | null;
+  cover_image_url?: string | null;
 }
 
 export default function DiscoverPage() {
@@ -165,10 +167,46 @@ export default function DiscoverPage() {
 
   // Get Health Score Badge color-coding classes
   const getHealthBadgeClass = (score: number) => {
-    if (score >= 80) return "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50";
-    if (score >= 50) return "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/50";
-    return "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-100 dark:border-red-900/50";
+    if (score >= 80) return "text-emerald-400 border-emerald-500/25";
+    if (score >= 50) return "text-amber-400 border-amber-500/25";
+    return "text-red-400 border-red-500/25";
   };
+
+  const getBannerColorClass = (cause: string) => {
+    switch (cause) {
+      case "Education":
+        return "from-blue-600 to-indigo-500 text-blue-100";
+      case "Healthcare":
+        return "from-rose-500 to-coral-400 text-rose-100";
+      case "Environment":
+        return "from-emerald-600 to-teal-500 text-emerald-100";
+      case "Women Empowerment":
+        return "from-purple-600 to-fuchsia-500 text-purple-100";
+      case "Rural Development":
+        return "from-indigo-600 to-violet-500 text-indigo-100";
+      case "Hunger":
+        return "from-amber-500 to-orange-500 text-amber-100";
+      default:
+        return "from-gray-600 to-slate-500 text-gray-100";
+    }
+  };
+
+  const getAvatarColorClass = (name: string) => {
+    const colors = [
+      "bg-teal-600 text-teal-50 border-teal-500/30",
+      "bg-blue-600 text-blue-50 border-blue-500/30",
+      "bg-amber-600 text-amber-50 border-amber-500/30",
+      "bg-purple-600 text-purple-50 border-purple-500/30",
+      "bg-indigo-600 text-indigo-50 border-indigo-500/30",
+      "bg-emerald-600 text-emerald-50 border-emerald-500/30",
+      "bg-rose-600 text-rose-50 border-rose-500/30",
+    ];
+    if (!name) return colors[0];
+    const charCodeSum = name.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return colors[charCodeSum % colors.length];
+  };
+
+  const getInitials = (name: string) => name.charAt(0).toUpperCase();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
@@ -392,71 +430,123 @@ export default function DiscoverPage() {
               <div className="space-y-10">
                 
                 {/* NGO Cards Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {ngos.map((ngo) => (
-                    <div
-                      key={ngo.id}
-                      className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 flex flex-col justify-between"
-                    >
-                      <div>
-                        {/* Health Score Badge */}
-                        <div className="flex justify-between items-center mb-3">
-                          {ngo.healthScore !== null && ngo.healthScore !== undefined ? (
-                            <span className={`text-[10px] font-extrabold px-2 py-0.5 border rounded-full ${getHealthBadgeClass(ngo.healthScore)}`}>
-                              Health: {ngo.healthScore.toFixed(0)}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 border rounded-full bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700">
-                              New NGO — Score Pending
-                            </span>
-                          )}
-                          <span className="text-[10px] font-semibold text-gray-400">{ngo.address.split(",").slice(-2).join(",").trim()}</span>
+                <div 
+                  className="grid gap-6"
+                  style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}
+                >
+                  {ngos.map((ngo) => {
+                    const primaryCause = ngo.causeCategories[0] || "General";
+                    return (
+                      <div
+                        key={ngo.id}
+                        className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm hover:shadow-md hover:border-emerald-500/30 hover:translate-y-[-3px] transition-all duration-200 flex flex-col justify-between overflow-hidden cursor-pointer group h-full"
+                        onClick={() => window.location.href = `/ngo/${ngo.id}`}
+                      >
+                        <div>
+                          {/* Banner Header Section */}
+                          <div className="relative h-32 w-full overflow-hidden shrink-0">
+                            {ngo.cover_image_url ? (
+                              <img src={ngo.cover_image_url} alt={ngo.orgName} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className={`w-full h-full bg-gradient-to-r ${getBannerColorClass(primaryCause)}`} />
+                            )}
+                            {/* Subtle banner gradient overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                            
+                            {/* Health Score Overlay Badge */}
+                            <div className="absolute top-3 right-3 z-10">
+                              {ngo.healthScore !== null && ngo.healthScore !== undefined ? (
+                                <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm border ${getHealthBadgeClass(ngo.healthScore)}`}>
+                                  Health: {ngo.healthScore.toFixed(0)}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm border border-gray-700 text-gray-300">
+                                  Score Pending
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Overlapping Logo */}
+                            <div className="absolute -bottom-7 left-5 z-20">
+                              {ngo.logo_url ? (
+                                <img 
+                                  src={ngo.logo_url} 
+                                  alt={ngo.orgName} 
+                                  className="w-14 h-14 rounded-full object-cover border-[3px] border-white dark:border-gray-900 shadow-md bg-white dark:bg-gray-950" 
+                                />
+                              ) : (
+                                <div className={`w-14 h-14 rounded-full flex items-center justify-center font-black text-sm border-[3px] border-white dark:border-gray-900 shadow-md z-20 ${getAvatarColorClass(ngo.orgName)}`}>
+                                  {getInitials(ngo.orgName)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Card Content Body */}
+                          <div className="px-5 pt-9 pb-1">
+                            <h4 className="text-base font-black text-gray-900 dark:text-white group-hover:text-emerald-500 transition-colors duration-150 line-clamp-1">
+                              {ngo.orgName}
+                            </h4>
+                            
+                            {/* Location */}
+                            <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold mt-1">
+                              <MapPin className="w-3 h-3 text-gray-400" />
+                              <span>{ngo.address.split(",").slice(-2).join(",").trim()}</span>
+                            </div>
+                            
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 line-clamp-2 leading-relaxed h-[40px] overflow-hidden">
+                              {ngo.description}
+                            </p>
+
+                            {/* Cause Categories */}
+                            <div className="flex flex-wrap gap-1 mt-4">
+                              {ngo.causeCategories.slice(0, 3).map((c) => (
+                                <span key={c} className="text-[9px] font-extrabold px-2 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-md border border-gray-150 dark:border-gray-750">
+                                  {c}
+                                </span>
+                              ))}
+                              {ngo.causeCategories.length > 3 && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 bg-gray-100 dark:bg-gray-850 text-gray-400 rounded">
+                                  +{ngo.causeCategories.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
 
-                        <Link href={`/ngo/${ngo.id}`} className="block group">
-                          <h4 className="text-base font-extrabold text-gray-900 dark:text-white group-hover:text-emerald-600 transition line-clamp-1">
-                            {ngo.orgName}
-                          </h4>
-                        </Link>
-                        
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 line-clamp-3">
-                          {ngo.description}
-                        </p>
+                        {/* Stat Metrics & Actions */}
+                        <div className="px-5 pb-5">
+                          <hr className="border-gray-100 dark:border-gray-800 my-4" />
+                          <div className="flex justify-between items-center mt-auto">
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 space-y-1">
+                              <div className="flex items-center gap-1 font-semibold">
+                                <Briefcase className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                <span>Campaigns: <strong className="text-gray-700 dark:text-gray-300 font-extrabold">{ngo.activeProjectsCount}</strong></span>
+                              </div>
+                              <div className="flex items-center gap-1 font-semibold">
+                                <IndianRupee className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                <span>Total Raised: <strong className="text-gray-700 dark:text-gray-300 font-extrabold">₹{ngo.totalRaised.toLocaleString()}</strong></span>
+                              </div>
+                            </div>
 
-                        <div className="flex flex-wrap gap-1 mt-3">
-                          {ngo.causeCategories.slice(0, 2).map((c) => (
-                            <span key={c} className="text-[9px] font-bold px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">
-                              {c}
-                            </span>
-                          ))}
-                          {ngo.causeCategories.length > 2 && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-400 rounded">
-                              +{ngo.causeCategories.length - 2}
-                            </span>
-                          )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleFollowToggle(ngo.id);
+                              }}
+                              className={`px-4 py-2 rounded-xl text-xs font-bold transition duration-150 ${
+                                ngo.isFollowed
+                                  ? "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-750 text-gray-700 dark:text-gray-300"
+                                  : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-500/10"
+                              }`}
+                            >
+                              {ngo.isFollowed ? "Following" : "Follow"}
+                            </button>
+                          </div>
                         </div>
                       </div>
-
-                      {/* Stat Metrics */}
-                      <div className="mt-5 border-t border-gray-100 dark:border-gray-800 pt-4 flex justify-between items-center">
-                        <div className="text-[10px] text-gray-500 dark:text-gray-400 space-y-0.5">
-                          <div><strong>Active Campaigns:</strong> {ngo.activeProjectsCount}</div>
-                          <div><strong>Total Raised:</strong> ₹{ngo.totalRaised.toLocaleString()}</div>
-                        </div>
-
-                        <button
-                          onClick={() => handleFollowToggle(ngo.id)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                            ngo.isFollowed
-                              ? "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-                              : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-500/10"
-                          }`}
-                        >
-                          {ngo.isFollowed ? "Following" : "Follow"}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Load More Button */}

@@ -1,6 +1,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import prisma from "@/lib/prisma";
 
+export interface VerificationFlag {
+  severity: "LOW" | "MEDIUM" | "HIGH";
+  issue: string;
+  category: "DOCUMENT_ERROR" | "FRAUD_ALERT";
+}
+
 export interface VerificationReport {
   extracted_data: {
     org_name: string | null;
@@ -10,7 +16,7 @@ export interface VerificationReport {
     validity_notes: string | null;
   };
   consistency_score: number;
-  flags: { severity: "LOW" | "MEDIUM" | "HIGH"; issue: string }[];
+  flags: VerificationFlag[];
   recommendation: "APPROVE" | "REVIEW_CAREFULLY" | "LIKELY_FRAUD";
   summary: string;
 }
@@ -31,11 +37,11 @@ export async function verifyNGODocuments(
                              formRegNumber.includes("9999") ||
                              formPanNumber.includes("9999");
                              
-    const flags: { severity: "LOW" | "MEDIUM" | "HIGH"; issue: string }[] = [];
+    const flags: VerificationFlag[] = [];
     if (isMockSuspicious) {
-      flags.push({ severity: "HIGH", issue: "Mock verification: Potential fraud indicator detected." });
+      flags.push({ severity: "HIGH", issue: "Mock verification: Potential fraud indicator detected.", category: "FRAUD_ALERT" });
     }
-    
+
     // Check for duplicates in database
     const duplicateProfile = await prisma.nGOProfile.findFirst({
       where: {
@@ -48,9 +54,10 @@ export async function verifyNGODocuments(
     });
 
     if (duplicateProfile) {
-      flags.push({ 
-        severity: "HIGH", 
-        issue: `Duplicate registration details detected: Registration number or PAN matches another registered NGO profile (ID: ${duplicateProfile.id})` 
+      flags.push({
+        severity: "HIGH",
+        issue: `Duplicate registration details detected: Registration number or PAN matches another registered NGO profile (ID: ${duplicateProfile.id})`,
+        category: "FRAUD_ALERT"
       });
     }
 
@@ -106,8 +113,11 @@ Analyze the extracted data and:
    - Illegible or unreadable document
    - Expired or missing validity dates
    - Suspiciously low-quality scan or signs of tampering
-4. Set a consistency score from 0 to 100 based on matches and readability.
-5. Determine a recommendation:
+4. For each flag, classify it as either:
+   - "DOCUMENT_ERROR": the NGO can fix this by resubmitting (e.g. missing 80G, wrong file uploaded, expired document, blurry scan, minor name formatting difference)
+   - "FRAUD_ALERT": indicates deliberate deception (e.g. different PAN number across documents, completely different org names, signs of tampering, fake registration number)
+5. Set a consistency score from 0 to 100 based on matches and readability.
+6. Determine a recommendation:
    - "APPROVE": If all details match perfectly, documents are valid, and there are no issues.
    - "REVIEW_CAREFULLY": If there are minor mismatches, formatting differences, or missing dates that require manual review.
    - "LIKELY_FRAUD": If there are major mismatches (e.g., different PAN numbers, completely different org names), signs of tampering, or unreadable documents.
@@ -123,7 +133,7 @@ Return ONLY a valid JSON object matching the response schema. No markdown, no HT
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       contents: [prompt, ...inlineFiles],
       config: {
         responseMimeType: "application/json",
@@ -148,9 +158,10 @@ Return ONLY a valid JSON object matching the response schema. No markdown, no HT
                 type: Type.OBJECT,
                 properties: {
                   severity: { type: Type.STRING }, // "LOW", "MEDIUM", "HIGH"
-                  issue: { type: Type.STRING }
+                  issue: { type: Type.STRING },
+                  category: { type: Type.STRING } // "DOCUMENT_ERROR" | "FRAUD_ALERT"
                 },
-                required: ["severity", "issue"]
+                required: ["severity", "issue", "category"]
               }
             },
             recommendation: { type: Type.STRING }, // "APPROVE", "REVIEW_CAREFULLY", "LIKELY_FRAUD"
@@ -177,7 +188,7 @@ Return ONLY a valid JSON object matching the response schema. No markdown, no HT
     };
     
     let consistency_score = typeof result.consistency_score === "number" ? result.consistency_score : 50;
-    const flags: { severity: "LOW" | "MEDIUM" | "HIGH"; issue: string }[] = Array.isArray(result.flags) ? result.flags : [];
+    const flags: VerificationFlag[] = Array.isArray(result.flags) ? result.flags : [];
     let recommendation = result.recommendation || "REVIEW_CAREFULLY";
     let summary = result.summary || "AI document verification complete. Review required.";
 
@@ -193,9 +204,10 @@ Return ONLY a valid JSON object matching the response schema. No markdown, no HT
     });
 
     if (duplicateProfile) {
-      flags.push({ 
-        severity: "HIGH", 
-        issue: `Duplicate registration details detected: Registration number or PAN matches another registered NGO profile (ID: ${duplicateProfile.id})` 
+      flags.push({
+        severity: "HIGH",
+        issue: `Duplicate registration details detected: Registration number or PAN matches another registered NGO profile (ID: ${duplicateProfile.id})`,
+        category: "FRAUD_ALERT"
       });
       recommendation = "LIKELY_FRAUD";
       consistency_score = Math.min(consistency_score, 30);
