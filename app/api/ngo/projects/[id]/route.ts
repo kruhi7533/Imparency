@@ -63,6 +63,14 @@ export async function PATCH(
     const problemStatement = formData.get("problemStatement") as string | null;
     const expectedOutcome = formData.get("expectedOutcome") as string | null;
     const location = formData.get("location") as string | null;
+    const districtName = formData.get("districtName") as string | null;
+    const stateName = formData.get("stateName") as string | null;
+    const latitudeStr = formData.get("latitude") as string | null;
+    const longitudeStr = formData.get("longitude") as string | null;
+    
+    const latitude = latitudeStr ? parseFloat(latitudeStr) : null;
+    const longitude = longitudeStr ? parseFloat(longitudeStr) : null;
+    
     const coverImageFile = formData.get("coverImage") as File | null;
 
     // Check required fields
@@ -167,6 +175,10 @@ export async function PATCH(
           problem_statement: problemStatement ? problemStatement.trim() : null,
           expected_outcome: expectedOutcome ? expectedOutcome.trim() : null,
           location: location.trim(),
+          districtName: districtName ? districtName.trim() : null,
+          stateName: stateName ? stateName.trim() : null,
+          latitude: latitude !== null && !isNaN(latitude) ? latitude : null,
+          longitude: longitude !== null && !isNaN(longitude) ? longitude : null,
           coverImage: coverImageUrl,
           targetAmount: !isLocked ? targetAmount : undefined,
         },

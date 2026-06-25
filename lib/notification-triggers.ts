@@ -68,7 +68,7 @@ export async function triggerMilestoneCompleted(milestoneId: string) {
         const donor = donation.donor;
         
         // Generate the narrative using Gemini
-        const narrative = await generateImpactNarrative(
+        const result = await generateImpactNarrative(
           donor,
           { amount: Number(donation.amount) },
           { title: project.title, raisedAmount: Number(project.raisedAmount) },
@@ -84,7 +84,9 @@ export async function triggerMilestoneCompleted(milestoneId: string) {
             donationId: donation.id,
             milestoneId: milestone.id,
             donorId: donor.id,
-            aiGeneratedNarrative: narrative
+            aiGeneratedNarrative: result.narrative,
+            sdgTags: result.sdgTags,
+            irisMetrics: result.irisMetrics,
           }
         });
 
@@ -103,7 +105,9 @@ export async function triggerMilestoneCompleted(milestoneId: string) {
             project.title,
             ngo.orgName,
             milestone.title,
-            narrative
+            result.narrative,
+            result.sdgTags,
+            result.irisMetrics
           );
         }
       })

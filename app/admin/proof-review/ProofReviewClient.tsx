@@ -317,59 +317,104 @@ export default function ProofReviewClient({
                       </h3>
 
                       {latestProof && latestProof.aiValidationScore !== null ? (
-                        <div className="space-y-3">
-                          {/* Score Badge */}
-                          <div className="flex items-center gap-3">
-                            <span
-                              className={`text-2xl font-black px-4 py-1.5 rounded-2xl ${
-                                latestProof.aiValidationScore >= 70
-                                  ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400"
-                                  : latestProof.aiValidationScore >= 50
-                                  ? "bg-yellow-100 dark:bg-yellow-950/60 text-yellow-800 dark:text-yellow-400"
-                                  : "bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-400"
-                              }`}
-                            >
-                              {latestProof.aiValidationScore}
-                            </span>
-                            <div>
-                              <div className="text-xs font-bold text-gray-900 dark:text-white">
-                                AI Confidence Score
-                              </div>
-                              <div className="text-[10px] text-gray-500 dark:text-gray-400">
-                                threshold: 70+ for auto-completion
+                        <div className="space-y-6">
+                          <div className="space-y-3">
+                            {/* Score Badge */}
+                            <div className="flex items-center gap-3">
+                              <span
+                                className={`text-2xl font-black px-4 py-1.5 rounded-2xl ${
+                                  latestProof.aiValidationScore >= 70
+                                    ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400"
+                                    : latestProof.aiValidationScore >= 50
+                                    ? "bg-yellow-100 dark:bg-yellow-950/60 text-yellow-800 dark:text-yellow-400"
+                                    : "bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-400"
+                                }`}
+                              >
+                                {latestProof.aiValidationScore}
+                              </span>
+                              <div>
+                                <div className="text-xs font-bold text-gray-900 dark:text-white">
+                                  Milestone Completion Score
+                                </div>
+                                <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                                  threshold: 70+ for auto-completion
+                                </div>
                               </div>
                             </div>
+
+                            {/* Reasoning */}
+                            {aiDetails && (
+                              <div className="text-xs text-gray-600 dark:text-gray-400 space-y-2">
+                                <p className="leading-relaxed">
+                                  <strong className="font-semibold text-gray-700 dark:text-gray-300">Reasoning:</strong>{" "}
+                                  {aiDetails.reasoning}
+                                </p>
+
+                                {/* Flags */}
+                                {aiDetails.flags && aiDetails.flags.length > 0 && (
+                                  <div className="space-y-1">
+                                    <span className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider block">
+                                      Flags Detected:
+                                    </span>
+                                    <ul className="list-disc pl-4 space-y-0.5 text-red-600 dark:text-red-400">
+                                      {aiDetails.flags.map((flag: string, idx: number) => (
+                                        <li key={idx} className="text-[11px] leading-tight">
+                                          {flag}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+
+                                {/* Suggestion */}
+                                {aiDetails.suggestion && (
+                                  <p className="text-[11px] bg-yellow-50 dark:bg-yellow-950/10 text-yellow-700 dark:text-yellow-400 p-2 rounded border border-yellow-100/30 dark:border-yellow-900/20 italic">
+                                    Suggestion: {aiDetails.suggestion}
+                                  </p>
+                                )}
+                              </div>
+                            )}
                           </div>
 
-                          {/* Reasoning */}
-                          {aiDetails && (
-                            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-2">
-                              <p className="leading-relaxed">
-                                <strong className="font-semibold text-gray-700 dark:text-gray-300">Reasoning:</strong>{" "}
-                                {aiDetails.reasoning}
+                          {/* Theory of Change Alignment Card */}
+                          {aiDetails && typeof aiDetails.tocAlignmentScore === "number" && (
+                            <div className="bg-blue-50/50 dark:bg-blue-950/10 p-4 rounded-xl border border-blue-100/50 dark:border-blue-900/20 space-y-3">
+                              <h3 className="text-[11px] font-bold text-blue-800 dark:text-blue-400 uppercase tracking-wider flex items-center justify-between">
+                                Theory of Change Alignment
+                                <span className={`px-2 py-0.5 rounded text-xs ${
+                                  aiDetails.tocAlignmentScore >= 70 ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {aiDetails.tocAlignmentScore}%
+                                </span>
+                              </h3>
+                              
+                              <p className="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed italic">
+                                {aiDetails.tocReasoning}
                               </p>
 
-                              {/* Flags */}
-                              {aiDetails.flags && aiDetails.flags.length > 0 && (
-                                <div className="space-y-1">
-                                  <span className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider block">
-                                    Flags Detected:
-                                  </span>
-                                  <ul className="list-disc pl-4 space-y-0.5 text-red-600 dark:text-red-400">
-                                    {aiDetails.flags.map((flag: string, idx: number) => (
-                                      <li key={idx} className="text-[11px] leading-tight">
-                                        {flag}
-                                      </li>
+                              {aiDetails.tocStrengths && aiDetails.tocStrengths.length > 0 && (
+                                <div className="space-y-1 mt-2">
+                                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Strengths:</span>
+                                  <ul className="list-disc pl-4 space-y-0.5 text-emerald-700 dark:text-emerald-500">
+                                    {aiDetails.tocStrengths.map((str: string, idx: number) => (
+                                      <li key={idx} className="text-[10px]">{str}</li>
                                     ))}
                                   </ul>
                                 </div>
                               )}
 
-                              {/* Suggestion */}
-                              {aiDetails.suggestion && (
-                                <p className="text-[11px] bg-yellow-50 dark:bg-yellow-950/10 text-yellow-700 dark:text-yellow-400 p-2 rounded border border-yellow-100/30 dark:border-yellow-900/20 italic">
-                                  Suggestion: {aiDetails.suggestion}
-                                </p>
+                              {aiDetails.tocGaps && aiDetails.tocGaps.length > 0 && (
+                                <div className="space-y-1 mt-2 bg-yellow-50/50 p-2 rounded border border-yellow-100">
+                                  <span className="text-[10px] font-bold text-yellow-700 uppercase">Warning - Impact Gaps:</span>
+                                  <ul className="list-disc pl-4 space-y-0.5 text-yellow-800">
+                                    {aiDetails.tocGaps.map((gap: string, idx: number) => (
+                                      <li key={idx} className="text-[10px]">{gap}</li>
+                                    ))}
+                                  </ul>
+                                  <p className="text-[9px] text-yellow-600 mt-1 italic leading-tight">
+                                    The milestone was completed, but there is insufficient evidence that it contributes toward the project's stated expected outcome.
+                                  </p>
+                                </div>
                               )}
                             </div>
                           )}
