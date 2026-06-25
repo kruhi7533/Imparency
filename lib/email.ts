@@ -27,16 +27,18 @@ interface SendEmailParams {
   subject: string;
   body: string;
   attachments?: Attachment[];
+  from?: string;
 }
 
-async function sendEmail({ to, subject, body, attachments }: SendEmailParams) {
+async function sendEmail({ to, subject, body, attachments, from }: SendEmailParams) {
   const html = body.replace(/\n/g, "<br/>");
 
   // 1. Gmail SMTP — preferred when a Gmail App Password is configured.
   if (gmailTransport) {
     try {
+      const fromHeader = from ? `${from.split(" <")[0]} <${process.env.GMAIL_USER}>` : `ImpactBridge <${process.env.GMAIL_USER}>`;
       const info = await gmailTransport.sendMail({
-        from: `ImpactBridge <${process.env.GMAIL_USER}>`,
+        from: fromHeader,
         to,
         subject,
         text: body,
@@ -54,7 +56,7 @@ async function sendEmail({ to, subject, body, attachments }: SendEmailParams) {
   if (resend) {
     try {
       const data = await resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL || "ImpactBridge <onboarding@resend.dev>", // default Resend sandbox domain
+        from: from || process.env.RESEND_FROM_EMAIL || "ImpactBridge <onboarding@resend.dev>", // default Resend sandbox domain
         to,
         subject,
         html,
@@ -274,5 +276,177 @@ export async function sendNGODocumentReminderEmail(
   const subject = `Reminder: Your NGO registration documents need attention`;
   const body = `Hi there,\n\nThis is a reminder that your NGO registration for "${orgName}" has been pending for 7 days due to the following document issue${issues.length > 1 ? "s" : ""}:\n\n${list}\n\nPlease log in to your dashboard and resubmit the correct documents to complete your verification:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/register\n\nIf you have already resubmitted, please ignore this message.\n\nBest regards,\nThe ImpactBridge Team`;
   return sendEmail({ to: ngoEmail, subject, body });
+}
+
+export async function sendTaxReceiptEmail(
+  to: string,
+  donorName: string,
+  ngoName: string,
+  amount: number,
+  receiptNumber: string,
+  financialYear: string,
+  pdfUrl: string
+) {
+  const subject = `Your 80G Tax Receipt — ${ngoName} (${financialYear})`;
+  const body = `Hi ${donorName},
+
+Thank you for your donation of ₹${amount.toLocaleString("en-IN")} to ${ngoName}.
+
+Your 80G tax receipt for Financial Year ${financialYear} is ready.
+
+Receipt Number: ${receiptNumber}
+Download Receipt: ${pdfUrl}
+
+This receipt is valid for claiming deduction under Section 80G of the
+Income Tax Act, 1961. Please retain it for your tax filing records.
+
+If you have any questions, reply to this email or contact us at
+support@imparency.in
+
+Best regards,
+The Imparency Team`;
+
+  return sendEmail({
+    to,
+    subject,
+    body,
+    from: "Imparency <onboarding@resend.dev>",
+  });
+}
+
+export async function sendPaymentRetryEmail(
+  to: string,
+  donorName: string,
+  ngoName: string,
+  amount: number,
+  retryUrl: string
+) {
+  const subject = `Action needed: Your donation to ${ngoName} didn't go through`;
+  const body = `Hi ${donorName},
+
+We noticed your donation of Rs.${amount.toLocaleString("en-IN")} to ${ngoName}
+was unsuccessful.
+
+This can happen due to a temporary issue with your bank or payment network.
+The good news — you can retry your donation with one click:
+
+Retry Donation: ${retryUrl}
+
+This link is valid for 24 hours. After that, you will need to initiate
+a new donation from the project page.
+
+If you believe this is an error or your account was charged, please
+contact us at support@imparency.in and we will resolve it immediately.
+
+Best regards,
+The Imparency Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendTierUpgradeEmail(
+  to: string,
+  donorName: string,
+  donationCount: number,
+  ctaUrl: string
+) {
+  const subject = `You've made ${donationCount} donations — ready to go deeper?`;
+  const body = `Hi ${donorName},
+
+You've now donated ${donationCount} times through Imparency. That's
+real, verified impact — and you can see exactly where every rupee went.
+
+Donors who make a monthly standing commitment see 3x more impact
+updates and get priority access to new high-trust NGO campaigns.
+
+Consider setting up a monthly commitment on your dashboard:
+${ctaUrl}
+
+Thank you for being one of our most consistent supporters.
+
+Best regards,
+The Imparency Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendNGOReferralEmail(
+  to: string,
+  donorName: string,
+  previousNGO: string,
+  referredNGO: string,
+  referredNGOId: string,
+  ctaUrl: string
+) {
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const subject = `Since you supported ${previousNGO}, you might love this`;
+  const body = `Hi ${donorName},
+
+Your donation to ${previousNGO} created verified impact — we hope you
+saw the full report.
+
+We thought you might want to know about another organization doing
+similar work: ${referredNGO}.
+
+They're verified on Imparency and have a strong transparency record.
+See their profile here:
+${baseUrl}/ngo/${referredNGOId}
+
+You can also view this on your dashboard:
+${ctaUrl}
+
+Best regards,
+The Imparency Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendGrantModeEmail(
+  to: string,
+  donorName: string,
+  ngoName: string,
+  totalDonated: number,
+  ctaUrl: string
+) {
+  const subject = `Your giving to ${ngoName} — let's talk about what's next`;
+  const body = `Hi ${donorName},
+
+Your organization has contributed Rs.${totalDonated.toLocaleString("en-IN")}
+through Imparency. That's a significant commitment, and we want to
+make sure you're getting the most from it.
+
+For organizations at your giving level, a structured multi-year grant
+can deliver better outcomes, stronger compliance documentation, and
+deeper partnership with the NGOs you support.
+
+We'd love to explore this with you. See your options on the dashboard:
+${ctaUrl}
+
+Best regards,
+The Imparency Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendVolunteerEmail(
+  to: string,
+  donorName: string,
+  ngoName: string,
+  ctaUrl: string
+) {
+  const subject = `Would you like to contribute more than money to ${ngoName}?`;
+  const body = `Hi ${donorName},
+
+Your financial support for ${ngoName} has made a real difference.
+
+We wanted to ask: would you be open to contributing your professional
+skills or expertise to this organization as well? Many of our verified
+NGOs are looking for advisors, mentors, and skilled volunteers in areas
+like technology, finance, legal, and communications.
+
+If this interests you, let us know through your dashboard:
+${ctaUrl}
+
+No commitment required — just an expression of interest.
+
+Best regards,
+The Imparency Team`;
+  return sendEmail({ to, subject, body });
 }
 

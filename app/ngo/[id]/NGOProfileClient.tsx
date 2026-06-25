@@ -279,18 +279,28 @@ export default function NGOProfileClient({
                       {completedProjects.map((project: Project) => (
                         <div
                           key={project.id}
-                          className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm opacity-85 hover:opacity-100 transition duration-150"
+                          className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm opacity-85 hover:opacity-100 transition duration-150 flex flex-col justify-between"
                         >
-                          <div className="h-40 bg-gray-200 dark:bg-gray-800 relative">
-                            <ProjectCoverImage src={project.coverImage} alt={project.title} causeCategory={project.causeCategory} className="w-full h-full object-cover object-center grayscale" />
-                            <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 bg-gray-900/80 text-white rounded-full">Completed</span>
-                          </div>
-                          <div className="p-5 space-y-2">
-                            <h4 className="text-base font-extrabold text-gray-900 dark:text-white line-clamp-1">{project.title}</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{project.description}</p>
-                            <div className="pt-2 text-xs font-semibold text-emerald-600">
-                              ✓ ₹{Number(project.targetAmount).toLocaleString()} raised and deployed successfully.
+                          <div>
+                            <div className="h-40 bg-gray-200 dark:bg-gray-800 relative">
+                              <ProjectCoverImage src={project.coverImage} alt={project.title} causeCategory={project.causeCategory} className="w-full h-full object-cover object-center grayscale" />
+                              <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 bg-gray-900/80 text-white rounded-full">Completed</span>
                             </div>
+                            <div className="p-5 space-y-2">
+                              <h4 className="text-base font-extrabold text-gray-900 dark:text-white line-clamp-1">{project.title}</h4>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{project.description}</p>
+                              <div className="pt-2 text-xs font-semibold text-emerald-600">
+                                ✓ ₹{Number(project.targetAmount).toLocaleString()} raised and deployed successfully.
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-5 pt-0">
+                            <Link
+                              href={`/projects/${project.id}`}
+                              className="block text-center border border-emerald-600/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 font-bold py-2 rounded-xl text-xs transition"
+                            >
+                              View Milestones & Proofs
+                            </Link>
                           </div>
                         </div>
                       ))}

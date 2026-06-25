@@ -116,7 +116,7 @@ export async function remindNGODocumentErrors() {
   }
 
   let emailsSent = 0;
-  for (const [ngoId, alerts] of byNGO.entries()) {
+  for (const [ngoId, alerts] of Array.from(byNGO.entries())) {
     const ngo = await prisma.nGOProfile.findUnique({
       where: { id: ngoId },
       include: { user: { select: { email: true } } },
@@ -127,7 +127,7 @@ export async function remindNGODocumentErrors() {
     await sendNGODocumentReminderEmail(
       ngo.user.email,
       ngo.orgName,
-      alerts.map((a) => a.description)
+      alerts.map((a: { description: string }) => a.description)
     );
     emailsSent++;
   }

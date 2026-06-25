@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 export default function Navbar() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Hide Navbar inside the Login / Signup screen to keep it focused
   if (pathname === "/login") return null;
@@ -54,15 +55,28 @@ export default function Navbar() {
                 Launch Project
               </Link>
               <span className="text-gray-700 select-none">|</span>
+              <Link href="/" className={`text-gray-500 font-medium hover:text-gray-300 transition ${pathname === "/" ? "text-white font-bold" : ""}`}>
+                Home
+              </Link>
               <Link href="/discover" className={`text-gray-500 font-medium hover:text-gray-300 transition ${pathname === "/discover" ? "text-white font-bold" : ""}`}>
                 Discover NGOs
               </Link>
             </>
           ) : (
             <>
+              <Link href="/" className={`hover:text-white transition ${pathname === "/" ? "text-white" : ""}`}>
+                Home
+              </Link>
               <Link href="/discover" className={`hover:text-white transition ${pathname === "/discover" ? "text-white" : ""}`}>
                 Discover NGOs
               </Link>
+
+              {/* Donor role specific links */}
+              {session?.user?.role === "DONOR" && (
+                <Link href="/donor/portfolio" className={`hover:text-white transition ${pathname === "/donor/portfolio" ? "text-white" : ""}`}>
+                  My Impact Portfolio
+                </Link>
+              )}
               
               {/* Admin role specific links */}
               {session?.user?.role === "ADMIN" && (
@@ -71,7 +85,7 @@ export default function Navbar() {
                 </Link>
               )}
 
-              {/* Fallback general links for guests / donors */}
+              {/* Fallback general links for guests */}
               {!session?.user && (
                 <Link href="/ngo/register" className={`hover:text-white transition ${pathname === "/ngo/register" ? "text-white" : ""}`}>
                   NGO Onboarding
@@ -86,25 +100,59 @@ export default function Navbar() {
           {status === "loading" ? (
             <div className="h-8 w-8 animate-pulse bg-gray-900 rounded-full" />
           ) : session?.user ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 relative">
               {/* User details */}
               <div className="hidden lg:block text-right">
                 <div className="text-xs font-extrabold text-white truncate max-w-[150px]">{session.user.name}</div>
                 <div className="text-[10px] text-gray-500 truncate max-w-[150px]">{session.user.email}</div>
               </div>
               
-              {/* Profile Avatar Initials */}
-              <div className="w-8 h-8 rounded-full bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-center text-xs select-none">
-                {(session.user.name || "U").charAt(0).toUpperCase()}
-              </div>
-
-              {/* Sign Out Action Button */}
+              {/* Profile Avatar Initials Trigger */}
               <button
-                onClick={handleSignOut}
-                className="border border-gray-800 hover:border-gray-700 bg-gray-900/50 hover:bg-gray-900 text-white font-bold py-2 px-4 rounded-xl text-xs transition"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="w-8 h-8 rounded-full bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-center text-xs select-none hover:bg-emerald-650/30 transition focus:outline-none relative"
+                aria-haspopup="true"
+                aria-expanded={dropdownOpen}
               >
-                Sign Out
+                {(session.user.name || "U").charAt(0).toUpperCase()}
               </button>
+
+              {/* Dropdown Menu */}
+              {dropdownOpen && (
+                <>
+                  {/* Backdrop overlay to close on outside click */}
+                  <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)}></div>
+                  
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-gray-950 border border-gray-900 rounded-xl shadow-xl py-2 z-20 animate-fadeIn origin-top-right">
+                    {session.user.role === "DONOR" && (
+                      <Link
+                        href="/donor/profile"
+                        onClick={() => setDropdownOpen(false)}
+                        className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
+                      >
+                        Profile
+                      </Link>
+                    )}
+                    <Link
+                      href="/help"
+                      onClick={() => setDropdownOpen(false)}
+                      className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
+                    >
+                      Help
+                    </Link>
+                    <div className="border-t border-gray-900 my-1"></div>
+                    <button
+                      onClick={() => {
+                        setDropdownOpen(false);
+                        handleSignOut();
+                      }}
+                      className="w-full text-left block px-4 py-2 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-gray-900 transition"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-2">

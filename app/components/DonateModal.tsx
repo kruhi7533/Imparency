@@ -5,12 +5,13 @@ import React, { useState } from "react";
 interface DonateModalProps {
   projectId: string;
   projectTitle: string;
+  ngoName: string;
   onClose: () => void;
 }
 
 const PRESET_AMOUNTS = [500, 1000, 2000, 5000];
 
-export default function DonateModal({ projectId, projectTitle, onClose }: DonateModalProps) {
+export default function DonateModal({ projectId, projectTitle, ngoName, onClose }: DonateModalProps) {
   const [amount, setAmount] = useState<number>(1000);
   const [customAmount, setCustomAmount] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
@@ -194,6 +195,10 @@ export default function DonateModal({ projectId, projectTitle, onClose }: Donate
               </div>
             </div>
 
+            <p className="text-[10px] text-gray-500 leading-normal text-center bg-gray-50 dark:bg-gray-950 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+              By proceeding, you consent to sharing your name and PAN with {ngoName} for 80G tax certificate issuance as required by the Income Tax Act, 1961.
+            </p>
+
             <button
               onClick={() => handleCheckoutInit()}
               disabled={loading}
@@ -289,6 +294,10 @@ export default function DonateModal({ projectId, projectTitle, onClose }: Donate
                 </div>
               </div>
             </div>
+
+            <p className="text-[10px] text-gray-500 leading-normal text-center bg-gray-50 dark:bg-gray-950 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+              By proceeding, you consent to sharing your name and PAN with {ngoName} for 80G tax certificate issuance as required by the Income Tax Act, 1961.
+            </p>
 
             <div className="flex gap-3 pt-3">
               <button

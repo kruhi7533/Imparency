@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Navbar from "@/app/components/Navbar";
 
 export default function PendingDonationPage() {
   const params = useParams();
@@ -80,7 +79,6 @@ export default function PendingDonationPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
-      <Navbar />
 
       <div className="max-w-md mx-auto px-4 py-20">
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl p-6 sm:p-8 shadow-xl text-center space-y-6">
