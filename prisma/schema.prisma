@@ -15,6 +15,13 @@ enum Role {
   ADMIN
 }
 
+enum DonorPersona {
+  CSR_OFFICER
+  HNI
+  FOUNDATION
+  GOVERNMENT
+}
+
 enum VerificationStatus {
   PENDING
   VERIFIED
@@ -70,6 +77,11 @@ model User {
   companyName  String?
   isCorporate  Boolean  @default(false)
   gstNumber    String?
+  donorPersona DonorPersona?
+  personaSetAt DateTime?
+  donorTier          DonorTier  @default(STANDARD)
+  reEngagementPath   ReEngagementPath?
+  volunteerInterest  Boolean    @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -80,6 +92,8 @@ model User {
   followers       NGOFollower[]
   milestoneProofs MilestoneProof[]
   adminReviews    MilestoneReview[] @relation("AdminReviews")
+  consentLogs     ConsentLog[]
+  reEngagementEvents ReEngagementEvent[]
 }
 
 model NGOProfile {
@@ -242,6 +256,10 @@ model Donation {
   receiptUrl        String?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
+  retryCount          Int       @default(0)
+  lastFailedAt        DateTime?
+  retryToken          String?   @unique
+  retryTokenExpiresAt DateTime?
 
   impactReports ImpactReport[]
   taxReceipt    TaxReceipt?
@@ -344,4 +362,47 @@ model FraudAlert {
   resolved       Boolean       @default(false)
   resolutionNote String?
   createdAt      DateTime      @default(now())
+}
+
+model ConsentLog {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose       ConsentPurpose
+  policyVersion String    @default("1.0")
+  consentedAt   DateTime  @default(now())
+  ipAddress     String?
+  
+  @@index([userId])
+}
+
+enum ConsentPurpose {
+  ACCOUNT_CREATION
+  DONATION_DATA_SHARING
+}
+
+enum DonorTier {
+  STANDARD
+  COMMITTED
+  MAJOR_DONOR
+}
+
+enum ReEngagementPath {
+  TIER_UPGRADE
+  NGO_REFERRAL
+  GRANT_MODE
+  VOLUNTEER_ADVISOR
+}
+
+model ReEngagementEvent {
+  id          String            @id @default(uuid())
+  donorId     String
+  donor       User              @relation(fields: [donorId], references: [id])
+  reportId    String            // ImpactReport that triggered this
+  path        ReEngagementPath
+  emailSentAt DateTime          @default(now())
+  ctaClickedAt DateTime?
+  dismissed   Boolean           @default(false)
+
+  @@index([donorId])
 }

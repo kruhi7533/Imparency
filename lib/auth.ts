@@ -44,6 +44,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           role: user.role,
           ngoProfileId: user.ngoProfile?.id || null,
+          donorPersona: user.donorPersona,
         };
       },
     }),
@@ -89,6 +90,7 @@ export const authOptions: NextAuthOptions = {
         user.id = dbUser.id;
         user.role = dbUser.role;
         user.ngoProfileId = dbUser.ngoProfile?.id || null;
+        user.donorPersona = dbUser.donorPersona ?? null;
       }
       return true;
     },
@@ -98,6 +100,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.ngoProfileId = user.ngoProfileId;
+        token.donorPersona = user.donorPersona ?? null;
       }
       return token;
     },
@@ -106,6 +109,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id;
         session.user.role = token.role;
         session.user.ngoProfileId = token.ngoProfileId;
+        session.user.donorPersona = token.donorPersona ?? null;
       }
       return session;
     },

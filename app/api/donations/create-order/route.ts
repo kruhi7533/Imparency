@@ -1,136 +1,81 @@
 import { NextResponse } from "next/server";
-import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
-import Razorpay from "razorpay";
-import { Role } from "@prisma/client";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const auth = await verifySessionRole(Role.DONOR);
-  if (!auth.authorized) {
-    return auth.response;
-  }
-  
-  const userId = auth.session.user.id;
-
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (session.user.role !== "DONOR") {
+      return NextResponse.json({ error: "Only donors can make donations" }, { status: 403 });
+    }
+
     const body = await request.json();
-    const { projectId, amount, name, panNumber, billingAddress } = body;
+    const { projectId, amount } = body;
 
-    if (!projectId || !amount || Number(amount) <= 0) {
-      return NextResponse.json({ error: "Invalid project ID or amount" }, { status: 400 });
+    if (!projectId) {
+      return NextResponse.json({ error: "Project ID is required" }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!amount || typeof amount !== "number" || amount < 100) {
+      return NextResponse.json({ error: "Amount must be a number and at least Rs. 100" }, { status: 400 });
     }
 
-    const finalName = name || user.name;
-    const finalPan = panNumber || user.panNumber;
-    const finalAddress = billingAddress || user.billingAddress;
-
-    if (!finalName || !finalPan || !finalAddress) {
-      return NextResponse.json({
-        error: "Missing donor details",
-        missingDetails: {
-          name: !finalName,
-          panNumber: !finalPan,
-          billingAddress: !finalAddress,
-        }
-      }, { status: 400 });
-    }
-
-    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-    if (!panRegex.test(finalPan)) {
-      return NextResponse.json({ error: "Invalid PAN format" }, { status: 400 });
-    }
-
-    if (finalName !== user.name || finalPan !== user.panNumber || finalAddress !== user.billingAddress) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          name: finalName,
-          panNumber: finalPan,
-          billingAddress: finalAddress,
-        },
-      });
-
-      // Run PAN usage fraud check
-      try {
-        const { checkPANUsage } = require("@/lib/fraud-alerts");
-        await checkPANUsage(finalPan, userId);
-      } catch (panErr) {
-        console.error("Failed to run PAN usage fraud check:", panErr);
-      }
-    }
-
+    // Fetch project
     const project = await prisma.project.findUnique({
       where: { id: projectId },
     });
 
-    if (!project || project.status !== "ACTIVE") {
-      return NextResponse.json({ error: "Project is not active or does not exist" }, { status: 400 });
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
+    if (project.status !== "ACTIVE") {
+      return NextResponse.json({ error: "Project is not active and cannot receive donations" }, { status: 400 });
+    }
+
+    // Create Razorpay order
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Razorpay = require("razorpay");
+    const razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+
+    const order = await razorpay.orders.create({
+      amount: Math.round(amount * 100), // paise
+      currency: "INR",
+      receipt: `rcpt_${Date.now()}`,
+    });
+
+    // Create Donation record in DB
     const donation = await prisma.donation.create({
       data: {
-        donorId: userId,
-        projectId: projectId,
-        amount: amount,
-        razorpayOrderId: "pending_order_id",
         status: "PENDING",
+        razorpayOrderId: order.id,
+        donorId: session.user.id,
+        projectId,
+        amount,
       },
     });
 
-    const keyId = process.env.RAZORPAY_KEY_ID || "rzp_test_mockkeyid";
-    const keySecret = process.env.RAZORPAY_KEY_SECRET || "mockkeysecret";
-    
-    let razorpayOrderId = "";
-    
-    try {
-      const razorpay = new Razorpay({
-        key_id: keyId,
-        key_secret: keySecret,
-      });
-
-      const orderOptions = {
-        amount: Math.round(Number(amount) * 100), // in paise
-        currency: "INR",
-        receipt: donation.id,
-      };
-
-      const rpOrder = await razorpay.orders.create(orderOptions);
-      razorpayOrderId = rpOrder.id;
-    } catch (rpErr) {
-      console.warn("Razorpay API call failed, using mock order ID in dev:", rpErr);
-      if (process.env.NODE_ENV !== "production") {
-        razorpayOrderId = `order_${donation.id.substring(0, 14)}`;
-      } else {
-        await prisma.donation.delete({ where: { id: donation.id } });
-        return NextResponse.json({ error: "Razorpay order creation failed" }, { status: 500 });
-      }
-    }
-
-    const updatedDonation = await prisma.donation.update({
-      where: { id: donation.id },
-      data: { razorpayOrderId },
-    });
-
     return NextResponse.json({
-      donationId: updatedDonation.id,
-      razorpayOrderId: updatedDonation.razorpayOrderId,
-      amount: updatedDonation.amount,
-      keyId: keyId,
-      donorName: finalName,
-      donorEmail: auth.session.user.email,
-      projectTitle: project.title,
+      orderId: order.id,
+      amount,
+      currency: "INR",
+      donationId: donation.id,
     });
-
-  } catch (err: any) {
-    console.error("Order creation error:", err);
-    return NextResponse.json({ error: err.message || "Internal Server Error" }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error("Error creating donation order:", err);
+    return NextResponse.json(
+      { error: err.message || "Failed to create donation order" },
+      { status: 500 }
+    );
   }
 }

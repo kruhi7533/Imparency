@@ -1,3 +1,7 @@
+// DPDP Note: Consent for ACCOUNT_CREATION is captured client-side in
+// app/login/page.tsx and logged via /api/consent/record after user creation.
+// Do NOT create a user record if the client did not send consent first.
+
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";

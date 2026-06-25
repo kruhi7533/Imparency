@@ -21,10 +21,14 @@ function LoginContent() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
+  
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [consentError, setConsentError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setConsentError("");
     setSuccess("");
     setLoading(true);
 
@@ -35,9 +39,17 @@ function LoginContent() {
     }
 
     try {
+      let signupData: any = null;
+
       if (isSignUp) {
         if (!name) {
           setError("Name is required for registration.");
+          setLoading(false);
+          return;
+        }
+
+        if (!consentGiven) {
+          setConsentError("You must accept the data processing terms to create an account.");
           setLoading(false);
           return;
         }
@@ -51,7 +63,7 @@ function LoginContent() {
           body: JSON.stringify({ name, email, password, role }),
         });
 
-        const signupData = await signupRes.json();
+        signupData = await signupRes.json();
 
         if (!signupRes.ok) {
           throw new Error(signupData.error || "Registration failed.");
@@ -71,14 +83,39 @@ function LoginContent() {
         throw new Error(result.error || "Authentication failed.");
       }
 
+      // If it was a signup, record consent now that the user session is active
+      if (isSignUp && signupData?.userId) {
+        try {
+          await fetch("/api/consent/record", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId: signupData.userId,
+              purpose: "ACCOUNT_CREATION",
+            }),
+          });
+        } catch (consentErr) {
+          console.error("DPDP Consent Logging DB Failure (soft-failed):", consentErr);
+        }
+      }
+
       // 3. Post-Auth Routing Logic
-      setTimeout(() => {
+      setTimeout(async () => {
         if (role === "NGO" || callbackUrl.includes("/ngo")) {
           router.push("/ngo/register");
         } else if (callbackUrl.includes("/admin")) {
           router.push("/admin/dashboard");
         } else {
-          router.push("/discover");
+          // For DONOR: check if persona is set via a quick API call
+          const personaRes = await fetch("/api/donor/persona/check");
+          const personaData = await personaRes.json();
+          if (!personaData.personaSet) {
+            router.push("/donor/onboarding");
+          } else {
+            router.push(callbackUrl !== "/" ? callbackUrl : "/discover");
+          }
         }
         router.refresh();
       }, 1000);
@@ -175,17 +212,43 @@ function LoginContent() {
         </div>
 
         {isSignUp && (
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1">Account Role *</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as "DONOR" | "NGO")}
-              className="w-full px-4 py-2 bg-gray-950 border border-gray-900 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
-            >
-              <option value="DONOR">Donor Account (Fund projects & track impact)</option>
-              <option value="NGO">NGO Organization (Publish projects & submit proof)</option>
-            </select>
-          </div>
+          <>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Account Role *</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as "DONOR" | "NGO")}
+                className="w-full px-4 py-2 bg-gray-950 border border-gray-900 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+              >
+                <option value="DONOR">Donor Account (Fund projects & track impact)</option>
+                <option value="NGO">NGO Organization (Publish projects & submit proof)</option>
+              </select>
+            </div>
+
+            <div className="flex items-start gap-2.5 mt-4">
+              <input
+                id="consentCheckbox"
+                type="checkbox"
+                checked={consentGiven}
+                onChange={(e) => {
+                  setConsentGiven(e.target.checked);
+                  if (e.target.checked) setConsentError("");
+                }}
+                className="mt-1 h-4 w-4 rounded border-gray-900 bg-gray-950 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-gray-950 transition cursor-pointer"
+              />
+              <label htmlFor="consentCheckbox" className="text-xs text-gray-400 leading-normal cursor-pointer select-none">
+                I consent to Imparency collecting and processing my personal data (name, email) for donation tracking and tax receipt generation, as required under India's DPDP Act 2023.{" "}
+                <Link href="/privacy-policy" target="_blank" className="text-emerald-500 hover:underline">
+                  Privacy Policy
+                </Link>
+              </label>
+            </div>
+            {consentError && (
+              <p className="text-[11px] text-red-500 mt-1 font-semibold">
+                {consentError}
+              </p>
+            )}
+          </>
         )}
 
         <button

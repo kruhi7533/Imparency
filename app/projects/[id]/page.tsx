@@ -274,7 +274,11 @@ export default async function ProjectPage({
                 </div>
               </div>
 
-              <ProjectClient projectId={project.id} projectTitle={project.title} />
+              <ProjectClient 
+                projectId={project.id} 
+                projectTitle={project.title} 
+                ngoName={project.ngo.orgName} 
+              />
               
             </div>
 
