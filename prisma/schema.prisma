@@ -182,7 +182,6 @@ model ComplianceAuditLog {
   createdAt    DateTime      @default(now())
 
   @@index([complianceId])
->>>>>>> 86ac3060f5241a5f9810ddf91f31daff7aac9267
 }
 
 model Project {
