@@ -58,51 +58,61 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Milestone not found" }, { status: 404 });
     }
 
+    const adminId = auth.session.user.id;
+    const latestProof = milestone.proofs[0] ?? null;
+
     if (action === "APPROVE") {
-      // Update status to COMPLETED
       await prisma.milestone.update({
         where: { id: milestoneId },
         data: { status: "COMPLETED" }
       });
 
-      // Trigger parallel batch narratives generation & notifications for donors
-      // and NGO approval notification asynchronously
-      // (using await to ensure they complete or run cleanly)
+      await prisma.milestoneReview.create({
+        data: {
+          milestoneId,
+          proofId: latestProof?.id ?? null,
+          adminId,
+          action: "APPROVED",
+          aiScore: latestProof?.aiValidationScore ?? null,
+        }
+      });
+
       await triggerMilestoneCompleted(milestoneId);
       await triggerProofApproved(milestoneId);
 
-      // Recalculate NGO health score
       try {
         await recalculateNGOHealthScore(milestone.project.ngoId);
       } catch (healthErr) {
         console.error("Failed to recalculate health score on proof approval:", healthErr);
       }
 
-      return NextResponse.json({
-        success: true,
-        message: "Milestone proof approved successfully."
-      });
+      return NextResponse.json({ success: true, message: "Milestone proof approved successfully." });
     } else {
-      // Update status to IN_PROGRESS so NGO can resubmit
       await prisma.milestone.update({
         where: { id: milestoneId },
         data: { status: "IN_PROGRESS" }
       });
 
-      // Optionally record the rejection reason somewhere (e.g. log, or notification trigger handles it)
+      await prisma.milestoneReview.create({
+        data: {
+          milestoneId,
+          proofId: latestProof?.id ?? null,
+          adminId,
+          action: "REJECTED",
+          note: rejectionReason.trim(),
+          aiScore: latestProof?.aiValidationScore ?? null,
+        }
+      });
+
       await triggerProofRejected(milestoneId, rejectionReason);
 
-      // Recalculate NGO health score
       try {
         await recalculateNGOHealthScore(milestone.project.ngoId);
       } catch (healthErr) {
         console.error("Failed to recalculate health score on proof rejection:", healthErr);
       }
 
-      return NextResponse.json({
-        success: true,
-        message: "Milestone proof rejected successfully."
-      });
+      return NextResponse.json({ success: true, message: "Milestone proof rejected successfully." });
     }
   } catch (err: any) {
     console.error("Error in admin review proof endpoint:", err);

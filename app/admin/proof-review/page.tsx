@@ -41,31 +41,21 @@ export default async function AdminProofReviewPage() {
     orderBy: { updatedAt: "desc" },
   });
 
-  // Fetch audit history of reviewed milestones (status COMPLETED or VERIFIED with at least one proof)
-  const historyMilestones = await prisma.milestone.findMany({
-    where: {
-      status: { in: ["COMPLETED", "VERIFIED"] },
-      proofs: { some: {} },
-    },
+  // Fetch audit trail — all review decisions, newest first
+  const auditRecords = await prisma.milestoneReview.findMany({
+    orderBy: { reviewedAt: "desc" },
     include: {
-      project: {
+      milestone: {
         include: {
-          ngo: true,
-        },
+          project: {
+            include: { ngo: true }
+          }
+        }
       },
-      proofs: {
-        orderBy: { submittedAt: "desc" },
-        include: {
-          submittedBy: {
-            select: {
-              name: true,
-              email: true,
-            },
-          },
-        },
-      },
-    },
-    orderBy: { updatedAt: "desc" },
+      admin: {
+        select: { name: true, email: true }
+      }
+    }
   });
 
   // Format the dates and decimals to prevent serialization warnings
@@ -88,23 +78,22 @@ export default async function AdminProofReviewPage() {
     })),
   }));
 
-  const serializedHistory = historyMilestones.map((m) => ({
-    ...m,
-    targetAmount: Number(m.targetAmount),
-    deadline: m.deadline.toISOString(),
-    createdAt: m.createdAt.toISOString(),
-    updatedAt: m.updatedAt.toISOString(),
-    project: {
-      ...m.project,
-      targetAmount: Number(m.project.targetAmount),
-      raisedAmount: Number(m.project.raisedAmount),
-      createdAt: m.project.createdAt.toISOString(),
-      updatedAt: m.project.updatedAt.toISOString(),
-    },
-    proofs: m.proofs.map((p) => ({
-      ...p,
-      submittedAt: p.submittedAt.toISOString(),
-    })),
+  const serializedAudit = auditRecords.map((r) => ({
+    id: r.id,
+    action: r.action,
+    note: r.note,
+    aiScore: r.aiScore,
+    reviewedAt: r.reviewedAt.toISOString(),
+    admin: r.admin,
+    milestone: {
+      id: r.milestone.id,
+      title: r.milestone.title,
+      sequenceOrder: r.milestone.sequenceOrder,
+      project: {
+        title: r.milestone.project.title,
+        ngo: { orgName: r.milestone.project.ngo.orgName }
+      }
+    }
   }));
 
   return (
@@ -119,6 +108,8 @@ export default async function AdminProofReviewPage() {
           <div className="flex gap-4 text-sm font-semibold">
             <a href="/admin/dashboard" className="text-gray-500 hover:text-emerald-600 transition">NGO Verification</a>
             <a href="/admin/proof-review" className="text-emerald-600 hover:text-emerald-700 transition underline decoration-2 underline-offset-4">Proof Review</a>
+            <a href="/admin/fraud-alerts" className="text-gray-500 hover:text-emerald-600 transition">Fraud Alerts</a>
+            <a href="/admin/fcra-review" className="text-gray-500 hover:text-emerald-600 transition">FCRA Review</a>
           </div>
           <div className="h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
           <div className="flex items-center gap-4">
@@ -144,7 +135,7 @@ export default async function AdminProofReviewPage() {
 
         <ProofReviewClient
           initialPending={serializedPending}
-          initialHistory={serializedHistory}
+          initialAudit={serializedAudit}
         />
       </main>
     </div>

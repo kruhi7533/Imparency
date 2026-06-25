@@ -1,11 +1,25 @@
 import prisma from "@/lib/prisma";
 
+export type AlertCategory = "DOCUMENT_ERROR" | "FRAUD_ALERT";
+export type AlertSubType =
+  | "MISSING_DOCUMENT"
+  | "WRONG_DOCUMENT_TYPE"
+  | "EXPIRED_DOCUMENT"
+  | "UNREADABLE_DOCUMENT"
+  | "NAME_MISMATCH"
+  | "DUPLICATE_IDENTITY"
+  | "PAN_API_MISMATCH"
+  | "FAKE_REGISTRATION"
+  | "TAMPERED_DOCUMENT";
+
 export async function createFraudAlert(
   type: string,
   entityId: string,
   entityType: string,
   description: string,
-  severity: "LOW" | "MEDIUM" | "HIGH"
+  severity: "LOW" | "MEDIUM" | "HIGH",
+  alertCategory: AlertCategory = "FRAUD_ALERT",
+  subType?: AlertSubType
 ): Promise<void> {
   try {
     await prisma.fraudAlert.create({
@@ -15,10 +29,12 @@ export async function createFraudAlert(
         entityType,
         description,
         severity,
+        alertCategory,
+        subType,
         resolved: false
       }
     });
-    console.log(`[FRAUD ALERT - ${severity}]: ${type} on ${entityType} ${entityId} - ${description}`);
+    console.log(`[${alertCategory} - ${severity}]: ${type} on ${entityType} ${entityId} - ${description}`);
   } catch (error) {
     console.error("Failed to create fraud alert:", error);
   }
@@ -30,7 +46,7 @@ export async function createFraudAlert(
  */
 export async function checkPANUsage(panNumber: string, userId: string): Promise<void> {
   if (!panNumber) return;
-  
+
   try {
     const duplicateUsers = await prisma.user.findMany({
       where: {
@@ -38,14 +54,16 @@ export async function checkPANUsage(panNumber: string, userId: string): Promise<
         id: { not: userId }
       }
     });
-    
+
     if (duplicateUsers.length > 0) {
       await createFraudAlert(
         "DUPLICATE_PAN_REGISTRATION",
         userId,
         "DONOR",
         `User registration PAN number ${panNumber} matches existing user(s): ${duplicateUsers.map(u => u.id).join(", ")}`,
-        "HIGH"
+        "HIGH",
+        "FRAUD_ALERT",
+        "DUPLICATE_IDENTITY"
       );
     }
   } catch (error) {
@@ -80,7 +98,8 @@ export async function checkGeminiScore(milestoneId: string, score: number): Prom
         milestone.id,
         "NGO",
         `NGO submitted proof for milestone "${milestone.title}" that scored an extremely low AI score of ${score}/100.`,
-        "HIGH"
+        "HIGH",
+        "FRAUD_ALERT"
       );
 
       // 2. Check if NGO has received two consecutive scores below 40 on different milestones
@@ -110,7 +129,8 @@ export async function checkGeminiScore(milestoneId: string, score: number): Prom
           ngoId,
           "NGO",
           `NGO "${milestone.project.ngo.orgName}" has been auto-suspended due to receiving consecutive low Gemini proof validation scores (< 40).`,
-          "HIGH"
+          "HIGH",
+          "FRAUD_ALERT"
         );
       }
     }
@@ -140,7 +160,8 @@ export async function checkDonationRate(donorId: string): Promise<void> {
         donorId,
         "DONOR",
         `Donor has completed ${recentDonationsCount} successful donations in the last 10 minutes (potential payment testing fraud).`,
-        "MEDIUM"
+        "MEDIUM",
+        "FRAUD_ALERT"
       );
     }
   } catch (error) {
@@ -154,7 +175,6 @@ export async function checkDonationRate(donorId: string): Promise<void> {
  */
 export async function checkGeneralPlatformAlerts(): Promise<void> {
   try {
-    const now = new Date();
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
 
@@ -169,7 +189,6 @@ export async function checkGeneralPlatformAlerts(): Promise<void> {
     });
 
     for (const m of delayedMilestones) {
-      // Check if we already created a deadline exceeded alert to prevent duplicates
       const existingAlert = await prisma.fraudAlert.findFirst({
         where: {
           type: "DEADLINE_EXCEEDED",
@@ -177,14 +196,15 @@ export async function checkGeneralPlatformAlerts(): Promise<void> {
           resolved: false
         }
       });
-      
+
       if (!existingAlert) {
         await createFraudAlert(
           "DEADLINE_EXCEEDED",
           m.id,
           "NGO",
           `Milestone "${m.title}" deadline (${m.deadline.toLocaleDateString()}) exceeded by more than 30 days with no proof submitted.`,
-          "MEDIUM"
+          "MEDIUM",
+          "DOCUMENT_ERROR"
         );
       }
     }
@@ -206,7 +226,6 @@ export async function checkGeneralPlatformAlerts(): Promise<void> {
     for (const p of activeProjects) {
       const firstPendingMilestone = p.milestones.find(m => m.status === "PENDING" || m.status === "IN_PROGRESS");
       if (firstPendingMilestone) {
-        // If it's been active for 60 days but first pending milestone hasn't progressed
         const lastUpdate = p.updatedAt;
         if (lastUpdate < sixtyDaysAgo) {
           const existingAlert = await prisma.fraudAlert.findFirst({
@@ -223,7 +242,8 @@ export async function checkGeneralPlatformAlerts(): Promise<void> {
               p.id,
               "NGO",
               `Campaign "${p.title}" has raised funds but has seen zero milestone activity or updates for over 60 days.`,
-              "MEDIUM"
+              "MEDIUM",
+              "FRAUD_ALERT"
             );
           }
         }

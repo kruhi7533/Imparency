@@ -42,6 +42,16 @@ enum DonationStatus {
   REFUNDED
 }
 
+enum FCRAStatus {
+  NONE               // never submitted
+  PENDING            // submitted, awaiting admin review
+  ACTIVE             // approved, expiry > 90 days away
+  EXPIRING_SOON      // approved, expiry within 90 days
+  EXPIRED            // approved but past expiry
+  REJECTED           // admin rejected
+  REUPLOAD_REQUESTED // admin asked the NGO to re-upload
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -62,12 +72,13 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  ngoProfile     NGOProfile?
-  donations      Donation[]
-  notifications  Notification[]
-  impactReports  ImpactReport[]
-  followers      NGOFollower[]
+  ngoProfile      NGOProfile?
+  donations       Donation[]
+  notifications   Notification[]
+  impactReports   ImpactReport[]
+  followers       NGOFollower[]
   milestoneProofs MilestoneProof[]
+  adminReviews    MilestoneReview[] @relation("AdminReviews")
 }
 
 model NGOProfile {
@@ -95,6 +106,7 @@ model NGOProfile {
   logo_url           String?
   cover_image_url    String?
 
+<<<<<<< HEAD
   // Consent Tracking
   dataProcessingConsent Boolean @default(false)
   dataProcessingConsentDate DateTime?
@@ -106,6 +118,61 @@ model NGOProfile {
   projects  Project[]
   followers NGOFollower[]
   screening NgoScreening?
+=======
+  projects   Project[]
+  followers  NGOFollower[]
+  screening  NgoScreening?
+  compliance NGOCompliance?
+}
+
+model NGOCompliance {
+  id                     String     @id @default(uuid())
+  ngoId                  String     @unique
+  ngo                    NGOProfile @relation(fields: [ngoId], references: [id])
+
+  // Per-document verified flags + per-document timestamps
+  panVerified            Boolean    @default(false)
+  panVerifiedAt          DateTime?
+  registrationVerified   Boolean    @default(false)
+  registrationVerifiedAt DateTime?
+  a12Verified            Boolean    @default(false)
+  a12VerifiedAt          DateTime?
+  a12DocumentUrl         String?
+  eightyGVerified        Boolean    @default(false)
+  eightyGVerifiedAt      DateTime?
+
+  // FCRA-specific lifecycle
+  fcraNumber             String?
+  fcraStatus             FCRAStatus @default(NONE)
+  fcraAuthority          String?    @default("Ministry of Home Affairs")
+  fcraRegisteredSince    Int?       // year
+  fcraIssueDate          DateTime?
+  fcraExpiryDate         DateTime?
+  fcraCertificateUrl     String?
+  fcraExtractedData      Json?      // raw Gemini extraction
+  fcraAdminNote          String?
+  fcraVerifiedAt         DateTime?
+
+  // NOTE: compliance score & breakdown are derived on read — never stored here.
+
+  verifiedById           String?    // admin user id (last action)
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+
+  auditLogs              ComplianceAuditLog[]
+}
+
+model ComplianceAuditLog {
+  id           String        @id @default(uuid())
+  complianceId String
+  compliance   NGOCompliance @relation(fields: [complianceId], references: [id])
+  event        String        // e.g. "FCRA_UPLOADED", "FCRA_APPROVED", "FCRA_EXPIRED", "PAN_VERIFIED", "80G_VERIFIED"
+  detail       String?       // human-readable line for the timeline
+  actorId      String?       // admin user id, or null for system/cron events
+  createdAt    DateTime      @default(now())
+
+  @@index([complianceId])
+>>>>>>> 86ac3060f5241a5f9810ddf91f31daff7aac9267
 }
 
 model Project {
@@ -155,6 +222,7 @@ model Milestone {
 
   proofs        MilestoneProof[]
   impactReports ImpactReport[]
+  reviews       MilestoneReview[]
 }
 
 model MilestoneProof {
@@ -176,6 +244,19 @@ model MilestoneProof {
   theoryOfChangeGaps           String[]
   
   submittedAt        DateTime  @default(now())
+}
+
+model MilestoneReview {
+  id           String   @id @default(uuid())
+  milestoneId  String
+  milestone    Milestone @relation(fields: [milestoneId], references: [id])
+  proofId      String?
+  adminId      String
+  admin        User     @relation("AdminReviews", fields: [adminId], references: [id])
+  action       String   // "APPROVED" | "REJECTED"
+  note         String?
+  aiScore      Int?
+  reviewedAt   DateTime @default(now())
 }
 
 model Donation {
@@ -266,16 +347,35 @@ model NgoScreening {
   updatedAt         DateTime @updatedAt
 }
 
+enum AlertCategory {
+  DOCUMENT_ERROR
+  FRAUD_ALERT
+}
+
+enum AlertSubType {
+  MISSING_DOCUMENT
+  WRONG_DOCUMENT_TYPE
+  EXPIRED_DOCUMENT
+  UNREADABLE_DOCUMENT
+  NAME_MISMATCH
+  DUPLICATE_IDENTITY
+  PAN_API_MISMATCH
+  FAKE_REGISTRATION
+  TAMPERED_DOCUMENT
+}
+
 model FraudAlert {
-  id             String   @id @default(uuid())
+  id             String        @id @default(uuid())
   type           String
   entityId       String
   entityType     String
   description    String
-  severity       String   // "LOW", "MEDIUM", "HIGH"
-  resolved       Boolean  @default(false)
+  severity       String        // "LOW", "MEDIUM", "HIGH"
+  alertCategory  AlertCategory @default(FRAUD_ALERT)
+  subType        AlertSubType?
+  resolved       Boolean       @default(false)
   resolutionNote String?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime      @default(now())
 }
 
 model ConsentAudit {
