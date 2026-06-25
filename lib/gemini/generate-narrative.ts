@@ -1,4 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { SDG_MASTER, IRIS_MASTER } from "../impact-metrics";
 
 export async function generateImpactNarrative(
   donor: { name: string },
@@ -8,7 +9,7 @@ export async function generateImpactNarrative(
   milestone: { title: string; description: string },
   proofDescription: string,
   nextMilestoneTitle?: string
-): Promise<string> {
+): Promise<{ narrative: string; sdgTags: string[]; irisMetrics: string[] }> {
   const apiKey = process.env.GEMINI_API_KEY;
 
   const percentage = project.raisedAmount > 0
@@ -20,13 +21,17 @@ export async function generateImpactNarrative(
     const nextText = nextMilestoneTitle 
       ? `The next milestone "${nextMilestoneTitle}" is already underway.` 
       : "The project is now complete!";
-    return `Hi ${donor.name}, through your contribution of ₹${donation.amount.toLocaleString()} (representing ${percentage}% of the total funds raised), ${ngo.orgName} successfully completed the milestone "${milestone.title}" for the campaign "${project.title}". Your funding supported: ${milestone.description}. ${nextText}`;
+    return {
+      narrative: `Hi ${donor.name}, through your contribution of ₹${donation.amount.toLocaleString()} (representing ${percentage}% of the total funds raised), ${ngo.orgName} successfully completed the milestone "${milestone.title}" for the campaign "${project.title}". Your funding supported: ${milestone.description}. ${nextText}`,
+      sdgTags: ["SDG3", "SDG4"],
+      irisMetrics: ["PI1000", "PI2822"]
+    };
   }
 
   const ai = new GoogleGenAI({ apiKey });
 
-  const prompt = `You are a heartfelt storyteller for ImpactBridge, a donation transparency platform.
-Write a short, warm, personal impact update for a donor.
+  const prompt = `You are a heartfelt storyteller and impact analyst for ImpactBridge, a donation transparency platform.
+Write a short, warm, personal impact update for a donor, AND map the outcome to standard impact frameworks.
 
 DONOR CONTEXT:
 - Donor Name: ${donor.name}
@@ -41,22 +46,41 @@ MILESTONE THAT WAS JUST COMPLETED:
 - Milestone Description: ${milestone.description}
 - NGO's Own Description of Completion: ${proofDescription}
 
-Write 3-4 sentences maximum. Be specific about what their money helped achieve.
-Reference their actual donation amount. Use warm, human language — not corporate.
-Do not use phrases like "your generous donation". Do not use exclamation marks excessively.
-Make the donor feel like they can see the real-world impact of their specific contribution.
-End with one sentence about the next milestone coming up: ${nextMilestoneTitle || "the project is now complete!"} (or 
-"the project is now complete!" if this was the final milestone).
+1. NARRATIVE:
+Write 3-4 sentences maximum. Be specific about what their money helped achieve. Reference their actual donation amount. Use warm, human language. End with one sentence about the next milestone coming up: ${nextMilestoneTitle || "the project is now complete!"}.
 
-Return ONLY the narrative text. No JSON, no formatting, no preamble.`;
+2. SDG TAGS:
+Select the most appropriate UN Sustainable Development Goals (SDGs) for this milestone.
+Choose ONLY from these IDs: ${Object.keys(SDG_MASTER).join(", ")}.
+
+3. IRIS+ METRICS:
+Select the most appropriate GIIN IRIS+ metrics.
+Choose ONLY from these IDs: ${Object.keys(IRIS_MASTER).join(", ")}.`;
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            narrative: { type: Type.STRING },
+            sdgTags: { type: Type.ARRAY, items: { type: Type.STRING } },
+            irisMetrics: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["narrative", "sdgTags", "irisMetrics"]
+        }
+      }
     });
 
-    return response.text?.trim() || "";
+    const data = JSON.parse(response.text || "{}");
+    return {
+      narrative: data.narrative || "",
+      sdgTags: data.sdgTags || [],
+      irisMetrics: data.irisMetrics || []
+    };
   } catch (err: any) {
     console.error("Gemini narrative generation API error:", err);
     throw new Error(`Gemini Narrative failed: ${err.message}`);

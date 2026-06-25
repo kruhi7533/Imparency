@@ -5,6 +5,10 @@ export interface ValidationResult {
   reasoning: string;
   flags: string[];
   suggestion?: string;
+  tocAlignmentScore?: number;
+  tocReasoning?: string;
+  tocStrengths?: string[];
+  tocGaps?: string[];
 }
 
 export async function validateMilestoneProof(
@@ -14,6 +18,10 @@ export async function validateMilestoneProof(
     targetAmount: number;
     deadline: Date | string;
     proofTypeRequired: string;
+  },
+  project: {
+    problemStatement: string;
+    expectedOutcome: string;
   },
   proofDescription: string,
   fileBuffers: { buffer: Buffer; mimeType: string }[]
@@ -33,17 +41,26 @@ export async function validateMilestoneProof(
     const suggestion = containsSuccess 
       ? undefined 
       : "Please provide detailed photographs or invoice scans proving purchase/implementation.";
+      
+    const tocAlignmentScore = containsSuccess ? 80 : 40;
+    const tocReasoning = "Mock Validation: Evaluating alignment against long-term project outcome.";
+    const tocStrengths = containsSuccess ? ["Addresses root problem"] : [];
+    const tocGaps = containsSuccess ? [] : ["Missing long-term outcome data"];
 
-    return { score, reasoning, flags, suggestion };
+    return { score, reasoning, flags, suggestion, tocAlignmentScore, tocReasoning, tocStrengths, tocGaps };
   }
 
   const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `You are an independent auditor for a charitable donation platform in India. 
 Your job is to verify that the proof submitted by an NGO genuinely demonstrates 
-completion of the milestone they claimed.
+completion of the milestone they claimed, AND to evaluate if this proof aligns with the overarching project's Theory of Change (long-term impact).
 
-MILESTONE DETAILS:
+OVERARCHING PROJECT (Theory of Change):
+- Problem Statement: ${project.problemStatement}
+- Expected Outcome: ${project.expectedOutcome}
+
+IMMEDIATE MILESTONE DETAILS:
 - Title: ${milestone.title}
 - Description: ${milestone.description}  
 - Target Amount: ₹${milestone.targetAmount}
@@ -53,14 +70,20 @@ MILESTONE DETAILS:
 NGO SUBMITTED DESCRIPTION:
 ${proofDescription}
 
-Analyze the attached files (photos, receipts, documents) and score the proof 
-from 0 to 100 based on:
+TASK 1: MILESTONE VALIDATION
+Analyze the attached files (photos, receipts, documents) and score the proof from 0 to 100 based on whether it satisfies the immediate milestone:
 - Relevance: Do the files actually show what the milestone describes? (40 points)
 - Completeness: Is the evidence sufficient to confirm the milestone is done? (30 points)  
 - Authenticity: Does the proof appear genuine and not staged or recycled? (20 points)
 - Amount Justification: If receipts are present, do amounts align with the milestone budget? (10 points)
 
-Be strict but fair. A score of 70+ means the milestone can be marked complete.
+TASK 2: THEORY OF CHANGE (IMPACT) ALIGNMENT
+Evaluate if the observed outcomes in the proof contribute toward the Project's overarching Expected Outcome:
+- Give a Theory of Change (ToC) alignment score from 0-100. (E.g., just training someone doesn't necessarily mean they got a job).
+- Explain your ToC reasoning.
+- List specific strengths (evidence of real impact).
+- List specific gaps (missing evidence of long-term outcomes).
+
 Return ONLY valid JSON matching the required schema. No markdown, no preamble.`;
 
   const inlineFiles = fileBuffers.map((f) => ({
@@ -85,9 +108,13 @@ Return ONLY valid JSON matching the required schema. No markdown, no preamble.`;
               type: Type.ARRAY, 
               items: { type: Type.STRING } 
             },
-            suggestion: { type: Type.STRING }
+            suggestion: { type: Type.STRING },
+            tocAlignmentScore: { type: Type.INTEGER },
+            tocReasoning: { type: Type.STRING },
+            tocStrengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+            tocGaps: { type: Type.ARRAY, items: { type: Type.STRING } }
           },
-          required: ["score", "reasoning", "flags"]
+          required: ["score", "reasoning", "flags", "tocAlignmentScore", "tocReasoning", "tocStrengths", "tocGaps"]
         }
       }
     });
@@ -103,6 +130,10 @@ Return ONLY valid JSON matching the required schema. No markdown, no preamble.`;
       reasoning: result.reasoning || "",
       flags: Array.isArray(result.flags) ? result.flags : [],
       suggestion: result.suggestion,
+      tocAlignmentScore: typeof result.tocAlignmentScore === "number" ? result.tocAlignmentScore : null,
+      tocReasoning: result.tocReasoning || null,
+      tocStrengths: Array.isArray(result.tocStrengths) ? result.tocStrengths : [],
+      tocGaps: Array.isArray(result.tocGaps) ? result.tocGaps : [],
     };
   } catch (err: any) {
     console.error("Gemini proof validation API error:", err);

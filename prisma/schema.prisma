@@ -95,6 +95,14 @@ model NGOProfile {
   logo_url           String?
   cover_image_url    String?
 
+  // Consent Tracking
+  dataProcessingConsent Boolean @default(false)
+  dataProcessingConsentDate DateTime?
+  consentVersion String?
+  consentIpAddress String?
+  consentRevoked Boolean @default(false)
+  consentRevokedAt DateTime?
+
   projects  Project[]
   followers NGOFollower[]
   screening NgoScreening?
@@ -112,8 +120,18 @@ model Project {
   status        ProjectStatus @default(DRAFT)
   coverImage    String
   location      String
+  
+  // Geo Intelligence
+  latitude        Float?
+  longitude       Float?
+  districtName    String?   @map("district_name")
+  stateName       String?   @map("state_name")
+  geoIntelligence Json?     @map("geo_intelligence")
+  geoFetchedAt    DateTime? @map("geo_fetched_at")
+
   problem_statement String?
   expected_outcome  String?
+  tocAnalysis   Json?         @map("toc_analysis")
   isDeleted     Boolean       @default(false)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -150,6 +168,13 @@ model MilestoneProof {
   documentUrls       String[]
   aiValidationResult String?
   aiValidationScore  Int?
+  
+  // Theory of Change Alignment
+  theoryOfChangeAlignmentScore Int?
+  theoryOfChangeReasoning      String?
+  theoryOfChangeStrengths      String[]
+  theoryOfChangeGaps           String[]
+  
   submittedAt        DateTime  @default(now())
 }
 
@@ -180,6 +205,8 @@ model ImpactReport {
   donorId              String
   donor                User      @relation(fields: [donorId], references: [id])
   aiGeneratedNarrative String
+  sdgTags              String[]
+  irisMetrics          String[]
   sentAt               DateTime  @default(now())
   readAt               DateTime?
 }
@@ -249,4 +276,13 @@ model FraudAlert {
   resolved       Boolean  @default(false)
   resolutionNote String?
   createdAt      DateTime @default(now())
+}
+
+model ConsentAudit {
+  id          String   @id @default(cuid())
+  ngoId       String
+  action      String
+  version     String
+  ipAddress   String?
+  createdAt   DateTime @default(now())
 }

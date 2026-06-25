@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
+import { SDG_MASTER, IRIS_MASTER } from "./impact-metrics";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -141,10 +142,30 @@ export async function sendMilestoneCompletedEmail(
   projectTitle: string,
   ngoName: string,
   milestoneTitle: string,
-  narrative: string
+  narrative: string,
+  sdgTags: string[] = [],
+  irisMetrics: string[] = []
 ) {
   const subject = `Milestone Completed: "${milestoneTitle}" - ${projectTitle}`;
-  const body = `Hi ${donorName},\n\nWe have exciting news! ${ngoName} has successfully completed the milestone "${milestoneTitle}" for the project "${projectTitle}".\n\nHere is how your contribution made an impact:\n\n${narrative}\n\nThank you for making a difference.\n\nBest regards,\nThe ImpactBridge Team`;
+  
+  let metricsText = "";
+  if (sdgTags.length > 0 || irisMetrics.length > 0) {
+    metricsText = `\n\nVerified Impact Metrics:\n\n`;
+    if (sdgTags.length > 0) {
+      metricsText += `SDGs:\n`;
+      sdgTags.forEach(tag => {
+        metricsText += `• ${tag} - ${SDG_MASTER[tag] || tag}\n`;
+      });
+    }
+    if (irisMetrics.length > 0) {
+      metricsText += `\nIRIS+ Metrics:\n`;
+      irisMetrics.forEach(metric => {
+        metricsText += `• ${metric} - ${IRIS_MASTER[metric] || metric}\n`;
+      });
+    }
+  }
+
+  const body = `Hi ${donorName},\n\nWe have exciting news! ${ngoName} has successfully completed the milestone "${milestoneTitle}" for the project "${projectTitle}".\n\nHere is how your contribution made an impact:\n\n${narrative}${metricsText}\n\nThank you for making a difference.\n\nBest regards,\nThe ImpactBridge Team`;
   return sendEmail({ to, subject, body });
 }
 

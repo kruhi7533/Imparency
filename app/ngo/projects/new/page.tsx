@@ -55,6 +55,22 @@ export default function NewProjectPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  const [projectTarget, setProjectTarget] = useState(0);
+  const [totalAllocated, setTotalAllocated] = useState(0);
+  const [suggesting, setSuggesting] = useState(false);
+
+  useEffect(() => {
+    setProjectTarget(parseFloat(targetAmount) || 0);
+  }, [targetAmount]);
+
+  useEffect(() => {
+    const total = milestones.reduce((sum, m) => {
+      const val = parseFloat(m.targetAmount) || 0;
+      return sum + val;
+    }, 0);
+    setTotalAllocated(total);
+  }, [milestones]);
+
   // Validate NGO role
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -72,25 +88,8 @@ export default function NewProjectPage() {
     );
   }
 
-  const [projectTarget, setProjectTarget] = useState(0);
-  const [totalAllocated, setTotalAllocated] = useState(0);
-
-  useEffect(() => {
-    setProjectTarget(parseFloat(targetAmount) || 0);
-  }, [targetAmount]);
-
-  useEffect(() => {
-    const total = milestones.reduce((sum, m) => {
-      const val = parseFloat(m.targetAmount) || 0;
-      return sum + val;
-    }, 0);
-    setTotalAllocated(total);
-  }, [milestones]);
-
   const allocationPct = projectTarget > 0 ? (totalAllocated / projectTarget) * 100 : 0;
   const isAllocationValid = projectTarget > 0 && totalAllocated === projectTarget;
-
-  const [suggesting, setSuggesting] = useState(false);
 
   const isSuggestEnabled =
     title.trim() !== "" &&

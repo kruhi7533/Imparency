@@ -104,6 +104,65 @@ export default async function ProjectPage({
               )}
             </div>
 
+            {project.geoIntelligence && (
+              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-800 pb-3">
+                  <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-xl text-emerald-600 dark:text-emerald-400">
+                    🌍
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">Area Context</h2>
+                    <p className="text-xs text-gray-500 font-medium">AI-powered Demographic & Environmental Intel</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  {/* Literacy */}
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                      Literacy Rate
+                      <span className="text-[9px] bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded shadow-sm border border-gray-200 dark:border-gray-700">Census 2011</span>
+                    </p>
+                    <p className="text-xl font-black text-gray-900 dark:text-white">
+                      {(project.geoIntelligence as any)?.literacyRate ? `${(project.geoIntelligence as any).literacyRate}%` : 'Unavailable'}
+                    </p>
+                  </div>
+
+                  {/* Rural Pop */}
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                      Rural Pop.
+                      <span className="text-[9px] bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded shadow-sm border border-gray-200 dark:border-gray-700">Census 2011</span>
+                    </p>
+                    <p className="text-xl font-black text-gray-900 dark:text-white">
+                      {(project.geoIntelligence as any)?.ruralPopulation ? (project.geoIntelligence as any).ruralPopulation.toLocaleString() : 'Unavailable'}
+                    </p>
+                  </div>
+
+                  {/* NDVI */}
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                      Vegetation (NDVI)
+                      <span className="text-[9px] bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded shadow-sm border border-gray-200 dark:border-gray-700">Satellite</span>
+                    </p>
+                    <div className="space-y-1 mt-1">
+                      <div className={`px-2.5 py-1 rounded w-fit text-xs font-bold ${
+                        (project.geoIntelligence as any)?.ndviScore > 0.5 ? 'bg-emerald-100 text-emerald-700' :
+                        (project.geoIntelligence as any)?.ndviScore >= 0.2 ? 'bg-amber-100 text-amber-700' :
+                        (project.geoIntelligence as any)?.ndviScore >= 0 ? 'bg-red-100 text-red-700' :
+                        (project.geoIntelligence as any)?.ndviScore !== null && (project.geoIntelligence as any)?.ndviScore !== undefined ? 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {(project.geoIntelligence as any)?.ndviScore !== null && (project.geoIntelligence as any)?.ndviScore !== undefined ? (project.geoIntelligence as any).ndviScore.toFixed(3) : 'No Data'}
+                      </div>
+                      <p className="text-[10px] font-bold text-gray-600 dark:text-gray-400 leading-tight">
+                        {(project.geoIntelligence as any)?.ndviInterpretation || "Unknown Area"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Milestones Stepper */}
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-sm">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Execution Milestones Sequence</h2>

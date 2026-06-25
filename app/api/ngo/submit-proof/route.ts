@@ -110,6 +110,10 @@ export async function POST(request: Request) {
         deadline: milestone.deadline,
         proofTypeRequired: "Photo/Document Evidence",
       },
+      {
+        problemStatement: milestone.project.problem_statement || "Not specified",
+        expectedOutcome: milestone.project.expected_outcome || "Not specified",
+      },
       description,
       fileBuffers
     );
@@ -124,6 +128,10 @@ export async function POST(request: Request) {
         documentUrls,
         aiValidationResult: JSON.stringify(validationResult),
         aiValidationScore: validationResult.score,
+        theoryOfChangeAlignmentScore: validationResult.tocAlignmentScore,
+        theoryOfChangeReasoning: validationResult.tocReasoning,
+        theoryOfChangeStrengths: validationResult.tocStrengths || [],
+        theoryOfChangeGaps: validationResult.tocGaps || [],
       },
     });
 

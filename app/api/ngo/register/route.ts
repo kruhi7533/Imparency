@@ -27,9 +27,20 @@ export async function POST(request: Request) {
     const panFile = formData.get("panFile") as File | null;
     const taxFile = formData.get("taxFile") as File | null;
 
+    const dataProcessingConsent = formData.get("dataProcessingConsent") as string;
+    const consentVersion = formData.get("consentVersion") as string || "v1.0";
+    
+    // Attempt to get client IP
+    const consentIpAddress = request.headers.get("x-forwarded-for")?.split(',')[0] || request.headers.get("x-real-ip") || null;
+
     // 3. Field validation
     if (!orgName || !registrationNumber || !panNumber || !address || !foundedYearStr || !description || !causeCategoriesStr) {
       return NextResponse.json({ error: "Missing mandatory registration fields" }, { status: 400 });
+    }
+
+    const consent = dataProcessingConsent === "true";
+    if (!consent) {
+      return NextResponse.json({ error: "Data processing consent is required" }, { status: 400 });
     }
 
     const foundedYear = parseInt(foundedYearStr, 10);
@@ -118,6 +129,10 @@ export async function POST(request: Request) {
           documents: uploadedUrls,
           verificationStatus: "PENDING",
           adminNote: null, // Reset previous notes
+          dataProcessingConsent: true,
+          dataProcessingConsentDate: new Date(),
+          consentVersion,
+          consentIpAddress,
         }
       });
     } else {
@@ -136,9 +151,23 @@ export async function POST(request: Request) {
           documents: uploadedUrls,
           verificationStatus: "PENDING",
           healthScore: null,
+          dataProcessingConsent: true,
+          dataProcessingConsentDate: new Date(),
+          consentVersion,
+          consentIpAddress,
         }
       });
     }
+
+    // Record consent audit log
+    await prisma.consentAudit.create({
+      data: {
+        ngoId: profile.id,
+        action: "GRANTED_REGISTRATION",
+        version: consentVersion,
+        ipAddress: consentIpAddress,
+      }
+    });
 
     // Trigger AI Document Verification Agent
     let aiReport = null;
