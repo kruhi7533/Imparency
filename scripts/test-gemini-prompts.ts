@@ -48,7 +48,7 @@ async function testPrompts() {
   );
 
   console.log("Generated Narrative:\n", narrative);
-  if (!narrative || narrative.length < 20) {
+  if (!narrative || !narrative.narrative || narrative.narrative.length < 20) {
     throw new Error("Invalid narrative result format");
   }
   console.log("PASS: generateImpactNarrative completed");
