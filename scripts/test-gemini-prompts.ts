@@ -14,11 +14,17 @@ async function testPrompts() {
 
   const proofDescription = "We successfully purchased 200 textbooks from the local distributor. Invoices are attached along with a photograph of the distribution ceremony where Pune district education officers were present.";
 
+  const mockProject = {
+    problemStatement: "Lack of educational materials in rural schools.",
+    expectedOutcome: "Improved science literacy among Grade 5 students."
+  };
+
   // 1. Test validateMilestoneProof (mock mode)
   console.log("Testing validateMilestoneProof (with dummy file buffer)...");
   const dummyBuffer = Buffer.from("dummy-photo-content");
   const validationResult = await validateMilestoneProof(
     mockMilestone,
+    mockProject,
     proofDescription,
     [{ buffer: dummyBuffer, mimeType: "image/jpeg" }]
   );
