@@ -42,6 +42,12 @@ enum DonationStatus {
   REFUNDED
 }
 
+enum DonorCategory {
+  INDIAN_IN_INDIA   // domestic donor — no FCRA constraint
+  INDIAN_ABROAD     // NRI/OCI — treated as foreign source unless NRI-eligible account used
+  FOREIGN_NATIONAL  // always foreign source — hard FCRA gate
+}
+
 enum FCRAStatus {
   NONE               // never submitted
   PENDING            // submitted, awaiting admin review
@@ -69,6 +75,10 @@ model User {
   companyName  String?
   isCorporate  Boolean  @default(false)
   gstNumber    String?
+  donorCategory           DonorCategory?
+  donorCategoryDeclaredAt DateTime?
+  donorDeclarationVersion String?        // tracks policy version for future consent re-prompts
+  nriSourceDeclaration    String?        // "ELIGIBLE_NRI_SOURCE" | "FOREIGN_SOURCE" | "NOT_SURE"
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -105,11 +115,14 @@ model NGOProfile {
   updatedAt          DateTime           @updatedAt
   logo_url           String?
   cover_image_url    String?
+  dataProcessingConsent Boolean  @default(false)
+  consentRevoked        Boolean  @default(false)
 
-  projects   Project[]
-  followers  NGOFollower[]
-  screening  NgoScreening?
-  compliance NGOCompliance?
+  projects     Project[]
+  followers    NGOFollower[]
+  screening    NgoScreening?
+  compliance   NGOCompliance?
+  riskReviews  RiskReview[]
 }
 
 model NGOCompliance {
@@ -343,4 +356,35 @@ model FraudAlert {
   resolved       Boolean       @default(false)
   resolutionNote String?
   createdAt      DateTime      @default(now())
+}
+
+model RiskReview {
+  id          String     @id @default(uuid())
+  ngoId       String
+  ngo         NGOProfile @relation(fields: [ngoId], references: [id])
+  alertIds    String[]   // linked FraudAlert ids
+  riskScore   Float?
+  riskLevel   String     // "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+  findings    Json?
+  status      String     @default("OPEN") // "OPEN" | "REVIEWED" | "CLEARED" | "SUSPENDED"
+  reviewedBy  String?
+  reviewNote  String?
+  createdAt   DateTime   @default(now())
+  resolvedAt  DateTime?
+}
+
+model FcraQuarterlyReport {
+  id                String   @id @default(uuid())
+  quarter           String   // "Q1-2026", "Q2-2026", etc.
+  generatedAt       DateTime @default(now())
+  totalNgos         Int
+  activeCount       Int
+  expiringSoonCount Int
+  expiredCount      Int
+  rejectedCount     Int
+  pendingCount      Int
+  ngoBreakdown      Json     // [{ ngoId, orgName, fcraNumber, status, expiryDate }]
+  generatedById     String?  // null = cron-generated
+
+  @@unique([quarter])
 }

@@ -3,6 +3,7 @@ import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
 import Razorpay from "razorpay";
 import { Role } from "@prisma/client";
+import { checkFcraGate } from "@/lib/fcra-gate";
 
 export async function POST(request: Request) {
   const auth = await verifySessionRole(Role.DONOR);
@@ -69,11 +70,54 @@ export async function POST(request: Request) {
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
+      include: { ngo: { select: { isSuspended: true, orgName: true } } },
     });
 
     if (!project || project.status !== "ACTIVE") {
       return NextResponse.json({ error: "Project is not active or does not exist" }, { status: 400 });
     }
+
+    if (project.ngo?.isSuspended) {
+      return NextResponse.json(
+        { error: "NGO_SUSPENDED", message: "This NGO has been suspended and cannot receive donations at this time." },
+        { status: 403 }
+      );
+    }
+
+    // ── FCRA gate ──────────────────────────────────────────────────────────────
+    // Only applies to donors who have declared a non-domestic category.
+    const freshUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { donorCategory: true, nriSourceDeclaration: true },
+    });
+
+    const ngoCompliance = await prisma.nGOCompliance.findUnique({
+      where: { ngoId: project.ngoId },
+      select: { fcraStatus: true, fcraExpiryDate: true },
+    });
+
+    const fcraGate = checkFcraGate({
+      donorCategory: freshUser?.donorCategory,
+      nriSourceDeclaration: freshUser?.nriSourceDeclaration,
+      ngoFcraExpiryDate: ngoCompliance?.fcraExpiryDate,
+      ngoFcraStatus: ngoCompliance?.fcraStatus ?? "NONE",
+    });
+
+    if (!fcraGate.allowed) {
+      return NextResponse.json(
+        {
+          error: fcraGate.reason,
+          message:
+            fcraGate.reason === "FCRA_REQUIRED"
+              ? "This NGO is not registered to accept foreign contributions. " +
+                "FCRA registration must be ACTIVE before international donors can contribute."
+              : "Please complete your donor category declaration before donating.",
+          fcraStatus: fcraGate.reason === "FCRA_REQUIRED" ? fcraGate.fcraStatus : undefined,
+        },
+        { status: 403 }
+      );
+    }
+    // ──────────────────────────────────────────────────────────────────────────
 
     const donation = await prisma.donation.create({
       data: {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runFcraExpiryMaintenance } from "@/lib/fcra-reminders";
+import { generateFcraQuarterlyReport } from "@/lib/fcra-quarterly";
 
 export const runtime = "nodejs";
 
@@ -10,10 +10,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const results = await runFcraExpiryMaintenance();
-    return NextResponse.json({ ok: true, results });
+    const report = await generateFcraQuarterlyReport();
+    return NextResponse.json({ ok: true, quarter: report.quarter, totalNgos: report.totalNgos });
   } catch (err: any) {
-    console.error("[cron/fcra-expiry] error:", err);
+    console.error("[cron/fcra-quarterly-report] error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

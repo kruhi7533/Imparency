@@ -17,114 +17,101 @@ export default async function AdminDashboardPage() {
     redirect("/unauthorized");
   }
 
-  // 1. Fetch pending NGOs
-  const pendingNGOs = await prisma.nGOProfile.findMany({
-    where: { verificationStatus: "PENDING" },
-    select: {
-      id: true,
-      orgName: true,
-      registrationNumber: true,
-      panNumber: true,
-      address: true,
-      causeCategories: true,
-      website: true,
-      foundedYear: true,
-      documents: true,
-      createdAt: true,
-      ai_verification_report: true,
-      user: {
-        select: {
-          email: true,
-        },
-      },
-      screening: {
-        select: {
-          summary: true,
-          extractedFields: true,
-          documentChecklist: true,
-          consistencyOk: true,
-          flags: true,
-          recommendation: true,
-          confidence: true,
-          status: true,
-          updatedAt: true,
-        },
-      },
-    },
-    orderBy: { createdAt: "asc" },
-  });
-
-  // 2. Compute Platform Analytics via Prisma
+  // Compute date boundaries
   const now = new Date();
   const currentYear = now.getFullYear();
-
-  // Start times
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay())); // Sunday
-  // Reset date for month
+  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const startOfFY = now.getMonth() >= 3 
-    ? new Date(currentYear, 3, 1) 
+  const startOfFY = now.getMonth() >= 3
+    ? new Date(currentYear, 3, 1)
     : new Date(currentYear - 1, 3, 1);
 
-  // Donations Queries
-  const donationsToday = await prisma.donation.aggregate({
-    where: { status: "SUCCESS", createdAt: { gte: startOfToday } },
-    _sum: { amount: true }
-  });
-  const donationsWeek = await prisma.donation.aggregate({
-    where: { status: "SUCCESS", createdAt: { gte: startOfWeek } },
-    _sum: { amount: true }
-  });
-  const donationsMonth = await prisma.donation.aggregate({
-    where: { status: "SUCCESS", createdAt: { gte: startOfMonth } },
-    _sum: { amount: true }
-  });
-  const donationsFY = await prisma.donation.aggregate({
-    where: { status: "SUCCESS", createdAt: { gte: startOfFY } },
-    _sum: { amount: true }
-  });
+  // Run all queries in parallel to avoid exhausting the connection pool
+  const [
+    pendingNGOs,
+    donationsToday,
+    donationsWeek,
+    donationsMonth,
+    donationsFY,
+    activeNGOsCount,
+    pendingNGOsCount,
+    rejectedNGOsCount,
+    avgHealthResult,
+    totalDonorsCount,
+    corporateDonorsCount,
+    totalMilestonesCount,
+    completedMilestonesCount,
+    highFraudAlerts,
+    mediumFraudAlerts,
+    lowFraudAlerts,
+    ngosWithProjects,
+    projectsWithDonationsCount,
+  ] = await Promise.all([
+    prisma.nGOProfile.findMany({
+      where: { verificationStatus: "PENDING" },
+      select: {
+        id: true,
+        orgName: true,
+        registrationNumber: true,
+        panNumber: true,
+        address: true,
+        causeCategories: true,
+        website: true,
+        foundedYear: true,
+        documents: true,
+        createdAt: true,
+        ai_verification_report: true,
+        user: { select: { email: true } },
+        screening: {
+          select: {
+            summary: true,
+            extractedFields: true,
+            documentChecklist: true,
+            consistencyOk: true,
+            flags: true,
+            recommendation: true,
+            confidence: true,
+            status: true,
+            updatedAt: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.donation.aggregate({ where: { status: "SUCCESS", createdAt: { gte: startOfToday } }, _sum: { amount: true } }),
+    prisma.donation.aggregate({ where: { status: "SUCCESS", createdAt: { gte: startOfWeek } }, _sum: { amount: true } }),
+    prisma.donation.aggregate({ where: { status: "SUCCESS", createdAt: { gte: startOfMonth } }, _sum: { amount: true } }),
+    prisma.donation.aggregate({ where: { status: "SUCCESS", createdAt: { gte: startOfFY } }, _sum: { amount: true } }),
+    prisma.nGOProfile.count({ where: { verificationStatus: "VERIFIED" } }),
+    prisma.nGOProfile.count({ where: { verificationStatus: "PENDING" } }),
+    prisma.nGOProfile.count({ where: { verificationStatus: "REJECTED" } }),
+    prisma.nGOProfile.aggregate({ where: { NOT: { healthScore: null } }, _avg: { healthScore: true } }),
+    prisma.user.count({ where: { role: "DONOR" } }),
+    prisma.user.count({ where: { role: "DONOR", isCorporate: true } }),
+    prisma.milestone.count(),
+    prisma.milestone.count({ where: { status: { in: ["COMPLETED", "VERIFIED"] } } }),
+    prisma.fraudAlert.count({ where: { resolved: false, severity: "HIGH" } }),
+    prisma.fraudAlert.count({ where: { resolved: false, severity: "MEDIUM" } }),
+    prisma.fraudAlert.count({ where: { resolved: false, severity: "LOW" } }),
+    prisma.nGOProfile.findMany({
+      select: { id: true, orgName: true, projects: { select: { raisedAmount: true } } },
+    }),
+    prisma.project.findMany({
+      select: {
+        id: true,
+        title: true,
+        ngo: { select: { orgName: true } },
+        _count: { select: { donations: { where: { status: "SUCCESS" } } } },
+      },
+    }),
+  ]);
 
-  // NGO Profile counts
-  const activeNGOsCount = await prisma.nGOProfile.count({ where: { verificationStatus: "VERIFIED" } });
-  const pendingNGOsCount = await prisma.nGOProfile.count({ where: { verificationStatus: "PENDING" } });
-  const rejectedNGOsCount = await prisma.nGOProfile.count({ where: { verificationStatus: "REJECTED" } });
-
-  // Average Health Score
-  const avgHealthResult = await prisma.nGOProfile.aggregate({
-    where: { NOT: { healthScore: null } },
-    _avg: { healthScore: true }
-  });
-
-  // Donor counts
-  const totalDonorsCount = await prisma.user.count({ where: { role: "DONOR" } });
-  const corporateDonorsCount = await prisma.user.count({ where: { role: "DONOR", isCorporate: true } });
-
-  // Milestone completion rate
-  const totalMilestonesCount = await prisma.milestone.count();
-  const completedMilestonesCount = await prisma.milestone.count({
-    where: { status: { in: ["COMPLETED", "VERIFIED"] } }
-  });
-  const milestoneCompletionRate = totalMilestonesCount > 0 
-    ? (completedMilestonesCount / totalMilestonesCount) * 100 
+  const milestoneCompletionRate = totalMilestonesCount > 0
+    ? (completedMilestonesCount / totalMilestonesCount) * 100
     : 0;
-
-  // Unresolved Fraud alerts
-  const highFraudAlerts = await prisma.fraudAlert.count({ where: { resolved: false, severity: "HIGH" } });
-  const mediumFraudAlerts = await prisma.fraudAlert.count({ where: { resolved: false, severity: "MEDIUM" } });
-  const lowFraudAlerts = await prisma.fraudAlert.count({ where: { resolved: false, severity: "LOW" } });
   const unresolvedAlertsTotal = highFraudAlerts + mediumFraudAlerts + lowFraudAlerts;
 
-  // Top 5 NGOs by funds raised
-  const ngosWithProjects = await prisma.nGOProfile.findMany({
-    select: {
-      id: true,
-      orgName: true,
-      projects: {
-        select: { raisedAmount: true }
-      }
-    }
-  });
   const ngoRaisedList = ngosWithProjects.map((ngo) => {
     const raised = ngo.projects.reduce((sum, p) => sum + Number(p.raisedAmount), 0);
     return { id: ngo.id, orgName: ngo.orgName, raised };
@@ -132,23 +119,12 @@ export default async function AdminDashboardPage() {
   ngoRaisedList.sort((a, b) => b.raised - a.raised);
   const topNGOs = ngoRaisedList.slice(0, 5);
 
-  // Top 5 projects by donor count
-  const projectsWithDonationsCount = await prisma.project.findMany({
-    select: {
-      id: true,
-      title: true,
-      ngo: { select: { orgName: true } },
-      _count: {
-        select: { donations: { where: { status: "SUCCESS" } } }
-      }
-    }
-  });
   projectsWithDonationsCount.sort((a, b) => b._count.donations - a._count.donations);
   const topProjects = projectsWithDonationsCount.slice(0, 5).map(p => ({
     id: p.id,
     title: p.title,
     ngoName: p.ngo.orgName,
-    donorCount: p._count.donations
+    donorCount: p._count.donations,
   }));
 
   // Parse decimals safely
@@ -171,8 +147,8 @@ export default async function AdminDashboardPage() {
           <div className="flex gap-4 text-sm font-semibold">
             <a href="/admin/dashboard" className="text-emerald-600 hover:text-emerald-700 transition underline decoration-2 underline-offset-4">NGO Verification</a>
             <a href="/admin/proof-review" className="text-gray-500 hover:text-emerald-600 transition">Proof Review</a>
-            <a href="/admin/fraud-alerts" className="text-gray-500 hover:text-emerald-600 transition flex items-center gap-1.5">
-              <span>Fraud Alerts</span>
+            <a href="/admin/risk-compliance" className="text-gray-500 hover:text-emerald-600 transition flex items-center gap-1.5">
+              <span>Risk &amp; Compliance</span>
               {unresolvedAlertsTotal > 0 && (
                 <span className="bg-red-100 dark:bg-red-950/45 text-red-600 dark:text-red-400 text-[10px] font-black px-1.5 py-0.5 rounded-full">
                   {unresolvedAlertsTotal}
@@ -289,8 +265,11 @@ export default async function AdminDashboardPage() {
               <div className="space-y-3">
                 {topNGOs.map((ngo, idx) => (
                   <div key={ngo.id} className="flex justify-between items-center text-xs p-2 border-b border-gray-105 dark:border-gray-800/40 last:border-b-0">
-                    <div className="font-semibold text-gray-850 dark:text-gray-200">
-                      {idx + 1}. {ngo.orgName}
+                    <div className="font-semibold text-gray-850 dark:text-gray-200 flex items-center gap-1.5">
+                      {idx + 1}.{" "}
+                      <a href="/admin/risk-compliance" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition hover:underline underline-offset-2">
+                        {ngo.orgName}
+                      </a>
                     </div>
                     <div className="font-black text-emerald-655 dark:text-emerald-455">
                       ₹{ngo.raised.toLocaleString("en-IN")}

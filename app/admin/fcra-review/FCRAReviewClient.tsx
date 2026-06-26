@@ -3,6 +3,18 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
+interface QuarterlyReport {
+  id: string;
+  quarter: string;
+  generatedAt: string;
+  totalNgos: number;
+  activeCount: number;
+  expiringSoonCount: number;
+  expiredCount: number;
+  rejectedCount: number;
+  pendingCount: number;
+}
+
 interface FcraRecord {
   id: string;
   ngoId: string;
@@ -40,10 +52,19 @@ const STATUS_LABEL: Record<string, string> = {
 
 const PENDING_STATES = ["PENDING", "REUPLOAD_REQUESTED"];
 
-export default function FCRAReviewClient({ initialRecords }: { initialRecords: FcraRecord[] }) {
+export default function FCRAReviewClient({
+  initialRecords,
+  initialReports,
+}: {
+  initialRecords: FcraRecord[];
+  initialReports: QuarterlyReport[];
+}) {
   const router = useRouter();
   const [records, setRecords] = useState<FcraRecord[]>(initialRecords);
-  const [tab, setTab] = useState<"PENDING" | "HISTORY">("PENDING");
+  const [reports, setReports] = useState<QuarterlyReport[]>(initialReports);
+  const [tab, setTab] = useState<"PENDING" | "HISTORY" | "REPORTS">("PENDING");
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [reportError, setReportError] = useState("");
 
   const [selected, setSelected] = useState<FcraRecord | null>(null);
   const [action, setAction] = useState<"APPROVE" | "REJECT" | "REUPLOAD" | null>(null);
@@ -59,6 +80,20 @@ export default function FCRAReviewClient({ initialRecords }: { initialRecords: F
   const pending = records.filter((r) => PENDING_STATES.includes(r.fcraStatus));
   const history = records.filter((r) => !PENDING_STATES.includes(r.fcraStatus));
   const visible = tab === "PENDING" ? pending : history;
+
+  const expiringSoon = records.filter((r) => r.fcraStatus === "EXPIRING_SOON");
+
+  // Compute days until end of current quarter
+  const now = new Date();
+  const quarterEnds = [
+    new Date(now.getFullYear(), 2, 31),  // March 31
+    new Date(now.getFullYear(), 5, 30),  // June 30
+    new Date(now.getFullYear(), 8, 30),  // September 30
+    new Date(now.getFullYear(), 11, 31), // December 31
+  ];
+  const nextQuarterEnd = quarterEnds.find((d) => d > now) ?? quarterEnds[3];
+  const daysToQuarterEnd = Math.ceil((nextQuarterEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const showUrgencyBanner = expiringSoon.length > 0 && daysToQuarterEnd <= 30;
 
   const isoToInput = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
 
@@ -80,6 +115,22 @@ export default function FCRAReviewClient({ initialRecords }: { initialRecords: F
     setAction(null);
     setNote("");
     setError("");
+  };
+
+  const generateReport = async () => {
+    setGeneratingReport(true);
+    setReportError("");
+    try {
+      const res = await fetch("/api/admin/fcra-report/generate", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate report");
+      router.refresh();
+      setTab("REPORTS");
+    } catch (err: any) {
+      setReportError(err.message);
+    } finally {
+      setGeneratingReport(false);
+    }
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -167,8 +218,36 @@ export default function FCRAReviewClient({ initialRecords }: { initialRecords: F
 
   return (
     <div className="space-y-6">
+      {/* Quarter-end urgency banner */}
+      {showUrgencyBanner && (
+        <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl">
+          <div className="text-amber-500 text-lg leading-none mt-0.5">⚠</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-extrabold text-amber-900 dark:text-amber-300">
+              {expiringSoon.length} NGO{expiringSoon.length > 1 ? "s" : ""} with FCRA expiring — {daysToQuarterEnd} day{daysToQuarterEnd !== 1 ? "s" : ""} to quarter end
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+              Quarter closes {nextQuarterEnd.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}. Review and renew before the deadline to avoid blocking foreign donations.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {expiringSoon.map((r) => (
+                <span key={r.id} className="text-[10px] font-bold px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 rounded-full">
+                  {r.orgName}
+                </span>
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={() => setTab("HISTORY")}
+            className="shrink-0 text-xs font-bold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 underline underline-offset-2 transition"
+          >
+            View all →
+          </button>
+        </div>
+      )}
+
       {/* Tabs */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <button
           onClick={() => setTab("PENDING")}
           className={`px-4 py-2 text-xs font-bold rounded-xl transition ${tab === "PENDING" ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700"}`}
@@ -181,9 +260,83 @@ export default function FCRAReviewClient({ initialRecords }: { initialRecords: F
         >
           History ({history.length})
         </button>
+        <button
+          onClick={() => setTab("REPORTS")}
+          className={`px-4 py-2 text-xs font-bold rounded-xl transition ${tab === "REPORTS" ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700"}`}
+        >
+          Quarterly Reports {reports.length > 0 && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-blue-500 text-white text-[10px]">{reports.length}</span>}
+        </button>
       </div>
 
-      {visible.length === 0 ? (
+      {/* Quarterly Reports tab */}
+      {tab === "REPORTS" && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap justify-between items-start gap-3">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Auto-generated at the end of each quarter. Regenerate at any time to capture the latest state.
+            </p>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <button
+                onClick={generateReport}
+                disabled={generatingReport}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-bold px-4 py-2 rounded-xl transition"
+              >
+                {generatingReport && <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />}
+                Generate Now
+              </button>
+              {reportError && (
+                <p className="text-[11px] text-red-600 dark:text-red-400 font-semibold">{reportError}</p>
+              )}
+            </div>
+          </div>
+
+          {reports.length === 0 ? (
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center shadow-sm">
+              <span className="text-4xl mb-4 block">📊</span>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No quarterly reports yet</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Reports are auto-generated at the end of each quarter. You can also generate one manually above.
+              </p>
+            </div>
+          ) : (
+            reports.map((report) => (
+              <div key={report.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-black text-gray-900 dark:text-white">{report.quarter} FCRA Report</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Generated {new Date(report.generatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                  <a
+                    href={`/api/admin/fcra-report/${report.id}/export`}
+                    className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold px-4 py-2 rounded-xl transition"
+                    download
+                  >
+                    Download CSV
+                  </a>
+                </div>
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  {[
+                    { label: "Total NGOs", value: report.totalNgos, color: "text-gray-800 dark:text-gray-200" },
+                    { label: "Active", value: report.activeCount, color: "text-emerald-600" },
+                    { label: "Expiring Soon", value: report.expiringSoonCount, color: "text-amber-600" },
+                    { label: "Expired", value: report.expiredCount, color: "text-orange-600" },
+                    { label: "Rejected", value: report.rejectedCount, color: "text-slate-500" },
+                  ].map((stat) => (
+                    <div key={stat.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 text-center">
+                      <div className={`text-xl font-black ${stat.color}`}>{stat.value}</div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold mt-0.5">{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {tab !== "REPORTS" && visible.length === 0 && (
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-sm">
           <span className="text-4xl mb-4 block">🌍</span>
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
@@ -193,7 +346,9 @@ export default function FCRAReviewClient({ initialRecords }: { initialRecords: F
             {tab === "PENDING" ? "When NGOs submit FCRA certificates, they'll appear here for verification." : "Approved, rejected, and expired FCRA records will show up here."}
           </p>
         </div>
-      ) : (
+      )}
+
+      {tab !== "REPORTS" && visible.length > 0 && (
         <div className="space-y-4">
           {visible.map((rec) => (
             <div key={rec.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
@@ -204,6 +359,12 @@ export default function FCRAReviewClient({ initialRecords }: { initialRecords: F
                     <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${STATUS_BADGE[rec.fcraStatus] || "bg-gray-100 text-gray-600"}`}>
                       {STATUS_LABEL[rec.fcraStatus] || rec.fcraStatus}
                     </span>
+                    <a
+                      href="/admin/risk-compliance"
+                      className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline underline-offset-2"
+                    >
+                      Compliance →
+                    </a>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{rec.email}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">FCRA No: <span className="font-semibold">{rec.fcraNumber || "—"}</span></p>

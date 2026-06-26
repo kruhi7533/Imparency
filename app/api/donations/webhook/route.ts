@@ -18,7 +18,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing signature" }, { status: 400 });
     }
 
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || "mockwebhooksecret";
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      console.error("[webhook] RAZORPAY_WEBHOOK_SECRET is not set — rejecting request");
+      return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 });
+    }
 
     // Verify HMAC signature
     const expectedSignature = crypto
@@ -186,12 +190,12 @@ export async function POST(request: Request) {
       console.error("Failed to recalculate health score on webhook donation:", healthErr);
     }
 
-    // Check donation rate fraud alerts
+    // Check donation rate — risk agent raises alert, admin decides action
     try {
-      const { checkDonationRate } = require("@/lib/fraud-alerts");
+      const { checkDonationRate } = require("@/lib/risk-agent");
       await checkDonationRate(donation.donorId);
     } catch (fraudErr) {
-      console.error("Failed to run donation rate fraud check:", fraudErr);
+      console.error("Failed to run donation rate risk check:", fraudErr);
     }
 
     return NextResponse.json({ success: true, receiptNumber, pdfUrl }, { status: 200 });

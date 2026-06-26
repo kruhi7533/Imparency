@@ -314,9 +314,46 @@ const PENDING_NGOS = [
 // ─── Donor data ───────────────────────────────────────────────────────────────
 
 const DEMO_DONORS = [
-  { email: "priya.sharma@demo.com", name: "Priya Sharma" },
-  { email: "rahul.mehta@demo.com", name: "Rahul Mehta" },
-  { email: "sunita.rao@demo.com", name: "Sunita Rao" },
+  {
+    email: "priya.sharma@demo.com",
+    name: "Priya Sharma",
+    donorCategory: "INDIAN_IN_INDIA" as const,
+    nriSourceDeclaration: null,
+    // Indian domestic donor — FCRA gate never applies
+  },
+  {
+    email: "rahul.mehta@demo.com",
+    name: "Rahul Mehta",
+    donorCategory: "INDIAN_IN_INDIA" as const,
+    nriSourceDeclaration: null,
+  },
+  {
+    email: "sunita.rao@demo.com",
+    name: "Sunita Rao",
+    donorCategory: "INDIAN_IN_INDIA" as const,
+    nriSourceDeclaration: null,
+  },
+  {
+    email: "amit.nri@demo.com",
+    name: "Amit Verma (NRI)",
+    donorCategory: "INDIAN_ABROAD" as const,
+    nriSourceDeclaration: "ELIGIBLE_NRI_SOURCE",
+    // NRI with FEMA-compliant NRE account — gate does NOT apply
+  },
+  {
+    email: "sarah.foreign@demo.com",
+    name: "Sarah Mitchell (Foreign)",
+    donorCategory: "FOREIGN_NATIONAL" as const,
+    nriSourceDeclaration: null,
+    // Foreign national — FCRA gate ALWAYS applies
+  },
+  {
+    email: "rajan.abroad@demo.com",
+    name: "Rajan Kumar (Abroad, Foreign Source)",
+    donorCategory: "INDIAN_ABROAD" as const,
+    nriSourceDeclaration: "FOREIGN_SOURCE",
+    // NRI using foreign account — FCRA gate applies
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -661,7 +698,27 @@ async function main() {
     let donor = await prisma.user.findUnique({ where: { email: d.email } });
     if (!donor) {
       donor = await prisma.user.create({
-        data: { email: d.email, name: d.name, passwordHash, role: "DONOR" }
+        data: {
+          email: d.email,
+          name: d.name,
+          passwordHash,
+          role: "DONOR",
+          donorCategory: d.donorCategory,
+          donorCategoryDeclaredAt: new Date(),
+          donorDeclarationVersion: "1.0",
+          nriSourceDeclaration: d.nriSourceDeclaration ?? null,
+        }
+      });
+    } else {
+      // update category in case seed is re-run
+      await prisma.user.update({
+        where: { id: donor.id },
+        data: {
+          donorCategory: d.donorCategory,
+          donorCategoryDeclaredAt: new Date(),
+          donorDeclarationVersion: "1.0",
+          nriSourceDeclaration: d.nriSourceDeclaration ?? null,
+        }
       });
     }
     donorIds.push(donor.id);
@@ -791,13 +848,16 @@ async function main() {
   console.log("Demo NGO logins (password: demoPassword123):");
   DEMO_NGOS.forEach(n => console.log(`  ${n.email}`));
   console.log("\nDemo donor logins (password: demoPassword123):");
-  DEMO_DONORS.forEach(d => console.log(`  ${d.email}`));
+  DEMO_DONORS.forEach(d => console.log(`  ${d.email}  [${d.donorCategory}${d.nriSourceDeclaration ? " / " + d.nriSourceDeclaration : ""}]`));
   console.log("\nWhat's seeded:");
   console.log("  • 7 verified NGOs with projects, milestones, proofs, and audit trail entries");
   console.log("    - Pragati Skills Institute: FCRA PENDING (in admin FCRA review queue)");
-  console.log("    - Bal Sansar Foundation: FCRA NONE, 100/100 score (domestic NGO demo)");
+  console.log("    - Bal Sansar Foundation: FCRA NONE (domestic NGO demo)");
   console.log("  • 2 pending NGOs in admin verification queue (1 doc error, 1 likely fraud)");
-  console.log("  • 3 donor accounts with 8 donations");
+  console.log("  • 6 donor accounts — 3 domestic, 1 NRI eligible, 1 NRI foreign-source, 1 foreign national");
+  console.log("    sarah.foreign@demo.com  → FOREIGN_NATIONAL  — FCRA gate ALWAYS applies");
+  console.log("    rajan.abroad@demo.com   → INDIAN_ABROAD/FOREIGN_SOURCE — FCRA gate applies");
+  console.log("    amit.nri@demo.com       → INDIAN_ABROAD/ELIGIBLE_NRI_SOURCE — gate exempt");
   console.log("  • 4 fraud alerts — DOCUMENT_ERROR, FRAUD_ALERT, and resolved categories");
   console.log("  • Milestone audit trail (approved/rejected decisions with admin name + AI score)");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");

@@ -23,7 +23,11 @@ export default async function AdminProofReviewPage() {
     include: {
       project: {
         include: {
-          ngo: true,
+          ngo: {
+            include: {
+              user: { select: { email: true } },
+            },
+          },
         },
       },
       proofs: {
@@ -71,6 +75,11 @@ export default async function AdminProofReviewPage() {
       raisedAmount: Number(m.project.raisedAmount),
       createdAt: m.project.createdAt.toISOString(),
       updatedAt: m.project.updatedAt.toISOString(),
+      ngo: {
+        ...m.project.ngo,
+        healthScore: m.project.ngo.healthScore != null ? Number(m.project.ngo.healthScore) : null,
+        ngoEmail: m.project.ngo.user.email,
+      },
     },
     proofs: m.proofs.map((p) => ({
       ...p,
@@ -108,7 +117,7 @@ export default async function AdminProofReviewPage() {
           <div className="flex gap-4 text-sm font-semibold">
             <a href="/admin/dashboard" className="text-gray-500 hover:text-emerald-600 transition">NGO Verification</a>
             <a href="/admin/proof-review" className="text-emerald-600 hover:text-emerald-700 transition underline decoration-2 underline-offset-4">Proof Review</a>
-            <a href="/admin/fraud-alerts" className="text-gray-500 hover:text-emerald-600 transition">Fraud Alerts</a>
+            <a href="/admin/risk-compliance" className="text-gray-500 hover:text-emerald-600 transition">Risk &amp; Compliance</a>
             <a href="/admin/fcra-review" className="text-gray-500 hover:text-emerald-600 transition">FCRA Review</a>
           </div>
           <div className="h-4 w-px bg-gray-200 dark:bg-gray-700"></div>

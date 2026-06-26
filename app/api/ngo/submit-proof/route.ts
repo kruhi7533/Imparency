@@ -127,12 +127,12 @@ export async function POST(request: Request) {
       },
     });
 
-    // Run Gemini score fraud alert checks
+    // Run Gemini score risk checks (creates RiskReview for admin — no auto-suspension)
     try {
-      const { checkGeminiScore } = require("@/lib/fraud-alerts");
+      const { checkGeminiScore } = require("@/lib/risk-agent");
       await checkGeminiScore(milestone.id, validationResult.score);
     } catch (fraudErr) {
-      console.error("Failed to run Gemini score fraud check:", fraudErr);
+      console.error("Failed to run Gemini score risk check:", fraudErr);
     }
 
     // Resolve milestone status based on AI score

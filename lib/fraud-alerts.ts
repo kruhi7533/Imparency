@@ -60,7 +60,7 @@ export async function checkPANUsage(panNumber: string, userId: string): Promise<
         "DUPLICATE_PAN_REGISTRATION",
         userId,
         "DONOR",
-        `User registration PAN number ${panNumber} matches existing user(s): ${duplicateUsers.map(u => u.id).join(", ")}`,
+        `PAN number is already registered to ${duplicateUsers.length} other account${duplicateUsers.length > 1 ? "s" : ""}. Manual identity verification required.`,
         "HIGH",
         "FRAUD_ALERT",
         "DUPLICATE_IDENTITY"
@@ -68,104 +68,6 @@ export async function checkPANUsage(panNumber: string, userId: string): Promise<
     }
   } catch (error) {
     console.error("Error checking PAN usage:", error);
-  }
-}
-
-/**
- * Checks Gemini proof validation scores.
- * Triggered on submit-proof.
- */
-export async function checkGeminiScore(milestoneId: string, score: number): Promise<void> {
-  try {
-    const milestone = await prisma.milestone.findUnique({
-      where: { id: milestoneId },
-      include: {
-        project: {
-          include: {
-            ngo: true
-          }
-        }
-      }
-    });
-
-    if (!milestone) return;
-    const ngoId = milestone.project.ngoId;
-
-    // 1. Trigger HIGH alert if score is below 40
-    if (score < 40) {
-      await createFraudAlert(
-        "EXTREMELY_LOW_PROOF_SCORE",
-        milestone.id,
-        "NGO",
-        `NGO submitted proof for milestone "${milestone.title}" that scored an extremely low AI score of ${score}/100.`,
-        "HIGH",
-        "FRAUD_ALERT"
-      );
-
-      // 2. Check if NGO has received two consecutive scores below 40 on different milestones
-      const recentProofs = await prisma.milestoneProof.findMany({
-        where: {
-          milestone: {
-            project: { ngoId }
-          },
-          aiValidationScore: { not: null }
-        },
-        orderBy: { submittedAt: "desc" },
-        take: 2
-      });
-
-      if (
-        recentProofs.length >= 2 &&
-        recentProofs.every(p => p.aiValidationScore !== null && p.aiValidationScore < 40)
-      ) {
-        // Suspend the NGO profile
-        await prisma.nGOProfile.update({
-          where: { id: ngoId },
-          data: { isSuspended: true }
-        });
-
-        await createFraudAlert(
-          "CONSECUTIVE_LOW_SCORES_SUSPENSION",
-          ngoId,
-          "NGO",
-          `NGO "${milestone.project.ngo.orgName}" has been auto-suspended due to receiving consecutive low Gemini proof validation scores (< 40).`,
-          "HIGH",
-          "FRAUD_ALERT"
-        );
-      }
-    }
-  } catch (error) {
-    console.error("Error checking Gemini score alerts:", error);
-  }
-}
-
-/**
- * Checks if a donor makes more than 5 donations in under 10 minutes.
- * Triggered on donationwebhook.
- */
-export async function checkDonationRate(donorId: string): Promise<void> {
-  try {
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-    const recentDonationsCount = await prisma.donation.count({
-      where: {
-        donorId,
-        status: "SUCCESS",
-        createdAt: { gte: tenMinutesAgo }
-      }
-    });
-
-    if (recentDonationsCount > 5) {
-      await createFraudAlert(
-        "SUSPICIOUS_DONATION_FREQUENCY",
-        donorId,
-        "DONOR",
-        `Donor has completed ${recentDonationsCount} successful donations in the last 10 minutes (potential payment testing fraud).`,
-        "MEDIUM",
-        "FRAUD_ALERT"
-      );
-    }
-  } catch (error) {
-    console.error("Error checking donation rate alerts:", error);
   }
 }
 
