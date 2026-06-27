@@ -1,5 +1,7 @@
 /* eslint-disable no-var */
 import { Prisma, PrismaClient } from '@prisma/client';
+import { Pool } from '@neondatabase/serverless';
+import { PrismaNeon } from '@prisma/adapter-neon';
 
 // Connection errors that are worth retrying — typically a Neon serverless
 // endpoint waking from auto-suspend (cold start) or a brief network blip.
@@ -10,7 +12,9 @@ const BASE_DELAY_MS = 250;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const prismaClientSingleton = () => {
-  const client = new PrismaClient();
+  const neonPool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaNeon(neonPool);
+  const client = new PrismaClient({ adapter });
 
   // Retry transient connection failures with exponential backoff so a cold
   // Neon endpoint doesn't surface as a hard 500 to the user.

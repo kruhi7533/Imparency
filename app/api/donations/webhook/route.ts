@@ -1,207 +1,286 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import prisma from "@/lib/prisma";
-import { getIndianFinancialYear } from "@/lib/finance-utils";
-import { generateReceiptBuffer } from "@/lib/receipt-generator";
+import crypto from "crypto";
+import { getFinancialYear, generateReceiptNumber, numberToIndianWords } from "@/lib/finance-utils";
+import { generateTaxReceiptPDF, ReceiptData } from "@/lib/receipt-generator";
 import { uploadFile } from "@/lib/storage";
-import { sendReceiptEmail } from "@/lib/email";
+import { sendTaxReceiptEmail, sendPaymentRetryEmail } from "@/lib/email";
+import { generateRetryToken, getRetryDelay } from "@/lib/retry-utils";
 
-export const runtime = "nodejs";
-
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const rawBody = await request.text();
-    const signature = request.headers.get("x-razorpay-signature");
+    const rawBody = await req.text();
+    const signature = req.headers.get("x-razorpay-signature") ?? "";
 
-    if (!signature) {
-      console.warn("Webhook attempt missing signature header");
-      return NextResponse.json({ error: "Missing signature" }, { status: 400 });
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (!secret) {
+      console.error("RAZORPAY_WEBHOOK_SECRET is not configured");
+      return NextResponse.json({ error: "Configuration error" }, { status: 500 });
     }
 
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    if (!webhookSecret) {
-      console.error("[webhook] RAZORPAY_WEBHOOK_SECRET is not set — rejecting request");
-      return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 });
-    }
-
-    // Verify HMAC signature
     const expectedSignature = crypto
-      .createHmac("sha256", webhookSecret)
+      .createHmac("sha256", secret)
       .update(rawBody)
       .digest("hex");
 
-    if (signature !== expectedSignature) {
-      console.warn("Invalid webhook signature received");
+    if (expectedSignature !== signature) {
+      console.warn("Invalid Razorpay webhook signature");
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
 
-    const payload = JSON.parse(rawBody);
-    const event = payload.event;
+    const event = JSON.parse(rawBody);
+    const eventName = event.event;
 
-    // We only process payment capture or order paid events
-    if (event !== "payment.captured" && event !== "order.paid") {
-      return NextResponse.json({ received: true }, { status: 200 });
-    }
+    if (eventName === "payment.captured") {
+      const paymentEntity = event.payload.payment.entity;
+      const order_id = paymentEntity.order_id;
+      const paymentId = paymentEntity.id;
 
-    // Extract entity details
-    const paymentEntity = payload.payload?.payment?.entity;
-    const orderEntity = payload.payload?.order?.entity;
-
-    const razorpayOrderId = paymentEntity?.order_id || orderEntity?.id;
-    const razorpayPaymentId = paymentEntity?.id;
-
-    if (!razorpayOrderId) {
-      return NextResponse.json({ error: "Order ID not found in payload" }, { status: 400 });
-    }
-
-    // Check for duplicate webhook delivery using payment ID (idempotency check)
-    if (razorpayPaymentId) {
-      const duplicateDonation = await prisma.donation.findFirst({
-        where: { razorpayPaymentId, status: "SUCCESS" },
+      // Fetch full data needed for receipt
+      const donation = await prisma.donation.findFirst({
+        where: { razorpayOrderId: order_id },
+        include: {
+          donor: true,
+          project: { include: { ngo: true } },
+        },
       });
-      if (duplicateDonation) {
-        return NextResponse.json({ duplicate: true }, { status: 200 });
+
+      if (!donation) {
+        console.warn(`Donation with order_id ${order_id} not found.`);
+        return NextResponse.json({ received: true }, { status: 200 });
+      }
+
+      // If already successfully processed, return 200
+      if (donation.status === "SUCCESS") {
+        return NextResponse.json({ received: true }, { status: 200 });
+      }
+
+      // Update database: status: SUCCESS, increment project.raisedAmount, increment user.totalDonated
+      await prisma.$transaction([
+        prisma.donation.update({
+          where: { id: donation.id },
+          data: {
+            status: "SUCCESS",
+            razorpayPaymentId: paymentId,
+          },
+        }),
+        prisma.project.update({
+          where: { id: donation.projectId },
+          data: {
+            raisedAmount: { increment: donation.amount },
+          },
+        }),
+        prisma.user.update({
+          where: { id: donation.donorId },
+          data: {
+            totalDonated: { increment: donation.amount },
+          },
+        }),
+      ]);
+
+      // Fetch the updated donation to get the accurate updated fields or timestamps
+      const updatedDonation = await prisma.donation.findUnique({
+        where: { id: donation.id },
+        include: {
+          donor: true,
+          project: { include: { ngo: true } },
+        },
+      });
+
+      if (!updatedDonation) {
+        throw new Error("Failed to retrieve updated donation record");
+      }
+
+      // Build ReceiptData
+      const financialYear = getFinancialYear(updatedDonation.createdAt);
+      const existingCount = await prisma.taxReceipt.count({
+        where: { financialYear },
+      });
+      const receiptNumber = generateReceiptNumber(existingCount + 1, financialYear);
+      const amountInWords = numberToIndianWords(Number(updatedDonation.amount));
+
+      const formatDate = (date: Date): string => {
+        const day = date.getDate().toString().padStart(2, "0");
+        const month = (date.getMonth() + 1).toString().padStart(2, "0");
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+      };
+
+      const receiptData: ReceiptData = {
+        donorName: updatedDonation.donor.name,
+        donorPan: updatedDonation.donor.panNumber ?? "NOT PROVIDED",
+        donorAddress: updatedDonation.donor.city ?? "India",
+        ngoName: updatedDonation.project.ngo.orgName,
+        ngoPan: updatedDonation.project.ngo.panNumber,
+        ngoRegistrationNumber: updatedDonation.project.ngo.registrationNumber,
+        ngo80GNumber: `${updatedDonation.project.ngo.registrationNumber}/80G`,
+        ngo80GValidityFrom: "AY 2022-23",
+        ngo80GValidityTo: "AY 2026-27",
+        ngoAddress: updatedDonation.project.ngo.address,
+        donationId: updatedDonation.id,
+        receiptNumber,
+        amount: Number(updatedDonation.amount),
+        amountInWords,
+        projectTitle: updatedDonation.project.title,
+        financialYear,
+        donationDate: formatDate(updatedDonation.createdAt),
+        paymentMode: "Online (Razorpay)",
+      };
+
+      // Generate PDF buffer
+      const pdfBuffer = await generateTaxReceiptPDF(receiptData);
+
+      // Upload to storage
+      const pdfUrl = await uploadFile(pdfBuffer, `receipt-${receiptNumber}.pdf`, "receipts");
+
+      // Create TaxReceipt row
+      await prisma.taxReceipt.create({
+        data: {
+          donationId: updatedDonation.id,
+          receiptNumber,
+          financialYear,
+          pdfUrl,
+        },
+      });
+
+      // Update Donation.receiptUrl
+      await prisma.donation.update({
+        where: { id: updatedDonation.id },
+        data: { receiptUrl: pdfUrl },
+      });
+
+      // Send receipt email to donor
+      await sendTaxReceiptEmail(
+        updatedDonation.donor.email,
+        updatedDonation.donor.name,
+        updatedDonation.project.ngo.orgName,
+        Number(updatedDonation.amount),
+        receiptNumber,
+        financialYear,
+        pdfUrl
+      );
+
+      // NOTE: Replace with Inngest or Vercel Cron in production.
+      const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;
+
+      setTimeout(async () => {
+        try {
+          // Find the most recent ImpactReport for this donation
+          const report = await prisma.impactReport.findFirst({
+            where: { donationId: donation.id },
+            orderBy: { sentAt: "desc" }
+          });
+
+          if (!report) {
+            // No impact report yet — re-engagement will be triggered
+            // by the Gemini impact agent in Phase 4 instead.
+            console.log(`[ReEngagement] No impact report for donationId=${donation.id}, skipping.`);
+            return;
+          }
+
+          // Call re-engagement API internally
+          const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+          await fetch(`${baseUrl}/api/engagement/re-engage`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              // Internal call — bypass auth with a server secret header
+              "x-internal-secret": process.env.INTERNAL_API_SECRET || "",
+            },
+            body: JSON.stringify({ reportId: report.id, donorId: donation.donorId }),
+          });
+        } catch (err) {
+          console.error("[ReEngagement Scheduler Error]", err);
+        }
+      }, FORTY_EIGHT_HOURS);
+    } else if (eventName === "payment.failed") {
+      const paymentEntity = event.payload.payment.entity;
+      const orderId = paymentEntity.order_id;
+
+      const donation = await prisma.donation.findFirst({
+        where: { razorpayOrderId: orderId },
+        include: {
+          donor: { select: { id: true, email: true, name: true } },
+          project: { select: { title: true } },
+        },
+      });
+
+      if (!donation) {
+        return NextResponse.json({ received: true }, { status: 200 });
+      }
+
+      const newRetryCount = donation.retryCount + 1;
+      const delay = getRetryDelay(donation.retryCount);
+
+      if (delay !== -1) {
+        // Still have retries left — schedule a retry attempt
+        // Update retryCount and lastFailedAt, keep status as PENDING
+        // so the webhook can match it again on the next attempt
+        await prisma.donation.update({
+          where: { id: donation.id },
+          data: {
+            retryCount: newRetryCount,
+            lastFailedAt: new Date(),
+            // Keep status PENDING — a retry is coming
+          },
+        });
+
+        // NOTE: setTimeout is used here for simplicity in development.
+        // In production, replace with a proper job queue such as
+        // Inngest, BullMQ, or Vercel Cron to guarantee delayed execution.
+        setTimeout(async () => {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const Razorpay = require("razorpay");
+            const razorpay = new Razorpay({
+              key_id: process.env.RAZORPAY_KEY_ID,
+              key_secret: process.env.RAZORPAY_KEY_SECRET,
+            });
+            // Fetch the order to confirm it's still open
+            const order = await razorpay.orders.fetch(orderId);
+            if (order.status === "paid") return; // already succeeded somehow
+            // No direct Razorpay API to "retry" — the retry happens
+            // when the donor re-opens checkout. So log the intent only.
+            console.log(`[Retry Scheduled] donationId=${donation.id} attempt=${newRetryCount} delay=${delay}ms`);
+          } catch (err) {
+            console.error("[Retry Scheduler Error]", err);
+          }
+        }, delay);
+
+      } else {
+        // Retries exhausted — mark FAILED, generate token, send email
+        const retryToken = generateRetryToken();
+        const retryTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+
+        await prisma.donation.update({
+          where: { id: donation.id },
+          data: {
+            status: "FAILED",
+            retryCount: newRetryCount,
+            lastFailedAt: new Date(),
+            retryToken,
+            retryTokenExpiresAt,
+          },
+        });
+
+        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+        const retryUrl = `${baseUrl}/donor/retry/${retryToken}`;
+
+        await sendPaymentRetryEmail(
+          donation.donor.email,
+          donation.donor.name,
+          donation.project.title,
+          Number(donation.amount),
+          retryUrl
+        );
       }
     }
 
-    // Find the pending donation with full relations
-    const donation = await prisma.donation.findFirst({
-      where: { razorpayOrderId },
-      include: {
-        donor: true,
-        project: {
-          include: {
-            ngo: true,
-          },
-        },
-      },
-    });
-
-    if (!donation) {
-      return NextResponse.json({ error: "Associated donation record not found" }, { status: 404 });
-    }
-
-    // If already successful, return OK (idempotency check)
-    if (donation.status === "SUCCESS") {
-      return NextResponse.json({ received: true }, { status: 200 });
-    }
-
-    // Update Donation Status
-    await prisma.donation.update({
-      where: { id: donation.id },
-      data: {
-        status: "SUCCESS",
-        razorpayPaymentId: razorpayPaymentId || null,
-      },
-    });
-
-    // Increment user totalDonated
-    await prisma.user.update({
-      where: { id: donation.donorId },
-      data: {
-        totalDonated: {
-          increment: donation.amount,
-        },
-      },
-    });
-
-    // Calculate Financial Year & generate Receipt Number
-    const now = new Date();
-    const fy = getIndianFinancialYear(now);
-    const shortYear = fy.split("-")[1]; // "2026-27" -> "27"
-
-    // Transaction sequence query
-    const count = await prisma.taxReceipt.count({
-      where: { financialYear: fy },
-    });
-    const seq = String(count + 1).padStart(5, "0");
-    const receiptNumber = `IB-FY${shortYear}-${seq}`;
-
-    // Generate PDF buffer using react-pdf/renderer
-    const pdfBuffer = await generateReceiptBuffer(
-      {
-        id: donation.id,
-        amount: Number(donation.amount),
-        createdAt: donation.createdAt,
-        razorpayPaymentId: razorpayPaymentId || null,
-      },
-      {
-        receiptNumber,
-        financialYear: fy,
-        issuedAt: now,
-      },
-      donation.donor,
-      donation.project.ngo,
-      donation.project
-    );
-
-    // Upload PDF using file storage adapter
-    const pdfUrl = await uploadFile(pdfBuffer, `${receiptNumber}.pdf`, `receipts/${donation.id}`);
-
-    // Write TaxReceipt database record
-    await prisma.taxReceipt.create({
-      data: {
-        donationId: donation.id,
-        receiptNumber,
-        financialYear: fy,
-        pdfUrl,
-        issuedAt: now,
-      },
-    });
-
-    // Update the donation record with receiptUrl
-    await prisma.donation.update({
-      where: { id: donation.id },
-      data: {
-        receiptUrl: pdfUrl,
-      },
-    });
-
-    // Send confirmation email via Resend
-    try {
-      await sendReceiptEmail(
-        donation.donor.email,
-        donation.donor.name,
-        receiptNumber,
-        pdfUrl,
-        Number(donation.amount),
-        donation.project.title,
-        pdfBuffer
-      );
-    } catch (emailErr) {
-      console.error("Failed to send receipt email:", emailErr);
-    }
-
-    console.log(`Donation ${donation.id} resolved successfully. Receipt issued: ${receiptNumber}`);
-
-    // Trigger push notification to NGO
-    try {
-      const { triggerNewDonationReceived } = require("@/lib/notification-triggers");
-      await triggerNewDonationReceived(donation.id);
-    } catch (triggerErr) {
-      console.error("Failed to trigger new donation notification:", triggerErr);
-    }
-
-    // Recalculate NGO health score
-    try {
-      const { recalculateNGOHealthScore } = require("@/lib/ngo-health");
-      await recalculateNGOHealthScore(donation.project.ngoId);
-    } catch (healthErr) {
-      console.error("Failed to recalculate health score on webhook donation:", healthErr);
-    }
-
-    // Check donation rate — risk agent raises alert, admin decides action
-    try {
-      const { checkDonationRate } = require("@/lib/risk-agent");
-      await checkDonationRate(donation.donorId);
-    } catch (fraudErr) {
-      console.error("Failed to run donation rate risk check:", fraudErr);
-    }
-
-    return NextResponse.json({ success: true, receiptNumber, pdfUrl }, { status: 200 });
-
-  } catch (err: any) {
-    console.error("Webhook processing error:", err);
-    return NextResponse.json({ error: err.message || "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ received: true }, { status: 200 });
+  } catch (error) {
+    const err = error as Error;
+    console.error("Error processing Razorpay webhook:", err);
+    // Wrap entire handler in try/catch and return 200 even on error (log the error server-side). Razorpay stops retrying on 200.
+    return NextResponse.json({ error: err.message, fallback: true }, { status: 200 });
   }
 }

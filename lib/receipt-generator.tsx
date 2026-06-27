@@ -1,297 +1,266 @@
+import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import React from "react";
-import { Document, Page, Text, View, StyleSheet, pdf } from "@react-pdf/renderer";
-import { amountToWords } from "./finance-utils";
 
-// Create styles for PDF
+export interface ReceiptData {
+  // Donor
+  donorName: string;
+  donorPan: string;
+  donorAddress: string;
+
+  // NGO
+  ngoName: string;
+  ngoPan: string;
+  ngoRegistrationNumber: string;
+  ngo80GNumber: string;
+  ngo80GValidityFrom: string;
+  ngo80GValidityTo: string;
+  ngoAddress: string;
+
+  // Donation
+  donationId: string;
+  receiptNumber: string;
+  amount: number;
+  amountInWords: string;
+  projectTitle: string;
+  financialYear: string;
+  donationDate: string;
+  paymentMode: string;
+}
+
 const styles = StyleSheet.create({
   page: {
     padding: 40,
     fontFamily: "Helvetica",
-    fontSize: 10,
-    color: "#1f2937", // gray-800
+    fontSize: 9,
+    color: "#111827",
     lineHeight: 1.5,
   },
-  header: {
-    borderBottomWidth: 2,
-    borderBottomColor: "#059669", // emerald-600
-    paddingBottom: 15,
-    marginBottom: 20,
-  },
-  logoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  logoContainer: {
     alignItems: "center",
+    marginBottom: 5,
   },
-  brandName: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#059669",
+  logoText: {
+    fontSize: 16,
+    fontFamily: "Helvetica-Bold",
+    color: "#059669", // emerald-600
+    letterSpacing: 1,
   },
-  receiptTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#374151", // gray-700
-  },
-  receiptMetaRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 15,
-    fontSize: 9,
-    color: "#6b7280", // gray-500
-  },
-  section: {
+  header: {
+    alignItems: "center",
     marginBottom: 15,
   },
-  sectionTitle: {
+  title: {
     fontSize: 11,
-    fontWeight: "bold",
-    color: "#374151",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb", // gray-200
-    paddingBottom: 3,
-    marginBottom: 8,
+    fontFamily: "Helvetica-Bold",
+    textAlign: "center",
+    marginBottom: 10,
+    textDecoration: "underline",
+  },
+  banner: {
+    backgroundColor: "#F9FAFB",
+    padding: 6,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginBottom: 12,
+  },
+  bannerText: {
+    fontSize: 8.5,
+    fontFamily: "Helvetica-Bold",
+  },
+  sectionTitle: {
+    fontSize: 9.5,
+    fontFamily: "Helvetica-Bold",
+    color: "#059669",
+    marginBottom: 4,
     textTransform: "uppercase",
   },
-  gridTwoCol: {
-    flexDirection: "row",
-    gap: 20,
-    marginBottom: 10,
+  box: {
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 6,
+    padding: 8,
+    marginBottom: 12,
   },
-  col: {
-    flex: 1,
+  row: {
+    flexDirection: "row",
+    marginBottom: 3,
   },
   label: {
-    fontSize: 8,
-    color: "#6b7280",
-    fontWeight: "bold",
-    textTransform: "uppercase",
-    marginBottom: 2,
+    width: "35%",
+    fontFamily: "Helvetica-Bold",
+    color: "#4B5563",
   },
   value: {
-    fontSize: 10,
-    color: "#1f2937",
-  },
-  amountBox: {
-    backgroundColor: "#f0fdf4", // emerald-50
-    borderWidth: 1,
-    borderColor: "#bbf7d0", // emerald-200
-    borderRadius: 6,
-    padding: 12,
-    marginVertical: 15,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  amountTitle: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#065f46", // emerald-800
-  },
-  amountInWords: {
-    fontSize: 9,
-    fontStyle: "italic",
-    color: "#047857", // emerald-700
-    marginTop: 4,
+    width: "65%",
   },
   declaration: {
-    fontSize: 9,
-    color: "#4b5563", // gray-600
-    backgroundColor: "#f9fafb", // gray-50
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 6,
-    padding: 10,
-    marginVertical: 15,
-    fontStyle: "italic",
-    textAlign: "center",
-  },
-  signatoryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 40,
-    paddingTop: 10,
-  },
-  signatoryBox: {
-    width: 150,
-    borderTopWidth: 1,
-    borderTopColor: "#9ca3af", // gray-400
-    paddingTop: 5,
-    alignItems: "center",
-  },
-  signatoryText: {
-    fontSize: 9,
-    color: "#4b5563",
+    fontSize: 8.5,
+    fontFamily: "Helvetica-Oblique",
+    color: "#374151",
+    marginTop: 8,
+    marginBottom: 15,
+    textAlign: "justify",
   },
   footer: {
-    position: "absolute",
-    bottom: 30,
-    left: 40,
-    right: 40,
+    marginTop: 15,
     borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
-    paddingTop: 10,
+    borderTopColor: "#E5E7EB",
+    paddingTop: 8,
+  },
+  footerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginTop: 5,
+  },
+  signatureContainer: {
     alignItems: "center",
+    width: 150,
   },
-  footerText: {
+  signatureSpace: {
+    height: 30,
+    borderBottomWidth: 1,
+    borderBottomColor: "#9CA3AF",
+    width: "100%",
+    marginBottom: 4,
+  },
+  signText: {
     fontSize: 8,
-    color: "#9ca3af",
+    fontFamily: "Helvetica-Bold",
+    textAlign: "center",
   },
+  computerGenerated: {
+    fontSize: 7.5,
+    color: "#9CA3AF",
+    textAlign: "center",
+    marginTop: 12,
+  },
+  verifiedBy: {
+    fontSize: 8,
+    color: "#059669",
+    fontFamily: "Helvetica-Bold",
+    textAlign: "center",
+    marginTop: 3,
+  }
 });
 
-interface ReceiptProps {
-  donation: {
-    id: string;
-    amount: number;
-    createdAt: Date;
-    razorpayPaymentId: string | null;
-  };
-  taxReceipt: {
-    receiptNumber: string;
-    financialYear: string;
-    issuedAt: Date;
-  };
-  donor: {
-    name: string;
-    panNumber: string | null;
-    billingAddress: string | null;
-  };
-  ngo: {
-    orgName: string;
-    registrationNumber: string;
-    panNumber: string; // NGO PAN
-    adminNote?: string | null; // We can use it or fallback, wait, NGO profile has PAN
-  };
-  project: {
-    title: string;
-  };
-}
-
-export const ReceiptDocument: React.FC<ReceiptProps> = ({
-  donation,
-  taxReceipt,
-  donor,
-  ngo,
-  project,
-}) => {
-  const amountVal = Number(donation.amount);
-  const words = amountToWords(amountVal);
-  const issueDateStr = new Date(taxReceipt.issuedAt).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-
+const ReceiptDocument = ({ data }: { data: ReceiptData }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header Banner */}
+        {/* Section 1: Logo & Header */}
+        <View style={styles.logoContainer}>
+          <Text style={styles.logoText}>IMPARENCY</Text>
+        </View>
+
         <View style={styles.header}>
-          <View style={styles.logoRow}>
-            <Text style={styles.brandName}>ImpactBridge</Text>
-            <Text style={styles.receiptTitle}>Official Tax Exemption Receipt</Text>
-          </View>
-          <View style={styles.receiptMetaRow}>
-            <Text>Receipt No: {taxReceipt.receiptNumber}</Text>
-            <Text>Financial Year: {taxReceipt.financialYear}</Text>
-            <Text>Issued Date: {issueDateStr}</Text>
-          </View>
-        </View>
-
-        {/* Section 1: NGO Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recipient (NGO Details)</Text>
-          <View style={styles.gridTwoCol}>
-            <View style={styles.col}>
-              <Text style={styles.label}>Organization Name</Text>
-              <Text style={styles.value}>{ngo.orgName}</Text>
-            </View>
-            <View style={styles.col}>
-              <Text style={styles.label}>NGO PAN Number</Text>
-              <Text style={styles.value}>{ngo.panNumber}</Text>
-            </View>
-          </View>
-          <View style={styles.gridTwoCol}>
-            <View style={styles.col}>
-              <Text style={styles.label}>Registration Number</Text>
-              <Text style={styles.value}>{ngo.registrationNumber}</Text>
-            </View>
-            <View style={styles.col}>
-              <Text style={styles.label}>80G Order Number</Text>
-              <Text style={styles.value}>80G Certificate: CIT(E)/80G/EXEMPT/MOCK-0012</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Section 2: Donor Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Donor Details</Text>
-          <View style={styles.gridTwoCol}>
-            <View style={styles.col}>
-              <Text style={styles.label}>Donor Full Name</Text>
-              <Text style={styles.value}>{donor.name}</Text>
-            </View>
-            <View style={styles.col}>
-              <Text style={styles.label}>Donor PAN Number</Text>
-              <Text style={styles.value}>{donor.panNumber || "N/A"}</Text>
-            </View>
-          </View>
-          <View style={styles.section}>
-            <Text style={styles.label}>Billing Address</Text>
-            <Text style={styles.value}>{donor.billingAddress || "N/A"}</Text>
-          </View>
-        </View>
-
-        {/* Section 3: Donation Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contribution Summary</Text>
-          <View style={styles.gridTwoCol}>
-            <View style={styles.col}>
-              <Text style={styles.label}>Allocated Project</Text>
-              <Text style={styles.value}>{project.title}</Text>
-            </View>
-            <View style={styles.col}>
-              <Text style={styles.label}>Razorpay Payment ID</Text>
-              <Text style={styles.value}>{donation.razorpayPaymentId || "N/A"}</Text>
-            </View>
-          </View>
-
-          {/* Amount Box */}
-          <View style={styles.amountBox}>
-            <View>
-              <Text style={styles.label}>Contribution Amount</Text>
-              <Text style={styles.amountTitle}>₹{amountVal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</Text>
-            </View>
-            <View style={{ alignItems: "flex-end", flex: 1, marginLeft: 20 }}>
-              <Text style={styles.label}>Amount in Words</Text>
-              <Text style={styles.amountInWords}>{words}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Declaration Box */}
-        <View style={styles.declaration}>
-          <Text>
-            "This donation is eligible for tax deduction under Section 80G of the Income Tax Act, 1961. 
-            No benefit, direct or indirect, has been or will be provided to the donor in return for this contribution."
+          <Text style={styles.title}>
+            DONATION RECEIPT UNDER SECTION 80G OF THE INCOME TAX ACT, 1961
           </Text>
         </View>
 
-        {/* Signatory line */}
-        <View style={styles.signatoryRow}>
-          <View style={{ flex: 1 }}></View>
-          <View style={styles.signatoryBox}>
-            <Text style={{ fontSize: 9, fontWeight: "bold", marginBottom: 2 }}>{ngo.orgName}</Text>
-            <Text style={styles.signatoryText}>Authorized Signatory</Text>
+        {/* Banner with receipt details */}
+        <View style={styles.banner}>
+          <Text style={styles.bannerText}>Receipt No: {data.receiptNumber}</Text>
+          <Text style={styles.bannerText}>Date: {data.donationDate}</Text>
+          <Text style={styles.bannerText}>Financial Year: {data.financialYear}</Text>
+        </View>
+
+        {/* Section 2: Donee Details */}
+        <Text style={styles.sectionTitle}>Donee Organization Details</Text>
+        <View style={styles.box}>
+          <View style={styles.row}>
+            <Text style={styles.label}>Name of Organization:</Text>
+            <Text style={styles.value}>{data.ngoName}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Registration Number:</Text>
+            <Text style={styles.value}>{data.ngoRegistrationNumber}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>PAN of Organization:</Text>
+            <Text style={styles.value}>{data.ngoPan}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>80G Registration Number:</Text>
+            <Text style={styles.value}>{data.ngo80GNumber}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>80G Certificate Validity:</Text>
+            <Text style={styles.value}>{data.ngo80GValidityFrom} to {data.ngo80GValidityTo}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Address:</Text>
+            <Text style={styles.value}>{data.ngoAddress}</Text>
           </View>
         </View>
 
-        {/* Footer */}
+        {/* Section 3: Donor Details */}
+        <Text style={styles.sectionTitle}>Donor Details</Text>
+        <View style={styles.box}>
+          <View style={styles.row}>
+            <Text style={styles.label}>Name of Donor:</Text>
+            <Text style={styles.value}>{data.donorName}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>PAN of Donor:</Text>
+            <Text style={styles.value}>{data.donorPan}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Address:</Text>
+            <Text style={styles.value}>{data.donorAddress}</Text>
+          </View>
+        </View>
+
+        {/* Section 4: Donation Details */}
+        <Text style={styles.sectionTitle}>Donation Details</Text>
+        <View style={styles.box}>
+          <View style={styles.row}>
+            <Text style={styles.label}>Amount in Figures:</Text>
+            <Text style={styles.value}>Rs. {data.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Amount in Words:</Text>
+            <Text style={styles.value}>{data.amountInWords}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Project / Purpose:</Text>
+            <Text style={styles.value}>{data.projectTitle}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Mode of Payment:</Text>
+            <Text style={styles.value}>{data.paymentMode}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Transaction/Donation ID:</Text>
+            <Text style={styles.value}>{data.donationId}</Text>
+          </View>
+        </View>
+
+        {/* Section 5: Declaration */}
+        <Text style={styles.declaration}>
+          We hereby certify that the donation received is of an amount of Rs. {data.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Rupees {data.amountInWords}) from {data.donorName} and that this amount has been utilized / will be utilized for the purposes of the organization and NOT for any religious purpose. The deduction under Section 80G is available to the extent of 50% of the donation amount.
+        </Text>
+
+        {/* Section 6: Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
+          <View style={styles.footerRow}>
+            <View style={{ width: "60%" }}>
+              <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", marginBottom: 2 }}>For {data.ngoName}</Text>
+            </View>
+            <View style={styles.signatureContainer}>
+              <View style={styles.signatureSpace} />
+              <Text style={styles.signText}>Authorized Signatory</Text>
+            </View>
+          </View>
+
+          <Text style={styles.computerGenerated}>
             This is a computer-generated receipt and does not require a physical signature.
           </Text>
-          <Text style={[styles.footerText, { marginTop: 2 }]}>
-            ImpactBridge Transparency Portal | Powered by Gemini Validation Engines
+          <Text style={styles.verifiedBy}>
+            Verified by Imparency Platform | www.imparency.in
           </Text>
         </View>
       </Page>
@@ -299,21 +268,6 @@ export const ReceiptDocument: React.FC<ReceiptProps> = ({
   );
 };
 
-export async function generateReceiptBuffer(
-  donation: any,
-  taxReceipt: any,
-  donor: any,
-  ngo: any,
-  project: any
-): Promise<Buffer> {
-  const doc = (
-    <ReceiptDocument
-      donation={donation}
-      taxReceipt={taxReceipt}
-      donor={donor}
-      ngo={ngo}
-      project={project}
-    />
-  );
-  return (await pdf(doc).toBuffer()) as any as Buffer;
+export async function generateTaxReceiptPDF(data: ReceiptData): Promise<Buffer> {
+  return await renderToBuffer(<ReceiptDocument data={data} />);
 }

@@ -25,6 +25,12 @@ export default async function ProjectPage({
       },
       milestones: {
         orderBy: { sequenceOrder: "asc" },
+        include: {
+          proofs: {
+            orderBy: { submittedAt: "desc" },
+            take: 1,
+          },
+        },
       },
     },
   });
@@ -46,7 +52,6 @@ export default async function ProjectPage({
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
-      <Navbar />
       
       {/* Cover Banner */}
       <div className="h-80 w-full relative overflow-hidden">
@@ -104,6 +109,65 @@ export default async function ProjectPage({
               )}
             </div>
 
+            {project.geoIntelligence && (
+              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-800 pb-3">
+                  <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-xl text-emerald-600 dark:text-emerald-400">
+                    🌍
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">Area Context</h2>
+                    <p className="text-xs text-gray-500 font-medium">AI-powered Demographic & Environmental Intel</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  {/* Literacy */}
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                      Literacy Rate
+                      <span className="text-[9px] bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded shadow-sm border border-gray-200 dark:border-gray-700">Census 2011</span>
+                    </p>
+                    <p className="text-xl font-black text-gray-900 dark:text-white">
+                      {(project.geoIntelligence as any)?.literacyRate ? `${(project.geoIntelligence as any).literacyRate}%` : 'Unavailable'}
+                    </p>
+                  </div>
+
+                  {/* Rural Pop */}
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                      Rural Pop.
+                      <span className="text-[9px] bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded shadow-sm border border-gray-200 dark:border-gray-700">Census 2011</span>
+                    </p>
+                    <p className="text-xl font-black text-gray-900 dark:text-white">
+                      {(project.geoIntelligence as any)?.ruralPopulation ? (project.geoIntelligence as any).ruralPopulation.toLocaleString() : 'Unavailable'}
+                    </p>
+                  </div>
+
+                  {/* NDVI */}
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                      Vegetation (NDVI)
+                      <span className="text-[9px] bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded shadow-sm border border-gray-200 dark:border-gray-700">Satellite</span>
+                    </p>
+                    <div className="space-y-1 mt-1">
+                      <div className={`px-2.5 py-1 rounded w-fit text-xs font-bold ${
+                        (project.geoIntelligence as any)?.ndviScore > 0.5 ? 'bg-emerald-100 text-emerald-700' :
+                        (project.geoIntelligence as any)?.ndviScore >= 0.2 ? 'bg-amber-100 text-amber-700' :
+                        (project.geoIntelligence as any)?.ndviScore >= 0 ? 'bg-red-100 text-red-700' :
+                        (project.geoIntelligence as any)?.ndviScore !== null && (project.geoIntelligence as any)?.ndviScore !== undefined ? 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {(project.geoIntelligence as any)?.ndviScore !== null && (project.geoIntelligence as any)?.ndviScore !== undefined ? (project.geoIntelligence as any).ndviScore.toFixed(3) : 'No Data'}
+                      </div>
+                      <p className="text-[10px] font-bold text-gray-600 dark:text-gray-400 leading-tight">
+                        {(project.geoIntelligence as any)?.ndviInterpretation || "Unknown Area"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Milestones Stepper */}
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-sm">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Execution Milestones Sequence</h2>
@@ -112,6 +176,7 @@ export default async function ProjectPage({
                 {project.milestones.map((milestone, idx) => {
                   const isCompleted = milestone.status === "COMPLETED" || milestone.status === "VERIFIED";
                   const isPending = milestone.status === "PENDING";
+                  const latestProof = milestone.proofs?.[0];
                   return (
                     <div key={milestone.id} className="relative pl-8">
                       {/* Step Indicator Dot */}
@@ -143,10 +208,97 @@ export default async function ProjectPage({
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           {milestone.description}
                         </p>
-                        <div className="flex flex-wrap justify-between text-[10px] font-bold text-gray-400 pt-1">
+                        <div className="flex flex-wrap justify-between text-[10px] font-bold text-gray-400 pt-1 pb-1">
                           <span>Target Allocation: ₹{Number(milestone.targetAmount).toLocaleString()}</span>
                           <span>Deadline: {new Date(milestone.deadline).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                         </div>
+
+                        {/* Proof of Utilization Inspector */}
+                        {latestProof && (
+                          <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-150 dark:border-gray-800/80 rounded-xl space-y-3.5">
+                            <div className="flex items-center justify-between border-b border-gray-200/60 dark:border-gray-800/60 pb-2">
+                              <span className="text-[10px] font-extrabold text-gray-450 dark:text-gray-400 uppercase tracking-wider">
+                                Proof of Utilization
+                              </span>
+                              {latestProof.aiValidationScore !== null && (
+                                <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border ${
+                                  latestProof.aiValidationScore >= 70
+                                    ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-150 dark:border-emerald-900/30"
+                                    : "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-150 dark:border-amber-900/30"
+                                }`}>
+                                  AI Audit: {latestProof.aiValidationScore}/100
+                                </span>
+                              )}
+                            </div>
+
+                            {/* NGO Description */}
+                            <div className="space-y-1">
+                              <span className="text-[9px] font-extrabold text-gray-400 block uppercase tracking-wider">NGO Submission Note:</span>
+                              <p className="text-xs text-gray-700 dark:text-gray-300 italic">
+                                "{latestProof.description}"
+                              </p>
+                            </div>
+
+                            {/* Attachments */}
+                            {((latestProof.mediaUrls && latestProof.mediaUrls.length > 0) || 
+                              (latestProof.documentUrls && latestProof.documentUrls.length > 0)) && (
+                              <div className="space-y-1.5">
+                                <span className="text-[9px] font-extrabold text-gray-400 block uppercase tracking-wider">Attached Evidence:</span>
+                                <div className="flex flex-wrap gap-2">
+                                  {/* Media (Images) */}
+                                  {latestProof.mediaUrls?.map((url, i) => (
+                                    <a
+                                      key={url}
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="group block relative w-16 h-16 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden hover:scale-105 transition shadow-sm"
+                                    >
+                                      <img
+                                        src={url}
+                                        alt={`Evidence ${i + 1}`}
+                                        className="w-full h-full object-cover"
+                                      />
+                                      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[10px] text-white font-bold">
+                                        View
+                                      </div>
+                                    </a>
+                                  ))}
+                                  
+                                  {/* Documents (PDFs, etc) */}
+                                  {latestProof.documentUrls?.map((url, i) => {
+                                    const fileName = url.split('/').pop() || `Document ${i + 1}`;
+                                    return (
+                                      <a
+                                        key={url}
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 rounded-xl text-[10px] text-gray-600 dark:text-gray-400 font-bold shadow-sm transition max-w-[200px]"
+                                      >
+                                        <span className="text-xs">📄</span>
+                                        <span className="truncate">{fileName}</span>
+                                      </a>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* AI Verification Feedback */}
+                            {latestProof.aiValidationResult && (
+                              <details className="group border border-gray-200/70 dark:border-gray-800 rounded-xl overflow-hidden bg-white dark:bg-gray-950">
+                                <summary className="flex items-center justify-between px-3 py-2 cursor-pointer select-none text-[9px] font-extrabold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/50 uppercase tracking-wider">
+                                  <span>🤖 Gemini AI Validation Report</span>
+                                  <span className="text-xs group-open:rotate-180 transition-transform">▼</span>
+                                </summary>
+                                <div className="px-3 py-2.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap font-mono">
+                                  {latestProof.aiValidationResult}
+                                </div>
+                              </details>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -181,7 +333,11 @@ export default async function ProjectPage({
                 </div>
               </div>
 
-              <ProjectClient projectId={project.id} projectTitle={project.title} />
+              <ProjectClient 
+                projectId={project.id} 
+                projectTitle={project.title} 
+                ngoName={project.ngo.orgName} 
+              />
               
             </div>
 

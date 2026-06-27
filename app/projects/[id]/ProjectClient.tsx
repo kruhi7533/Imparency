@@ -7,9 +7,10 @@ import { useSession } from "next-auth/react";
 interface ProjectClientProps {
   projectId: string;
   projectTitle: string;
+  ngoName: string;
 }
 
-export default function ProjectClient({ projectId, projectTitle }: ProjectClientProps) {
+export default function ProjectClient({ projectId, projectTitle, ngoName }: ProjectClientProps) {
   const { data: session } = useSession();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -56,6 +57,7 @@ export default function ProjectClient({ projectId, projectTitle }: ProjectClient
         <DonateModal
           projectId={projectId}
           projectTitle={projectTitle}
+          ngoName={ngoName}
           onClose={() => setIsModalOpen(false)}
         />
       )}

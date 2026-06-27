@@ -19,6 +19,7 @@ async function testPrompts() {
   const dummyBuffer = Buffer.from("dummy-photo-content");
   const validationResult = await validateMilestoneProof(
     mockMilestone,
+    { problemStatement: "Lack of textbooks in rural schools", expectedOutcome: "Improved science literacy among grade 5 students" },
     proofDescription,
     [{ buffer: dummyBuffer, mimeType: "image/jpeg" }]
   );
@@ -42,7 +43,7 @@ async function testPrompts() {
   );
 
   console.log("Generated Narrative:\n", narrative);
-  if (!narrative || narrative.length < 20) {
+  if (!narrative || narrative.narrative.length < 20) {
     throw new Error("Invalid narrative result format");
   }
   console.log("PASS: generateImpactNarrative completed");

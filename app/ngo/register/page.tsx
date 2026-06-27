@@ -26,6 +26,8 @@ export default function NGORegistrationPage() {
   const [foundedYear, setFoundedYear] = useState("");
   const [description, setDescription] = useState("");
   const [selectedCauses, setSelectedCauses] = useState<string[]>([]);
+  const [consent, setConsent] = useState(false);
+  const consentVersion = "v1.0";
   
   // File states
   const [regFile, setRegFile] = useState<File | null>(null);
@@ -109,6 +111,12 @@ export default function NGORegistrationPage() {
       return;
     }
 
+    if (!consent) {
+      setError("Data processing consent is required to register");
+      setLoading(false);
+      return;
+    }
+
     if (selectedCauses.length === 0) {
       setError("Please select at least one cause category");
       setLoading(false);
@@ -135,6 +143,9 @@ export default function NGORegistrationPage() {
       formData.append("regFile", regFile);
       formData.append("panFile", panFile);
       formData.append("taxFile", taxFile);
+      
+      formData.append("dataProcessingConsent", consent ? "true" : "false");
+      formData.append("consentVersion", consentVersion);
 
       // Optional compliance documents
       if (a12File) formData.append("a12File", a12File);
@@ -509,6 +520,26 @@ export default function NGORegistrationPage() {
                 placeholder="e.g. 094421234"
               />
             </div>
+          </div>
+
+          <div className="pt-2">
+            <label className="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50/50 dark:bg-gray-900/50 cursor-pointer group hover:border-emerald-500/50 transition-colors">
+              <div className="flex items-center h-5 mt-0.5">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  className="w-4 h-4 text-emerald-600 bg-white border-gray-300 rounded focus:ring-emerald-500 dark:focus:ring-emerald-600 dark:ring-offset-gray-900 focus:ring-2 dark:bg-gray-800 dark:border-gray-700"
+                  required
+                />
+              </div>
+              <div className="text-sm">
+                <p className="font-medium text-gray-900 dark:text-white">Data Processing Consent *</p>
+                <p className="text-gray-500 dark:text-gray-400 mt-1">
+                  I agree to the collection and processing of organizational data as described in the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-700 hover:underline">Privacy Policy</a>.
+                </p>
+              </div>
+            </label>
           </div>
 
           <div className="pt-4">
