@@ -30,7 +30,7 @@ export interface ComplianceBreakdown {
 }
 
 export interface ComplianceResult {
-  score: number; // 0..80 base; FCRA shown separately as a badge
+  score: number; // 0..100; FCRA shown separately as a badge, not scored
   breakdown: ComplianceBreakdown;
   fcraBadge: FCRAStatus; // caller uses this to render the FCRA badge
 }

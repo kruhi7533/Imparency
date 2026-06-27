@@ -263,8 +263,37 @@ export async function sendAdminUnresolvedFraudAlertsReminder(
 ) {
   const list = alerts.map(a => `  • ${a.type.replace(/_/g, " ")} — ${a.orgOrDonor} (open for ${a.daysOpen} days)`).join("\n");
   const subject = `[Urgent] ${alerts.length} fraud alert${alerts.length > 1 ? "s" : ""} unresolved for 7+ days`;
-  const body = `Hi Admin,\n\nThe following high-priority fraud alert${alerts.length > 1 ? "s have" : " has"} been open for more than 7 days without resolution:\n\n${list}\n\nThese require your immediate attention. Please investigate and resolve:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/admin/fraud-alerts\n\nBest regards,\nImpactBridge System`;
+  const body = `Hi Admin,\n\nThe following high-priority fraud alert${alerts.length > 1 ? "s have" : " has"} been open for more than 7 days without resolution:\n\n${list}\n\nThese require your immediate attention. Please investigate and resolve:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/admin/risk-compliance\n\nBest regards,\nImpactBridge System`;
   return sendEmail({ to: adminEmail, subject, body });
+}
+
+export async function sendAdminFcraQuarterlyReport(
+  adminEmail: string,
+  data: {
+    quarter: string;
+    totalNgos: number;
+    activeCount: number;
+    expiringSoonCount: number;
+    expiredCount: number;
+    rejectedCount: number;
+    pendingCount: number;
+    reportId: string;
+  }
+) {
+  const subject = `[FCRA] Quarterly Compliance Report — ${data.quarter}`;
+  const body = `Hi Admin,\n\nThe FCRA Quarterly Compliance Report for ${data.quarter} has been generated.\n\nSummary:\n  • Total NGOs with FCRA submissions: ${data.totalNgos}\n  • Active: ${data.activeCount}\n  • Expiring Soon (within 90 days): ${data.expiringSoonCount}\n  • Expired: ${data.expiredCount}\n  • Pending Review: ${data.pendingCount}\n  • Rejected: ${data.rejectedCount}\n\nView the full report and download a CSV breakdown:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/admin/fcra-review\n\nBest regards,\nImpactBridge System`;
+  return sendEmail({ to: adminEmail, subject, body });
+}
+
+export async function sendProofQuestionEmail(
+  to: string,
+  orgName: string,
+  milestoneTitle: string,
+  question: string
+) {
+  const subject = `Question from the ImpactBridge review team regarding "${milestoneTitle}"`;
+  const body = `Hi there,\n\nOur review team has a question about the milestone completion proof you submitted for "${milestoneTitle}" (${orgName}).\n\n"${question}"\n\nPlease reply to this email or update your submission from your dashboard:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nThis is not a rejection — your proof is still under review.\n\nBest regards,\nThe ImpactBridge Review Team`;
+  return sendEmail({ to, subject, body });
 }
 
 export async function sendNGODocumentReminderEmail(

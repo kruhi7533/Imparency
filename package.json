@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "prisma generate && prisma db push --skip-generate",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "db:sync": "prisma db push",
     "seed": "npx tsx scripts/seed-demo.ts",
     "clear-demo": "npx tsx scripts/clear-demo.ts"
   },

@@ -11,12 +11,16 @@ export default async function AdminFcraReviewPage() {
   if (!session?.user) redirect("/login");
   if (session.user.role !== "ADMIN") redirect("/unauthorized");
 
-  // Compliance records with an FCRA submission, grouped client-side by status.
-  const records = await prisma.nGOCompliance.findMany({
-    where: { fcraStatus: { not: "NONE" } },
-    include: { ngo: { select: { id: true, orgName: true, user: { select: { email: true } } } } },
-    orderBy: { updatedAt: "desc" },
-  });
+  const [records, quarterlyReports] = await Promise.all([
+    prisma.nGOCompliance.findMany({
+      where: { fcraStatus: { not: "NONE" } },
+      include: { ngo: { select: { id: true, orgName: true, user: { select: { email: true } } } } },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.fcraQuarterlyReport.findMany({
+      orderBy: { generatedAt: "desc" },
+    }),
+  ]);
 
   const serialized = records.map((c) => ({
     id: c.id,
@@ -35,6 +39,18 @@ export default async function AdminFcraReviewPage() {
     updatedAt: c.updatedAt.toISOString(),
   }));
 
+  const serializedReports = quarterlyReports.map((r) => ({
+    id: r.id,
+    quarter: r.quarter,
+    generatedAt: r.generatedAt.toISOString(),
+    totalNgos: r.totalNgos,
+    activeCount: r.activeCount,
+    expiringSoonCount: r.expiringSoonCount,
+    expiredCount: r.expiredCount,
+    rejectedCount: r.rejectedCount,
+    pendingCount: r.pendingCount,
+  }));
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
       <nav className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-6 py-4 flex justify-between items-center shadow-sm">
@@ -46,7 +62,7 @@ export default async function AdminFcraReviewPage() {
           <div className="flex gap-4 text-sm font-semibold">
             <a href="/admin/dashboard" className="text-gray-500 hover:text-emerald-600 transition">NGO Verification</a>
             <a href="/admin/proof-review" className="text-gray-500 hover:text-emerald-600 transition">Proof Review</a>
-            <a href="/admin/fraud-alerts" className="text-gray-500 hover:text-emerald-600 transition">Fraud Alerts</a>
+            <a href="/admin/risk-compliance" className="text-gray-500 hover:text-emerald-600 transition">Risk &amp; Compliance</a>
             <a href="/admin/fcra-review" className="text-emerald-600 hover:text-emerald-700 transition underline decoration-2 underline-offset-4">FCRA Review</a>
           </div>
           <div className="h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
@@ -65,7 +81,7 @@ export default async function AdminFcraReviewPage() {
           </p>
         </div>
 
-        <FCRAReviewClient initialRecords={serialized} />
+        <FCRAReviewClient initialRecords={serialized} initialReports={serializedReports} />
       </main>
     </div>
   );

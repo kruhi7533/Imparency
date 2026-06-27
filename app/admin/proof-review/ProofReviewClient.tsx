@@ -46,6 +46,7 @@ interface Milestone {
       registrationNumber: string;
       panNumber: string;
       address: string;
+      ngoEmail: string;
     };
   };
   proofs: Proof[];
@@ -83,6 +84,19 @@ export default function ProofReviewClient({
   const [auditList, setAuditList] = useState<AuditRecord[]>(initialAudit);
 
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+  const [activeDoc, setActiveDoc] = useState<{ milestoneId: string; url: string; type: "image" | "pdf" } | null>(null);
+
+  const getDocType = (url: string): "image" | "pdf" => {
+    return url.toLowerCase().includes(".pdf") ? "pdf" : "image";
+  };
+
+  const toggleDoc = (milestoneId: string, url: string) => {
+    if (activeDoc?.milestoneId === milestoneId && activeDoc?.url === url) {
+      setActiveDoc(null);
+    } else {
+      setActiveDoc({ milestoneId, url, type: getDocType(url) });
+    }
+  };
 
   // Modal States
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
@@ -90,6 +104,13 @@ export default function ProofReviewClient({
   const [rejectionReason, setRejectionReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Ask Question states
+  const [askMilestone, setAskMilestone] = useState<Milestone | null>(null);
+  const [question, setQuestion] = useState("");
+  const [askLoading, setAskLoading] = useState(false);
+  const [askError, setAskError] = useState("");
+  const [askSuccess, setAskSuccess] = useState(false);
 
   const openModal = (milestone: Milestone, action: "APPROVE" | "REJECT") => {
     setSelectedMilestone(milestone);
@@ -103,6 +124,36 @@ export default function ProofReviewClient({
     setActionType(null);
     setRejectionReason("");
     setError("");
+  };
+
+  const closeAskModal = () => {
+    setAskMilestone(null);
+    setQuestion("");
+    setAskError("");
+    setAskSuccess(false);
+  };
+
+  const handleSendQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!askMilestone || !question.trim()) return;
+    setAskLoading(true);
+    setAskError("");
+    setAskSuccess(false);
+    try {
+      const res = await fetch("/api/admin/ask-ngo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ milestoneId: askMilestone.id, question: question.trim() }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to send question");
+      setAskSuccess(true);
+      setQuestion("");
+    } catch (err: any) {
+      setAskError(err.message || "An unexpected error occurred");
+    } finally {
+      setAskLoading(false);
+    }
   };
 
   const handleReviewAction = async (e: React.FormEvent) => {
@@ -233,7 +284,7 @@ export default function ProofReviewClient({
                   className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm flex flex-col lg:flex-row gap-6 hover:shadow-md transition duration-200"
                 >
                   {/* Left Side: Milestone and Campaign details */}
-                  <div className="flex-1 space-y-4">
+                  <div className={`space-y-4 ${activeDoc?.milestoneId === milestone.id ? "lg:w-64 shrink-0" : "flex-1"}`}>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">
@@ -246,8 +297,17 @@ export default function ProofReviewClient({
                       <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                         {milestone.title}
                       </h2>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Campaign: <strong className="font-semibold text-gray-700 dark:text-gray-300">{milestone.project.title}</strong> | NGO: <strong className="font-semibold text-gray-700 dark:text-gray-300">{milestone.project.ngo.orgName}</strong>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                        Campaign: <strong className="font-semibold text-gray-700 dark:text-gray-300">{milestone.project.title}</strong>
+                        <span className="text-gray-300 dark:text-gray-600">|</span>
+                        NGO: <strong className="font-semibold text-gray-700 dark:text-gray-300">{milestone.project.ngo.orgName}</strong>
+                        <a
+                          href={`/admin/risk-compliance`}
+                          className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline underline-offset-2"
+                          title="View risk & compliance for this NGO"
+                        >
+                          Risk & Compliance →
+                        </a>
                       </p>
                     </div>
 
@@ -280,34 +340,86 @@ export default function ProofReviewClient({
                               Attached Evidence:
                             </h5>
                             <div className="flex flex-wrap gap-2">
-                              {latestProof.mediaUrls.map((url, index) => (
-                                <a
-                                  key={url}
-                                  href={url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold px-3 py-1.5 rounded-lg border border-emerald-100/50 dark:border-emerald-900/20 flex items-center gap-1 transition"
-                                >
-                                  🖼️ Image {index + 1}
-                                </a>
-                              ))}
-                              {latestProof.documentUrls.map((url, index) => (
-                                <a
-                                  key={url}
-                                  href={url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-bold px-3 py-1.5 rounded-lg border border-blue-100/50 dark:border-blue-900/20 flex items-center gap-1 transition"
-                                >
-                                  📄 Document {index + 1} (PDF)
-                                </a>
-                              ))}
+                              {latestProof.mediaUrls.map((url, index) => {
+                                const isActive = activeDoc?.milestoneId === milestone.id && activeDoc?.url === url;
+                                return (
+                                  <button
+                                    key={url}
+                                    onClick={() => toggleDoc(milestone.id, url)}
+                                    className={`text-xs font-bold px-3 py-1.5 rounded-lg border flex items-center gap-1 transition ${
+                                      isActive
+                                        ? "bg-emerald-600 text-white border-emerald-600"
+                                        : "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-100/50 dark:border-emerald-900/20"
+                                    }`}
+                                  >
+                                    🖼️ Image {index + 1}
+                                    {isActive && <span className="ml-1 opacity-70">✕</span>}
+                                  </button>
+                                );
+                              })}
+                              {latestProof.documentUrls.map((url, index) => {
+                                const isActive = activeDoc?.milestoneId === milestone.id && activeDoc?.url === url;
+                                return (
+                                  <button
+                                    key={url}
+                                    onClick={() => toggleDoc(milestone.id, url)}
+                                    className={`text-xs font-bold px-3 py-1.5 rounded-lg border flex items-center gap-1 transition ${
+                                      isActive
+                                        ? "bg-blue-600 text-white border-blue-600"
+                                        : "bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-100/50 dark:border-blue-900/20"
+                                    }`}
+                                  >
+                                    📄 Document {index + 1}
+                                    {isActive && <span className="ml-1 opacity-70">✕</span>}
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
                       </div>
                     )}
                   </div>
+
+                  {/* Center: Inline Document Viewer */}
+                  {activeDoc?.milestoneId === milestone.id && (
+                    <div className="flex-1 border-t lg:border-t-0 lg:border-l border-gray-100 dark:border-gray-800 pt-6 lg:pt-0 lg:pl-6 flex flex-col gap-3 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                          Document Preview
+                        </h3>
+                        <button
+                          onClick={() => setActiveDoc(null)}
+                          className="text-[10px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition"
+                        >
+                          Close ✕
+                        </button>
+                      </div>
+                      <div className="flex-1 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 min-h-[420px]">
+                        {activeDoc.type === "image" ? (
+                          <img
+                            src={activeDoc.url}
+                            alt="Evidence"
+                            className="w-full h-full object-contain max-h-[520px]"
+                          />
+                        ) : (
+                          <iframe
+                            src={activeDoc.url}
+                            title="Document Preview"
+                            className="w-full h-full min-h-[520px] border-0"
+                          />
+                        )}
+                      </div>
+                      <a
+                        href={activeDoc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-center transition"
+                      >
+                        Open in new tab ↗
+                      </a>
+                    </div>
+                  )}
 
                   {/* Right Side: AI Audit and Action triggers */}
                   <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-100 dark:border-gray-800 pt-6 lg:pt-0 lg:pl-6 flex flex-col justify-between">
@@ -424,18 +536,26 @@ export default function ProofReviewClient({
                       )}
                     </div>
 
-                    <div className="flex gap-2 pt-6 border-t border-gray-100 dark:border-gray-800 mt-6 lg:mt-0">
+                    <div className="flex flex-col gap-2 pt-6 border-t border-gray-100 dark:border-gray-800 mt-6 lg:mt-0">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => openModal(milestone, "APPROVE")}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs transition text-center"
+                        >
+                          Approve Proof
+                        </button>
+                        <button
+                          onClick={() => openModal(milestone, "REJECT")}
+                          className="flex-1 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 text-red-600 dark:text-red-400 font-bold py-2 rounded-xl text-xs transition text-center"
+                        >
+                          Reject Proof
+                        </button>
+                      </div>
                       <button
-                        onClick={() => openModal(milestone, "APPROVE")}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs transition text-center"
+                        onClick={() => { setAskMilestone(milestone); setAskSuccess(false); }}
+                        className="w-full bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold py-2 rounded-xl text-xs transition border border-amber-100/50 dark:border-amber-900/20"
                       >
-                        Approve Proof
-                      </button>
-                      <button
-                        onClick={() => openModal(milestone, "REJECT")}
-                        className="flex-1 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 text-red-600 dark:text-red-400 font-bold py-2 rounded-xl text-xs transition text-center"
-                      >
-                        Reject Proof
+                        Ask NGO a Question
                       </button>
                     </div>
                   </div>
@@ -529,6 +649,74 @@ export default function ProofReviewClient({
             </div>
           </div>
         )
+      )}
+
+      {/* Ask NGO Question Modal */}
+      {askMilestone && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800">
+            <h3 className="text-lg font-extrabold text-gray-900 dark:text-white mb-1">
+              Ask NGO a Question
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              Sending to <span className="font-semibold text-gray-700 dark:text-gray-300">{askMilestone.project.ngo.orgName}</span> regarding milestone <span className="font-semibold text-gray-700 dark:text-gray-300">"{askMilestone.title}"</span>. This does not reject the proof — it stays under review.
+            </p>
+
+            {askError && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 text-xs text-red-600 dark:text-red-400 rounded">
+                {askError}
+              </div>
+            )}
+
+            {askSuccess ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 rounded-xl text-sm font-semibold text-center">
+                  Question sent to {askMilestone.project.ngo.orgName} successfully.
+                </div>
+                <button
+                  onClick={closeAskModal}
+                  className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSendQuestion} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Your Question *
+                  </label>
+                  <textarea
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    rows={4}
+                    required
+                    placeholder="e.g. Could you provide a clearer photo of the completed structure? The current image does not show the full extent of the work..."
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition resize-none"
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={closeAskModal}
+                    disabled={askLoading}
+                    className="px-4 py-2 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={askLoading}
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1"
+                  >
+                    {askLoading && <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />}
+                    Send Question
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Confirmation Modal */}
