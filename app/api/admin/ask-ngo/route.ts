@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifySessionRole } from "@/lib/auth-guards";
+import { checkRateLimit } from "@/lib/rate-limiter";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { sendProofQuestionEmail } from "@/lib/email";
@@ -8,9 +9,10 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const auth = await verifySessionRole(Role.ADMIN);
-  if (!auth.authorized) {
-    return auth.response;
-  }
+  if (!auth.authorized) return auth.response;
+
+  const rl = await checkRateLimit(request, "admin/ask-ngo", 30, 60);
+  if (rl.isBlocked) return rl.response!;
 
   try {
     const body = await request.json();

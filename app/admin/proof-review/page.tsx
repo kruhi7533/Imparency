@@ -123,12 +123,11 @@ export default async function AdminProofReviewPage() {
           <div className="h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Administrator</span>
-            <a
-              href="/api/auth/signout"
-              className="text-xs font-semibold text-gray-500 hover:text-red-500 transition"
-            >
-              Logout
-            </a>
+            <form method="POST" action="/api/auth/signout">
+              <button type="submit" className="text-xs font-semibold text-gray-500 hover:text-red-500 transition">
+                Logout
+              </button>
+            </form>
           </div>
         </div>
       </nav>

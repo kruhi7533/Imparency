@@ -39,6 +39,9 @@ export async function POST(request: Request) {
     if (action === "APPROVE" && !expiryDate) {
       return NextResponse.json({ error: "An expiry date is required to approve FCRA" }, { status: 400 });
     }
+    if (action === "APPROVE" && new Date(expiryDate) <= new Date()) {
+      return NextResponse.json({ error: "Cannot approve an already-expired FCRA certificate. Reject or request re-upload instead." }, { status: 400 });
+    }
 
     const ngo = await prisma.nGOProfile.findUnique({
       where: { id: ngoId },
