@@ -254,7 +254,7 @@ export default function DonationsPage() {
 
             // Status Badge Classes
             let badgeClass = "bg-gray-800 text-gray-400 border-gray-700";
-            let statusText = donation.status;
+            let statusText: string = donation.status;
             if (donation.status === "SUCCESS") {
               badgeClass = "bg-emerald-950/30 text-emerald-400 border-emerald-800";
               statusText = "✓ Successful";
