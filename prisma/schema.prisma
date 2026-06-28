@@ -16,6 +16,7 @@ enum Role {
 }
 
 enum DonorPersona {
+  INDIVIDUAL
   CSR_OFFICER
   HNI
   FOUNDATION
@@ -61,29 +62,47 @@ enum FCRAStatus {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  role         Role     @default(DONOR)
-  name         String   @default("Anonymous")
-  avatar       String?
-  googleId     String?  @unique
-  panNumber    String?
-  phone        String?
-  city         String?
-  billingAddress String?
-  totalDonated Decimal  @default(0.00) @db.Decimal(10, 2)
-  fcmToken     String?
-  companyName  String?
-  isCorporate  Boolean  @default(false)
-  gstNumber    String?
-  donorPersona DonorPersona?
-  personaSetAt DateTime?
-  donorTier          DonorTier  @default(STANDARD)
-  reEngagementPath   ReEngagementPath?
-  volunteerInterest  Boolean    @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                      String            @id @default(uuid())
+  email                   String            @unique
+  passwordHash            String
+  role                    Role              @default(DONOR)
+  name                    String            @default("Anonymous")
+  avatar                  String?
+  googleId                String?           @unique
+  panNumber               String?
+  phone                   String?
+  city                    String?
+  billingAddress          String?
+  totalDonated            Decimal           @default(0.00) @db.Decimal(10, 2)
+  fcmToken                String?
+  companyName             String?
+  isCorporate             Boolean           @default(false)
+  gstNumber               String?
+  donorCategory           DonorCategory?
+  donorCategoryDeclaredAt DateTime?
+  donorDeclarationVersion String? // tracks policy version for future consent re-prompts
+  nriSourceDeclaration    String? // "ELIGIBLE_NRI_SOURCE" | "FOREIGN_SOURCE" | "NOT_SURE"
+  donorPersona            DonorPersona?
+  personaSetAt            DateTime?
+
+  // HNI specific fields
+  hniAdvisorName          String?
+  hniAdvisorEmail         String?
+  hniAnnualBudget         Decimal?          @db.Decimal(12, 2)
+  
+  // CSR specific fields
+  csrRegistrationNumber   String?
+  csrBudget               Decimal?          @db.Decimal(12, 2)
+  
+  // Foundation specific fields
+  trustRegistrationId     String?
+  trust12a80gRegNo        String?
+  trustAnnualBudget       Decimal?          @db.Decimal(12, 2)
+  donorTier               DonorTier         @default(STANDARD)
+  reEngagementPath        ReEngagementPath?
+  volunteerInterest       Boolean           @default(false)
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
 
   ngoProfile      NGOProfile?
   donations       Donation[]

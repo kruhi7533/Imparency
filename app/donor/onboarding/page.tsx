@@ -134,9 +134,11 @@ export default function OnboardingPage() {
     setError("");
 
     // Map Q1 answer to DonorPersona enum
-    // individual -> HNI, hni -> HNI, csr -> CSR_OFFICER, foundation -> FOUNDATION
+    // individual -> INDIVIDUAL, hni -> HNI, csr -> CSR_OFFICER, foundation -> FOUNDATION
     let mappedPersona = "HNI";
-    if (selectedPersona === "csr") {
+    if (selectedPersona === "individual") {
+      mappedPersona = "INDIVIDUAL";
+    } else if (selectedPersona === "csr") {
       mappedPersona = "CSR_OFFICER";
     } else if (selectedPersona === "foundation") {
       mappedPersona = "FOUNDATION";
