@@ -34,3 +34,21 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Pitch Deck Generator
+ImpactBridge includes an automated pitch deck generator for donor fundraising.
+
+**Generate locally:**
+npm run generate:pitch
+
+**Output:** public/downloads/ImpactBridge_Pitch_Deck.pptx
+
+**Via API:**
+- Download: GET /api/pitch/generate
+- Force regenerate: POST /api/pitch/generate (auth required)
+- Public page: /pitch
+
+**Customisation:** Edit scripts/generate-pitch.js to update:
+- NGO name and contact details
+- Funding ask amounts
+- Traction metrics (update before every major pitch)

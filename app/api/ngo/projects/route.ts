@@ -180,3 +180,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
   }
 }
+
+export async function GET(request: Request) {
+  try {
+    const { authorized, response, session } = await verifySessionRole("NGO");
+    if (!authorized) return response;
+
+    const profile = await prisma.nGOProfile.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true }
+    });
+
+    if (!profile) return NextResponse.json({ error: "NGO profile not found" }, { status: 404 });
+
+    const projects = await prisma.project.findMany({
+      where: { ngoId: profile.id, isDeleted: false },
+      select: { id: true, title: true, status: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return NextResponse.json({ projects });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

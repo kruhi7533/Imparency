@@ -3,6 +3,16 @@ import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/storage";
 import { verifySessionRole } from "@/lib/auth-guards";
 
+// Generates a unique join code like "ANANDA-7X3K"
+function generateJoinCode(orgName: string): string {
+  const prefix = orgName
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+    .slice(0, 6);
+  const suffix = Math.random().toString(36).toUpperCase().slice(2, 6);
+  return `${prefix}-${suffix}`;
+}
+
 export async function POST(request: Request) {
   try {
     // 1. Guard check: only NGO users can register
@@ -205,6 +215,7 @@ export async function POST(request: Request) {
           dataProcessingConsentDate: new Date(),
           consentVersion,
           consentIpAddress,
+          joinCode: generateJoinCode(orgName),
         }
       });
     }

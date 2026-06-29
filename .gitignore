@@ -46,3 +46,7 @@ next-env.d.ts
 /public/uploads/
 sample-ngo-docs/
 scripts/
+
+# Generated presentations
+public/downloads/*.pptx
+public/downloads/*.pdf

@@ -18,7 +18,8 @@ import {
   Upload,
   IndianRupee,
   FileCheck,
-  Pencil
+  Pencil,
+  MessageCircle
 } from "lucide-react";
 
 interface Milestone {
@@ -45,6 +46,33 @@ interface Project {
   milestones: Milestone[];
 }
 
+export interface FieldWorker {
+  name: string;
+  reliabilityScore: number;
+  approvedCount: number;
+  rejectedCount: number;
+}
+
+export interface DraftProof {
+  id: string;
+  senderPhone: string;
+  rawMessage: string;
+  workerStatus: string;
+  status: string;
+  aiSummary: string | null;
+  riskLevel: string | null;
+  riskReason: string | null;
+  photoCount: number;
+  rawGpsLat: number | null;
+  rawGpsLng: number | null;
+  predictedProjectId: string | null;
+  predictedMilestoneId: string | null;
+  predictionConfidence: number | null;
+  createdAt: Date;
+  fieldWorker: FieldWorker | null;
+  mediaUrls: string[];
+}
+
 interface NGOProfile {
   id: string;
   userId: string;
@@ -58,6 +86,7 @@ interface NGOProfile {
   healthScoreBreakdown: any;
   description: string;
   website: string | null;
+
   foundedYear: number;
   logo_url: string | null;
   projects: Project[];
@@ -84,7 +113,15 @@ const getAvatarColorClass = (name: string) => {
   return colors[charCodeSum % colors.length];
 };
 
-export default function DashboardClient({ profile }: DashboardClientProps) {
+export default function DashboardClient({ 
+  profile, 
+  whatsappBotNumber = "+1 (234) 567-8900",
+  joinCode
+}: { 
+  profile: any;
+  whatsappBotNumber?: string;
+  joinCode?: string | null;
+}) {
   const [ngoProfile, setNgoProfile] = useState<NGOProfile>(profile);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [activeMilestone, setActiveMilestone] = useState<{ id: string; title: string } | null>(null);
@@ -94,6 +131,80 @@ export default function DashboardClient({ profile }: DashboardClientProps) {
   // AI Insight state
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [aiInsightLoading, setAiInsightLoading] = useState(true);
+
+  // Draft proofs state
+  const [drafts, setDrafts] = useState<DraftProof[]>([]);
+  const [isDraftsLoading, setIsDraftsLoading] = useState(true);
+  const [rejectingDraftId, setRejectingDraftId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [showAllDrafts, setShowAllDrafts] = useState(false);
+
+  // Polling effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    const fetchDrafts = async () => {
+      try {
+        const res = await fetch('/api/drafts');
+        if (res.ok) {
+          const data = await res.json();
+          setDrafts(data.drafts);
+          setIsDraftsLoading(false);
+        }
+      } catch (err) {
+        console.error("Error fetching drafts", err);
+      }
+    };
+
+    fetchDrafts();
+
+    interval = setInterval(() => {
+      setDrafts(current => {
+        const needsPolling = current.some(d => d.workerStatus === 'ENRICHING' || d.workerStatus === 'PENDING');
+        if (needsPolling) {
+          fetchDrafts();
+        }
+        return current;
+      });
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const retryEnrichment = async (id: string) => {
+    setDrafts(curr => curr.map(d => d.id === id ? { ...d, workerStatus: 'PENDING' } : d));
+    await fetch(`/api/drafts/${id}/retry`, { method: 'POST' });
+  };
+
+  const handleApprove = async (id: string) => {
+    setDrafts(curr => curr.map(d => d.id === id ? { ...d, status: 'APPROVED' } : d));
+    await fetch(`/api/drafts/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'APPROVED' })
+    });
+  };
+
+  const handleReject = async (id: string) => {
+    if (rejectingDraftId !== id) {
+      setRejectingDraftId(id);
+      setRejectReason("");
+      return;
+    }
+    setDrafts(curr => curr.map(d => d.id === id ? { ...d, status: 'REJECTED' } : d));
+    setRejectingDraftId(null);
+    await fetch(`/api/drafts/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'REJECTED', reason: rejectReason })
+    });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to permanently delete this update?')) return;
+    setDrafts(curr => curr.filter(d => d.id !== id));
+    await fetch(`/api/drafts/${id}`, { method: 'DELETE' });
+  };
 
   // Close dropdown menu on click outside
   useEffect(() => {
@@ -281,18 +392,27 @@ export default function DashboardClient({ profile }: DashboardClientProps) {
           </div>
         </div>
 
-        <button
-          onClick={() => {
-            setEditDescription(ngoProfile.description);
-            setEditWebsite(ngoProfile.website || "");
-            setEditLogoPreview(ngoProfile.logo_url);
-            setIsSettingsOpen(true);
-          }}
-          className="w-full md:w-auto px-5 py-2.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/60 dark:hover:bg-gray-850 border border-gray-200/50 dark:border-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shrink-0"
-        >
-          <Settings className="w-3.5 h-3.5" />
-          Edit Settings
-        </button>
+        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto shrink-0 mt-4 md:mt-0">
+          <Link
+            href={`/ngo/profile/${ngoProfile.id}`}
+            className="w-full md:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-500/20"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            Public Profile
+          </Link>
+          <button
+            onClick={() => {
+              setEditDescription(ngoProfile.description);
+              setEditWebsite(ngoProfile.website || "");
+              setEditLogoPreview(ngoProfile.logo_url);
+              setIsSettingsOpen(true);
+            }}
+            className="w-full md:w-auto px-5 py-2.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/60 dark:hover:bg-gray-850 border border-gray-200/50 dark:border-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            Edit Settings
+          </button>
+        </div>
       </div>
 
       {/* 2. Redesigned 3 Stat Cards */}
@@ -424,6 +544,245 @@ export default function DashboardClient({ profile }: DashboardClientProps) {
           </div>
         </div>
       ) : null}
+      {/* WhatsApp Field Updates */}
+      {!isDraftsLoading && (
+        <div className="mb-8 mt-8">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-emerald-500" />
+              <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">WhatsApp Field Updates</h2>
+              {/* Pending count badge */}
+              {drafts.filter(d => d.status === 'PENDING_REVIEW').length > 0 && (
+                <span className="bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  {drafts.filter(d => d.status === 'PENDING_REVIEW').length} pending
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2 items-center">
+              {/* Filter toggle */}
+              <button
+                onClick={() => setShowAllDrafts(p => !p)}
+                className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition ${
+                  showAllDrafts
+                    ? 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'
+                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
+                }`}
+              >
+                {showAllDrafts ? '📋 All updates' : '🔔 Pending only'}
+              </button>
+              {whatsappBotNumber && (
+                <div className="bg-white dark:bg-gray-800 px-4 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm inline-flex items-center gap-2 text-sm">
+                  <span className="text-gray-400">Bot:</span>
+                  <span className="font-mono font-bold text-gray-800 dark:text-white">{whatsappBotNumber}</span>
+                </div>
+              )}
+              {joinCode && (
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 px-4 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 shadow-sm inline-flex items-center gap-2 text-sm">
+                  <span className="text-gray-400">Join Code:</span>
+                  <span className="font-mono font-bold text-emerald-600 tracking-widest">{joinCode}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          {drafts.filter(d => d.status === 'PENDING_REVIEW').length === 0 && !showAllDrafts ? (
+            <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl p-8 text-center flex flex-col items-center">
+              <MessageCircle className="w-12 h-12 text-emerald-400 mb-4" />
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Connect Your Field Team on WhatsApp</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-6">
+                Tell your field workers to message the bot number below and send their <strong>NGO Join Code</strong> to register. After that, they can send photos and updates directly from WhatsApp!
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 items-center">
+                <div className="bg-white dark:bg-gray-800 px-5 py-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm inline-flex items-center gap-3">
+                  <span className="text-sm font-medium text-gray-500">Bot Number:</span>
+                  <span className="font-mono font-bold text-emerald-600 text-lg">{whatsappBotNumber}</span>
+                </div>
+                {joinCode && (
+                  <div className="bg-white dark:bg-gray-800 px-5 py-3 rounded-xl border border-emerald-300 dark:border-emerald-700 shadow-sm inline-flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-500">Join Code:</span>
+                    <span className="font-mono font-bold text-emerald-600 text-lg tracking-widest">{joinCode}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-4">Workers save the bot number, message it, and send their join code once to register.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {(showAllDrafts ? drafts : drafts.filter(d => d.status === 'PENDING_REVIEW')).map((draft) => {
+              const workerName = draft.fieldWorker?.name || draft.senderPhone;
+              const trustScore = draft.fieldWorker?.reliabilityScore ?? 100;
+              const trustColor = trustScore >= 90 ? "bg-emerald-100 text-emerald-700" : trustScore >= 70 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700";
+              
+              const isEnriching = draft.workerStatus === "ENRICHING" || draft.workerStatus === "PENDING";
+              const isFailed = draft.workerStatus === "ENRICHMENT_FAILED";
+              const isEnriched = draft.workerStatus === "ENRICHED";
+              
+              const isNewWorker = draft.fieldWorker ? (draft.fieldWorker.approvedCount + draft.fieldWorker.rejectedCount) < 3 : false;
+
+              // Get milestone name
+              let milestoneName = "Unknown Milestone";
+              if (draft.predictedProjectId && draft.predictedMilestoneId) {
+                const proj = profile.projects.find(p => p.id === draft.predictedProjectId);
+                if (proj) {
+                  const ms = proj.milestones.find(m => m.id === draft.predictedMilestoneId);
+                  if (ms) milestoneName = ms.title;
+                }
+              }
+
+              return (
+                <div key={draft.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col">
+                  
+                  {/* HEADER ROW */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${getAvatarColorClass(workerName)}`}>
+                        {getInitials(workerName)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-900 dark:text-white">{workerName}</span>
+                          <span 
+                            className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${trustColor}`}
+                            title="Based on actioned submissions"
+                          >
+                            {isNewWorker ? "New" : `${trustScore}% trust`}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(draft.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                    {draft.riskLevel && (
+                      <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wide ${
+                        draft.riskLevel === 'HIGH' ? 'bg-red-500 text-white' : 
+                        draft.riskLevel === 'MEDIUM' ? 'bg-amber-500 text-white' :
+                        'bg-emerald-500 text-white'
+                      }`}>
+                        {draft.riskLevel} Risk
+                      </span>
+                    )}
+                  </div>
+
+                  {/* AI PROCESSING STATE */}
+                  {isEnriching && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 italic mb-4">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      AI is analyzing...
+                    </div>
+                  )}
+                  {isFailed && (
+                    <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg mb-4">
+                      <span className="text-xs text-amber-600">⚠️ AI analysis unavailable</span>
+                      <button 
+                        onClick={() => retryEnrichment(draft.id)}
+                        className="text-xs font-bold text-amber-700 hover:text-amber-800 dark:text-amber-500 dark:hover:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-2.5 py-1 rounded-md transition"
+                      >
+                        Retry AI analysis
+                      </button>
+                    </div>
+                  )}
+                  {isEnriched && draft.aiSummary && (
+                    <div className="mb-4">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1">AI Summary</div>
+                      <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-3 rounded-xl text-sm italic text-gray-700 dark:text-gray-300 border-l-2 border-emerald-500">
+                        {draft.aiSummary}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* RAW MESSAGE */}
+                  <div className="mb-4">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Field Report</div>
+                    <blockquote className="border-l-2 border-gray-200 dark:border-gray-700 pl-3 py-1 text-sm text-gray-800 dark:text-gray-200 line-clamp-3 hover:line-clamp-none transition-all cursor-pointer">
+                      "{draft.rawMessage}"
+                    </blockquote>
+                  </div>
+
+                  {/* RISK REASON */}
+                  {isEnriched && draft.riskReason && (draft.riskLevel === 'HIGH' || draft.riskLevel === 'MEDIUM') && (
+                    <div className="mb-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-3 rounded-xl text-xs text-red-700 dark:text-red-400">
+                      <strong>Risk Note:</strong> {draft.riskReason}
+                    </div>
+                  )}
+
+                  {/* IMAGES */}
+                  {draft.mediaUrls && draft.mediaUrls.length > 0 && (
+                    <div className="mb-4 flex gap-2 overflow-x-auto pb-2 snap-x">
+                      {draft.mediaUrls.map((url, i) => (
+                        <img 
+                          key={i} 
+                          src={`/api/media-proxy?url=${encodeURIComponent(url)}`}
+                          alt={`Field evidence ${i+1}`} 
+                          className="h-24 w-auto rounded-lg object-cover border border-gray-200 dark:border-gray-700 snap-center shadow-sm" 
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* METADATA ROW */}
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl mb-5 mt-auto">
+                    <div className="flex items-center gap-1"><FileCheck className="w-3.5 h-3.5"/> {draft.photoCount} photos</div>
+                    {draft.rawGpsLat !== null && draft.rawGpsLng !== null && (
+                      <a href={`https://maps.google.com/?q=${draft.rawGpsLat},${draft.rawGpsLng}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-500 hover:underline">
+                        <MapPin className="w-3.5 h-3.5"/> 📍 {draft.rawGpsLat.toFixed(4)}, {draft.rawGpsLng.toFixed(4)}
+                      </a>
+                    )}
+                    {draft.predictionConfidence && (
+                      <div className="flex items-center gap-1 ml-auto">
+                        <span className="font-semibold text-emerald-600">{Math.round(draft.predictionConfidence * 100)}% match</span>
+                        <span>→ {milestoneName}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ACTION BUTTONS */}
+                  {draft.status === 'PENDING_REVIEW' ? (
+                    <div className="flex gap-2">
+                      <button onClick={() => handleApprove(draft.id)} className="flex-1 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 font-bold py-2.5 rounded-xl text-sm transition">
+                        Approve
+                      </button>
+                      
+                      {rejectingDraftId === draft.id ? (
+                        <div className="flex-1 flex gap-2">
+                          <input 
+                            type="text" 
+                            placeholder="Reason..." 
+                            value={rejectReason}
+                            onChange={e => setRejectReason(e.target.value)}
+                            className="flex-1 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 dark:bg-gray-800"
+                          />
+                          <button onClick={() => handleReject(draft.id)} className="bg-red-500 hover:bg-red-600 text-white font-bold px-3 py-2.5 rounded-xl text-sm transition">
+                            Confirm
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setRejectingDraftId(draft.id)} className="flex-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 font-bold py-2.5 rounded-xl text-sm transition">
+                          Reject
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 items-center">
+                      <div className={`flex-1 text-center py-2.5 rounded-xl text-sm font-bold ${draft.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'}`}>
+                        {draft.status}
+                      </div>
+                      <button
+                        onClick={() => handleDelete(draft.id)}
+                        title="Delete this update"
+                        className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 transition"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  )}
+                  
+                </div>
+              );
+            })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Projects Section Header */}
       <div className="flex justify-between items-center border-b border-gray-150 dark:border-gray-800 pb-4">
@@ -469,9 +828,10 @@ export default function DashboardClient({ profile }: DashboardClientProps) {
               <div
                 key={project.id}
                 onClick={() => toggleExpandProject(project.id)}
-                className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:border-emerald-500/30 hover:translate-y-[-2px] transition-all duration-200 flex flex-col md:flex-row cursor-pointer"
+                className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:border-emerald-500/30 hover:translate-y-[-2px] transition-all duration-200 flex flex-col cursor-pointer"
               >
-                {/* Responsive cover image */}
+                <div className="flex flex-col md:flex-row w-full">
+                  {/* Responsive cover image */}
                 <div className="relative md:w-64 w-full h-48 md:h-auto overflow-hidden shrink-0">
                   <ProjectCoverImage
                     src={project.coverImage}
@@ -581,13 +941,15 @@ export default function DashboardClient({ profile }: DashboardClientProps) {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  {/* Collapsible Milestones list */}
-                  {isExpanded && (
-                    <div 
-                      onClick={(e) => e.stopPropagation()}
-                      className="border-t border-gray-150 dark:border-gray-850 pt-5 mt-4 space-y-4 cursor-default"
-                    >
+                {/* Collapsible Milestones list */}
+                {isExpanded && (
+                  <div 
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-6 pt-5 border-t border-gray-150 dark:border-gray-850 bg-gray-50/50 dark:bg-gray-800/20 space-y-4 cursor-default"
+                  >
                       <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
                         <FileCheck className="w-4 h-4" />
                         Milestones Roadmap
@@ -650,7 +1012,6 @@ export default function DashboardClient({ profile }: DashboardClientProps) {
                       )}
                     </div>
                   )}
-                </div>
               </div>
             );
           })}
