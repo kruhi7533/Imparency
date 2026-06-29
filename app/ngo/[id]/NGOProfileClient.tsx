@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import ProjectCoverImage from "@/app/components/ProjectCoverImage";
+import { DonorCategoryModal } from "@/components/donor/DonorCategoryModal";
+import { DonateModal } from "@/components/donor/DonateModal";
 
 interface Project {
   id: string;
@@ -51,6 +53,40 @@ export default function NGOProfileClient({
   const [activeTab, setActiveTab] = useState<"active" | "completed" | "story" | "about">("active");
   const [isFollowed, setIsFollowed] = useState(initialIsFollowed);
   const [followersCount, setFollowersCount] = useState(initialFollowersCount);
+  
+  const [donorCategory, setDonorCategory] = useState<string | null>(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showDonateModal, setShowDonateModal] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [categoryCheckDone, setCategoryCheckDone] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetch("/api/user/donor-category")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.isSet) {
+          setDonorCategory(data.donorCategory);
+        }
+        setCategoryCheckDone(true);
+      })
+      .catch(() => setCategoryCheckDone(true));
+  }, [isAuthenticated]);
+
+  const handleDonateClick = (project: Project) => {
+    if (!isAuthenticated) {
+      alert("Please login to donate");
+      return;
+    }
+    setSelectedProject(project);
+    if (!donorCategory) {
+      // First time — show category declaration modal
+      setShowCategoryModal(true);
+    } else {
+      // Category already set — go straight to donate modal
+      setShowDonateModal(true);
+    }
+  };
   
   // Health score count-up animation state
   const targetHealth = ngo.healthScore !== null && ngo.healthScore !== undefined ? Number(ngo.healthScore) : null;
@@ -251,12 +287,13 @@ export default function NGOProfileClient({
                               </div>
                             </div>
                             <div className="pt-2">
-                              <Link
-                                href={`/projects/${project.id}`}
-                                className="block text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs shadow-md transition"
+                              <button
+                                type="button"
+                                onClick={() => handleDonateClick(project)}
+                                className="w-full block text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs shadow-md transition cursor-pointer"
                               >
-                                View Details & Donate
-                              </Link>
+                                Donate to this Project
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -425,6 +462,37 @@ export default function NGOProfileClient({
 
         </div>
       </div>
+
+      {/* FCRA Category Declaration Modal */}
+      <DonorCategoryModal
+        isOpen={showCategoryModal}
+        onComplete={(category) => {
+          setDonorCategory(category);
+          setShowCategoryModal(false);
+          setShowDonateModal(true);
+        }}
+        onClose={() => setShowCategoryModal(false)}
+      />
+
+      {/* Donate Modal */}
+      {selectedProject && (
+        <DonateModal
+          isOpen={showDonateModal}
+          onClose={() => {
+            setShowDonateModal(false);
+            setSelectedProject(null);
+          }}
+          project={{
+            id: selectedProject.id,
+            title: selectedProject.title,
+            targetAmount: Number(selectedProject.targetAmount),
+            raisedAmount: Number(selectedProject.raisedAmount),
+          }}
+          ngoName={ngo.orgName}
+          ngoId={ngo.id}
+          donorCategory={donorCategory ?? "INDIAN_RESIDENT"}
+        />
+      )}
 
     </div>
   );

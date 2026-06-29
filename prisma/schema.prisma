@@ -61,6 +61,12 @@ enum FCRAStatus {
   REUPLOAD_REQUESTED // admin asked the NGO to re-upload
 }
 
+enum DonorCategory {
+  INDIAN_RESIDENT
+  NRI_OCI
+  FOREIGN_NATIONAL
+}
+
 model User {
   id                      String            @id @default(uuid())
   email                   String            @unique
@@ -80,6 +86,7 @@ model User {
   gstNumber               String?
   donorCategory           DonorCategory?
   donorCategoryDeclaredAt DateTime?
+  donorCategorySetAt      DateTime?
   donorDeclarationVersion String? // tracks policy version for future consent re-prompts
   nriSourceDeclaration    String? // "ELIGIBLE_NRI_SOURCE" | "FOREIGN_SOURCE" | "NOT_SURE"
   donorPersona            DonorPersona?
