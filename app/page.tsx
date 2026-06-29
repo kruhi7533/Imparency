@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import QuickDonateSelector from "@/components/home/QuickDonateSelector";
 
 export default function Home() {
   const causes = [
@@ -137,6 +138,29 @@ export default function Home() {
               <p className="text-xs text-gray-400 leading-relaxed">{cause.desc}</p>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* Quick Donate Section */}
+      <section className="border-t border-gray-900 bg-gradient-to-b from-emerald-950/20 to-gray-950 py-20">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-10">
+
+          {/* Heading */}
+          <div className="space-y-3">
+            <span className="text-[10px] uppercase tracking-widest font-black text-emerald-400 border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 rounded-full">
+              Ready to give?
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+              Start with what you have
+            </h2>
+            <p className="text-gray-400 text-sm max-w-lg mx-auto">
+              Pick an amount and we'll show you verified NGO campaigns where your contribution makes a measurable difference.
+            </p>
+          </div>
+
+          {/* Amount selector — QuickDonateSelector component */}
+          <QuickDonateSelector />
+
         </div>
       </section>
 

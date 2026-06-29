@@ -16,6 +16,7 @@ enum Role {
 }
 
 enum DonorPersona {
+  INDIVIDUAL
   CSR_OFFICER
   HNI
   FOUNDATION
@@ -89,6 +90,21 @@ model User {
   nriSourceDeclaration    String? // "ELIGIBLE_NRI_SOURCE" | "FOREIGN_SOURCE" | "NOT_SURE"
   donorPersona            DonorPersona?
   personaSetAt            DateTime?
+
+  // HNI specific fields
+  hniAdvisorName          String?
+  hniAdvisorEmail         String?
+  hniAnnualBudget         Decimal?          @db.Decimal(12, 2)
+  
+  // CSR specific fields
+  csrRegistrationNumber   String?
+  csrBudget               Decimal?          @db.Decimal(12, 2)
+  
+  // Foundation specific fields
+  trustRegistrationId     String?
+  trust12a80gRegNo        String?
+  trustAnnualBudget       Decimal?          @db.Decimal(12, 2)
+
   donorTier               DonorTier         @default(STANDARD)
   reEngagementPath        ReEngagementPath?
   volunteerInterest       Boolean           @default(false)
