@@ -171,6 +171,7 @@ model NGOProfile {
   fieldWorkers   FieldWorker[]
   draftProofs    DraftProof[]
   teamMembers    NGOTeamMember[]
+  teamInvites    TeamInvite[]
 }
 
 model NGOTeamMember {
@@ -585,4 +586,18 @@ model PitchLead {
   organization String?
   createdAt    DateTime @default(now())
   downloaded   Boolean  @default(false)
+}
+
+model TeamInvite {
+  id        String   @id @default(cuid())
+  email     String
+  role      TeamRole @default(FIELD_STAFF)
+  ngoId     String
+  ngo       NGOProfile @relation(fields: [ngoId], references: [id])
+  token     String   @unique @default(cuid())
+  accepted  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@unique([email, ngoId])
 }

@@ -34,8 +34,40 @@ export async function addTeamMember(formData: FormData) {
 
   // Find user by email
   const user = await prisma.user.findUnique({ where: { email } });
+
   if (!user) {
-    return { error: "No user found with that email address. They must create an account first." };
+    // User doesn't have an account yet — send them an invite email
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    const ngo = await prisma.nGOProfile.findUnique({
+      where: { id: session.user.ngoProfileId },
+      select: { orgName: true }
+    });
+
+    // Upsert invite (reset token if re-invited)
+    const invite = await prisma.teamInvite.upsert({
+      where: { email_ngoId: { email, ngoId: session.user.ngoProfileId } },
+      update: { role, expiresAt, accepted: false },
+      create: { email, role, ngoId: session.user.ngoProfileId, expiresAt }
+    });
+
+    const signupUrl = `${process.env.NEXTAUTH_URL}/login?invite=${invite.token}&email=${encodeURIComponent(email)}`;
+
+    try {
+      const { sendTeamInviteEmail } = await import("@/lib/email");
+      await sendTeamInviteEmail({
+        to: email,
+        recipientName: email,
+        ngoName: ngo?.orgName || "your NGO",
+        role,
+        dashboardUrl: signupUrl,
+      });
+    } catch (emailErr) {
+      console.warn("[Team] Invite email failed:", emailErr);
+    }
+
+    revalidatePath("/ngo/settings/team");
+    return { success: true, invited: true, message: `${email} doesn't have an account yet. An invite email has been sent!` };
   }
 
   // Check if already a member
@@ -60,6 +92,25 @@ export async function addTeamMember(formData: FormData) {
       role: role,
     }
   });
+
+  // Send invitation email
+  try {
+    const ngo = await prisma.nGOProfile.findUnique({
+      where: { id: session.user.ngoProfileId },
+      select: { orgName: true }
+    });
+
+    const { sendTeamInviteEmail } = await import("@/lib/email");
+    await sendTeamInviteEmail({
+      to: user.email!,
+      recipientName: user.name || email,
+      ngoName: ngo?.orgName || "your NGO",
+      role: role,
+      dashboardUrl: `${process.env.NEXTAUTH_URL}/ngo/dashboard`,
+    });
+  } catch (emailErr) {
+    console.warn("[Team] Email notification failed (non-fatal):", emailErr);
+  }
 
   revalidatePath("/ngo/settings/team");
   return { success: true };

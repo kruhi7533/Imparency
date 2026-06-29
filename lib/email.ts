@@ -479,3 +479,33 @@ The Imparency Team`;
   return sendEmail({ to, subject, body });
 }
 
+export async function sendTeamInviteEmail({
+  to,
+  recipientName,
+  ngoName,
+  role,
+  dashboardUrl,
+}: {
+  to: string;
+  recipientName: string;
+  ngoName: string;
+  role: string;
+  dashboardUrl: string;
+}) {
+  const subject = `You've been added to ${ngoName} on Imparency`;
+  const body = `Hi ${recipientName},
+
+Great news! You have been added as a team member of ${ngoName} on Imparency with the role: ${role}.
+
+You now have access to the NGO Dashboard where you can collaborate on projects, review field updates, and manage fundraising campaigns.
+
+👉 Access your dashboard here: ${dashboardUrl}
+
+If you don't have an Imparency account yet, please sign up first at ${process.env.NEXTAUTH_URL}/login and then visit the link above.
+
+If you believe this was a mistake, please contact your NGO administrator.
+
+Best regards,
+The Imparency Team`;
+  return sendEmail({ to, subject, body });
+}

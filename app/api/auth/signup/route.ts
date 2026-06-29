@@ -8,7 +8,7 @@ import bcrypt from "bcryptjs";
 
 export async function POST(request: Request) {
   try {
-    const { name, email, password, role } = await request.json();
+    const { name, email, password, role, inviteToken } = await request.json();
     
     if (!name || !email || !password || !role) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -37,6 +37,47 @@ export async function POST(request: Request) {
         role,
       },
     });
+
+    // ── Auto-accept team invite if one exists for this email ──────────────
+    try {
+      // Check by token first (from invite link), then by email (catch-all)
+      const invite = inviteToken
+        ? await prisma.teamInvite.findUnique({ where: { token: inviteToken } })
+        : await prisma.teamInvite.findFirst({
+            where: {
+              email: email.trim().toLowerCase(),
+              accepted: false,
+              expiresAt: { gt: new Date() },
+            },
+          });
+
+      if (invite && !invite.accepted) {
+        // Add them to the NGO team
+        await prisma.nGOTeamMember.create({
+          data: {
+            userId: user.id,
+            ngoId: invite.ngoId,
+            role: invite.role,
+          },
+        });
+
+        // Mark invite as accepted
+        await prisma.teamInvite.update({
+          where: { id: invite.id },
+          data: { accepted: true },
+        });
+
+        return NextResponse.json({
+          success: true,
+          userId: user.id,
+          joinedNgo: true,
+          message: "Account created and you've been added to your NGO team!",
+        });
+      }
+    } catch (inviteErr) {
+      // Non-fatal — user is still created
+      console.warn("[signup] Invite auto-accept failed:", inviteErr);
+    }
 
     return NextResponse.json({ success: true, userId: user.id });
   } catch (err: any) {

@@ -21,6 +21,9 @@ export default function TeamSettingsClient({ teamMembers, currentUserRole }: { t
       const result = await addTeamMember(formData);
       if (result.error) {
         setError(result.error);
+      } else if (result.invited) {
+        setSuccess(result.message || "Invite sent!");
+        (e.target as HTMLFormElement).reset();
       } else {
         setSuccess("Team member added successfully!");
         (e.target as HTMLFormElement).reset();
