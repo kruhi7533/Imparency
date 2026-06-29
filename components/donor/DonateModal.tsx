@@ -2,6 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 
+export interface Milestone {
+  id: string;
+  title: string;
+  description: string;
+  targetAmount: number;
+  deadline: Date | string;
+  status: string;
+  sequenceOrder: number;
+}
+
 interface DonateModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -10,6 +20,7 @@ interface DonateModalProps {
     title: string;
     targetAmount: number;
     raisedAmount: number;
+    milestones: Milestone[];
   };
   ngoName: string;
   ngoId: string;
@@ -30,6 +41,11 @@ export function DonateModal({
   const [customAmount, setCustomAmount] = useState("");
   const [showCustom, setShowCustom] = useState(false);
 
+  const [selectedMilestoneIds, setSelectedMilestoneIds] = useState<string[]>([]);
+  const [donationMode, setDonationMode] = useState<"project" | "milestone">(
+    "project"
+  );
+
   useEffect(() => {
     if (!isOpen) return;
     setFcraLoading(true);
@@ -42,6 +58,28 @@ export function DonateModal({
       .finally(() => setFcraLoading(false));
   }, [isOpen, ngoId]);
 
+  // Compute suggested amount based on selection
+  const suggestedAmount = React.useMemo(() => {
+    if (donationMode === "project" || selectedMilestoneIds.length === 0) {
+      return null; // no suggestion for whole-project mode
+    }
+    const selectedMilestones = project.milestones.filter((m) =>
+      selectedMilestoneIds.includes(m.id)
+    );
+    return selectedMilestones.reduce(
+      (sum, m) => sum + Number(m.targetAmount), 0
+    );
+  }, [selectedMilestoneIds, donationMode, project.milestones]);
+
+  // When suggestedAmount changes, pre-fill the amount field
+  useEffect(() => {
+    if (suggestedAmount !== null) {
+      setAmount(suggestedAmount);
+      setCustomAmount(suggestedAmount.toString());
+      setShowCustom(true); // switch to custom input to show the pre-filled value
+    }
+  }, [suggestedAmount]);
+
   if (!isOpen) return null;
 
   const isInternationalDonor =
@@ -53,16 +91,46 @@ export function DonateModal({
     ? parseInt(customAmount, 10)
     : amount;
 
+  const toggleMilestone = (milestoneId: string) => {
+    setSelectedMilestoneIds((prev) =>
+      prev.includes(milestoneId)
+        ? prev.filter((id) => id !== milestoneId)
+        : [...prev, milestoneId]
+    );
+  };
+
+  const donatableMilestones = project.milestones.filter(
+    (m) => m.status === "PENDING" || m.status === "IN_PROGRESS"
+  );
+  const lockedMilestones = project.milestones.filter(
+    (m) => !["PENDING", "IN_PROGRESS"].includes(m.status)
+  );
+
   const handleProceedToPayment = () => {
     if (!effectiveAmount || isFCRABlocked) return;
-    // TODO B3: Replace with Razorpay order creation call
-    console.log("Proceeding to payment:", {
+
+    const payload = {
       projectId: project.id,
       amount: effectiveAmount,
+      milestoneIds: donationMode === "milestone" ? selectedMilestoneIds : [],
       donorCategory,
-    });
-    alert(`Payment flow coming soon. Amount: Rs.${effectiveAmount}`);
+    };
+
+    // TODO B3: Replace with actual Razorpay order creation
+    console.log("Proceeding to payment:", payload);
+    alert(
+      `Payment flow coming soon.\n\nAmount: Rs.${effectiveAmount}\n` +
+      (payload.milestoneIds.length > 0
+        ? `Earmarked for ${payload.milestoneIds.length} milestone(s)`
+        : "Donated to entire project")
+    );
   };
+
+  const isPayDisabled =
+    isFCRABlocked ||
+    fcraLoading ||
+    !effectiveAmount ||
+    (donationMode === "milestone" && selectedMilestoneIds.length === 0);
 
   return (
     <div
@@ -71,7 +139,7 @@ export function DonateModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full mx-4 p-6 shadow-2xl space-y-6 text-left"
+        className="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full mx-4 p-6 shadow-2xl space-y-5 text-left"
       >
         {/* Header row */}
         <div className="flex items-start justify-between">
@@ -82,7 +150,7 @@ export function DonateModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-600 hover:text-white transition cursor-pointer"
+            className="text-gray-600 hover:text-white transition cursor-pointer hover:bg-gray-800 p-1.5 rounded-lg"
           >
             {/* X SVG */}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5" strokeWidth={2}>
@@ -132,6 +200,196 @@ export function DonateModal({
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Donation Mode Toggle */}
+        {project.milestones.length > 0 && (
+          <div>
+            {/* Mode switcher tabs */}
+            <div className="flex gap-2 mb-4 p-1 bg-gray-800 rounded-xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setDonationMode("project");
+                  setSelectedMilestoneIds([]);
+                }}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  donationMode === "project"
+                    ? "bg-gray-700 text-white shadow"
+                    : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                Donate to Project
+              </button>
+              <button
+                type="button"
+                onClick={() => setDonationMode("milestone")}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  donationMode === "milestone"
+                    ? "bg-gray-700 text-white shadow"
+                    : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                Choose Milestones
+              </button>
+            </div>
+
+            {/* Milestone list — only shown in milestone mode */}
+            {donationMode === "milestone" && (
+              <div className="space-y-2 max-h-52 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                {/* Donatable milestones */}
+                {donatableMilestones.map((milestone) => {
+                  const isSelected = selectedMilestoneIds.includes(milestone.id);
+                  const deadlineDate = new Date(milestone.deadline);
+                  const isOverdue = deadlineDate < new Date();
+
+                  return (
+                    <button
+                      key={milestone.id}
+                      type="button"
+                      onClick={() => toggleMilestone(milestone.id)}
+                      className={`
+                        w-full text-left p-3.5 rounded-xl border-2 transition-all
+                        duration-150 relative cursor-pointer
+                        ${isSelected
+                          ? "border-emerald-500 bg-emerald-950/30"
+                          : "border-gray-800 bg-gray-900/50 hover:border-gray-700"
+                        }
+                      `}
+                    >
+                      {/* Checkbox indicator */}
+                      <div className={`
+                        absolute top-3.5 right-3.5 w-4 h-4 rounded border-2
+                        flex items-center justify-center flex-shrink-0
+                        transition-all duration-150
+                        ${isSelected
+                          ? "bg-emerald-500 border-emerald-500"
+                          : "border-gray-600"
+                        }
+                      `}>
+                        {isSelected && (
+                          <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3">
+                            <path
+                              d="M2 6l3 3 5-5"
+                              stroke="white"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        )}
+                      </div>
+
+                      {/* Milestone content */}
+                      <div className="pr-6">
+                        {/* Sequence + title */}
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-[10px] font-black px-1.5 py-0.5
+                            rounded-md ${isSelected
+                              ? "bg-emerald-500/20 text-emerald-400"
+                              : "bg-gray-800 text-gray-500"
+                            }`}>
+                            #{milestone.sequenceOrder}
+                          </span>
+                          <span className={`text-xs font-bold ${
+                            isSelected ? "text-white" : "text-gray-300"
+                          }`}>
+                            {milestone.title}
+                          </span>
+                        </div>
+
+                        {/* Description */}
+                        <p className="text-[11px] text-gray-500 leading-snug line-clamp-2 mb-2">
+                          {milestone.description}
+                        </p>
+
+                        {/* Amount + deadline row */}
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-extrabold ${
+                            isSelected ? "text-emerald-400" : "text-gray-400"
+                          }`}>
+                            Rs.{Number(milestone.targetAmount).toLocaleString("en-IN")}
+                          </span>
+                          <span className={`text-[10px] ${
+                            isOverdue ? "text-red-400" : "text-gray-600"
+                          }`}>
+                            Due {deadlineDate.toLocaleDateString("en-IN", {
+                              day: "numeric", month: "short", year: "numeric"
+                            })}
+                            {isOverdue && " (overdue)"}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {/* Locked milestones — greyed out, not selectable */}
+                {lockedMilestones.map((milestone) => (
+                  <div
+                    key={milestone.id}
+                    className="w-full p-3.5 rounded-xl border border-gray-800/50 bg-gray-900/20 opacity-50 cursor-not-allowed"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-gray-800 text-gray-600">
+                          #{milestone.sequenceOrder}
+                        </span>
+                        <span className="text-xs font-bold text-gray-500">
+                          {milestone.title}
+                        </span>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        milestone.status === "COMPLETED" || milestone.status === "VERIFIED"
+                          ? "bg-emerald-950/30 text-emerald-600"
+                          : "bg-amber-950/30 text-amber-600"
+                      }`}>
+                        {milestone.status === "COMPLETED" ? "✓ Funded"
+                          : milestone.status === "VERIFIED" ? "✓ Verified"
+                          : milestone.status === "PROOF_SUBMITTED" ? "Under review"
+                          : milestone.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Selection summary */}
+                {selectedMilestoneIds.length > 0 && (
+                  <div className="mt-1 pt-2 border-t border-gray-800 flex items-center justify-between">
+                    <span className="text-[11px] text-gray-500">
+                      {selectedMilestoneIds.length} milestone{selectedMilestoneIds.length > 1 ? "s" : ""} selected
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMilestoneIds([])}
+                      className="text-[11px] text-gray-600 hover:text-gray-400 underline underline-offset-2 transition cursor-pointer bg-transparent border-0"
+                    >
+                      Clear selection
+                    </button>
+                  </div>
+                )}
+
+                {/* Empty state */}
+                {donatableMilestones.length === 0 && (
+                  <div className="text-center py-6 text-gray-600 text-xs">
+                    All milestones for this project are fully funded or under review. Donate to the project instead.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mode helper text */}
+            <p className="text-[10px] text-gray-600 mt-2 leading-relaxed">
+              {donationMode === "project"
+                ? "Your donation will be distributed across all active milestones by the NGO."
+                : selectedMilestoneIds.length === 0
+                ? "Select one or more milestones to earmark your donation."
+                : `Your donation will be tracked against the ${
+                    selectedMilestoneIds.length
+                  } selected milestone${selectedMilestoneIds.length > 1 ? "s" : ""}.`
+              }
+            </p>
           </div>
         )}
 
@@ -207,11 +465,11 @@ export function DonateModal({
         {/* Pay button */}
         <button
           type="button"
-          disabled={isFCRABlocked || !effectiveAmount || fcraLoading}
+          disabled={isPayDisabled}
           onClick={handleProceedToPayment}
           className={`
             w-full py-3.5 rounded-xl text-sm font-extrabold transition-all cursor-pointer
-            ${isFCRABlocked || !effectiveAmount || fcraLoading
+            ${isPayDisabled
               ? "bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-850"
               : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/10"
             }
@@ -221,6 +479,8 @@ export function DonateModal({
             ? "Checking eligibility..."
             : isFCRABlocked
             ? "Donation not available"
+            : donationMode === "milestone" && selectedMilestoneIds.length === 0
+            ? "Select milestones to continue"
             : effectiveAmount
             ? `Donate Rs.${effectiveAmount.toLocaleString("en-IN")} →`
             : "Select an amount"

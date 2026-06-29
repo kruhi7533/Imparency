@@ -78,6 +78,19 @@ export async function POST(req: Request) {
         }),
       ]);
 
+      // If milestoneIds present: move PENDING milestones -> IN_PROGRESS
+      if (donation.milestoneIds && donation.milestoneIds.length > 0) {
+        await prisma.milestone.updateMany({
+          where: {
+            id: { in: donation.milestoneIds },
+            status: "PENDING",
+          },
+          data: {
+            status: "IN_PROGRESS",
+          },
+        });
+      }
+
       // Fetch the updated donation to get the accurate updated fields or timestamps
       const updatedDonation = await prisma.donation.findUnique({
         where: { id: donation.id },

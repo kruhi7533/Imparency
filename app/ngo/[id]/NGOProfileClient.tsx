@@ -6,6 +6,16 @@ import ProjectCoverImage from "@/app/components/ProjectCoverImage";
 import { DonorCategoryModal } from "@/components/donor/DonorCategoryModal";
 import { DonateModal } from "@/components/donor/DonateModal";
 
+interface Milestone {
+  id: string;
+  title: string;
+  description: string;
+  targetAmount: any; // Decimal
+  deadline: Date | string;
+  status: string;   // MilestoneStatus enum as string
+  sequenceOrder: number;
+}
+
 interface Project {
   id: string;
   title: string;
@@ -17,6 +27,7 @@ interface Project {
   coverImage: string;
   location: string;
   createdAt: Date;
+  milestones: Milestone[];
 }
 
 interface NGO {
@@ -487,6 +498,7 @@ export default function NGOProfileClient({
             title: selectedProject.title,
             targetAmount: Number(selectedProject.targetAmount),
             raisedAmount: Number(selectedProject.raisedAmount),
+            milestones: selectedProject.milestones || [],
           }}
           ngoName={ngo.orgName}
           ngoId={ngo.id}
