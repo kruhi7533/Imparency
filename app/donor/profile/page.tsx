@@ -21,6 +21,11 @@ export default async function DonorProfilePage() {
     redirect("/login");
   }
 
+  // Successful donations still awaiting an 80G receipt (withheld until PAN verified).
+  const pendingReceiptCount = await prisma.donation.count({
+    where: { donorId: user.id, status: "SUCCESS", taxReceipt: null },
+  });
+
   // Serialize models to plain JSON objects
   const serializedUser = {
     id: user.id,
@@ -30,11 +35,14 @@ export default async function DonorProfilePage() {
     city: user.city || "",
     billingAddress: user.billingAddress || "",
     panNumber: user.panNumber || "",
+    panStatus: user.panStatus,
+    panNameMatch: user.panNameMatch,
     isCorporate: user.isCorporate,
     companyName: user.companyName || "",
     gstNumber: user.gstNumber || "",
     totalDonated: Number(user.totalDonated),
     createdAt: user.createdAt.toISOString(),
+    pendingReceiptCount,
   };
 
   return (

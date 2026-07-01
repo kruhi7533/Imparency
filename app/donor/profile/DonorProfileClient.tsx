@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+type PanStatus = "UNVERIFIED" | "VERIFIED" | "FAILED" | "PROVIDER_ERROR";
+
 interface UserProfile {
   id: string;
   name: string;
@@ -12,15 +14,44 @@ interface UserProfile {
   city: string;
   billingAddress: string;
   panNumber: string;
+  panStatus: PanStatus;
+  panNameMatch: boolean | null;
   isCorporate: boolean;
   companyName: string;
   gstNumber: string;
   totalDonated: number;
   createdAt: string;
+  pendingReceiptCount: number;
 }
 
 interface DonorProfileClientProps {
   user: UserProfile;
+}
+
+function PanStatusBadge({ status, nameMatch }: { status: PanStatus; nameMatch: boolean | null }) {
+  let label: string;
+  let classes: string;
+  if (status === "VERIFIED" && nameMatch === false) {
+    label = "⚠️ Name mismatch";
+    classes = "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900";
+  } else if (status === "VERIFIED") {
+    label = "✅ Verified";
+    classes = "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900";
+  } else if (status === "PROVIDER_ERROR") {
+    label = "⏳ Provider unavailable — try again";
+    classes = "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700";
+  } else if (status === "FAILED") {
+    label = "✕ Not verified";
+    classes = "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900";
+  } else {
+    label = "Unverified";
+    classes = "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700";
+  }
+  return (
+    <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap ${classes}`}>
+      {label}
+    </span>
+  );
 }
 
 export default function DonorProfileClient({ user }: DonorProfileClientProps) {
@@ -39,6 +70,30 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
   // Status states
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [claiming, setClaiming] = useState(false);
+
+  // PAN verification status reflects the last-saved server state.
+  const panVerified = user.panStatus === "VERIFIED";
+  const showClaim = panVerified && user.pendingReceiptCount > 0;
+
+  const handleClaimReceipts = async () => {
+    setClaiming(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/donor/receipts/claim", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not generate receipts");
+      setMessage({
+        type: "success",
+        text: `Generated ${data.issued} tax receipt${data.issued === 1 ? "" : "s"}. Check your email and portfolio.`,
+      });
+      router.refresh();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err.message || "Could not generate receipts" });
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -274,9 +329,12 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
 
               {/* Tax KYC and Benefits */}
               <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
-                <div>
-                  <h2 className="text-base font-bold text-gray-900 dark:text-white">Tax Deductions (80G Benefit)</h2>
-                  <p className="text-[11px] text-gray-400">Verify your PAN details to receive automated 80G tax utilization certificates.</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-bold text-gray-900 dark:text-white">Tax Deductions (80G Benefit)</h2>
+                    <p className="text-[11px] text-gray-400">Verify your PAN to receive automated 80G tax receipts. Receipts are only issued once your PAN is verified.</p>
+                  </div>
+                  <PanStatusBadge status={user.panStatus} nameMatch={user.panNameMatch} />
                 </div>
 
                 <div className="space-y-1.5">
@@ -292,7 +350,26 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                     placeholder="ABCDE1234F"
                     maxLength={10}
                   />
+                  <p className="text-[10px] text-gray-400">
+                    We verify your PAN against government records on save.
+                  </p>
                 </div>
+
+                {showClaim && (
+                  <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50">
+                    <p className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
+                      You have {user.pendingReceiptCount} donation{user.pendingReceiptCount === 1 ? "" : "s"} awaiting an 80G receipt.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleClaimReceipts}
+                      disabled={claiming}
+                      className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition disabled:opacity-50"
+                    >
+                      {claiming ? "Generating…" : "Generate 80G receipts"}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Corporate CSR Accounts */}

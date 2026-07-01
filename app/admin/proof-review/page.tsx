@@ -17,6 +17,10 @@ export default async function AdminProofReviewPage() {
     redirect("/unauthorized");
   }
 
+  const pendingProjectCount = await prisma.project.count({
+    where: { status: "PENDING_APPROVAL", isDeleted: false },
+  });
+
   // Fetch milestones awaiting manual review (status PROOF_SUBMITTED)
   const pendingMilestones = await prisma.milestone.findMany({
     where: { status: "PROOF_SUBMITTED" },
@@ -116,6 +120,14 @@ export default async function AdminProofReviewPage() {
         <div className="flex items-center gap-6">
           <div className="flex gap-4 text-sm font-semibold">
             <a href="/admin/dashboard" className="text-gray-500 hover:text-emerald-600 transition">NGO Verification</a>
+            <a href="/admin/project-review" className="text-gray-500 hover:text-emerald-600 transition flex items-center gap-1.5">
+              <span>Project Review</span>
+              {pendingProjectCount > 0 && (
+                <span className="bg-red-100 dark:bg-red-950/45 text-red-600 dark:text-red-400 text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                  {pendingProjectCount}
+                </span>
+              )}
+            </a>
             <a href="/admin/proof-review" className="text-emerald-600 hover:text-emerald-700 transition underline decoration-2 underline-offset-4">Proof Review</a>
             <a href="/admin/risk-compliance" className="text-gray-500 hover:text-emerald-600 transition">Risk &amp; Compliance</a>
             <a href="/admin/fcra-review" className="text-gray-500 hover:text-emerald-600 transition">FCRA Review</a>

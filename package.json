@@ -10,6 +10,7 @@
     "lint": "next lint",
     "db:sync": "prisma db push",
     "seed": "npx tsx scripts/seed-demo.ts",
+    "seed-pending": "npx tsx scripts/seed-pending-projects.ts",
     "clear-demo": "npx tsx scripts/clear-demo.ts"
   },
   "dependencies": {
