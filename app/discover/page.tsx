@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { MapPin, Briefcase, IndianRupee } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
 
 const CAUSE_CATEGORIES = [
   "Education",
@@ -30,6 +31,8 @@ interface NGOData {
 
 export default function DiscoverPage() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [ngos, setNgos] = useState<NGOData[]>([]);
   const [search, setSearch] = useState("");
@@ -37,6 +40,7 @@ export default function DiscoverPage() {
   const [selectedCauses, setSelectedCauses] = useState<string[]>([]);
   const [location, setLocation] = useState("");
   const [sortBy, setSortBy] = useState("healthScore");
+  const [minBudget, setMinBudget] = useState<number | null>(null);
   
   // Pagination states
   const [page, setPage] = useState(1);
@@ -46,11 +50,19 @@ export default function DiscoverPage() {
   const [error, setError] = useState("");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
+  // Read minBudget from search parameters on mount
+  useEffect(() => {
+    const budget = searchParams.get("minBudget");
+    if (budget && !isNaN(parseInt(budget, 10))) {
+      setMinBudget(parseInt(budget, 10));
+    }
+  }, []);
+
   // Trigger initial fetch and filter reset
   useEffect(() => {
     setPage(1);
     fetchNGOs(1, false);
-  }, [search, selectedPill, selectedCauses, location, sortBy]);
+  }, [search, selectedPill, selectedCauses, location, sortBy, minBudget]);
 
   const fetchNGOs = async (pageNum: number, append: boolean) => {
     if (pageNum === 1) {
@@ -69,6 +81,7 @@ export default function DiscoverPage() {
       
       if (search) params.append("search", search);
       if (location) params.append("location", location);
+      if (minBudget) params.append("minBudget", minBudget.toString());
       
       // Combine pill filter with checkbox filters
       let activeCauses = [...selectedCauses];
@@ -401,6 +414,24 @@ export default function DiscoverPage() {
 
           {/* Right Main Grid */}
           <div className="lg:col-span-3 space-y-8">
+
+            {minBudget && (
+              <div className="flex items-center justify-between px-4 py-3 bg-emerald-950/30 border border-emerald-800/50 rounded-xl mb-4 animate-fadeIn">
+                <span className="text-xs text-emerald-400 font-semibold">
+                  Showing campaigns where ₹{minBudget.toLocaleString("en-IN")} makes a meaningful contribution
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMinBudget(null);
+                    router.replace("/discover");
+                  }}
+                  className="text-[10px] text-gray-500 hover:text-white transition underline underline-offset-2 cursor-pointer"
+                >
+                  Clear filter
+                </button>
+              </div>
+            )}
             
             {loading ? (
               // Skeleton Screen Loaders

@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { DonorPersona } from "@prisma/client";
 
 const VALID_PERSONAS = new Set<string>([
+  "INDIVIDUAL",
   "CSR_OFFICER",
   "HNI",
   "FOUNDATION",

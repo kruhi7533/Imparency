@@ -48,18 +48,21 @@ export default function Navbar() {
         <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-gray-400">
           {session?.user?.role === "NGO" ? (
             <>
-              <Link href="/ngo/dashboard" className={`hover:text-white transition ${pathname === "/ngo/dashboard" ? "text-white" : ""}`}>
-                NGO Dashboard
-              </Link>
-              <Link href="/ngo/projects/new" className={`hover:text-white transition ${pathname === "/ngo/projects/new" ? "text-white" : ""}`}>
-                Launch Project
-              </Link>
-              <span className="text-gray-700 select-none">|</span>
               <Link href="/" className={`text-gray-500 font-medium hover:text-gray-300 transition ${pathname === "/" ? "text-white font-bold" : ""}`}>
                 Home
               </Link>
               <Link href="/discover" className={`text-gray-500 font-medium hover:text-gray-300 transition ${pathname === "/discover" ? "text-white font-bold" : ""}`}>
                 Discover NGOs
+              </Link>
+              <span className="text-gray-700 select-none">|</span>
+              <Link href="/ngo/dashboard" className={`hover:text-white transition ${pathname === "/ngo/dashboard" ? "text-white" : ""}`}>
+                NGO Dashboard
+              </Link>
+              <Link href="/ngo/crm" className={`hover:text-white transition ${pathname === "/ngo/crm" ? "text-white" : ""}`}>
+                Donor CRM
+              </Link>
+              <Link href="/ngo/projects/new" className={`hover:text-white transition ${pathname === "/ngo/projects/new" ? "text-white" : ""}`}>
+                Launch Project
               </Link>
             </>
           ) : (
@@ -110,11 +113,15 @@ export default function Navbar() {
               {/* Profile Avatar Initials Trigger */}
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="w-8 h-8 rounded-full bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-center text-xs select-none hover:bg-emerald-650/30 transition focus:outline-none relative"
+                className="w-8 h-8 rounded-full bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-center text-xs select-none hover:bg-emerald-650/30 transition focus:outline-none relative overflow-hidden"
                 aria-haspopup="true"
                 aria-expanded={dropdownOpen}
               >
-                {(session.user.name || "U").charAt(0).toUpperCase()}
+                {session.user.image ? (
+                  <img src={session.user.image} alt={session.user.name || "User"} className="w-full h-full object-cover" />
+                ) : (
+                  (session.user.name || "U").charAt(0).toUpperCase()
+                )}
               </button>
 
               {/* Dropdown Menu */}
@@ -132,6 +139,32 @@ export default function Navbar() {
                       >
                         Profile
                       </Link>
+                    )}
+                    {session.user.role === "NGO" && (
+                      <>
+                        <Link
+                          href="/ngo/settings/profile"
+                          onClick={() => setDropdownOpen(false)}
+                          className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
+                        >
+                          My Profile
+                        </Link>
+                        <Link
+                          href="/ngo/settings/team"
+                          onClick={() => setDropdownOpen(false)}
+                          className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
+                        >
+                          Team Settings
+                        </Link>
+                        <Link
+                          href="/ngo/pitch-deck"
+                          onClick={() => setDropdownOpen(false)}
+                          className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center justify-between"
+                        >
+                          Pitch Deck
+                          <span className="bg-emerald-500/20 text-emerald-400 text-[9px] uppercase px-1.5 py-0.5 rounded-full font-bold leading-none">New</span>
+                        </Link>
+                      </>
                     )}
                     <Link
                       href="/help"

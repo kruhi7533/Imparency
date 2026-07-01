@@ -22,7 +22,10 @@ export const authOptions: NextAuthOptions = {
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
-          include: { ngoProfile: { select: { id: true } } },
+          include: { 
+            ngoProfile: { select: { id: true } },
+            teamMemberships: { select: { ngoId: true }, take: 1 }
+          },
         });
 
         if (!user || !user.passwordHash) {
@@ -42,8 +45,9 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
-          ngoProfileId: user.ngoProfile?.id || null,
+          avatar: user.avatar,
+          role: user.teamMemberships && user.teamMemberships.length > 0 ? "NGO" : user.role,
+          ngoProfileId: user.ngoProfile?.id || (user.teamMemberships && user.teamMemberships.length > 0 ? user.teamMemberships[0].ngoId : null),
           donorPersona: user.donorPersona,
         };
       },
@@ -61,7 +65,10 @@ export const authOptions: NextAuthOptions = {
         // Check if user already exists
         let dbUser = await prisma.user.findUnique({
           where: { email: user.email },
-          include: { ngoProfile: { select: { id: true } } },
+          include: { 
+            ngoProfile: { select: { id: true } },
+            teamMemberships: { select: { ngoId: true }, take: 1 }
+          },
         });
 
         if (!dbUser) {
@@ -75,32 +82,45 @@ export const authOptions: NextAuthOptions = {
               role: "DONOR",
               passwordHash: "", // OAuth users don't use credentials password
             },
-            include: { ngoProfile: { select: { id: true } } },
+            include: { 
+              ngoProfile: { select: { id: true } },
+              teamMemberships: { select: { ngoId: true }, take: 1 }
+            },
           });
         } else if (!dbUser.googleId) {
           // Link Google ID if existing email login logs in via Google
           dbUser = await prisma.user.update({
             where: { email: user.email },
             data: { googleId: account.providerAccountId },
-            include: { ngoProfile: { select: { id: true } } },
+            include: { 
+              ngoProfile: { select: { id: true } },
+              teamMemberships: { select: { ngoId: true }, take: 1 }
+            },
           });
         }
 
         // Enrich the next-auth user object so JWT callback gets the correct details
         user.id = dbUser.id;
-        user.role = dbUser.role;
-        user.ngoProfileId = dbUser.ngoProfile?.id || null;
+        user.role = dbUser.teamMemberships && dbUser.teamMemberships.length > 0 ? "NGO" : dbUser.role;
+        user.ngoProfileId = dbUser.ngoProfile?.id || (dbUser.teamMemberships && dbUser.teamMemberships.length > 0 ? dbUser.teamMemberships[0].ngoId : null);
         user.donorPersona = dbUser.donorPersona ?? null;
+        user.avatar = dbUser.avatar;
       }
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      if (trigger === "update") {
+        if (session?.name) token.name = session.name;
+        if (session?.image) token.image = session.image;
+      }
+      
       // On initial login, user object is provided
       if (user) {
         token.id = user.id;
         token.role = user.role;
         token.ngoProfileId = user.ngoProfileId;
         token.donorPersona = user.donorPersona ?? null;
+        token.image = (user as any).avatar || user.image || null;
       }
       return token;
     },
@@ -110,6 +130,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role;
         session.user.ngoProfileId = token.ngoProfileId;
         session.user.donorPersona = token.donorPersona ?? null;
+        session.user.image = token.image as string | null | undefined;
       }
       return session;
     },

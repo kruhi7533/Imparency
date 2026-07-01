@@ -16,6 +16,7 @@ enum Role {
 }
 
 enum DonorPersona {
+  INDIVIDUAL
   CSR_OFFICER
   HNI
   FOUNDATION
@@ -66,6 +67,12 @@ enum FCRAStatus {
   REJECTED // admin rejected
   REUPLOAD_REQUESTED // admin asked the NGO to re-upload
 }
+enum TeamRole {
+  OWNER
+  ADMIN
+  FINANCE
+  FIELD_STAFF
+}
 
 model User {
   id                      String            @id @default(uuid())
@@ -96,6 +103,21 @@ model User {
   panVerifiedVia          PanVerifiedVia?
   panRegisteredName       String?           // name returned by the PAN provider (mismatch display / audit)
   panNameMatch            Boolean?          // did registeredName match donor.name? null = no name returned
+
+  // HNI specific fields
+  hniAdvisorName          String?
+  hniAdvisorEmail         String?
+  hniAnnualBudget         Decimal?          @db.Decimal(12, 2)
+
+  // CSR specific fields
+  csrRegistrationNumber   String?
+  csrBudget               Decimal?          @db.Decimal(12, 2)
+
+  // Foundation specific fields
+  trustRegistrationId     String?
+  trust12a80gRegNo        String?
+  trustAnnualBudget       Decimal?          @db.Decimal(12, 2)
+
   donorTier               DonorTier         @default(STANDARD)
   reEngagementPath        ReEngagementPath?
   volunteerInterest       Boolean           @default(false)
@@ -112,6 +134,7 @@ model User {
   adminProjectReviews ProjectReview[]    @relation("AdminProjectReviews")
   consentLogs        ConsentLog[]
   reEngagementEvents ReEngagementEvent[]
+  teamMemberships NGOTeamMember[]
 }
 
 model NGOProfile {
@@ -138,6 +161,7 @@ model NGOProfile {
   updatedAt              DateTime           @updatedAt
   logo_url               String?
   cover_image_url        String?
+  joinCode               String?  @unique  // Used for field worker self-registration via WhatsApp
 
   // Consent Tracking
   dataProcessingConsent     Boolean   @default(false)
@@ -152,6 +176,22 @@ model NGOProfile {
   screening   NgoScreening?
   compliance  NGOCompliance?
   riskReviews RiskReview[]
+  fieldWorkers   FieldWorker[]
+  draftProofs    DraftProof[]
+  teamMembers    NGOTeamMember[]
+  teamInvites    TeamInvite[]
+}
+
+model NGOTeamMember {
+  id        String     @id @default(uuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  ngoId     String
+  ngo       NGOProfile @relation(fields: [ngoId], references: [id])
+  role      TeamRole   @default(FIELD_STAFF)
+  createdAt DateTime   @default(now())
+
+  @@unique([userId, ngoId])
 }
 
 model NGOCompliance {
@@ -525,4 +565,81 @@ model ConsentAudit {
   version   String
   ipAddress String?
   createdAt DateTime @default(now())
+}
+
+model FieldWorker {
+  id        String     @id @default(uuid())
+  ngoId     String
+  ngo       NGOProfile @relation(fields: [ngoId], references: [id])
+  name      String
+  phone     String     @unique
+  isActive  Boolean    @default(true)
+  isPending Boolean    @default(false)  // true = waiting for join code reply
+  reliabilityScore  Int               @default(100)
+  totalSubmissions  Int               @default(0)
+  approvedCount     Int               @default(0)
+  rejectedCount     Int               @default(0)
+  createdAt DateTime   @default(now())
+  
+  draftProofs DraftProof[]
+}
+
+model DraftProof {
+  id            String       @id @default(uuid())
+  ngoId         String
+  ngo           NGOProfile   @relation(fields: [ngoId], references: [id])
+  fieldWorkerId String?
+  fieldWorker   FieldWorker? @relation(fields: [fieldWorkerId], references: [id])
+  
+  fingerprint   String?      @unique
+  
+  predictedProjectId   String?
+  predictedMilestoneId String?
+  predictionConfidence Float?
+  
+  senderPhone   String
+  rawMessage    String
+  aiSummary     String?
+  riskLevel     String?
+  riskReason    String?
+  workerStatus      String?           @default("PENDING") // "PENDING" | "ENRICHING" | "ENRICHED" | "ENRICHMENT_FAILED"
+  rawGpsLat         Float?
+  rawGpsLng         Float?
+  photoCount        Int?              @default(0)
+  
+  mediaUrls     String[]
+  persistentPhotoUrls String[]
+  imageHashes   String[]
+  
+  status            DraftProofStatus  @default(PENDING_REVIEW)
+  createdAt     DateTime         @default(now())
+}
+
+enum DraftProofStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+model PitchLead {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  organization String?
+  createdAt    DateTime @default(now())
+  downloaded   Boolean  @default(false)
+}
+
+model TeamInvite {
+  id        String   @id @default(cuid())
+  email     String
+  role      TeamRole @default(FIELD_STAFF)
+  ngoId     String
+  ngo       NGOProfile @relation(fields: [ngoId], references: [id])
+  token     String   @unique @default(cuid())
+  accepted  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@unique([email, ngoId])
 }

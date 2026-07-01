@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { DonorPersona } from "@prisma/client";
 
 export async function PUT(request: Request) {
   try {
@@ -25,6 +26,15 @@ export async function PUT(request: Request) {
       isCorporate,
       companyName,
       gstNumber,
+      donorPersona,
+      hniAdvisorName,
+      hniAdvisorEmail,
+      hniAnnualBudget,
+      csrRegistrationNumber,
+      csrBudget,
+      trustRegistrationId,
+      trust12a80gRegNo,
+      trustAnnualBudget,
     } = body;
 
     // Validate name
@@ -33,6 +43,14 @@ export async function PUT(request: Request) {
     }
 
     const trimmedName = name.trim();
+
+    // Validate donor persona if provided
+    let verifiedPersona: DonorPersona | null = null;
+    if (donorPersona) {
+      if (Object.values(DonorPersona).includes(donorPersona as DonorPersona)) {
+        verifiedPersona = donorPersona as DonorPersona;
+      }
+    }
 
     // ── PAN verification (risk-based / just-in-time) ───────────────────────────
     // A verified PAN is what gates 80G receipt issuance, so we verify it here on
@@ -113,6 +131,15 @@ export async function PUT(request: Request) {
         companyName: isCorporate && companyName ? companyName.trim() : null,
         gstNumber: isCorporate && gstNumber ? gstNumber.trim() : null,
         ...(panData ?? {}),
+        donorPersona: verifiedPersona,
+        hniAdvisorName: hniAdvisorName ? hniAdvisorName.trim() : null,
+        hniAdvisorEmail: hniAdvisorEmail ? hniAdvisorEmail.trim() : null,
+        hniAnnualBudget: hniAnnualBudget != null && hniAnnualBudget !== "" ? Number(hniAnnualBudget) : null,
+        csrRegistrationNumber: csrRegistrationNumber ? csrRegistrationNumber.trim() : null,
+        csrBudget: csrBudget != null && csrBudget !== "" ? Number(csrBudget) : null,
+        trustRegistrationId: trustRegistrationId ? trustRegistrationId.trim() : null,
+        trust12a80gRegNo: trust12a80gRegNo ? trust12a80gRegNo.trim() : null,
+        trustAnnualBudget: trustAnnualBudget != null && trustAnnualBudget !== "" ? Number(trustAnnualBudget) : null,
       },
     });
 
@@ -146,6 +173,15 @@ export async function PUT(request: Request) {
         isCorporate: updatedUser.isCorporate,
         companyName: updatedUser.companyName,
         gstNumber: updatedUser.gstNumber,
+        donorPersona: updatedUser.donorPersona,
+        hniAdvisorName: updatedUser.hniAdvisorName,
+        hniAdvisorEmail: updatedUser.hniAdvisorEmail,
+        hniAnnualBudget: updatedUser.hniAnnualBudget ? Number(updatedUser.hniAnnualBudget) : null,
+        csrRegistrationNumber: updatedUser.csrRegistrationNumber,
+        csrBudget: updatedUser.csrBudget ? Number(updatedUser.csrBudget) : null,
+        trustRegistrationId: updatedUser.trustRegistrationId,
+        trust12a80gRegNo: updatedUser.trust12a80gRegNo,
+        trustAnnualBudget: updatedUser.trustAnnualBudget ? Number(updatedUser.trustAnnualBudget) : null,
       },
     });
   } catch (error: any) {
