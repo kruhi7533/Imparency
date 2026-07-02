@@ -10,6 +10,7 @@
     "lint": "next lint",
     "db:sync": "prisma db push",
     "seed": "npx tsx scripts/seed-demo.ts",
+    "seed-pending": "npx tsx scripts/seed-pending-projects.ts",
     "clear-demo": "npx tsx scripts/clear-demo.ts",
     "generate:pitch": "node scripts/generate-pitch.js",
     "generate:pitch:watch": "nodemon --watch lib/ --ext ts,js --exec 'node scripts/generate-pitch.js'"

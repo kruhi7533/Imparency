@@ -24,6 +24,7 @@ export interface ReceiptData {
   projectTitle: string;
   financialYear: string;
   donationDate: string;
+  issuedAt?: string; // date the receipt PDF was generated (differs from donationDate for late claims)
   paymentMode: string;
 }
 
@@ -164,7 +165,10 @@ const ReceiptDocument = ({ data }: { data: ReceiptData }) => {
         {/* Banner with receipt details */}
         <View style={styles.banner}>
           <Text style={styles.bannerText}>Receipt No: {data.receiptNumber}</Text>
-          <Text style={styles.bannerText}>Date: {data.donationDate}</Text>
+          <Text style={styles.bannerText}>Donation Date: {data.donationDate}</Text>
+          {data.issuedAt && data.issuedAt !== data.donationDate && (
+            <Text style={styles.bannerText}>Issued: {data.issuedAt}</Text>
+          )}
           <Text style={styles.bannerText}>Financial Year: {data.financialYear}</Text>
         </View>
 

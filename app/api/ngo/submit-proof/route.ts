@@ -4,7 +4,6 @@ import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/storage";
 import { validateMilestoneProof } from "@/lib/gemini/validate-proof";
 import { Role } from "@prisma/client";
-import { triggerMilestoneCompleted } from "@/lib/notification-triggers";
 import { recalculateNGOHealthScore } from "@/lib/ngo-health";
 
 export const runtime = "nodejs";
@@ -143,12 +142,11 @@ export async function POST(request: Request) {
       console.error("Failed to run Gemini score risk check:", fraudErr);
     }
 
-    // Resolve milestone status based on AI score
-    const finalStatus = validationResult.score >= 70 ? "COMPLETED" : "PROOF_SUBMITTED";
-
+    // Always queue for admin review — milestones never auto-complete regardless of AI score.
+    // The AI score is surfaced to the admin as a recommendation, not a decision.
     await prisma.milestone.update({
       where: { id: milestone.id },
-      data: { status: finalStatus },
+      data: { status: "PROOF_SUBMITTED" },
     });
 
     // Recalculate NGO health score
@@ -158,16 +156,7 @@ export async function POST(request: Request) {
       console.error("Failed to recalculate health score on proof submission:", healthErr);
     }
 
-    console.log(`Milestone proof submitted for ${milestone.id}. AI Score: ${validationResult.score}. Status: ${finalStatus}`);
-
-    // If auto-completed, trigger notifications (Plan 4.4 implementation)
-    if (finalStatus === "COMPLETED") {
-      try {
-        await triggerMilestoneCompleted(milestone.id);
-      } catch (triggerErr) {
-        console.warn("Milestone completion trigger could not execute:", triggerErr);
-      }
-    }
+    console.log(`Milestone proof submitted for ${milestone.id}. AI Score: ${validationResult.score}. Awaiting admin review.`);
 
     return NextResponse.json({
       success: true,
@@ -176,7 +165,7 @@ export async function POST(request: Request) {
       flags: validationResult.flags,
       suggestion: validationResult.suggestion,
       proofId: proof.id,
-      status: finalStatus,
+      status: "PROOF_SUBMITTED",
     });
 
   } catch (err: any) {

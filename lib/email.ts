@@ -95,6 +95,18 @@ export async function sendNGORejectionEmail(to: string, orgName: string, reason:
   return sendEmail({ to, subject, body });
 }
 
+export async function sendProjectSubmittedEmail(to: string, orgName: string, projectTitle: string) {
+  const subject = `Your project "${projectTitle}" has been submitted for review`;
+  const body = `Hi there,\n\nThank you for creating the fundraising project "${projectTitle}".\n\nBefore it goes live to donors, our administration team will review it to ensure it meets our trust and compliance standards. You'll receive another email once it has been approved and published.\n\nIf any changes are needed, we'll send the project back to your dashboard as a draft with a note explaining what to fix.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendProjectRejectedEmail(to: string, orgName: string, projectTitle: string, reason: string) {
+  const subject = `Action needed on your project "${projectTitle}"`;
+  const body = `Hi there,\n\nOur administration team reviewed your fundraising project "${projectTitle}" and it could not be approved for publishing at this time due to the following reason:\n\n"${reason}"\n\nThe project has been moved back to your dashboard as a draft. Please update it and resubmit it for review.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
 export async function sendProjectPublishedEmail(to: string, orgName: string, projectTitle: string) {
   const subject = `Your project "${projectTitle}" is now LIVE!`;
   const body = `Hi there,\n\nWe are excited to let you know that your fundraising project "${projectTitle}" has been published and is now visible to all donors on the ImpactBridge Discovery feed.\n\nYou can track milestone progress and manage donation events directly from your dashboard.\n\nBest regards,\nThe ImpactBridge Team`;
@@ -341,6 +353,30 @@ The Imparency Team`;
     body,
     from: "Imparency <onboarding@resend.dev>",
   });
+}
+
+export async function sendPanReceiptNudgeEmail(
+  to: string,
+  donorName: string,
+  ngoName: string,
+  amount: number
+) {
+  const profileUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/donor/profile`;
+  const subject = `Add your PAN to claim your 80G receipt — ${ngoName}`;
+  const body = `Hi ${donorName},
+
+Your donation of ₹${amount.toLocaleString("en-IN")} to ${ngoName} was successful — thank you!
+
+To generate your official 80G tax receipt, we need a verified PAN on your account. Nothing failed and your contribution has been recorded; only the tax receipt is pending.
+
+Add and verify your PAN here, and your receipt will be generated automatically:
+${profileUrl}
+
+Your donation is eligible for deduction under Section 80G of the Income Tax Act, 1961.
+
+Best regards,
+The Imparency Team`;
+  return sendEmail({ to, subject, body });
 }
 
 export async function sendPaymentRetryEmail(

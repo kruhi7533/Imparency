@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifySessionRole } from "@/lib/auth-guards";
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { runAndStoreNgoScreening } from "@/lib/screening-runner";
 
 export const runtime = "nodejs";
@@ -11,8 +12,11 @@ export const runtime = "nodejs";
  * This endpoint ONLY surfaces a summary — it never changes NGO status.
  */
 export async function POST(request: Request) {
-  const { authorized, response } = await verifySessionRole("ADMIN");
+  const { authorized, response, session } = await verifySessionRole("ADMIN");
   if (!authorized) return response;
+
+  const rl = await checkRateLimit(request, "admin/screen-ngo", 20, 60);
+  if (rl.isBlocked) return rl.response!;
 
   try {
     const { ngoId } = await request.json();

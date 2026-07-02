@@ -164,6 +164,9 @@ export async function PATCH(
       }
     }
 
+    // A DRAFT project being edited is a resubmission into the approval queue.
+    const isResubmission = project.status === "DRAFT";
+
     // 7. DB Transaction: save modifications
     await prisma.$transaction(async (tx) => {
       // Update Project model
@@ -181,6 +184,13 @@ export async function PATCH(
           longitude: longitude !== null && !isNaN(longitude) ? longitude : null,
           coverImage: coverImageUrl,
           targetAmount: !isLocked ? targetAmount : undefined,
+          // A rejected project sits in DRAFT. Editing it is a resubmission, so
+          // send it back into the admin approval queue and clear the old note.
+          // The previous AI screening is now stale, so clear it too — the admin
+          // re-runs screening on demand from the review queue.
+          ...(isResubmission
+            ? { status: "PENDING_APPROVAL", reviewNote: null, aiScreeningScore: null, aiScreeningResult: null }
+            : {}),
         },
       });
 

@@ -35,7 +35,9 @@ export default async function ProjectPage({
     },
   });
 
-  if (!project) {
+  // Projects that haven't cleared admin approval (DRAFT / PENDING_APPROVAL) are
+  // not publicly visible. The owning NGO previews them from its own dashboard.
+  if (!project || project.status === "DRAFT" || project.status === "PENDING_APPROVAL") {
     notFound();
   }
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/storage";
 import { verifySessionRole } from "@/lib/auth-guards";
-import { sendProjectPublishedEmail } from "@/lib/email";
+import { sendProjectSubmittedEmail } from "@/lib/email";
 
 interface MilestoneInput {
   title: string;
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
           description: description.trim(),
           causeCategory,
           targetAmount,
-          status: "ACTIVE", // Automatically publish project as ACTIVE
+          status: "PENDING_APPROVAL", // Awaits admin approval before going live
           coverImage: coverImageUrl,
           location: location.trim(),
           problem_statement: problemStatement ? problemStatement.trim() : null,
@@ -163,18 +163,12 @@ export async function POST(request: Request) {
       return project;
     });
 
-    // 9. Send confirmation email to NGO owner
-    await sendProjectPublishedEmail(profile.user.email, profile.orgName, newProject.title);
+    // 9. Notify NGO owner that the project was submitted for admin review.
+    // The "published" email and follower notifications fire only after an
+    // admin approves the project (see app/api/admin/review-project/route.ts).
+    await sendProjectSubmittedEmail(profile.user.email, profile.orgName, newProject.title);
 
-    // Trigger push & email notifications to all followers of this NGO
-    try {
-      const { triggerFollowedNGONewProject } = require("@/lib/notification-triggers");
-      await triggerFollowedNGONewProject(profile.id, newProject.id);
-    } catch (triggerErr) {
-      console.error("Failed to trigger new project follower notifications:", triggerErr);
-    }
-
-    return NextResponse.json({ success: true, projectId: newProject.id });
+    return NextResponse.json({ success: true, projectId: newProject.id, status: "PENDING_APPROVAL" });
   } catch (err: any) {
     console.error("Project Publishing Error:", err);
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });

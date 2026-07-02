@@ -11,6 +11,10 @@ export default async function AdminFcraReviewPage() {
   if (!session?.user) redirect("/login");
   if (session.user.role !== "ADMIN") redirect("/unauthorized");
 
+  const pendingProjectCount = await prisma.project.count({
+    where: { status: "PENDING_APPROVAL", isDeleted: false },
+  });
+
   const [records, quarterlyReports] = await Promise.all([
     prisma.nGOCompliance.findMany({
       where: { fcraStatus: { not: "NONE" } },
@@ -61,6 +65,14 @@ export default async function AdminFcraReviewPage() {
         <div className="flex items-center gap-6">
           <div className="flex gap-4 text-sm font-semibold">
             <a href="/admin/dashboard" className="text-gray-500 hover:text-emerald-600 transition">NGO Verification</a>
+            <a href="/admin/project-review" className="text-gray-500 hover:text-emerald-600 transition flex items-center gap-1.5">
+              <span>Project Review</span>
+              {pendingProjectCount > 0 && (
+                <span className="bg-red-100 dark:bg-red-950/45 text-red-600 dark:text-red-400 text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                  {pendingProjectCount}
+                </span>
+              )}
+            </a>
             <a href="/admin/proof-review" className="text-gray-500 hover:text-emerald-600 transition">Proof Review</a>
             <a href="/admin/risk-compliance" className="text-gray-500 hover:text-emerald-600 transition">Risk &amp; Compliance</a>
             <a href="/admin/fcra-review" className="text-emerald-600 hover:text-emerald-700 transition underline decoration-2 underline-offset-4">FCRA Review</a>
@@ -68,7 +80,9 @@ export default async function AdminFcraReviewPage() {
           <div className="h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Administrator</span>
-            <a href="/api/auth/signout" className="text-xs font-semibold text-gray-500 hover:text-red-500 transition">Logout</a>
+            <form method="POST" action="/api/auth/signout">
+              <button type="submit" className="text-xs font-semibold text-gray-500 hover:text-red-500 transition">Logout</button>
+            </form>
           </div>
         </div>
       </nav>

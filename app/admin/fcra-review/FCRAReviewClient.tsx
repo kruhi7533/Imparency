@@ -452,9 +452,15 @@ export default function FCRAReviewClient({
                 />
               </div>
 
+              {action === "APPROVE" && expiryDate && new Date(expiryDate) <= new Date() && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-lg text-xs text-red-700 dark:text-red-400 font-semibold">
+                  This certificate has already expired. You cannot approve it — reject or request a re-upload instead.
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={closeModal} disabled={loading} className="px-4 py-2 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition">Cancel</button>
-                <button type="submit" disabled={loading} className={`px-4 py-2 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 ${action === "APPROVE" ? "bg-emerald-600 hover:bg-emerald-700" : action === "REJECT" ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"} disabled:opacity-40`}>
+                <button type="submit" disabled={loading || (action === "APPROVE" && !!expiryDate && new Date(expiryDate) <= new Date())} className={`px-4 py-2 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 ${action === "APPROVE" ? "bg-emerald-600 hover:bg-emerald-700" : action === "REJECT" ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"} disabled:opacity-40`}>
                   {loading && <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>}
                   {action === "APPROVE" ? "Confirm Approval" : action === "REJECT" ? "Confirm Rejection" : "Request Re-upload"}
                 </button>

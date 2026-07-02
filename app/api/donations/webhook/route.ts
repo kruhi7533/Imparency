@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
-import { getFinancialYear, generateReceiptNumber, numberToIndianWords } from "@/lib/finance-utils";
-import { generateTaxReceiptPDF, ReceiptData } from "@/lib/receipt-generator";
-import { uploadFile } from "@/lib/storage";
-import { sendTaxReceiptEmail, sendPaymentRetryEmail } from "@/lib/email";
+import { sendPaymentRetryEmail } from "@/lib/email";
 import { generateRetryToken, getRetryDelay } from "@/lib/retry-utils";
+import { evaluateReceiptEligibility, issueTaxReceipt, queueReceiptClaim } from "@/lib/tax-receipt";
 
 export async function POST(req: Request) {
   try {
@@ -91,74 +89,14 @@ export async function POST(req: Request) {
         throw new Error("Failed to retrieve updated donation record");
       }
 
-      // Build ReceiptData
-      const financialYear = getFinancialYear(updatedDonation.createdAt);
-      const existingCount = await prisma.taxReceipt.count({
-        where: { financialYear },
-      });
-      const receiptNumber = generateReceiptNumber(existingCount + 1, financialYear);
-      const amountInWords = numberToIndianWords(Number(updatedDonation.amount));
-
-      const formatDate = (date: Date): string => {
-        const day = date.getDate().toString().padStart(2, "0");
-        const month = (date.getMonth() + 1).toString().padStart(2, "0");
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
-      };
-
-      const receiptData: ReceiptData = {
-        donorName: updatedDonation.donor.name,
-        donorPan: updatedDonation.donor.panNumber ?? "NOT PROVIDED",
-        donorAddress: updatedDonation.donor.city ?? "India",
-        ngoName: updatedDonation.project.ngo.orgName,
-        ngoPan: updatedDonation.project.ngo.panNumber,
-        ngoRegistrationNumber: updatedDonation.project.ngo.registrationNumber,
-        ngo80GNumber: `${updatedDonation.project.ngo.registrationNumber}/80G`,
-        ngo80GValidityFrom: "AY 2022-23",
-        ngo80GValidityTo: "AY 2026-27",
-        ngoAddress: updatedDonation.project.ngo.address,
-        donationId: updatedDonation.id,
-        receiptNumber,
-        amount: Number(updatedDonation.amount),
-        amountInWords,
-        projectTitle: updatedDonation.project.title,
-        financialYear,
-        donationDate: formatDate(updatedDonation.createdAt),
-        paymentMode: "Online (Razorpay)",
-      };
-
-      // Generate PDF buffer
-      const pdfBuffer = await generateTaxReceiptPDF(receiptData);
-
-      // Upload to storage
-      const pdfUrl = await uploadFile(pdfBuffer, `receipt-${receiptNumber}.pdf`, "receipts");
-
-      // Create TaxReceipt row
-      await prisma.taxReceipt.create({
-        data: {
-          donationId: updatedDonation.id,
-          receiptNumber,
-          financialYear,
-          pdfUrl,
-        },
-      });
-
-      // Update Donation.receiptUrl
-      await prisma.donation.update({
-        where: { id: updatedDonation.id },
-        data: { receiptUrl: pdfUrl },
-      });
-
-      // Send receipt email to donor
-      await sendTaxReceiptEmail(
-        updatedDonation.donor.email,
-        updatedDonation.donor.name,
-        updatedDonation.project.ngo.orgName,
-        Number(updatedDonation.amount),
-        receiptNumber,
-        financialYear,
-        pdfUrl
-      );
+      // 80G receipt is only issued once the donor's PAN is verified. If it's not
+      // yet verified, withhold the receipt and nudge the donor to verify + claim.
+      const { eligible } = evaluateReceiptEligibility(updatedDonation.donor);
+      if (eligible) {
+        await issueTaxReceipt(updatedDonation.id);
+      } else {
+        await queueReceiptClaim(updatedDonation);
+      }
 
       // NOTE: Replace with Inngest or Vercel Cron in production.
       const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;

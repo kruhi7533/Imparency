@@ -31,6 +31,7 @@ enum VerificationStatus {
 
 enum ProjectStatus {
   DRAFT
+  PENDING_APPROVAL
   ACTIVE
   COMPLETED
   PAUSED
@@ -96,16 +97,22 @@ model User {
   nriSourceDeclaration    String? // "ELIGIBLE_NRI_SOURCE" | "FOREIGN_SOURCE" | "NOT_SURE"
   donorPersona            DonorPersona?
   personaSetAt            DateTime?
+  // Donor PAN verification (risk-based / just-in-time — gates 80G receipt issuance)
+  panStatus               PanVerificationStatus @default(UNVERIFIED)
+  panVerifiedAt           DateTime?
+  panVerifiedVia          PanVerifiedVia?
+  panRegisteredName       String?           // name returned by the PAN provider (mismatch display / audit)
+  panNameMatch            Boolean?          // did registeredName match donor.name? null = no name returned
 
   // HNI specific fields
   hniAdvisorName          String?
   hniAdvisorEmail         String?
   hniAnnualBudget         Decimal?          @db.Decimal(12, 2)
-  
+
   // CSR specific fields
   csrRegistrationNumber   String?
   csrBudget               Decimal?          @db.Decimal(12, 2)
-  
+
   // Foundation specific fields
   trustRegistrationId     String?
   trust12a80gRegNo        String?
@@ -124,6 +131,7 @@ model User {
   followers          NGOFollower[]
   milestoneProofs    MilestoneProof[]
   adminReviews       MilestoneReview[]   @relation("AdminReviews")
+  adminProjectReviews ProjectReview[]    @relation("AdminProjectReviews")
   consentLogs        ConsentLog[]
   reEngagementEvents ReEngagementEvent[]
   teamMemberships NGOTeamMember[]
@@ -263,8 +271,29 @@ model Project {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  milestones Milestone[]
-  donations  Donation[]
+  // Admin approval gate
+  reviewNote   String?
+  reviewedAt   DateTime?
+  reviewedById String?
+
+  // AI pre-screening (advisory signal surfaced to admin in the review queue)
+  aiScreeningScore  Int?
+  aiScreeningResult String? // JSON: { score, recommendation, reasoning, flags }
+
+  milestones     Milestone[]
+  donations      Donation[]
+  projectReviews ProjectReview[]
+}
+
+model ProjectReview {
+  id         String   @id @default(uuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id])
+  adminId    String
+  admin      User     @relation("AdminProjectReviews", fields: [adminId], references: [id])
+  action     String // "APPROVED" | "REJECTED"
+  note       String?
+  reviewedAt DateTime @default(now())
 }
 
 model Milestone {
@@ -494,6 +523,19 @@ enum DonorTier {
   STANDARD
   COMMITTED
   MAJOR_DONOR
+}
+
+enum PanVerificationStatus {
+  UNVERIFIED
+  VERIFIED
+  FAILED         // provider ran and rejected the PAN
+  PROVIDER_ERROR // provider unavailable / failed open — retryable
+}
+
+enum PanVerifiedVia {
+  MOCK           // no SUREPASS_API_TOKEN configured (dev)
+  SUREPASS
+  MANUAL_ADMIN
 }
 
 enum ReEngagementPath {

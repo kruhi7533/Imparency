@@ -6,18 +6,33 @@ import AdminClient from "./AdminClient";
 
 export const runtime = "nodejs";
 
-export default async function AdminDashboardPage() {
-  const session = await getServerSession(authOptions);
+function DashboardError({ detail }: { detail?: string }) {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-6">
+      <div className="max-w-lg w-full bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/40 rounded-2xl shadow-sm p-8">
+        <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">Dashboard failed to load</h1>
+        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+          A database query failed. This usually means the branch&apos;s Neon DB is behind the Prisma schema.
+          Run the sync command and reload:
+        </p>
+        <pre className="mt-3 rounded-lg bg-gray-900 text-emerald-300 text-sm px-4 py-3 font-mono">npm run db:sync</pre>
+        {detail && (
+          <p className="mt-4 text-xs text-gray-400 font-mono break-all border-t border-gray-100 dark:border-gray-800 pt-3">
+            {detail}
+          </p>
+        )}
+        <a
+          href="/admin/dashboard"
+          className="mt-5 inline-block px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition"
+        >
+          Retry
+        </a>
+      </div>
+    </div>
+  );
+}
 
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  if (session.user.role !== "ADMIN") {
-    redirect("/unauthorized");
-  }
-
-  // Compute date boundaries
+async function loadDashboardData() {
   const now = new Date();
   const currentYear = now.getFullYear();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -27,7 +42,6 @@ export default async function AdminDashboardPage() {
     ? new Date(currentYear, 3, 1)
     : new Date(currentYear - 1, 3, 1);
 
-  // Run all queries in parallel to avoid exhausting the connection pool
   const [
     pendingNGOs,
     donationsToday,
@@ -127,16 +141,63 @@ export default async function AdminDashboardPage() {
     donorCount: p._count.donations,
   }));
 
-  // Parse decimals safely
-  const sumToday = Number(donationsToday._sum.amount || 0);
-  const sumWeek = Number(donationsWeek._sum.amount || 0);
-  const sumMonth = Number(donationsMonth._sum.amount || 0);
-  const sumFY = Number(donationsFY._sum.amount || 0);
-  const avgHealth = Number(avgHealthResult?._avg?.healthScore || 0);
+  return {
+    pendingNGOs,
+    sumToday: Number(donationsToday._sum.amount || 0),
+    sumWeek: Number(donationsWeek._sum.amount || 0),
+    sumMonth: Number(donationsMonth._sum.amount || 0),
+    sumFY: Number(donationsFY._sum.amount || 0),
+    activeNGOsCount,
+    pendingNGOsCount,
+    rejectedNGOsCount,
+    avgHealth: Number(avgHealthResult?._avg?.healthScore || 0),
+    totalDonorsCount,
+    corporateDonorsCount,
+    milestoneCompletionRate,
+    completedMilestonesCount,
+    totalMilestonesCount,
+    unresolvedAlertsTotal,
+    topNGOs,
+    topProjects,
+  };
+}
+
+export default async function AdminDashboardPage() {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  if (session.user.role !== "ADMIN") {
+    redirect("/unauthorized");
+  }
+
+  let data: Awaited<ReturnType<typeof loadDashboardData>>;
+  try {
+    data = await loadDashboardData();
+  } catch (err: any) {
+    return <DashboardError detail={err?.message ?? String(err)} />;
+  }
+
+  const {
+    pendingNGOs,
+    sumToday, sumWeek, sumMonth, sumFY,
+    activeNGOsCount, pendingNGOsCount, rejectedNGOsCount,
+    avgHealth,
+    totalDonorsCount, corporateDonorsCount,
+    milestoneCompletionRate, completedMilestonesCount, totalMilestonesCount,
+    unresolvedAlertsTotal,
+    topNGOs, topProjects,
+  } = data;
+
+  const pendingProjectCount = await prisma.project.count({
+    where: { status: "PENDING_APPROVAL", isDeleted: false },
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
-      
+
       {/* Navbar */}
       <nav className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-6 py-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-2">
@@ -146,6 +207,14 @@ export default async function AdminDashboardPage() {
         <div className="flex items-center gap-6">
           <div className="flex gap-4 text-sm font-semibold">
             <a href="/admin/dashboard" className="text-emerald-600 hover:text-emerald-700 transition underline decoration-2 underline-offset-4">NGO Verification</a>
+            <a href="/admin/project-review" className="text-gray-500 hover:text-emerald-600 transition flex items-center gap-1.5">
+              <span>Project Review</span>
+              {pendingProjectCount > 0 && (
+                <span className="bg-red-100 dark:bg-red-950/45 text-red-600 dark:text-red-400 text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                  {pendingProjectCount}
+                </span>
+              )}
+            </a>
             <a href="/admin/proof-review" className="text-gray-500 hover:text-emerald-600 transition">Proof Review</a>
             <a href="/admin/risk-compliance" className="text-gray-500 hover:text-emerald-600 transition flex items-center gap-1.5">
               <span>Risk &amp; Compliance</span>
@@ -160,12 +229,11 @@ export default async function AdminDashboardPage() {
           <div className="h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Administrator</span>
-            <a
-              href="/api/auth/signout"
-              className="text-xs font-semibold text-gray-500 hover:text-red-500 transition"
-            >
-              Logout
-            </a>
+            <form method="POST" action="/api/auth/signout">
+              <button type="submit" className="text-xs font-semibold text-gray-500 hover:text-red-500 transition">
+                Logout
+              </button>
+            </form>
           </div>
         </div>
       </nav>
@@ -267,7 +335,7 @@ export default async function AdminDashboardPage() {
                   <div key={ngo.id} className="flex justify-between items-center text-xs p-2 border-b border-gray-105 dark:border-gray-800/40 last:border-b-0">
                     <div className="font-semibold text-gray-850 dark:text-gray-200 flex items-center gap-1.5">
                       {idx + 1}.{" "}
-                      <a href="/admin/risk-compliance" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition hover:underline underline-offset-2">
+                      <a href={`/ngo/${ngo.id}`} className="hover:text-emerald-600 dark:hover:text-emerald-400 transition hover:underline underline-offset-2">
                         {ngo.orgName}
                       </a>
                     </div>
