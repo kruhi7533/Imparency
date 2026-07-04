@@ -4,9 +4,17 @@ import { checkRateLimit } from "@/lib/rate-limiter";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { sendProofQuestionEmail } from "@/lib/email";
+import { logAdminAction } from "@/lib/admin-log";
 
 export const runtime = "nodejs";
 
+/**
+ * Admin asks the NGO a clarification question about a milestone proof.
+ *
+ * Previously one-way (email only). Now every question opens a ReviewThread so
+ * the NGO can reply in-app and the whole exchange stays attached to the
+ * milestone instead of fragmenting into inboxes.
+ */
 export async function POST(request: Request) {
   const auth = await verifySessionRole(Role.ADMIN);
   if (!auth.authorized) return auth.response;
@@ -32,7 +40,7 @@ export async function POST(request: Request) {
           include: {
             ngo: {
               include: {
-                user: { select: { email: true } },
+                user: { select: { id: true, email: true } },
               },
             },
           },
@@ -44,21 +52,60 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Milestone not found" }, { status: 404 });
     }
 
-    const ngoEmail = milestone.project.ngo.user.email;
-    const orgName = milestone.project.ngo.orgName;
+    const adminId = auth.session.user.id;
+    const ngo = milestone.project.ngo;
+    const questionText = question.trim();
 
-    const result = await sendProofQuestionEmail(
-      ngoEmail,
-      orgName,
-      milestone.title,
-      question.trim()
-    );
+    // Create the thread + first message
+    const thread = await prisma.reviewThread.create({
+      data: {
+        subjectType: "NGO",
+        subjectId: ngo.id,
+        participantUserId: ngo.user.id,
+        kind: "INQUIRY",
+        subject: `Question about milestone "${milestone.title}"`,
+        entityType: "MILESTONE",
+        entityId: milestoneId,
+        status: "OPEN",
+        createdById: adminId,
+        messages: {
+          create: {
+            authorId: adminId,
+            authorRole: "ADMIN",
+            body: questionText,
+          },
+        },
+      },
+    });
 
-    if (!result.success) {
-      return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
+    // In-app notification so the NGO sees it without checking email
+    await prisma.notification.create({
+      data: {
+        userId: ngo.user.id,
+        type: "ADMIN_INQUIRY",
+        title: "Admin has a question about your milestone proof",
+        body: `Regarding "${milestone.title}": ${questionText.slice(0, 180)}${questionText.length > 180 ? "…" : ""} — reply from your dashboard inquiries page.`,
+      },
+    });
+
+    await logAdminAction({
+      adminId,
+      action: "NGO_INQUIRY_SENT",
+      entityType: "THREAD",
+      entityId: thread.id,
+      note: questionText,
+      metadata: { subjectType: "NGO", subjectId: ngo.id, milestoneId },
+      request,
+    });
+
+    // Email still goes out (best-effort — the thread is the source of truth now)
+    try {
+      await sendProofQuestionEmail(ngo.user.email, ngo.orgName, milestone.title, questionText);
+    } catch (emailErr) {
+      console.error("ask-ngo email failed (thread still created):", emailErr);
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, threadId: thread.id });
   } catch (err: any) {
     console.error("Error in ask-ngo endpoint:", err);
     return NextResponse.json(

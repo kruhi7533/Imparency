@@ -224,6 +224,30 @@ export async function sendFcraReuploadEmail(to: string, orgName: string, reason:
   return sendEmail({ to, subject, body });
 }
 
+export async function sendImpactUpdateEmail(
+  to: string,
+  donorName: string,
+  projectTitle: string,
+  eventTitle: string,
+  eventBody: string
+) {
+  const subject = `Impact update: ${eventTitle} — ${projectTitle}`;
+  const body = `Hi ${donorName},\n\nThere's new verified activity on "${projectTitle}", a project you supported:\n\n${eventTitle}\n${eventBody}\n\nView the full impact timeline in your portfolio:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/donor/portfolio\n\nThank you for making this possible.\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendNGOSuspendedEmail(to: string, orgName: string, reason: string) {
+  const subject = `Important: ${orgName} has been suspended on ImpactBridge`;
+  const body = `Hi there,\n\nFollowing a risk review, our administration team has suspended "${orgName}" on ImpactBridge.\n\nReason:\n"${reason}"\n\nWhat this means:\n- Your projects can no longer receive donations while suspended.\n- You cannot submit new milestone proofs.\n\nIf you believe this decision is incorrect, you can respond to our team from your dashboard inquiries page — your reply goes directly to the reviewing admin.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendNGOReinstatedEmail(to: string, orgName: string) {
+  const subject = `${orgName} has been reinstated on ImpactBridge`;
+  const body = `Hi there,\n\nGood news — the suspension on "${orgName}" has been lifted after review by our administration team.\n\nYour projects can receive donations again and you can resume submitting milestone proofs.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
 export async function sendFcraExpiryReminderEmail(to: string, orgName: string, daysLeft: number) {
   const expired = daysLeft <= 0;
   const subject = expired
@@ -316,6 +340,19 @@ export async function sendNGODocumentReminderEmail(
   const list = issues.map(i => `  • ${i}`).join("\n");
   const subject = `Reminder: Your NGO registration documents need attention`;
   const body = `Hi there,\n\nThis is a reminder that your NGO registration for "${orgName}" has been pending for 7 days due to the following document issue${issues.length > 1 ? "s" : ""}:\n\n${list}\n\nPlease log in to your dashboard and resubmit the correct documents to complete your verification:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/register\n\nIf you have already resubmitted, please ignore this message.\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to: ngoEmail, subject, body });
+}
+
+export async function sendNGOOverdueMilestoneReminder(
+  ngoEmail: string,
+  orgName: string,
+  milestones: { title: string; projectTitle: string; daysOverdue: number }[]
+) {
+  const list = milestones
+    .map((m) => `  • "${m.title}" (${m.projectTitle}) — ${m.daysOverdue} day${m.daysOverdue === 1 ? "" : "s"} overdue`)
+    .join("\n");
+  const subject = `Action needed: ${milestones.length} milestone deadline${milestones.length > 1 ? "s" : ""} passed for ${orgName}`;
+  const body = `Hi there,\n\nThe deadline you set for the following milestone${milestones.length > 1 ? "s has" : " has"} passed without proof being submitted:\n\n${list}\n\nDonors who supported these projects are waiting to see progress. Please submit proof as soon as possible, or update the milestone if the timeline has changed.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`;
   return sendEmail({ to: ngoEmail, subject, body });
 }
 

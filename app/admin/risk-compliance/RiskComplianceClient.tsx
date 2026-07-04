@@ -138,10 +138,18 @@ export default function RiskComplianceClient({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
-      setRiskReviews(prev => prev.filter(r => r.id !== selectedReview.id));
+      // ESCALATED reviews stay in the list (they still need a final decision)
+      if (data.status !== "ESCALATED") {
+        setRiskReviews(prev => prev.filter(r => r.id !== selectedReview.id));
+      }
       setSelectedReview(null);
       setReviewAction(null);
       setReviewNote("");
+      // Surface partial outcomes (e.g. review cleared but NGO stays suspended
+      // because other open reviews/alerts exist).
+      if (data.warning) {
+        window.alert(data.warning);
+      }
       router.refresh();
     } catch (err: any) {
       setReviewError(err.message);

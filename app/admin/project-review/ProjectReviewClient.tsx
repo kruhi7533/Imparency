@@ -72,6 +72,9 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
   const [error, setError] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<PendingProject | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  // Approving against a low AI score requires a written justification (AI override)
+  const [overrideTarget, setOverrideTarget] = useState<PendingProject | null>(null);
+  const [overrideReason, setOverrideReason] = useState("");
 
   async function runScreening(projectId: string) {
     setScreeningId(projectId);
@@ -114,6 +117,8 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
       setPending((prev) => prev.filter((p) => p.id !== projectId));
       setRejectTarget(null);
       setRejectReason("");
+      setOverrideTarget(null);
+      setOverrideReason("");
       router.refresh();
     } catch (err: any) {
       setError(err.message || "Something went wrong");
@@ -269,7 +274,14 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
                     </button>
                     <button
                       disabled={busy}
-                      onClick={() => submitReview(p.id, "APPROVE")}
+                      onClick={() => {
+                        if (p.aiScreening && p.aiScreening.score < 40) {
+                          setOverrideTarget(p);
+                          setOverrideReason("");
+                        } else {
+                          submitReview(p.id, "APPROVE");
+                        }
+                      }}
                       className="px-4 py-2 text-sm font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
                     >
                       {busy ? "Working…" : "Approve & Publish"}
@@ -355,6 +367,42 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
                 className="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition disabled:opacity-50"
               >
                 {busyId === rejectTarget.id ? "Working…" : "Reject & Return"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI-override approve modal */}
+      {overrideTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Approve against AI recommendation</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              The AI scored &ldquo;{overrideTarget.title}&rdquo; at{" "}
+              <span className="font-bold text-red-600">{overrideTarget.aiScreening?.score}/100</span>.
+              A written justification is required and will be recorded in the audit log.
+            </p>
+            <textarea
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+              rows={4}
+              placeholder="Why is this project safe to publish despite the low AI score?"
+              className="mt-4 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                onClick={() => setOverrideTarget(null)}
+                className="px-4 py-2 text-sm font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={!overrideReason.trim() || busyId === overrideTarget.id}
+                onClick={() => submitReview(overrideTarget.id, "APPROVE", overrideReason.trim())}
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
+              >
+                {busyId === overrideTarget.id ? "Working…" : "Approve with Justification"}
               </button>
             </div>
           </div>

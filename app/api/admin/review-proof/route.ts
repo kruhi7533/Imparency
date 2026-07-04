@@ -8,6 +8,7 @@ import {
   triggerProofRejected
 } from "@/lib/notification-triggers";
 import { recalculateNGOHealthScore } from "@/lib/ngo-health";
+import { logAdminAction } from "@/lib/admin-log";
 
 export const runtime = "nodejs";
 
@@ -60,6 +61,17 @@ export async function POST(request: Request) {
 
     const adminId = auth.session.user.id;
     const latestProof = milestone.proofs[0] ?? null;
+    const aiScore = latestProof?.aiValidationScore ?? null;
+
+    // AI override friction: approving a proof the AI scored below 40 requires
+    // a written justification (recorded as the disagreement reason).
+    const overrodeAi = action === "APPROVE" && aiScore !== null && aiScore < 40;
+    if (overrodeAi && (!rejectionReason || !rejectionReason.trim())) {
+      return NextResponse.json(
+        { error: `A justification note is required to approve proof the AI scored ${aiScore}/100.` },
+        { status: 400 }
+      );
+    }
 
     if (action === "APPROVE") {
       await prisma.milestone.update({
@@ -73,12 +85,51 @@ export async function POST(request: Request) {
           proofId: latestProof?.id ?? null,
           adminId,
           action: "APPROVED",
-          aiScore: latestProof?.aiValidationScore ?? null,
+          note: rejectionReason?.trim() || null,
+          aiScore,
         }
+      });
+
+      await logAdminAction({
+        adminId,
+        action: "PROOF_APPROVED",
+        entityType: "MILESTONE",
+        entityId: milestoneId,
+        oldValue: { status: milestone.status },
+        newValue: { status: "COMPLETED" },
+        note: rejectionReason?.trim() || null,
+        metadata: {
+          proofId: latestProof?.id ?? null,
+          ai: aiScore !== null ? { score: aiScore } : null,
+          overrodeAi,
+          ...(overrodeAi ? { disagreementReason: rejectionReason.trim() } : {}),
+        },
+        request,
       });
 
       await triggerMilestoneCompleted(milestoneId);
       await triggerProofApproved(milestoneId);
+
+      // Impact feed: admin-verified completion, delivered to every subscribed
+      // donor through the outbox (guaranteed, retried — not fire-and-forget).
+      try {
+        const { emitProjectImpactEvent } = await import("@/lib/impact-events");
+        await emitProjectImpactEvent({
+          projectId: milestone.projectId,
+          milestoneId,
+          type: "MILESTONE_COMPLETED",
+          title: `Milestone completed: "${milestone.title}"`,
+          body: `Evidence for this milestone was reviewed and verified by our admin team. Your contribution to "${milestone.project.title}" delivered real, verified impact.`,
+          payload: {
+            proofId: latestProof?.id ?? null,
+            aiScore,
+            verifiedById: adminId,
+            mediaUrls: latestProof?.mediaUrls ?? [],
+          },
+        });
+      } catch (impactErr) {
+        console.error("Failed to emit impact event on proof approval:", impactErr);
+      }
 
       try {
         await recalculateNGOHealthScore(milestone.project.ngoId);
@@ -100,8 +151,24 @@ export async function POST(request: Request) {
           adminId,
           action: "REJECTED",
           note: rejectionReason.trim(),
-          aiScore: latestProof?.aiValidationScore ?? null,
+          aiScore,
         }
+      });
+
+      await logAdminAction({
+        adminId,
+        action: "PROOF_REJECTED",
+        entityType: "MILESTONE",
+        entityId: milestoneId,
+        oldValue: { status: milestone.status },
+        newValue: { status: "IN_PROGRESS" },
+        note: rejectionReason.trim(),
+        metadata: {
+          proofId: latestProof?.id ?? null,
+          ai: aiScore !== null ? { score: aiScore } : null,
+          overrodeAi: false,
+        },
+        request,
       });
 
       await triggerProofRejected(milestoneId, rejectionReason);

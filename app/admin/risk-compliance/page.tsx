@@ -47,7 +47,7 @@ export default async function RiskCompliancePage() {
       prisma.fraudAlert.findMany({ where: { resolved: false }, orderBy: { createdAt: "desc" } }),
       prisma.fraudAlert.findMany({ where: { resolved: true }, orderBy: { createdAt: "desc" }, take: 50 }),
       prisma.riskReview.findMany({
-        where: { status: { in: ["OPEN", "REVIEWED"] } },
+        where: { status: { in: ["OPEN", "REVIEWED", "ESCALATED"] } },
         include: { ngo: { select: { orgName: true } } },
         orderBy: { createdAt: "desc" },
       }),

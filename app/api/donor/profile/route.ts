@@ -143,6 +143,32 @@ export async function PUT(request: Request) {
       },
     });
 
+    // Append-only PAN lifecycle events (Donor 360 timeline)
+    if (panData) {
+      try {
+        const { logDonorEvent } = await import("@/lib/donor-events");
+        const eventType =
+          panData.panStatus === "VERIFIED"
+            ? "PAN_VERIFIED"
+            : panData.panStatus === "UNVERIFIED"
+              ? "PAN_CLEARED"
+              : "PAN_SUBMITTED"; // PROVIDER_ERROR — submitted, verification pending retry
+        await logDonorEvent({
+          donorId: session.user.id,
+          eventType,
+          newValue: {
+            panStatus: panData.panStatus,
+            panVerifiedVia: panData.panVerifiedVia,
+            panNameMatch: panData.panNameMatch,
+          },
+          initiatedBy: session.user.id,
+          source: "USER",
+        });
+      } catch (evtErr) {
+        console.error("Failed to log donor PAN event:", evtErr);
+      }
+    }
+
     // Name-mismatch → verified but flagged for admin (mirrors NGO registration).
     if (panMismatch) {
       const { createFraudAlert } = await import("@/lib/fraud-alerts");

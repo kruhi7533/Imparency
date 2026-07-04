@@ -156,12 +156,25 @@ export default function ProofReviewClient({
     }
   };
 
+  // Approving proof the AI scored below 40 is an AI override — a written
+  // justification is required and recorded in the admin audit log.
+  const isAiOverride = (milestone: Milestone | null, action: "APPROVE" | "REJECT" | null) => {
+    if (!milestone || action !== "APPROVE") return false;
+    const score = milestone.proofs[0]?.aiValidationScore ?? null;
+    return score !== null && score < 40;
+  };
+
   const handleReviewAction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMilestone || !actionType) return;
 
     if (actionType === "REJECT" && !rejectionReason.trim()) {
       setError("Please provide a rejection reason so the NGO knows how to improve their proof.");
+      return;
+    }
+
+    if (isAiOverride(selectedMilestone, actionType) && !rejectionReason.trim()) {
+      setError("A written justification is required to approve proof the AI scored below 40/100.");
       return;
     }
 
@@ -177,7 +190,10 @@ export default function ProofReviewClient({
         body: JSON.stringify({
           milestoneId: selectedMilestone.id,
           action: actionType,
-          rejectionReason: actionType === "REJECT" ? rejectionReason.trim() : undefined,
+          rejectionReason:
+            actionType === "REJECT" || isAiOverride(selectedMilestone, actionType)
+              ? rejectionReason.trim()
+              : undefined,
         }),
       });
 
@@ -751,6 +767,23 @@ export default function ProofReviewClient({
                     required
                     placeholder="Provide detailed reasons explaining what details or evidence are lacking..."
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
+                  />
+                </div>
+              )}
+
+              {isAiOverride(selectedMilestone, actionType) && (
+                <div>
+                  <label className="block text-xs font-bold text-red-600 dark:text-red-400 mb-1">
+                    AI Override Justification * (AI scored this proof{" "}
+                    {selectedMilestone.proofs[0]?.aiValidationScore}/100)
+                  </label>
+                  <textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    rows={4}
+                    required
+                    placeholder="Why is this proof acceptable despite the low AI score? This is recorded in the audit log."
+                    className="w-full px-3 py-2 border border-red-200 dark:border-red-900 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500 transition resize-none"
                   />
                 </div>
               )}

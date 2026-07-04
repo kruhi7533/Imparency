@@ -53,6 +53,50 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true }, { status: 200 });
       }
 
+      // ── Compliance snapshot (IMMUTABLE) ────────────────────────────────────
+      // Point-in-time record of the donor's and NGO's compliance state at the
+      // moment the payment was confirmed. Written once, inside the same
+      // transaction that marks the donation SUCCESS; never modified afterwards
+      // (corrections become new audit events). Audits read this — not live state.
+      let complianceSnapshot: Record<string, unknown> | null = null;
+      try {
+        const [ngoCompliance, hasImpactProof] = await Promise.all([
+          prisma.nGOCompliance.findUnique({
+            where: { ngoId: donation.project.ngoId },
+          }),
+          (async () => {
+            const { hasVerifiedImpactProof } = await import("@/lib/ngo-compliance");
+            return hasVerifiedImpactProof(donation.project.ngoId);
+          })(),
+        ]);
+        const { computeCompliance, deriveFcraStatus } = await import("@/lib/ngo-compliance");
+        const compliance = computeCompliance(ngoCompliance, hasImpactProof);
+        const liveFcra =
+          ngoCompliance?.fcraExpiryDate &&
+          ["ACTIVE", "EXPIRING_SOON", "EXPIRED"].includes(ngoCompliance.fcraStatus)
+            ? deriveFcraStatus(ngoCompliance.fcraExpiryDate) ?? ngoCompliance.fcraStatus
+            : ngoCompliance?.fcraStatus ?? "NONE";
+
+        complianceSnapshot = {
+          version: 1,
+          capturedAt: new Date().toISOString(),
+          panStatus: donation.donor.panStatus,
+          panVerifiedVia: donation.donor.panVerifiedVia,
+          donorCategory: donation.donor.donorCategory,
+          nriSourceDeclaration: donation.donor.nriSourceDeclaration,
+          ngoFcraStatus: liveFcra,
+          ngoComplianceScore: compliance.score,
+          ngoHealthScore:
+            donation.project.ngo.healthScore != null
+              ? Number(donation.project.ngo.healthScore)
+              : null,
+        };
+      } catch (snapErr) {
+        // Never block payment confirmation on snapshot assembly — but log loudly,
+        // because a missing snapshot is permanently unreconstructable.
+        console.error(`[webhook] FAILED to build compliance snapshot for donation ${donation.id}:`, snapErr);
+      }
+
       // Update database: status: SUCCESS, increment project.raisedAmount, increment user.totalDonated
       await prisma.$transaction([
         prisma.donation.update({
@@ -60,6 +104,7 @@ export async function POST(req: Request) {
           data: {
             status: "SUCCESS",
             razorpayPaymentId: paymentId,
+            ...(complianceSnapshot ? { complianceSnapshot: complianceSnapshot as any } : {}),
           },
         }),
         prisma.project.update({
@@ -87,6 +132,15 @@ export async function POST(req: Request) {
 
       if (!updatedDonation) {
         throw new Error("Failed to retrieve updated donation record");
+      }
+
+      // Auto-subscribe the donor to this project's impact feed — donating IS
+      // the expression of interest (opt-out model, idempotent upsert).
+      try {
+        const { ensureImpactSubscription } = await import("@/lib/impact-events");
+        await ensureImpactSubscription(donation.donorId, donation.projectId);
+      } catch (subErr) {
+        console.error("Failed to create impact subscription:", subErr);
       }
 
       // 80G receipt is only issued once the donor's PAN is verified. If it's not

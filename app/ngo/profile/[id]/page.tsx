@@ -173,7 +173,7 @@ export default async function PublicNGOProfilePage({ params }: { params: { id: s
             {ngo.projects.map(project => (
               <div key={project.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm hover:shadow-md transition">
                 <div className="h-48 relative">
-                  <ProjectCoverImage url={project.coverImage} title={project.title} />
+                  <ProjectCoverImage src={project.coverImage || undefined} alt={project.title} causeCategory={project.causeCategory} />
                   <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-900 dark:text-white">
                     {project.status === "ACTIVE" ? (
                       <span className="text-emerald-500">● Active</span>

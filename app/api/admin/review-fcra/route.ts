@@ -8,6 +8,7 @@ import {
   sendFcraRejectionEmail,
   sendFcraReuploadEmail,
 } from "@/lib/email";
+import { logAdminAction } from "@/lib/admin-log";
 
 export const runtime = "nodejs";
 
@@ -47,13 +48,14 @@ export async function POST(request: Request) {
       where: { id: ngoId },
       include: {
         user: { select: { email: true } },
-        compliance: { select: { id: true } },
+        compliance: { select: { id: true, fcraStatus: true } },
       },
     });
     if (!ngo || !ngo.compliance) {
       return NextResponse.json({ error: "NGO or compliance record not found" }, { status: 404 });
     }
     const complianceId = ngo.compliance.id;
+    const previousFcraStatus = ngo.compliance.fcraStatus;
 
     if (action === "APPROVE") {
       const expiry = new Date(expiryDate);
@@ -79,6 +81,16 @@ export async function POST(request: Request) {
         `FCRA verified — valid until ${expiry.toLocaleDateString("en-IN")}.`,
         adminId
       );
+      await logAdminAction({
+        adminId,
+        action: "FCRA_APPROVED",
+        entityType: "FCRA",
+        entityId: ngoId,
+        oldValue: { fcraStatus: previousFcraStatus },
+        newValue: { fcraStatus: status, fcraExpiryDate: expiry.toISOString() },
+        note: adminNote?.trim() || null,
+        request,
+      });
       await sendFcraApprovalEmail(ngo.user.email, ngo.orgName);
       return NextResponse.json({ success: true, fcraStatus: status });
     }
@@ -99,6 +111,17 @@ export async function POST(request: Request) {
       adminNote.trim(),
       adminId
     );
+
+    await logAdminAction({
+      adminId,
+      action: action === "REJECT" ? "FCRA_REJECTED" : "FCRA_REUPLOAD_REQUESTED",
+      entityType: "FCRA",
+      entityId: ngoId,
+      oldValue: { fcraStatus: previousFcraStatus },
+      newValue: { fcraStatus: newStatus },
+      note: adminNote.trim(),
+      request,
+    });
 
     if (action === "REJECT") {
       await sendFcraRejectionEmail(ngo.user.email, ngo.orgName, adminNote.trim());

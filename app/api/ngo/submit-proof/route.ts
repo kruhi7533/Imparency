@@ -149,6 +149,22 @@ export async function POST(request: Request) {
       data: { status: "PROOF_SUBMITTED" },
     });
 
+    // Impact feed: tell subscribed donors that proof was submitted (pending
+    // verification — the wording matters; nothing is "verified" yet).
+    try {
+      const { emitProjectImpactEvent } = await import("@/lib/impact-events");
+      await emitProjectImpactEvent({
+        projectId: milestone.projectId,
+        milestoneId: milestone.id,
+        type: "PROOF_SUBMITTED",
+        title: `Progress proof submitted for "${milestone.title}"`,
+        body: `The NGO submitted ${files.length} file(s) of evidence for this milestone. Our admin team is reviewing it — you'll be notified once it's verified.`,
+        payload: { proofId: proof.id, mediaUrls, aiScore: validationResult.score },
+      });
+    } catch (impactErr) {
+      console.error("Failed to emit impact event on proof submission:", impactErr);
+    }
+
     // Recalculate NGO health score
     try {
       await recalculateNGOHealthScore(user.ngoProfile.id);

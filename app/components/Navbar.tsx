@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import { ShieldCheck, MessageCircleQuestion, Users, HeartPulse, ListChecks, TrendingUp } from "lucide-react";
 
 export default function Navbar() {
   const { data: session, status } = useSession();
@@ -64,6 +65,9 @@ export default function Navbar() {
               <Link href="/ngo/projects/new" className={`hover:text-white transition ${pathname === "/ngo/projects/new" ? "text-white" : ""}`}>
                 Launch Project
               </Link>
+              <Link href="/ngo/inquiries" className={`hover:text-white transition ${pathname === "/ngo/inquiries" ? "text-white" : ""}`}>
+                Inquiries
+              </Link>
             </>
           ) : (
             <>
@@ -76,16 +80,45 @@ export default function Navbar() {
 
               {/* Donor role specific links */}
               {session?.user?.role === "DONOR" && (
-                <Link href="/donor/portfolio" className={`hover:text-white transition ${pathname === "/donor/portfolio" ? "text-white" : ""}`}>
-                  My Impact Portfolio
-                </Link>
+                <>
+                  <Link href="/donor/portfolio" className={`hover:text-white transition ${pathname === "/donor/portfolio" ? "text-white" : ""}`}>
+                    My Impact Portfolio
+                  </Link>
+                  <Link href="/donor/impact" className={`hover:text-white transition ${pathname === "/donor/impact" ? "text-white" : ""}`}>
+                    Impact Feed
+                  </Link>
+                </>
               )}
               
-              {/* Admin role specific links */}
+              {/* Admin role specific links — grouped as one visual "console" so it
+                  reads as a distinct workspace, not more items in a flat list */}
               {session?.user?.role === "ADMIN" && (
-                <Link href="/admin/dashboard" className={`hover:text-white transition ${pathname === "/admin/dashboard" ? "text-white" : ""}`}>
-                  Admin Verifications
-                </Link>
+                <div className="flex items-center flex-wrap gap-1 bg-white/5 border border-white/10 rounded-full p-1">
+                  {[
+                    { href: "/admin/today", label: "Today", icon: ListChecks, match: (p: string) => p === "/admin/today" },
+                    { href: "/admin/dashboard", label: "Verifications", icon: ShieldCheck, match: (p: string) => p === "/admin/dashboard" },
+                    { href: "/admin/inquiries", label: "Inquiries", icon: MessageCircleQuestion, match: (p: string) => p === "/admin/inquiries" },
+                    { href: "/admin/donors", label: "Donors", icon: Users, match: (p: string) => p.startsWith("/admin/donors") },
+                    { href: "/admin/impact-health", label: "Impact Health", icon: HeartPulse, match: (p: string) => p === "/admin/impact-health" },
+                    { href: "/admin/trust-trends", label: "Trends", icon: TrendingUp, match: (p: string) => p === "/admin/trust-trends" },
+                  ].map(({ href, label, icon: Icon, match }) => {
+                    const active = match(pathname);
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition ${
+                          active
+                            ? "bg-emerald-600 text-white shadow-sm"
+                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                        }`}
+                      >
+                        <Icon size={14} strokeWidth={2.5} />
+                        {label}
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
 
               {/* Fallback general links for guests */}
