@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { NGOComplianceSummary } from "@/lib/compliance-agent";
+import AskNgoBox from "@/app/admin/components/AskNgoBox";
 
 interface FraudAlert {
   id: string;
@@ -138,10 +139,18 @@ export default function RiskComplianceClient({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
-      setRiskReviews(prev => prev.filter(r => r.id !== selectedReview.id));
+      // ESCALATED reviews stay in the list (they still need a final decision)
+      if (data.status !== "ESCALATED") {
+        setRiskReviews(prev => prev.filter(r => r.id !== selectedReview.id));
+      }
       setSelectedReview(null);
       setReviewAction(null);
       setReviewNote("");
+      // Surface partial outcomes (e.g. review cleared but NGO stays suspended
+      // because other open reviews/alerts exist).
+      if (data.warning) {
+        window.alert(data.warning);
+      }
       router.refresh();
     } catch (err: any) {
       setReviewError(err.message);
@@ -300,6 +309,13 @@ export default function RiskComplianceClient({
                         </a>
                       </div>
                       <div className="flex gap-2 shrink-0">
+                        <AskNgoBox
+                          ngoId={r.ngoId}
+                          ngoName={r.ngo.orgName}
+                          subject="Question about your risk review"
+                          entityType="RISK_REVIEW"
+                          entityId={r.id}
+                        />
                         {(["CLEAR", "SUSPEND", "ESCALATE"] as const).map(a => (
                           <button
                             key={a}
@@ -430,6 +446,15 @@ export default function RiskComplianceClient({
                           <td className="px-5 py-4">
                             <p className="text-xs font-bold text-gray-900 dark:text-white">{s.orgName}</p>
                             <p className="text-[10px] text-gray-400">{s.email}</p>
+                            <div className="mt-1.5">
+                              <AskNgoBox
+                                ngoId={s.ngoId}
+                                ngoName={s.orgName}
+                                subject="Compliance question"
+                                buttonLabel="✉️ Ask"
+                                buttonClassName="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/40 border border-amber-100/50 dark:border-amber-900/20 transition"
+                              />
+                            </div>
                           </td>
                           <td className="px-5 py-4">
                             <span className={`text-sm font-black ${s.complianceScore >= 80 ? "text-emerald-600" : s.complianceScore >= 50 ? "text-amber-600" : "text-red-500"}`}>

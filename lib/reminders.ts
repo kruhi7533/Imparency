@@ -4,6 +4,7 @@ import {
   sendAdminUnreviewedProofsReminder,
   sendAdminUnresolvedFraudAlertsReminder,
   sendNGODocumentReminderEmail,
+  sendNGOOverdueMilestoneReminder,
 } from "@/lib/email";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "inkvuex@gmail.com";
@@ -135,13 +136,57 @@ export async function remindNGODocumentErrors() {
   return { sent: true, count: emailsSent };
 }
 
-// Run all four checks in sequence
+// Milestones whose deadline has passed with no proof submitted at all
+// (status still PENDING/IN_PROGRESS) → email the NGO the day it happens.
+// Distinct from remindAdminUnreviewedProofs: that one is about admin review
+// latency; this one is about the NGO missing its own committed deadline —
+// a stronger, donor-facing trust signal.
+export async function remindOverdueMilestones() {
+  const now = new Date();
+
+  const overdue = await prisma.milestone.findMany({
+    where: {
+      status: { in: ["PENDING", "IN_PROGRESS"] },
+      deadline: { lt: now },
+    },
+    include: {
+      project: { include: { ngo: { include: { user: { select: { email: true } } } } } },
+    },
+  });
+
+  if (overdue.length === 0) return { sent: false, count: 0 };
+
+  // Group by NGO so each NGO gets one email listing all their overdue milestones
+  const byNGO = new Map<string, { ngoId: string; orgName: string; email: string; milestones: { title: string; projectTitle: string; daysOverdue: number }[] }>();
+  for (const m of overdue) {
+    const ngo = m.project.ngo;
+    if (!byNGO.has(ngo.id)) {
+      byNGO.set(ngo.id, { ngoId: ngo.id, orgName: ngo.orgName, email: ngo.user.email, milestones: [] });
+    }
+    byNGO.get(ngo.id)!.milestones.push({
+      title: m.title,
+      projectTitle: m.project.title,
+      daysOverdue: daysSince(m.deadline),
+    });
+  }
+
+  let emailsSent = 0;
+  for (const entry of Array.from(byNGO.values())) {
+    await sendNGOOverdueMilestoneReminder(entry.email, entry.orgName, entry.milestones);
+    emailsSent++;
+  }
+
+  return { sent: true, count: overdue.length, ngos: emailsSent };
+}
+
+// Run all five checks in sequence
 export async function runAllAdminReminders() {
   const results = await Promise.allSettled([
     remindAdminPendingNGOs(),
     remindAdminUnreviewedProofs(),
     remindAdminUnresolvedFraudAlerts(),
     remindNGODocumentErrors(),
+    remindOverdueMilestones(),
   ]);
 
   return {
@@ -149,5 +194,6 @@ export async function runAllAdminReminders() {
     unreviewedProofs: results[1].status === "fulfilled" ? results[1].value : { error: String(results[1].reason) },
     fraudAlerts: results[2].status === "fulfilled" ? results[2].value : { error: String(results[2].reason) },
     documentErrors: results[3].status === "fulfilled" ? results[3].value : { error: String(results[3].reason) },
+    overdueMilestones: results[4].status === "fulfilled" ? results[4].value : { error: String(results[4].reason) },
   };
 }

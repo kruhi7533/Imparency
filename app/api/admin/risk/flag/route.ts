@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
+import { logAdminAction } from "@/lib/admin-log";
 
 export const runtime = "nodejs";
 
@@ -35,6 +36,16 @@ export async function POST(req: NextRequest) {
       status: "OPEN",
       reviewedBy: session.user.id,
     },
+  });
+
+  await logAdminAction({
+    adminId: session.user.id,
+    action: "NGO_FLAGGED_FOR_RISK",
+    entityType: "RISK_REVIEW",
+    entityId: review.id,
+    newValue: { riskLevel, status: "OPEN" },
+    metadata: { ngoId },
+    request: req,
   });
 
   return NextResponse.json({ ok: true, reviewId: review.id });

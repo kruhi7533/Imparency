@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     const errors: string[] = [];
     for (const d of pending) {
       try {
-        await issueTaxReceipt(d.id); // idempotent
+        await issueTaxReceipt(d.id, { trigger: "CLAIM", actorId: donorId }); // idempotent
         issued++;
       } catch (err: any) {
         console.error(`Claim receipt failed for donation ${d.id}:`, err);

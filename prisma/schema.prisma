@@ -67,6 +67,7 @@ enum FCRAStatus {
   REJECTED // admin rejected
   REUPLOAD_REQUESTED // admin asked the NGO to re-upload
 }
+
 enum TeamRole {
   OWNER
   ADMIN
@@ -75,21 +76,21 @@ enum TeamRole {
 }
 
 model User {
-  id                      String            @id @default(uuid())
-  email                   String            @unique
+  id                      String                @id @default(uuid())
+  email                   String                @unique
   passwordHash            String
-  role                    Role              @default(DONOR)
-  name                    String            @default("Anonymous")
+  role                    Role                  @default(DONOR)
+  name                    String                @default("Anonymous")
   avatar                  String?
-  googleId                String?           @unique
+  googleId                String?               @unique
   panNumber               String?
   phone                   String?
   city                    String?
   billingAddress          String?
-  totalDonated            Decimal           @default(0.00) @db.Decimal(10, 2)
+  totalDonated            Decimal               @default(0.00) @db.Decimal(10, 2)
   fcmToken                String?
   companyName             String?
-  isCorporate             Boolean           @default(false)
+  isCorporate             Boolean               @default(false)
   gstNumber               String?
   donorCategory           DonorCategory?
   donorCategoryDeclaredAt DateTime?
@@ -101,40 +102,41 @@ model User {
   panStatus               PanVerificationStatus @default(UNVERIFIED)
   panVerifiedAt           DateTime?
   panVerifiedVia          PanVerifiedVia?
-  panRegisteredName       String?           // name returned by the PAN provider (mismatch display / audit)
-  panNameMatch            Boolean?          // did registeredName match donor.name? null = no name returned
+  panRegisteredName       String? // name returned by the PAN provider (mismatch display / audit)
+  panNameMatch            Boolean? // did registeredName match donor.name? null = no name returned
 
   // HNI specific fields
-  hniAdvisorName          String?
-  hniAdvisorEmail         String?
-  hniAnnualBudget         Decimal?          @db.Decimal(12, 2)
+  hniAdvisorName  String?
+  hniAdvisorEmail String?
+  hniAnnualBudget Decimal? @db.Decimal(12, 2)
 
   // CSR specific fields
-  csrRegistrationNumber   String?
-  csrBudget               Decimal?          @db.Decimal(12, 2)
+  csrRegistrationNumber String?
+  csrBudget             Decimal? @db.Decimal(12, 2)
 
   // Foundation specific fields
-  trustRegistrationId     String?
-  trust12a80gRegNo        String?
-  trustAnnualBudget       Decimal?          @db.Decimal(12, 2)
+  trustRegistrationId String?
+  trust12a80gRegNo    String?
+  trustAnnualBudget   Decimal? @db.Decimal(12, 2)
 
-  donorTier               DonorTier         @default(STANDARD)
-  reEngagementPath        ReEngagementPath?
-  volunteerInterest       Boolean           @default(false)
-  createdAt               DateTime          @default(now())
-  updatedAt               DateTime          @updatedAt
+  donorTier         DonorTier         @default(STANDARD)
+  reEngagementPath  ReEngagementPath?
+  volunteerInterest Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
-  ngoProfile         NGOProfile?
-  donations          Donation[]
-  notifications      Notification[]
-  impactReports      ImpactReport[]
-  followers          NGOFollower[]
-  milestoneProofs    MilestoneProof[]
-  adminReviews       MilestoneReview[]   @relation("AdminReviews")
-  adminProjectReviews ProjectReview[]    @relation("AdminProjectReviews")
-  consentLogs        ConsentLog[]
-  reEngagementEvents ReEngagementEvent[]
-  teamMemberships NGOTeamMember[]
+  ngoProfile          NGOProfile?
+  donations           Donation[]
+  notifications       Notification[]
+  impactReports       ImpactReport[]
+  followers           NGOFollower[]
+  milestoneProofs     MilestoneProof[]
+  adminReviews        MilestoneReview[]   @relation("AdminReviews")
+  adminProjectReviews ProjectReview[]     @relation("AdminProjectReviews")
+  consentLogs         ConsentLog[]
+  reEngagementEvents  ReEngagementEvent[]
+  teamMemberships     NGOTeamMember[]
+  adminActionLogs     AdminActionLog[]    @relation("AdminActionLogs")
 }
 
 model NGOProfile {
@@ -151,6 +153,8 @@ model NGOProfile {
   healthScoreBreakdown   Json?
   ai_verification_report Json?
   isSuspended            Boolean            @default(false)
+  suspensionReason       String?
+  suspendedAt            DateTime?
   documents              String[]
   description            String
   website                String?
@@ -161,7 +165,7 @@ model NGOProfile {
   updatedAt              DateTime           @updatedAt
   logo_url               String?
   cover_image_url        String?
-  joinCode               String?  @unique  // Used for field worker self-registration via WhatsApp
+  joinCode               String?            @unique // Used for field worker self-registration via WhatsApp
 
   // Consent Tracking
   dataProcessingConsent     Boolean   @default(false)
@@ -171,15 +175,15 @@ model NGOProfile {
   consentRevoked            Boolean   @default(false)
   consentRevokedAt          DateTime?
 
-  projects    Project[]
-  followers   NGOFollower[]
-  screening   NgoScreening?
-  compliance  NGOCompliance?
-  riskReviews RiskReview[]
-  fieldWorkers   FieldWorker[]
-  draftProofs    DraftProof[]
-  teamMembers    NGOTeamMember[]
-  teamInvites    TeamInvite[]
+  projects     Project[]
+  followers    NGOFollower[]
+  screening    NgoScreening?
+  compliance   NGOCompliance?
+  riskReviews  RiskReview[]
+  fieldWorkers FieldWorker[]
+  draftProofs  DraftProof[]
+  teamMembers  NGOTeamMember[]
+  teamInvites  TeamInvite[]
 }
 
 model NGOTeamMember {
@@ -366,6 +370,13 @@ model Donation {
   retryToken          String?        @unique
   retryTokenExpiresAt DateTime?
 
+  // INVARIANT: point-in-time compliance snapshot captured when the payment is
+  // confirmed (webhook). IMMUTABLE — never modified afterwards, not even by
+  // admins; corrections are recorded as new audit events, never as mutations.
+  // Shape: { version, capturedAt, panStatus, panVerifiedVia, donorCategory,
+  //          nriSourceDeclaration, ngoFcraStatus, ngoComplianceScore, ngoHealthScore }
+  complianceSnapshot Json?
+
   impactReports ImpactReport[]
   taxReceipt    TaxReceipt?
 }
@@ -468,6 +479,8 @@ model FraudAlert {
   subType        AlertSubType?
   resolved       Boolean       @default(false)
   resolutionNote String?
+  resolvedById   String? // admin user id — every resolution must be attributable
+  resolvedAt     DateTime?
   createdAt      DateTime      @default(now())
 }
 
@@ -528,12 +541,12 @@ enum DonorTier {
 enum PanVerificationStatus {
   UNVERIFIED
   VERIFIED
-  FAILED         // provider ran and rejected the PAN
+  FAILED // provider ran and rejected the PAN
   PROVIDER_ERROR // provider unavailable / failed open — retryable
 }
 
 enum PanVerifiedVia {
-  MOCK           // no SUREPASS_API_TOKEN configured (dev)
+  MOCK // no SUREPASS_API_TOKEN configured (dev)
   SUREPASS
   MANUAL_ADMIN
 }
@@ -568,19 +581,19 @@ model ConsentAudit {
 }
 
 model FieldWorker {
-  id        String     @id @default(uuid())
-  ngoId     String
-  ngo       NGOProfile @relation(fields: [ngoId], references: [id])
-  name      String
-  phone     String     @unique
-  isActive  Boolean    @default(true)
-  isPending Boolean    @default(false)  // true = waiting for join code reply
-  reliabilityScore  Int               @default(100)
-  totalSubmissions  Int               @default(0)
-  approvedCount     Int               @default(0)
-  rejectedCount     Int               @default(0)
-  createdAt DateTime   @default(now())
-  
+  id               String     @id @default(uuid())
+  ngoId            String
+  ngo              NGOProfile @relation(fields: [ngoId], references: [id])
+  name             String
+  phone            String     @unique
+  isActive         Boolean    @default(true)
+  isPending        Boolean    @default(false) // true = waiting for join code reply
+  reliabilityScore Int        @default(100)
+  totalSubmissions Int        @default(0)
+  approvedCount    Int        @default(0)
+  rejectedCount    Int        @default(0)
+  createdAt        DateTime   @default(now())
+
   draftProofs DraftProof[]
 }
 
@@ -590,29 +603,29 @@ model DraftProof {
   ngo           NGOProfile   @relation(fields: [ngoId], references: [id])
   fieldWorkerId String?
   fieldWorker   FieldWorker? @relation(fields: [fieldWorkerId], references: [id])
-  
-  fingerprint   String?      @unique
-  
+
+  fingerprint String? @unique
+
   predictedProjectId   String?
   predictedMilestoneId String?
   predictionConfidence Float?
-  
-  senderPhone   String
-  rawMessage    String
-  aiSummary     String?
-  riskLevel     String?
-  riskReason    String?
-  workerStatus      String?           @default("PENDING") // "PENDING" | "ENRICHING" | "ENRICHED" | "ENRICHMENT_FAILED"
-  rawGpsLat         Float?
-  rawGpsLng         Float?
-  photoCount        Int?              @default(0)
-  
-  mediaUrls     String[]
+
+  senderPhone  String
+  rawMessage   String
+  aiSummary    String?
+  riskLevel    String?
+  riskReason   String?
+  workerStatus String? @default("PENDING") // "PENDING" | "ENRICHING" | "ENRICHED" | "ENRICHMENT_FAILED"
+  rawGpsLat    Float?
+  rawGpsLng    Float?
+  photoCount   Int?    @default(0)
+
+  mediaUrls           String[]
   persistentPhotoUrls String[]
-  imageHashes   String[]
-  
-  status            DraftProofStatus  @default(PENDING_REVIEW)
-  createdAt     DateTime         @default(now())
+  imageHashes         String[]
+
+  status    DraftProofStatus @default(PENDING_REVIEW)
+  createdAt DateTime         @default(now())
 }
 
 enum DraftProofStatus {
@@ -630,15 +643,190 @@ model PitchLead {
   downloaded   Boolean  @default(false)
 }
 
+// ─── Admin accountability (Phase 1) ─────────────────────────────────────────
+
+// Every sensitive admin mutation writes one row here. oldValue/newValue hold
+// JSON snapshots of ONLY the fields the action changed — never full entity
+// dumps (PII retention). metadata carries the AI-vs-human decision snapshot.
+model AdminActionLog {
+  id            String   @id @default(uuid())
+  adminId       String
+  admin         User     @relation("AdminActionLogs", fields: [adminId], references: [id])
+  action        String // e.g. "NGO_APPROVED", "PROJECT_REJECTED", "ALERT_RESOLVED", "NGO_SUSPENDED"
+  entityType    String // "NGO" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA"
+  entityId      String
+  oldValue      Json?
+  newValue      Json?
+  note          String?
+  metadata      Json? // { ai: { recommendation, score, confidence }, overrodeAi, disagreementReason, ... }
+  ipAddress     String?
+  userAgent     String?
+  schemaVersion Int      @default(1) // payload shape version for future replay/migration
+  createdAt     DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([adminId])
+  @@index([createdAt])
+}
+
+// Append-only donor lifecycle events (category declarations, PAN changes, …).
+// Powers the Donor 360 timeline. `source` answers "who initiated this" when
+// reconstructing history: the donor, an admin, the system, or a webhook.
+model DonorEvent {
+  id            String   @id @default(uuid())
+  donorId       String
+  eventType     String // e.g. "CATEGORY_DECLARED", "PAN_SUBMITTED", "PAN_VERIFIED", "PAN_CLEARED"
+  oldValue      Json?
+  newValue      Json?
+  initiatedBy   String? // user id (donor or admin); null for system
+  source        String // "USER" | "ADMIN" | "SYSTEM" | "WEBHOOK"
+  schemaVersion Int      @default(1)
+  createdAt     DateTime @default(now())
+
+  @@index([donorId])
+  @@index([eventType])
+}
+
+// Append-only 80G receipt lifecycle. Receipts are legally sensitive documents —
+// every generation, claim, and download must be reconstructable.
+model ReceiptEvent {
+  id        String   @id @default(uuid())
+  receiptId String
+  event     String // "GENERATED" | "CLAIMED" | "DOWNLOADED" | "REGENERATED" | "CANCELLED"
+  actorId   String? // user who triggered it; null for system/webhook
+  metadata  Json? // e.g. { trigger: "WEBHOOK" | "CLAIM" | "ADMIN" }
+  createdAt DateTime @default(now())
+
+  @@index([receiptId])
+}
+
+enum ThreadKind {
+  INQUIRY // admin asks the NGO for clarification (replaces one-way ask-ngo email)
+  APPEAL // NGO contests a rejection/suspension decision
+}
+
+enum ThreadStatus {
+  OPEN
+  NGO_RESPONDED
+  RESOLVED
+}
+
+// A ReviewThread is "something under review" — the conversation is one facet.
+// subjectType/subjectId generalize it across NGOs, donors, and (later) projects
+// so PAN reviews, FCRA questions, and appeals all share one primitive.
+model ReviewThread {
+  id                String       @id @default(uuid())
+  subjectType       String // "NGO" | "DONOR" (later: "PROJECT")
+  subjectId         String // NGOProfile.id or User.id depending on subjectType
+  participantUserId String // the non-admin user who is notified of replies
+  kind              ThreadKind   @default(INQUIRY)
+  subject           String
+  entityType        String? // "MILESTONE" | "PROJECT" | "NGO_VERIFICATION" | "FCRA" | "SUSPENSION" | "PAN" | "RISK_REVIEW"
+  entityId          String?
+  status            ThreadStatus @default(OPEN)
+  createdById       String // user id of whoever opened the thread (admin or subject user)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  messages ReviewMessage[]
+
+  @@index([subjectType, subjectId])
+  @@index([status])
+}
+
+model ReviewMessage {
+  id         String       @id @default(uuid())
+  threadId   String
+  thread     ReviewThread @relation(fields: [threadId], references: [id])
+  authorId   String
+  authorRole String // "ADMIN" | "NGO"
+  body       String
+  createdAt  DateTime     @default(now())
+
+  @@index([threadId])
+}
+
+// ─── Impact delivery pipeline (Phase 2A follow-on) ──────────────────────────
+// Event → subscriptions → outbox. Events are append-only facts; deliveries are
+// the outbox rows a cron drains with retries, so "did donor X receive impact Y"
+// is a DB query, never a hope. Unique(eventId, donorId, channel) makes fan-out
+// and redelivery idempotent.
+
+enum ImpactEventType {
+  PROOF_SUBMITTED
+  MILESTONE_COMPLETED
+  UPDATE_POSTED
+  FIELD_PHOTO
+}
+
+enum ImpactChannel {
+  IN_APP
+  EMAIL
+}
+
+enum ImpactDeliveryStatus {
+  PENDING
+  SENT
+  FAILED // retries exhausted — visible to admin, never silently dropped
+  READ
+}
+
+model ProjectImpactEvent {
+  id          String          @id @default(uuid())
+  projectId   String
+  milestoneId String?
+  type        ImpactEventType
+  title       String
+  body        String
+  payload     Json? // media urls, aiScore, verifiedBy, …
+  createdAt   DateTime        @default(now())
+
+  deliveries ImpactDelivery[]
+
+  @@index([projectId])
+  @@index([createdAt])
+}
+
+model ImpactSubscription {
+  id        String   @id @default(uuid())
+  donorId   String
+  projectId String
+  channels  String[] @default(["IN_APP", "EMAIL"])
+  frequency String   @default("INSTANT") // INSTANT | DAILY_DIGEST | WEEKLY_DIGEST
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([donorId, projectId])
+  @@index([projectId])
+}
+
+model ImpactDelivery {
+  id        String               @id @default(uuid())
+  eventId   String
+  event     ProjectImpactEvent   @relation(fields: [eventId], references: [id])
+  donorId   String
+  channel   ImpactChannel
+  status    ImpactDeliveryStatus @default(PENDING)
+  attempts  Int                  @default(0)
+  lastError String?
+  sentAt    DateTime?
+  readAt    DateTime?
+  createdAt DateTime             @default(now())
+
+  @@unique([eventId, donorId, channel])
+  @@index([status, attempts])
+  @@index([donorId])
+}
+
 model TeamInvite {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   email     String
-  role      TeamRole @default(FIELD_STAFF)
+  role      TeamRole   @default(FIELD_STAFF)
   ngoId     String
   ngo       NGOProfile @relation(fields: [ngoId], references: [id])
-  token     String   @unique @default(cuid())
-  accepted  Boolean  @default(false)
-  createdAt DateTime @default(now())
+  token     String     @unique @default(cuid())
+  accepted  Boolean    @default(false)
+  createdAt DateTime   @default(now())
   expiresAt DateTime
 
   @@unique([email, ngoId])

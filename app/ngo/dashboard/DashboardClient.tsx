@@ -621,7 +621,7 @@ export default function DashboardClient({
               // Get milestone name
               let milestoneName = "Unknown Milestone";
               if (draft.predictedProjectId && draft.predictedMilestoneId) {
-                const proj = profile.projects.find(p => p.id === draft.predictedProjectId);
+                const proj = ngoProfile.projects.find(p => p.id === draft.predictedProjectId);
                 if (proj) {
                   const ms = proj.milestones.find(m => m.id === draft.predictedMilestoneId);
                   if (ms) milestoneName = ms.title;

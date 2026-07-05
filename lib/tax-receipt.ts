@@ -50,7 +50,10 @@ const formatDate = (date: Date): string => {
  * `issuedAt` records when the PDF was actually produced (they differ for
  * receipts claimed after PAN verification).
  */
-export async function issueTaxReceipt(donationId: string) {
+export async function issueTaxReceipt(
+  donationId: string,
+  opts?: { trigger?: "WEBHOOK" | "CLAIM" | "ADMIN"; actorId?: string }
+) {
   const donation = await prisma.donation.findUnique({
     where: { id: donationId },
     include: {
@@ -108,6 +111,20 @@ export async function issueTaxReceipt(donationId: string) {
   const receipt = await prisma.taxReceipt.create({
     data: { donationId: donation.id, receiptNumber, financialYear, pdfUrl },
   });
+
+  // Receipt lifecycle audit (append-only). CLAIMED receipts get both events:
+  // GENERATED records the mint, CLAIMED records why it happened late.
+  try {
+    const { logReceiptEvent } = await import("@/lib/receipt-service");
+    await logReceiptEvent(receipt.id, "GENERATED", opts?.actorId ?? null, {
+      trigger: opts?.trigger ?? "WEBHOOK",
+    });
+    if (opts?.trigger === "CLAIM") {
+      await logReceiptEvent(receipt.id, "CLAIMED", opts?.actorId ?? null, null);
+    }
+  } catch (eventErr) {
+    console.error("Failed to log receipt event:", eventErr);
+  }
 
   await prisma.donation.update({
     where: { id: donation.id },

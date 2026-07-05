@@ -19,11 +19,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const draft = await prisma.whatsAppDraft.findUnique({
+    const profile = await prisma.nGOProfile.findUnique({
+      where: { userId: session.user.id },
+    });
+
+    if (!profile) {
+      return NextResponse.json({ error: "NGO Profile not found" }, { status: 404 });
+    }
+
+    const draft = await prisma.draftProof.findUnique({
       where: { id: draftId },
     });
 
-    if (!draft || draft.status !== "PENDING") {
+    if (!draft || draft.ngoId !== profile.id || draft.status !== "PENDING_REVIEW") {
       return NextResponse.json({ error: "Draft not found or already processed" }, { status: 404 });
     }
 
@@ -32,8 +40,8 @@ export async function POST(req: Request) {
       data: {
         milestoneId,
         submittedById: session.user.id,
-        description: draft.messageText || "Imported from WhatsApp Field Update",
-        mediaUrls: draft.mediaUrls,
+        description: draft.aiSummary || draft.rawMessage || "Imported from WhatsApp Field Update",
+        mediaUrls: draft.persistentPhotoUrls.length ? draft.persistentPhotoUrls : draft.mediaUrls,
       },
     });
 
@@ -44,9 +52,9 @@ export async function POST(req: Request) {
     });
 
     // Mark draft as processed
-    await prisma.whatsAppDraft.update({
+    await prisma.draftProof.update({
       where: { id: draftId },
-      data: { status: "PROCESSED" },
+      data: { status: "APPROVED" },
     });
 
     return NextResponse.json({ success: true, proofId: proof.id });

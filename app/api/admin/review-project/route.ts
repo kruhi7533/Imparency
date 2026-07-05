@@ -3,6 +3,7 @@ import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { sendProjectPublishedEmail, sendProjectRejectedEmail } from "@/lib/email";
+import { logAdminAction } from "@/lib/admin-log";
 
 export const runtime = "nodejs";
 
@@ -62,6 +63,27 @@ export async function POST(request: Request) {
     const adminId = auth.session.user.id;
     const ngoEmail = project.ngo.user.email;
 
+    // AI decision snapshot: capture what the screening said at decision time,
+    // and require a written reason when approving against a low AI score.
+    let aiRecommendation: string | null = null;
+    try {
+      aiRecommendation = project.aiScreeningResult
+        ? JSON.parse(project.aiScreeningResult)?.recommendation ?? null
+        : null;
+    } catch {
+      aiRecommendation = null;
+    }
+    const aiScore = project.aiScreeningScore ?? null;
+    const overrodeAi = action === "APPROVE" && aiScore !== null && aiScore < 40;
+
+    if (overrodeAi && (!rejectionReason || !rejectionReason.trim())) {
+      // rejectionReason doubles as the free-text note field on this endpoint
+      return NextResponse.json(
+        { error: `A justification note is required to approve a project the AI scored ${aiScore}/100.` },
+        { status: 400 }
+      );
+    }
+
     if (action === "APPROVE") {
       await prisma.project.update({
         where: { id: projectId },
@@ -74,7 +96,23 @@ export async function POST(request: Request) {
       });
 
       await prisma.projectReview.create({
-        data: { projectId, adminId, action: "APPROVED" },
+        data: { projectId, adminId, action: "APPROVED", note: rejectionReason?.trim() || null },
+      });
+
+      await logAdminAction({
+        adminId,
+        action: "PROJECT_APPROVED",
+        entityType: "PROJECT",
+        entityId: projectId,
+        oldValue: { status: "PENDING_APPROVAL" },
+        newValue: { status: "ACTIVE" },
+        note: rejectionReason?.trim() || null,
+        metadata: {
+          ai: aiScore !== null ? { score: aiScore, recommendation: aiRecommendation } : null,
+          overrodeAi,
+          ...(overrodeAi ? { disagreementReason: rejectionReason.trim() } : {}),
+        },
+        request,
       });
 
       // Now that the project is live, notify the NGO and its followers.
@@ -103,6 +141,21 @@ export async function POST(request: Request) {
 
       await prisma.projectReview.create({
         data: { projectId, adminId, action: "REJECTED", note: reason },
+      });
+
+      await logAdminAction({
+        adminId,
+        action: "PROJECT_REJECTED",
+        entityType: "PROJECT",
+        entityId: projectId,
+        oldValue: { status: "PENDING_APPROVAL" },
+        newValue: { status: "DRAFT" },
+        note: reason,
+        metadata: {
+          ai: aiScore !== null ? { score: aiScore, recommendation: aiRecommendation } : null,
+          overrodeAi: false,
+        },
+        request,
       });
 
       await sendProjectRejectedEmail(ngoEmail, project.ngo.orgName, project.title, reason);

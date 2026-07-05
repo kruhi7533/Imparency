@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { v2 as cloudinary } from 'cloudinary';
 
 const prisma = new PrismaClient();
@@ -59,14 +59,14 @@ async function fetchWithRetryAndTimeout(prompt: string, systemPrompt: string): P
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: {
-        type: "object",
+        type: SchemaType.OBJECT,
         properties: {
-          predictedProjectId:    { type: "string",  nullable: true },
-          predictedMilestoneId:  { type: "string",  nullable: true },
-          predictionConfidence:  { type: "number" },
-          aiSummary:             { type: "string"  },
-          riskLevel:             { type: "string", enum: ["LOW","MEDIUM","HIGH"] },
-          riskReason:            { type: "string",  nullable: true }
+          predictedProjectId:    { type: SchemaType.STRING, nullable: true },
+          predictedMilestoneId:  { type: SchemaType.STRING, nullable: true },
+          predictionConfidence:  { type: SchemaType.NUMBER },
+          aiSummary:             { type: SchemaType.STRING },
+          riskLevel:             { type: SchemaType.STRING, format: "enum", enum: ["LOW","MEDIUM","HIGH"] },
+          riskReason:            { type: SchemaType.STRING, nullable: true }
         },
         required: ["predictionConfidence","aiSummary","riskLevel"]
       }
