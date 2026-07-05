@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import AskNgoBox from "@/app/admin/components/AskNgoBox";
 
 interface Milestone {
   id: string;
@@ -261,7 +262,16 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
                   </div>
 
                   {/* Actions */}
-                  <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-3 flex justify-end gap-3">
+                  <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-3 flex items-center gap-3">
+                    <div className="mr-auto">
+                      <AskNgoBox
+                        ngoId={p.ngo.id}
+                        ngoName={p.ngo.orgName}
+                        subject={`Question about project "${p.title}"`}
+                        entityType="PROJECT"
+                        entityId={p.id}
+                      />
+                    </div>
                     <button
                       disabled={busy}
                       onClick={() => {

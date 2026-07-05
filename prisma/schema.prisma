@@ -721,7 +721,7 @@ model ReviewThread {
   participantUserId String // the non-admin user who is notified of replies
   kind              ThreadKind   @default(INQUIRY)
   subject           String
-  entityType        String? // "MILESTONE" | "PROJECT" | "NGO_VERIFICATION" | "FCRA" | "SUSPENSION" | "PAN"
+  entityType        String? // "MILESTONE" | "PROJECT" | "NGO_VERIFICATION" | "FCRA" | "SUSPENSION" | "PAN" | "RISK_REVIEW"
   entityId          String?
   status            ThreadStatus @default(OPEN)
   createdById       String // user id of whoever opened the thread (admin or subject user)

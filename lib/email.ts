@@ -332,6 +332,17 @@ export async function sendProofQuestionEmail(
   return sendEmail({ to, subject, body });
 }
 
+export async function sendAdminInquiryEmail(
+  to: string,
+  orgName: string,
+  topic: string,
+  question: string
+) {
+  const subject = `Question from the ImpactBridge team — ${topic}`;
+  const body = `Hi there,\n\nOur administration team has a question for "${orgName}" regarding: ${topic}\n\n"${question}"\n\nPlease reply from the Inquiries page on your dashboard so the conversation stays in one place:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/inquiries\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
 export async function sendNGODocumentReminderEmail(
   ngoEmail: string,
   orgName: string,

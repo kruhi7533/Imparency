@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import AskNgoBox from "@/app/admin/components/AskNgoBox";
 
 interface QuarterlyReport {
   id: string;
@@ -377,13 +378,22 @@ export default function FCRAReviewClient({
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">Last note: {rec.fcraAdminNote}</p>
                   )}
                 </div>
-                {PENDING_STATES.includes(rec.fcraStatus) && (
-                  <div className="flex gap-2 shrink-0">
-                    <button onClick={() => openModal(rec, "APPROVE")} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition">Approve</button>
-                    <button onClick={() => openModal(rec, "REUPLOAD")} className="bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 font-bold py-1.5 px-3 rounded-lg text-xs transition">Request Re-upload</button>
-                    <button onClick={() => openModal(rec, "REJECT")} className="bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:bg-red-100 font-bold py-1.5 px-3 rounded-lg text-xs transition">Reject</button>
-                  </div>
-                )}
+                <div className="flex gap-2 shrink-0">
+                  <AskNgoBox
+                    ngoId={rec.ngoId}
+                    ngoName={rec.orgName}
+                    subject="Question about your FCRA certificate"
+                    entityType="FCRA"
+                    entityId={rec.id}
+                  />
+                  {PENDING_STATES.includes(rec.fcraStatus) && (
+                    <>
+                      <button onClick={() => openModal(rec, "APPROVE")} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition">Approve</button>
+                      <button onClick={() => openModal(rec, "REUPLOAD")} className="bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 font-bold py-1.5 px-3 rounded-lg text-xs transition">Request Re-upload</button>
+                      <button onClick={() => openModal(rec, "REJECT")} className="bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:bg-red-100 font-bold py-1.5 px-3 rounded-lg text-xs transition">Reject</button>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="mt-4 border-t border-gray-100 dark:border-gray-800 pt-3">
                 {renderExtraction(rec)}

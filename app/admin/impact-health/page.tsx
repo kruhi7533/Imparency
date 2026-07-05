@@ -14,6 +14,7 @@ import {
   PartyPopper,
 } from "lucide-react";
 import NgoAgentActions from "./NgoAgentActions";
+import AskNgoBox from "@/app/admin/components/AskNgoBox";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -306,6 +307,11 @@ export default async function ImpactHealthPage() {
                     </span>
                   </div>
                   <NgoAgentActions ngoId={n.ngoId} reason="OVERDUE_MILESTONE" />
+                  <AskNgoBox
+                    ngoId={n.ngoId}
+                    ngoName={n.orgName}
+                    subject="Overdue milestone follow-up"
+                  />
                 </li>
               ))}
             </ul>
@@ -334,6 +340,11 @@ export default async function ImpactHealthPage() {
                     </span>
                   </div>
                   <NgoAgentActions ngoId={n.id} reason="QUIET" />
+                  <AskNgoBox
+                    ngoId={n.id}
+                    ngoName={n.orgName}
+                    subject="Progress update inquiry"
+                  />
                 </li>
               ))}
             </ul>
