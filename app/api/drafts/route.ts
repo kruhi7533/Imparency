@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'NGO Profile not found' }, { status: 404 });
     }
 
-    const drafts = await prisma.draftProof.findMany({
+    const drafts = await (prisma as any).draftProof.findMany({
       where: { ngoId: profile.id },
       orderBy: { createdAt: 'desc' },
       include: {
