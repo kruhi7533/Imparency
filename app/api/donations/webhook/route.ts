@@ -55,41 +55,48 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true }, { status: 200 });
       }
 
-      // Update database: status: SUCCESS, increment project.raisedAmount, increment user.totalDonated
-      await prisma.$transaction([
-        prisma.donation.update({
+      // Run all updates in a transaction
+      await prisma.$transaction(async (tx) => {
+        // a) Update donation status
+        await tx.donation.update({
           where: { id: donation.id },
           data: {
             status: "SUCCESS",
             razorpayPaymentId: paymentId,
           },
-        }),
-        prisma.project.update({
+        });
+
+        // b) Update project.raisedAmount
+        await tx.project.update({
           where: { id: donation.projectId },
           data: {
-            raisedAmount: { increment: donation.amount },
-          },
-        }),
-        prisma.user.update({
-          where: { id: donation.donorId },
-          data: {
-            totalDonated: { increment: donation.amount },
-          },
-        }),
-      ]);
-
-      // If milestoneIds present: move PENDING milestones -> IN_PROGRESS
-      if (donation.milestoneIds && donation.milestoneIds.length > 0) {
-        await prisma.milestone.updateMany({
-          where: {
-            id: { in: donation.milestoneIds },
-            status: "PENDING",
-          },
-          data: {
-            status: "IN_PROGRESS",
+            raisedAmount: {
+              increment: donation.amount,
+            },
           },
         });
-      }
+
+        // c) Update donor.totalDonated
+        await tx.user.update({
+          where: { id: donation.donorId },
+          data: {
+            totalDonated: {
+              increment: donation.amount,
+            },
+          },
+        });
+
+        // d) Move funded milestones PENDING → IN_PROGRESS
+        if (donation.milestoneIds && donation.milestoneIds.length > 0) {
+          await tx.milestone.updateMany({
+            where: {
+              id: { in: donation.milestoneIds },
+              status: "PENDING",
+            },
+            data: { status: "IN_PROGRESS" },
+          });
+        }
+      });
 
       // Fetch the updated donation to get the accurate updated fields or timestamps
       const updatedDonation = await prisma.donation.findUnique({

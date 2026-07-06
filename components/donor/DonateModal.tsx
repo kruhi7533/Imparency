@@ -46,8 +46,17 @@ export function DonateModal({
     "project"
   );
 
+  const [isLoadingOrder, setIsLoadingOrder] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [donationId, setDonationId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!isOpen) return;
+    setPaymentSuccess(false);
+    setPaymentError(null);
+    setIsLoadingOrder(false);
+    setDonationId(null);
     setFcraLoading(true);
     fetch(`/api/ngo/${ngoId}/fcra-status`)
       .then((r) => r.json())
@@ -91,6 +100,59 @@ export function DonateModal({
     ? parseInt(customAmount, 10)
     : amount;
 
+  if (paymentSuccess) {
+    return (
+      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-8 text-center animate-fadeIn">
+          {/* Animated checkmark */}
+          <div className="w-16 h-16 rounded-full bg-emerald-950/50 border-2 border-emerald-500 flex items-center justify-center mx-auto mb-4">
+            <svg viewBox="0 0 24 24" fill="none" className="w-8 h-8 text-emerald-400">
+              <path
+                d="M5 13l4 4L19 7"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+
+          <h2 className="text-lg font-black text-white mb-2">
+            Donation Successful!
+          </h2>
+          <p className="text-sm text-gray-400 mb-1">
+            Thank you for your donation of{" "}
+            <span className="text-emerald-400 font-bold">
+              Rs.{effectiveAmount?.toLocaleString("en-IN")}
+            </span>{" "}
+            to {ngoName}.
+          </p>
+          <p className="text-xs text-gray-600 mb-6">
+            Your 80G tax receipt will be emailed to you shortly.
+          </p>
+
+          <div className="space-y-2">
+            <button
+              onClick={() => {
+                onClose();
+                window.location.href = "/donor/donations";
+              }}
+              className="w-full py-3 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition cursor-pointer"
+            >
+              View Donation History
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full py-3 rounded-xl text-sm font-bold bg-gray-800 hover:bg-gray-700 text-gray-300 transition cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const toggleMilestone = (milestoneId: string) => {
     setSelectedMilestoneIds((prev) =>
       prev.includes(milestoneId)
@@ -106,24 +168,108 @@ export function DonateModal({
     (m) => !["PENDING", "IN_PROGRESS"].includes(m.status)
   );
 
-  const handleProceedToPayment = () => {
+  const handleProceedToPayment = async () => {
     if (!effectiveAmount || isFCRABlocked) return;
+    setPaymentError(null);
+    setIsLoadingOrder(true);
 
-    const payload = {
-      projectId: project.id,
-      amount: effectiveAmount,
-      milestoneIds: donationMode === "milestone" ? selectedMilestoneIds : [],
-      donorCategory,
-    };
+    try {
+      // Step 1: Create Razorpay order on server
+      const orderRes = await fetch("/api/donations/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project.id,
+          amount: effectiveAmount,
+          milestoneIds:
+            donationMode === "milestone" ? selectedMilestoneIds : [],
+          donorCategory,
+        }),
+      });
 
-    // TODO B3: Replace with actual Razorpay order creation
-    console.log("Proceeding to payment:", payload);
-    alert(
-      `Payment flow coming soon.\n\nAmount: Rs.${effectiveAmount}\n` +
-      (payload.milestoneIds.length > 0
-        ? `Earmarked for ${payload.milestoneIds.length} milestone(s)`
-        : "Donated to entire project")
-    );
+      const orderData = await orderRes.json();
+
+      if (!orderRes.ok) {
+        setPaymentError(orderData.error || "Failed to create order");
+        setIsLoadingOrder(false);
+        return;
+      }
+
+      // Step 2: Load Razorpay checkout script
+      await loadRazorpayScript();
+
+      // Step 3: Open Razorpay checkout modal
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: orderData.amount,       // already in paise from server
+        currency: orderData.currency,
+        name: "Imparency",
+        description: `Donation to ${orderData.projectTitle}`,
+        image: "/logo.png",             // add your logo if available
+        order_id: orderData.orderId,
+        prefill: {},
+        notes: {
+          donationId: orderData.donationId,
+          projectTitle: orderData.projectTitle,
+        },
+        theme: {
+          color: "#059669", // emerald-600
+        },
+        handler: async function (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) {
+          // Step 4: Verify payment signature on server
+          try {
+            const verifyRes = await fetch("/api/donations/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+                donationId: orderData.donationId,
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+
+            if (verifyData.success) {
+              setPaymentSuccess(true);
+              setDonationId(orderData.donationId);
+            } else {
+              setPaymentError("Payment verification failed. Contact support.");
+            }
+          } catch {
+            setPaymentError("Verification error. If amount was deducted, contact support.");
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            // Donor closed the checkout modal without paying
+            setIsLoadingOrder(false);
+            setPaymentError(null);
+            // Do not set failure — just let them try again
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+
+      rzp.on("payment.failed", function (response: any) {
+        setPaymentError(
+          response.error?.description ||
+          "Payment failed. Please try a different payment method."
+        );
+      });
+
+      rzp.open();
+    } catch (err) {
+      console.error("Payment error:", err);
+      setPaymentError("Something went wrong. Please try again.");
+      setIsLoadingOrder(false);
+    }
   };
 
   const isPayDisabled =
@@ -462,20 +608,29 @@ export function DonateModal({
           )}
         </div>
 
+        {/* Payment Error message banner */}
+        {paymentError && (
+          <div className="mb-3 p-3 rounded-xl bg-red-950/30 border border-red-800/50">
+            <p className="text-xs text-red-400 leading-relaxed">{paymentError}</p>
+          </div>
+        )}
+
         {/* Pay button */}
         <button
           type="button"
-          disabled={isPayDisabled}
+          disabled={isPayDisabled || isLoadingOrder}
           onClick={handleProceedToPayment}
           className={`
             w-full py-3.5 rounded-xl text-sm font-extrabold transition-all cursor-pointer
-            ${isPayDisabled
+            ${isPayDisabled || isLoadingOrder
               ? "bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-850"
               : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/10"
             }
           `}
         >
-          {fcraLoading
+          {isLoadingOrder
+            ? "Opening payment..."
+            : fcraLoading
             ? "Checking eligibility..."
             : isFCRABlocked
             ? "Donation not available"
@@ -489,4 +644,18 @@ export function DonateModal({
       </div>
     </div>
   );
+}
+
+function loadRazorpayScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if ((window as any).Razorpay) {
+      resolve(); // already loaded
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Razorpay script"));
+    document.body.appendChild(script);
+  });
 }

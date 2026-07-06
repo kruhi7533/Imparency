@@ -1,33 +1,60 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { verifySessionRole } from "@/lib/auth-guards";
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const Razorpay = require("razorpay");
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID!,
+  key_secret: process.env.RAZORPAY_KEY_SECRET!,
+});
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    // 1. Auth guard
+    const { authorized, response, session } = await verifySessionRole("DONOR");
+    if (!authorized) return response;
 
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (session.user.role !== "DONOR") {
-      return NextResponse.json({ error: "Only donors can make donations" }, { status: 403 });
-    }
-
+    // 2. Parse body
     const body = await request.json();
-    const { projectId, amount, milestoneIds = [] } = body;
+    const { projectId, amount, milestoneIds = [], donorCategory } = body;
 
-    if (!projectId) {
-      return NextResponse.json({ error: "Project ID is required" }, { status: 400 });
+    // 3. Validate amount
+    if (!amount || isNaN(amount) || amount < 100) {
+      return NextResponse.json(
+        { error: "Minimum donation amount is Rs.100" },
+        { status: 400 }
+      );
     }
 
-    if (!amount || typeof amount !== "number" || amount < 100) {
-      return NextResponse.json({ error: "Amount must be a number and at least Rs. 100" }, { status: 400 });
+    // 4. Fetch project — verify it exists and is ACTIVE
+    const project = await prisma.project.findUnique({
+      where: { id: projectId, isDeleted: false },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        ngo: { select: { orgName: true } },
+      },
+    });
+
+    if (!project) {
+      return NextResponse.json(
+        { error: "Project not found" },
+        { status: 404 }
+      );
     }
 
-    // If milestoneIds are provided, verify they all belong to this project and are donatable
-    if (milestoneIds && milestoneIds.length > 0) {
+    if (project.status !== "ACTIVE") {
+      return NextResponse.json(
+        { error: "This project is not currently accepting donations" },
+        { status: 400 }
+      );
+    }
+
+    // 5. Validate milestoneIds if provided
+    if (milestoneIds.length > 0) {
       const validMilestones = await prisma.milestone.findMany({
         where: {
           id: { in: milestoneIds },
@@ -39,56 +66,47 @@ export async function POST(request: Request) {
 
       if (validMilestones.length !== milestoneIds.length) {
         return NextResponse.json(
-          { error: "One or more selected milestones are invalid or not accepting donations." },
+          { error: "One or more selected milestones are invalid or not accepting donations" },
           { status: 400 }
         );
       }
     }
 
-    // Fetch project
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-    });
-
-    if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
-
-    if (project.status !== "ACTIVE") {
-      return NextResponse.json({ error: "Project is not active and cannot receive donations" }, { status: 400 });
-    }
-
-    // Create Razorpay order
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Razorpay = require("razorpay");
-    const razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
-    });
-
-    const order = await razorpay.orders.create({
-      amount: Math.round(amount * 100), // paise
+    // 6. Create Razorpay order
+    // amount in paise (1 rupee = 100 paise)
+    const razorpayOrder = await razorpay.orders.create({
+      amount: Math.round(amount * 100),
       currency: "INR",
       receipt: `rcpt_${Date.now()}`,
+      notes: {
+        projectId,
+        projectTitle: project.title,
+        ngoName: project.ngo.orgName,
+        donorId: session.user.id,
+      },
     });
 
-    // Create Donation record in DB
+    // 7. Create PENDING Donation row in DB
     const donation = await prisma.donation.create({
       data: {
-        status: "PENDING",
-        razorpayOrderId: order.id,
         donorId: session.user.id,
         projectId,
         amount,
+        razorpayOrderId: razorpayOrder.id,
+        status: "PENDING",
         milestoneIds,
       },
     });
 
+    // 8. Return order details to client
     return NextResponse.json({
-      orderId: order.id,
-      amount,
+      orderId: razorpayOrder.id,
+      amount: Math.round(amount * 100), // paise — Razorpay SDK expects paise
       currency: "INR",
       donationId: donation.id,
+      keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      projectTitle: project.title,
+      ngoName: project.ngo.orgName,
     });
   } catch (error) {
     const err = error as Error;
