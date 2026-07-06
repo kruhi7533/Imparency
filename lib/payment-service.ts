@@ -111,7 +111,7 @@ export async function initiatePayment({
   });
 
   // 7. Send approval email
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const baseUrl = process.env.BASE_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
   const approveUrl = `${baseUrl}/api/donations/approve/${donation.id}/${rawToken}`;
   const cancelUrl = `${baseUrl}/api/donations/reject/${donation.id}/${rawToken}`;
 

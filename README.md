@@ -16,6 +16,28 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+### Mobile & Local Network Testing
+To test donation flows on a physical mobile device (or other devices on the same local network):
+1. **Find your LAN IP address**:
+   - **Windows**: Run `ipconfig` in Command Prompt and locate your IPv4 address (e.g., `192.168.1.42`).
+   - **macOS/Linux**: Run `ifconfig` or `ip addr` in Terminal and locate your local IP.
+2. **Configure your base URL**:
+   In your `.env` file, define `BASE_URL` with your LAN IP and port:
+   ```env
+   BASE_URL=http://<YOUR_LAN_IP>:3000
+   ```
+3. **Start the server**:
+   Run `npm run dev`. The server binds to `0.0.0.0` automatically so it is reachable across your local Wi-Fi network.
+4. **Alternative: Testing over mobile data (via ngrok)**:
+   If your devices are on different networks, start a tunnel:
+   ```bash
+   ngrok http 3000
+   ```
+   Copy the public forwarding URL (e.g., `https://xxxx.ngrok-free.app`) and set it as `BASE_URL` in `.env`:
+   ```env
+   BASE_URL=https://xxxx.ngrok-free.app
+   ```
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
