@@ -191,7 +191,7 @@ export async function PATCH(
         from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
         to: `whatsapp:${updatedDraft.fieldWorker.phone}`,
         body: messageBody
-      }).catch(err => console.error('[approval] WhatsApp reply failed:', err));
+      }).catch((err: any) => console.error('[approval] WhatsApp reply failed:', err));
     }
 
     return NextResponse.json({ draft: updatedDraft, success: true });

@@ -75,7 +75,6 @@ enum TeamRole {
   FINANCE
   FIELD_STAFF
 }
-}
 
 model User {
   id                      String                @id @default(uuid())
