@@ -1,6 +1,7 @@
 import prisma from "../lib/prisma";
 import { recalculateNGOHealthScore } from "../lib/ngo-health";
-import { checkPANUsage, checkGeminiScore } from "../lib/fraud-alerts";
+import { checkPANUsage } from "../lib/fraud-alerts";
+import { checkGeminiScore } from "../lib/risk-agent";
 
 async function runPhase5Tests() {
   console.log("Starting Phase 5: Health Score Engine & Fraud Alerts integration tests...");

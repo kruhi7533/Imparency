@@ -119,7 +119,11 @@ export default async function NGODashboardPage() {
 
         {/* State 3: VERIFIED (Full Dashboard) */}
         {status === "VERIFIED" && (
-          <DashboardClient profile={profile as any} />
+          <DashboardClient 
+            profile={profile as any} 
+            whatsappBotNumber={process.env.TWILIO_WHATSAPP_NUMBER}
+            joinCode={profile.joinCode ?? null}
+          />
         )}
       </main>
     </div>

@@ -31,6 +31,7 @@ enum VerificationStatus {
 
 enum ProjectStatus {
   DRAFT
+  PENDING_APPROVAL
   ACTIVE
   COMPLETED
   PAUSED
@@ -51,38 +52,47 @@ enum DonationStatus {
   REFUNDED
 }
 
+enum DonorCategory {
+  INDIAN_IN_INDIA // domestic donor — no FCRA constraint
+  INDIAN_ABROAD // NRI/OCI — treated as foreign source unless NRI-eligible account used
+  FOREIGN_NATIONAL // always foreign source — hard FCRA gate
+}
+
 enum FCRAStatus {
-  NONE               // never submitted
-  PENDING            // submitted, awaiting admin review
-  ACTIVE             // approved, expiry > 90 days away
-  EXPIRING_SOON      // approved, expiry within 90 days
-  EXPIRED            // approved but past expiry
-  REJECTED           // admin rejected
+  NONE // never submitted
+  PENDING // submitted, awaiting admin review
+  ACTIVE // approved, expiry > 90 days away
+  EXPIRING_SOON // approved, expiry within 90 days
+  EXPIRED // approved but past expiry
+  REJECTED // admin rejected
   REUPLOAD_REQUESTED // admin asked the NGO to re-upload
 }
 
-enum DonorCategory {
-  INDIAN_RESIDENT
-  NRI_OCI
-  FOREIGN_NATIONAL
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  FINANCE
+  FIELD_STAFF
+}
 }
 
 model User {
-  id                      String            @id @default(uuid())
-  email                   String            @unique
+  id                      String                @id @default(uuid())
+  email                   String                @unique
   passwordHash            String
-  role                    Role              @default(DONOR)
-  name                    String            @default("Anonymous")
+  role                    Role                  @default(DONOR)
+  name                    String                @default("Anonymous")
   avatar                  String?
-  googleId                String?           @unique
+  googleId                String?               @unique
   panNumber               String?
   phone                   String?
   city                    String?
   billingAddress          String?
-  totalDonated            Decimal           @default(0.00) @db.Decimal(10, 2)
+  totalDonated            Decimal               @default(0.00) @db.Decimal(10, 2)
   fcmToken                String?
   companyName             String?
-  isCorporate             Boolean           @default(false)
+  isCorporate             Boolean               @default(false)
   gstNumber               String?
   donorCategory           DonorCategory?
   donorCategoryDeclaredAt DateTime?
@@ -91,120 +101,150 @@ model User {
   nriSourceDeclaration    String? // "ELIGIBLE_NRI_SOURCE" | "FOREIGN_SOURCE" | "NOT_SURE"
   donorPersona            DonorPersona?
   personaSetAt            DateTime?
+  // Donor PAN verification (risk-based / just-in-time — gates 80G receipt issuance)
+  panStatus               PanVerificationStatus @default(UNVERIFIED)
+  panVerifiedAt           DateTime?
+  panVerifiedVia          PanVerifiedVia?
+  panRegisteredName       String? // name returned by the PAN provider (mismatch display / audit)
+  panNameMatch            Boolean? // did registeredName match donor.name? null = no name returned
 
   // HNI specific fields
-  hniAdvisorName          String?
-  hniAdvisorEmail         String?
-  hniAnnualBudget         Decimal?          @db.Decimal(12, 2)
-  
-  // CSR specific fields
-  csrRegistrationNumber   String?
-  csrBudget               Decimal?          @db.Decimal(12, 2)
-  
-  // Foundation specific fields
-  trustRegistrationId     String?
-  trust12a80gRegNo        String?
-  trustAnnualBudget       Decimal?          @db.Decimal(12, 2)
-  donorTier               DonorTier         @default(STANDARD)
-  reEngagementPath        ReEngagementPath?
-  volunteerInterest       Boolean           @default(false)
-  createdAt               DateTime          @default(now())
-  updatedAt               DateTime          @updatedAt
+  hniAdvisorName  String?
+  hniAdvisorEmail String?
+  hniAnnualBudget Decimal? @db.Decimal(12, 2)
 
-  ngoProfile      NGOProfile?
-  donations       Donation[]
-  notifications   Notification[]
-  impactReports   ImpactReport[]
-  followers       NGOFollower[]
-  milestoneProofs MilestoneProof[]
-  adminReviews    MilestoneReview[] @relation("AdminReviews")
-  consentLogs     ConsentLog[]
-  reEngagementEvents ReEngagementEvent[]
+  // CSR specific fields
+  csrRegistrationNumber String?
+  csrBudget             Decimal? @db.Decimal(12, 2)
+
+  // Foundation specific fields
+  trustRegistrationId String?
+  trust12a80gRegNo    String?
+  trustAnnualBudget   Decimal? @db.Decimal(12, 2)
+
+  donorTier         DonorTier         @default(STANDARD)
+  reEngagementPath  ReEngagementPath?
+  volunteerInterest Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  ngoProfile          NGOProfile?
+  donations           Donation[]
+  notifications       Notification[]
+  impactReports       ImpactReport[]
+  followers           NGOFollower[]
+  milestoneProofs     MilestoneProof[]
+  adminReviews        MilestoneReview[]   @relation("AdminReviews")
+  adminProjectReviews ProjectReview[]     @relation("AdminProjectReviews")
+  consentLogs         ConsentLog[]
+  reEngagementEvents  ReEngagementEvent[]
+  teamMemberships     NGOTeamMember[]
+  adminActionLogs     AdminActionLog[]    @relation("AdminActionLogs")
 }
 
 model NGOProfile {
-  id                 String             @id @default(uuid())
-  userId             String             @unique
-  user               User               @relation(fields: [userId], references: [id])
-  orgName            String
-  registrationNumber String             @unique
-  panNumber          String             @unique
-  address            String
-  causeCategories    String[]
-  verificationStatus VerificationStatus @default(PENDING)
-  healthScore        Decimal?           @db.Decimal(5, 2)
-  healthScoreBreakdown Json?
+  id                     String             @id @default(uuid())
+  userId                 String             @unique
+  user                   User               @relation(fields: [userId], references: [id])
+  orgName                String
+  registrationNumber     String             @unique
+  panNumber              String             @unique
+  address                String
+  causeCategories        String[]
+  verificationStatus     VerificationStatus @default(PENDING)
+  healthScore            Decimal?           @db.Decimal(5, 2)
+  healthScoreBreakdown   Json?
   ai_verification_report Json?
-  isSuspended          Boolean            @default(false)
-  documents          String[]
-  description        String
-  website            String?
-  foundedYear        Int
-  adminNote          String?
-  isDeleted          Boolean            @default(false)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  logo_url           String?
-  cover_image_url    String?
+  isSuspended            Boolean            @default(false)
+  suspensionReason       String?
+  suspendedAt            DateTime?
+  documents              String[]
+  description            String
+  website                String?
+  foundedYear            Int
+  adminNote              String?
+  isDeleted              Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  logo_url               String?
+  cover_image_url        String?
+  joinCode               String?            @unique // Used for field worker self-registration via WhatsApp
 
   // Consent Tracking
-  dataProcessingConsent Boolean @default(false)
+  dataProcessingConsent     Boolean   @default(false)
   dataProcessingConsentDate DateTime?
-  consentVersion String?
-  consentIpAddress String?
-  consentRevoked Boolean @default(false)
-  consentRevokedAt DateTime?
+  consentVersion            String?
+  consentIpAddress          String?
+  consentRevoked            Boolean   @default(false)
+  consentRevokedAt          DateTime?
 
-  projects   Project[]
-  followers  NGOFollower[]
-  screening  NgoScreening?
-  compliance NGOCompliance?
+  projects     Project[]
+  followers    NGOFollower[]
+  screening    NgoScreening?
+  compliance   NGOCompliance?
+  riskReviews  RiskReview[]
+  fieldWorkers FieldWorker[]
+  draftProofs  DraftProof[]
+  teamMembers  NGOTeamMember[]
+  teamInvites  TeamInvite[]
+}
+
+model NGOTeamMember {
+  id        String     @id @default(uuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  ngoId     String
+  ngo       NGOProfile @relation(fields: [ngoId], references: [id])
+  role      TeamRole   @default(FIELD_STAFF)
+  createdAt DateTime   @default(now())
+
+  @@unique([userId, ngoId])
 }
 
 model NGOCompliance {
-  id                     String     @id @default(uuid())
-  ngoId                  String     @unique
-  ngo                    NGOProfile @relation(fields: [ngoId], references: [id])
+  id    String     @id @default(uuid())
+  ngoId String     @unique
+  ngo   NGOProfile @relation(fields: [ngoId], references: [id])
 
   // Per-document verified flags + per-document timestamps
-  panVerified            Boolean    @default(false)
+  panVerified            Boolean   @default(false)
   panVerifiedAt          DateTime?
-  registrationVerified   Boolean    @default(false)
+  registrationVerified   Boolean   @default(false)
   registrationVerifiedAt DateTime?
-  a12Verified            Boolean    @default(false)
+  a12Verified            Boolean   @default(false)
   a12VerifiedAt          DateTime?
   a12DocumentUrl         String?
-  eightyGVerified        Boolean    @default(false)
+  eightyGVerified        Boolean   @default(false)
   eightyGVerifiedAt      DateTime?
 
   // FCRA-specific lifecycle
-  fcraNumber             String?
-  fcraStatus             FCRAStatus @default(NONE)
-  fcraAuthority          String?    @default("Ministry of Home Affairs")
-  fcraRegisteredSince    Int?       // year
-  fcraIssueDate          DateTime?
-  fcraExpiryDate         DateTime?
-  fcraCertificateUrl     String?
-  fcraExtractedData      Json?      // raw Gemini extraction
-  fcraAdminNote          String?
-  fcraVerifiedAt         DateTime?
+  fcraNumber          String?
+  fcraStatus          FCRAStatus @default(NONE)
+  fcraAuthority       String?    @default("Ministry of Home Affairs")
+  fcraRegisteredSince Int? // year
+  fcraIssueDate       DateTime?
+  fcraExpiryDate      DateTime?
+  fcraCertificateUrl  String?
+  fcraExtractedData   Json? // raw Gemini extraction
+  fcraAdminNote       String?
+  fcraVerifiedAt      DateTime?
 
   // NOTE: compliance score & breakdown are derived on read — never stored here.
 
-  verifiedById           String?    // admin user id (last action)
-  createdAt              DateTime   @default(now())
-  updatedAt              DateTime   @updatedAt
+  verifiedById String? // admin user id (last action)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  auditLogs              ComplianceAuditLog[]
+  auditLogs ComplianceAuditLog[]
 }
 
 model ComplianceAuditLog {
   id           String        @id @default(uuid())
   complianceId String
   compliance   NGOCompliance @relation(fields: [complianceId], references: [id])
-  event        String        // e.g. "FCRA_UPLOADED", "FCRA_APPROVED", "FCRA_EXPIRED", "PAN_VERIFIED", "80G_VERIFIED"
-  detail       String?       // human-readable line for the timeline
-  actorId      String?       // admin user id, or null for system/cron events
+  event        String // e.g. "FCRA_UPLOADED", "FCRA_APPROVED", "FCRA_EXPIRED", "PAN_VERIFIED", "80G_VERIFIED"
+  detail       String? // human-readable line for the timeline
+  actorId      String? // admin user id, or null for system/cron events
   createdAt    DateTime      @default(now())
 
   @@index([complianceId])
@@ -222,7 +262,7 @@ model Project {
   status        ProjectStatus @default(DRAFT)
   coverImage    String
   location      String
-  
+
   // Geo Intelligence
   latitude        Float?
   longitude       Float?
@@ -233,13 +273,34 @@ model Project {
 
   problem_statement String?
   expected_outcome  String?
-  tocAnalysis   Json?         @map("toc_analysis")
-  isDeleted     Boolean       @default(false)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  tocAnalysis       Json?    @map("toc_analysis")
+  isDeleted         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  milestones Milestone[]
-  donations  Donation[]
+  // Admin approval gate
+  reviewNote   String?
+  reviewedAt   DateTime?
+  reviewedById String?
+
+  // AI pre-screening (advisory signal surfaced to admin in the review queue)
+  aiScreeningScore  Int?
+  aiScreeningResult String? // JSON: { score, recommendation, reasoning, flags }
+
+  milestones     Milestone[]
+  donations      Donation[]
+  projectReviews ProjectReview[]
+}
+
+model ProjectReview {
+  id         String   @id @default(uuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id])
+  adminId    String
+  admin      User     @relation("AdminProjectReviews", fields: [adminId], references: [id])
+  action     String // "APPROVED" | "REJECTED"
+  note       String?
+  reviewedAt DateTime @default(now())
 }
 
 model Milestone {
@@ -271,47 +332,54 @@ model MilestoneProof {
   documentUrls       String[]
   aiValidationResult String?
   aiValidationScore  Int?
-  
+
   // Theory of Change Alignment
   theoryOfChangeAlignmentScore Int?
   theoryOfChangeReasoning      String?
   theoryOfChangeStrengths      String[]
   theoryOfChangeGaps           String[]
-  
-  submittedAt        DateTime  @default(now())
+
+  submittedAt DateTime @default(now())
 }
 
 model MilestoneReview {
-  id           String   @id @default(uuid())
-  milestoneId  String
-  milestone    Milestone @relation(fields: [milestoneId], references: [id])
-  proofId      String?
-  adminId      String
-  admin        User     @relation("AdminReviews", fields: [adminId], references: [id])
-  action       String   // "APPROVED" | "REJECTED"
-  note         String?
-  aiScore      Int?
-  reviewedAt   DateTime @default(now())
+  id          String    @id @default(uuid())
+  milestoneId String
+  milestone   Milestone @relation(fields: [milestoneId], references: [id])
+  proofId     String?
+  adminId     String
+  admin       User      @relation("AdminReviews", fields: [adminId], references: [id])
+  action      String // "APPROVED" | "REJECTED"
+  note        String?
+  aiScore     Int?
+  reviewedAt  DateTime  @default(now())
 }
 
 model Donation {
-  id                String         @id @default(uuid())
-  donorId           String
-  donor             User           @relation(fields: [donorId], references: [id])
-  projectId         String
-  project           Project        @relation(fields: [projectId], references: [id])
-  amount            Decimal        @db.Decimal(10, 2)
-  razorpayOrderId   String
-  razorpayPaymentId String?
-  status            DonationStatus @default(PENDING)
-  receiptUrl        String?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  milestoneIds      String[]       @default([])
-  retryCount          Int       @default(0)
+  id                  String         @id @default(uuid())
+  donorId             String
+  donor               User           @relation(fields: [donorId], references: [id])
+  projectId           String
+  project             Project        @relation(fields: [projectId], references: [id])
+  amount              Decimal        @db.Decimal(10, 2)
+  razorpayOrderId     String
+  razorpayPaymentId   String?
+  status              DonationStatus @default(PENDING)
+  receiptUrl          String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  milestoneIds        String[]       @default([])
+  retryCount          Int            @default(0)
   lastFailedAt        DateTime?
-  retryToken          String?   @unique
+  retryToken          String?        @unique
   retryTokenExpiresAt DateTime?
+
+  // INVARIANT: point-in-time compliance snapshot captured when the payment is
+  // confirmed (webhook). IMMUTABLE — never modified afterwards, not even by
+  // admins; corrections are recorded as new audit events, never as mutations.
+  // Shape: { version, capturedAt, panStatus, panVerifiedVia, donorCategory,
+  //          nriSourceDeclaration, ngoFcraStatus, ngoComplianceScore, ngoHealthScore }
+  complianceSnapshot Json?
 
   impactReports ImpactReport[]
   taxReceipt    TaxReceipt?
@@ -380,11 +448,11 @@ model NgoScreening {
   documentChecklist Json
   consistencyOk     Boolean
   flags             Json
-  recommendation    String   // LOOKS_CLEAR | NEEDS_REVIEW | LOOKS_PROBLEMATIC
+  recommendation    String // LOOKS_CLEAR | NEEDS_REVIEW | LOOKS_PROBLEMATIC
   confidence        Float
-  status            String   @default("PENDING") // PENDING | READY | FAILED
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  status            String     @default("PENDING") // PENDING | READY | FAILED
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 }
 
 enum AlertCategory {
@@ -410,23 +478,56 @@ model FraudAlert {
   entityId       String
   entityType     String
   description    String
-  severity       String        // "LOW", "MEDIUM", "HIGH"
+  severity       String // "LOW", "MEDIUM", "HIGH"
   alertCategory  AlertCategory @default(FRAUD_ALERT)
   subType        AlertSubType?
   resolved       Boolean       @default(false)
   resolutionNote String?
+  resolvedById   String? // admin user id — every resolution must be attributable
+  resolvedAt     DateTime?
   createdAt      DateTime      @default(now())
 }
 
+model RiskReview {
+  id         String     @id @default(uuid())
+  ngoId      String
+  ngo        NGOProfile @relation(fields: [ngoId], references: [id])
+  alertIds   String[] // linked FraudAlert ids
+  riskScore  Float?
+  riskLevel  String // "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+  findings   Json?
+  status     String     @default("OPEN") // "OPEN" | "REVIEWED" | "CLEARED" | "SUSPENDED"
+  reviewedBy String?
+  reviewNote String?
+  createdAt  DateTime   @default(now())
+  resolvedAt DateTime?
+}
+
+model FcraQuarterlyReport {
+  id                String   @id @default(uuid())
+  quarter           String // "Q1-2026", "Q2-2026", etc.
+  generatedAt       DateTime @default(now())
+  totalNgos         Int
+  activeCount       Int
+  expiringSoonCount Int
+  expiredCount      Int
+  rejectedCount     Int
+  pendingCount      Int
+  ngoBreakdown      Json // [{ ngoId, orgName, fcraNumber, status, expiryDate }]
+  generatedById     String? // null = cron-generated
+
+  @@unique([quarter])
+}
+
 model ConsentLog {
-  id            String    @id @default(cuid())
+  id            String         @id @default(cuid())
   userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   purpose       ConsentPurpose
-  policyVersion String    @default("1.0")
-  consentedAt   DateTime  @default(now())
+  policyVersion String         @default("1.0")
+  consentedAt   DateTime       @default(now())
   ipAddress     String?
-  
+
   @@index([userId])
 }
 
@@ -441,6 +542,19 @@ enum DonorTier {
   MAJOR_DONOR
 }
 
+enum PanVerificationStatus {
+  UNVERIFIED
+  VERIFIED
+  FAILED // provider ran and rejected the PAN
+  PROVIDER_ERROR // provider unavailable / failed open — retryable
+}
+
+enum PanVerifiedVia {
+  MOCK // no SUREPASS_API_TOKEN configured (dev)
+  SUREPASS
+  MANUAL_ADMIN
+}
+
 enum ReEngagementPath {
   TIER_UPGRADE
   NGO_REFERRAL
@@ -449,23 +563,275 @@ enum ReEngagementPath {
 }
 
 model ReEngagementEvent {
-  id          String            @id @default(uuid())
-  donorId     String
-  donor       User              @relation(fields: [donorId], references: [id])
-  reportId    String            // ImpactReport that triggered this
-  path        ReEngagementPath
-  emailSentAt DateTime          @default(now())
+  id           String           @id @default(uuid())
+  donorId      String
+  donor        User             @relation(fields: [donorId], references: [id])
+  reportId     String // ImpactReport that triggered this
+  path         ReEngagementPath
+  emailSentAt  DateTime         @default(now())
   ctaClickedAt DateTime?
-  dismissed   Boolean           @default(false)
+  dismissed    Boolean          @default(false)
 
   @@index([donorId])
 }
 
 model ConsentAudit {
-  id          String   @id @default(cuid())
-  ngoId       String
-  action      String
-  version     String
-  ipAddress   String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  ngoId     String
+  action    String
+  version   String
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model FieldWorker {
+  id               String     @id @default(uuid())
+  ngoId            String
+  ngo              NGOProfile @relation(fields: [ngoId], references: [id])
+  name             String
+  phone            String     @unique
+  isActive         Boolean    @default(true)
+  isPending        Boolean    @default(false) // true = waiting for join code reply
+  reliabilityScore Int        @default(100)
+  totalSubmissions Int        @default(0)
+  approvedCount    Int        @default(0)
+  rejectedCount    Int        @default(0)
+  createdAt        DateTime   @default(now())
+
+  draftProofs DraftProof[]
+}
+
+model DraftProof {
+  id            String       @id @default(uuid())
+  ngoId         String
+  ngo           NGOProfile   @relation(fields: [ngoId], references: [id])
+  fieldWorkerId String?
+  fieldWorker   FieldWorker? @relation(fields: [fieldWorkerId], references: [id])
+
+  fingerprint String? @unique
+
+  predictedProjectId   String?
+  predictedMilestoneId String?
+  predictionConfidence Float?
+
+  senderPhone  String
+  rawMessage   String
+  aiSummary    String?
+  riskLevel    String?
+  riskReason   String?
+  workerStatus String? @default("PENDING") // "PENDING" | "ENRICHING" | "ENRICHED" | "ENRICHMENT_FAILED"
+  rawGpsLat    Float?
+  rawGpsLng    Float?
+  photoCount   Int?    @default(0)
+
+  mediaUrls           String[]
+  persistentPhotoUrls String[]
+  imageHashes         String[]
+
+  status    DraftProofStatus @default(PENDING_REVIEW)
+  createdAt DateTime         @default(now())
+}
+
+enum DraftProofStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+model PitchLead {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  organization String?
+  createdAt    DateTime @default(now())
+  downloaded   Boolean  @default(false)
+}
+
+// ─── Admin accountability (Phase 1) ─────────────────────────────────────────
+
+// Every sensitive admin mutation writes one row here. oldValue/newValue hold
+// JSON snapshots of ONLY the fields the action changed — never full entity
+// dumps (PII retention). metadata carries the AI-vs-human decision snapshot.
+model AdminActionLog {
+  id            String   @id @default(uuid())
+  adminId       String
+  admin         User     @relation("AdminActionLogs", fields: [adminId], references: [id])
+  action        String // e.g. "NGO_APPROVED", "PROJECT_REJECTED", "ALERT_RESOLVED", "NGO_SUSPENDED"
+  entityType    String // "NGO" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA"
+  entityId      String
+  oldValue      Json?
+  newValue      Json?
+  note          String?
+  metadata      Json? // { ai: { recommendation, score, confidence }, overrodeAi, disagreementReason, ... }
+  ipAddress     String?
+  userAgent     String?
+  schemaVersion Int      @default(1) // payload shape version for future replay/migration
+  createdAt     DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([adminId])
+  @@index([createdAt])
+}
+
+// Append-only donor lifecycle events (category declarations, PAN changes, …).
+// Powers the Donor 360 timeline. `source` answers "who initiated this" when
+// reconstructing history: the donor, an admin, the system, or a webhook.
+model DonorEvent {
+  id            String   @id @default(uuid())
+  donorId       String
+  eventType     String // e.g. "CATEGORY_DECLARED", "PAN_SUBMITTED", "PAN_VERIFIED", "PAN_CLEARED"
+  oldValue      Json?
+  newValue      Json?
+  initiatedBy   String? // user id (donor or admin); null for system
+  source        String // "USER" | "ADMIN" | "SYSTEM" | "WEBHOOK"
+  schemaVersion Int      @default(1)
+  createdAt     DateTime @default(now())
+
+  @@index([donorId])
+  @@index([eventType])
+}
+
+// Append-only 80G receipt lifecycle. Receipts are legally sensitive documents —
+// every generation, claim, and download must be reconstructable.
+model ReceiptEvent {
+  id        String   @id @default(uuid())
+  receiptId String
+  event     String // "GENERATED" | "CLAIMED" | "DOWNLOADED" | "REGENERATED" | "CANCELLED"
+  actorId   String? // user who triggered it; null for system/webhook
+  metadata  Json? // e.g. { trigger: "WEBHOOK" | "CLAIM" | "ADMIN" }
+  createdAt DateTime @default(now())
+
+  @@index([receiptId])
+}
+
+enum ThreadKind {
+  INQUIRY // admin asks the NGO for clarification (replaces one-way ask-ngo email)
+  APPEAL // NGO contests a rejection/suspension decision
+}
+
+enum ThreadStatus {
+  OPEN
+  NGO_RESPONDED
+  RESOLVED
+}
+
+// A ReviewThread is "something under review" — the conversation is one facet.
+// subjectType/subjectId generalize it across NGOs, donors, and (later) projects
+// so PAN reviews, FCRA questions, and appeals all share one primitive.
+model ReviewThread {
+  id                String       @id @default(uuid())
+  subjectType       String // "NGO" | "DONOR" (later: "PROJECT")
+  subjectId         String // NGOProfile.id or User.id depending on subjectType
+  participantUserId String // the non-admin user who is notified of replies
+  kind              ThreadKind   @default(INQUIRY)
+  subject           String
+  entityType        String? // "MILESTONE" | "PROJECT" | "NGO_VERIFICATION" | "FCRA" | "SUSPENSION" | "PAN" | "RISK_REVIEW"
+  entityId          String?
+  status            ThreadStatus @default(OPEN)
+  createdById       String // user id of whoever opened the thread (admin or subject user)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  messages ReviewMessage[]
+
+  @@index([subjectType, subjectId])
+  @@index([status])
+}
+
+model ReviewMessage {
+  id         String       @id @default(uuid())
+  threadId   String
+  thread     ReviewThread @relation(fields: [threadId], references: [id])
+  authorId   String
+  authorRole String // "ADMIN" | "NGO"
+  body       String
+  createdAt  DateTime     @default(now())
+
+  @@index([threadId])
+}
+
+// ─── Impact delivery pipeline (Phase 2A follow-on) ──────────────────────────
+// Event → subscriptions → outbox. Events are append-only facts; deliveries are
+// the outbox rows a cron drains with retries, so "did donor X receive impact Y"
+// is a DB query, never a hope. Unique(eventId, donorId, channel) makes fan-out
+// and redelivery idempotent.
+
+enum ImpactEventType {
+  PROOF_SUBMITTED
+  MILESTONE_COMPLETED
+  UPDATE_POSTED
+  FIELD_PHOTO
+}
+
+enum ImpactChannel {
+  IN_APP
+  EMAIL
+}
+
+enum ImpactDeliveryStatus {
+  PENDING
+  SENT
+  FAILED // retries exhausted — visible to admin, never silently dropped
+  READ
+}
+
+model ProjectImpactEvent {
+  id          String          @id @default(uuid())
+  projectId   String
+  milestoneId String?
+  type        ImpactEventType
+  title       String
+  body        String
+  payload     Json? // media urls, aiScore, verifiedBy, …
+  createdAt   DateTime        @default(now())
+
+  deliveries ImpactDelivery[]
+
+  @@index([projectId])
+  @@index([createdAt])
+}
+
+model ImpactSubscription {
+  id        String   @id @default(uuid())
+  donorId   String
+  projectId String
+  channels  String[] @default(["IN_APP", "EMAIL"])
+  frequency String   @default("INSTANT") // INSTANT | DAILY_DIGEST | WEEKLY_DIGEST
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([donorId, projectId])
+  @@index([projectId])
+}
+
+model ImpactDelivery {
+  id        String               @id @default(uuid())
+  eventId   String
+  event     ProjectImpactEvent   @relation(fields: [eventId], references: [id])
+  donorId   String
+  channel   ImpactChannel
+  status    ImpactDeliveryStatus @default(PENDING)
+  attempts  Int                  @default(0)
+  lastError String?
+  sentAt    DateTime?
+  readAt    DateTime?
+  createdAt DateTime             @default(now())
+
+  @@unique([eventId, donorId, channel])
+  @@index([status, attempts])
+  @@index([donorId])
+}
+
+model TeamInvite {
+  id        String     @id @default(cuid())
+  email     String
+  role      TeamRole   @default(FIELD_STAFF)
+  ngoId     String
+  ngo       NGOProfile @relation(fields: [ngoId], references: [id])
+  token     String     @unique @default(cuid())
+  accepted  Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  expiresAt DateTime
+
+  @@unique([email, ngoId])
 }

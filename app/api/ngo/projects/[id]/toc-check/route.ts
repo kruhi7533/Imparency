@@ -46,7 +46,7 @@ EXPECTED OUTCOME (long-term impact): ${project.expected_outcome || 'Not provided
 TOTAL BUDGET: ₹${project.targetAmount.toString()}
 
 MILESTONES (activities + outputs):
-${project.milestones.map((m, i) => `${i + 1}. ${m.title}: ${m.description} (₹${m.targetAmount.toString()})`).join('\n')}
+${project.milestones.map((m: { title: string; description: string; targetAmount: { toString: () => string } }, i: number) => `${i + 1}. ${m.title}: ${m.description} (₹${m.targetAmount.toString()})`).join('\n')}
 
 Analyse the causal chain: Inputs → Activities → Outputs → Outcomes → Impact.
 

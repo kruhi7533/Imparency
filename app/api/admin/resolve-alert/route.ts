@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
+import { logAdminAction } from "@/lib/admin-log";
 
 export const runtime = "nodejs";
 
@@ -30,13 +31,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Fraud alert not found" }, { status: 404 });
     }
 
-    // Mark as resolved and save notes
+    // State guard — a resolved alert must not be silently re-resolved (the
+    // original resolver's attribution would be overwritten).
+    if (alert.resolved) {
+      return NextResponse.json(
+        { error: "This alert has already been resolved." },
+        { status: 409 }
+      );
+    }
+
+    const adminId = auth.session.user.id;
+
+    // Mark as resolved with full attribution
     await prisma.fraudAlert.update({
       where: { id: alertId },
       data: {
         resolved: true,
-        resolutionNote: resolutionNote.trim()
+        resolutionNote: resolutionNote.trim(),
+        resolvedById: adminId,
+        resolvedAt: new Date(),
       }
+    });
+
+    await logAdminAction({
+      adminId,
+      action: "ALERT_RESOLVED",
+      entityType: "FRAUD_ALERT",
+      entityId: alertId,
+      oldValue: { resolved: false },
+      newValue: { resolved: true },
+      note: resolutionNote.trim(),
+      metadata: {
+        alertType: alert.type,
+        severity: alert.severity,
+        targetEntityType: alert.entityType,
+        targetEntityId: alert.entityId,
+      },
+      request,
     });
 
     return NextResponse.json({

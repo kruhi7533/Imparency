@@ -25,6 +25,7 @@ interface DonateModalProps {
   ngoName: string;
   ngoId: string;
   donorCategory: string; // passed from parent after declaration
+  nriSourceDeclaration?: string | null;
 }
 
 export function DonateModal({
@@ -34,6 +35,7 @@ export function DonateModal({
   ngoName,
   ngoId,
   donorCategory,
+  nriSourceDeclaration,
 }: DonateModalProps) {
   const [fcraStatus, setFcraStatus] = useState<string | null>(null);
   const [fcraLoading, setFcraLoading] = useState(true);
@@ -91,10 +93,12 @@ export function DonateModal({
 
   if (!isOpen) return null;
 
-  const isInternationalDonor =
-    donorCategory === "NRI_OCI" || donorCategory === "FOREIGN_NATIONAL";
+  const requiresFcra =
+    donorCategory === "FOREIGN_NATIONAL" ||
+    (donorCategory === "INDIAN_ABROAD" && nriSourceDeclaration !== "ELIGIBLE_NRI_SOURCE");
+
   const isFCRABlocked =
-    isInternationalDonor && fcraStatus !== "ACTIVE";
+    requiresFcra && fcraStatus !== "ACTIVE";
 
   const effectiveAmount = showCustom
     ? parseInt(customAmount, 10)

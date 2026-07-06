@@ -3,6 +3,16 @@ import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/storage";
 import { verifySessionRole } from "@/lib/auth-guards";
 
+// Generates a unique join code like "ANANDA-7X3K"
+function generateJoinCode(orgName: string): string {
+  const prefix = orgName
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+    .slice(0, 6);
+  const suffix = Math.random().toString(36).toUpperCase().slice(2, 6);
+  return `${prefix}-${suffix}`;
+}
+
 export async function POST(request: Request) {
   try {
     // 1. Guard check: only NGO users can register
@@ -185,6 +195,48 @@ export async function POST(request: Request) {
           consentIpAddress,
         }
       });
+
+      // Re-upload invariant: new documents replace the old ones, so any
+      // verification earned against the OLD documents no longer holds. Reset
+      // the per-document verified flags — the admin re-verifies on approval.
+      // History is preserved in the compliance audit log.
+      try {
+        const existingCompliance = await prisma.nGOCompliance.findUnique({
+          where: { ngoId: currentProfile.id },
+          select: { id: true, panVerified: true, registrationVerified: true, eightyGVerified: true, a12Verified: true },
+        });
+        const hadVerifiedDocs =
+          existingCompliance &&
+          (existingCompliance.panVerified ||
+            existingCompliance.registrationVerified ||
+            existingCompliance.eightyGVerified ||
+            existingCompliance.a12Verified);
+
+        if (hadVerifiedDocs) {
+          await prisma.nGOCompliance.update({
+            where: { id: existingCompliance.id },
+            data: {
+              panVerified: false,
+              panVerifiedAt: null,
+              registrationVerified: false,
+              registrationVerifiedAt: null,
+              eightyGVerified: false,
+              eightyGVerifiedAt: null,
+              a12Verified: false,
+              a12VerifiedAt: null,
+            },
+          });
+          const { logComplianceEvent } = await import("@/lib/ngo-compliance");
+          await logComplianceEvent(
+            existingCompliance.id,
+            "DOCUMENTS_RESUBMITTED",
+            "NGO re-submitted registration documents — previous document verifications reset pending admin re-review.",
+            userId
+          );
+        }
+      } catch (resetErr) {
+        console.error("Failed to reset compliance flags on resubmission:", resetErr);
+      }
     } else {
       // Create new NGO Profile
       profile = await prisma.nGOProfile.create({
@@ -205,6 +257,7 @@ export async function POST(request: Request) {
           dataProcessingConsentDate: new Date(),
           consentVersion,
           consentIpAddress,
+          joinCode: generateJoinCode(orgName),
         }
       });
     }

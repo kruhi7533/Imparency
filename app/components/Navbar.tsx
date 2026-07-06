@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import { ShieldCheck, MessageCircleQuestion, Users, HeartPulse, ListChecks, TrendingUp } from "lucide-react";
+import NotificationBell from "./NotificationBell";
 
 export default function Navbar() {
   const { data: session, status } = useSession();
@@ -48,41 +50,84 @@ export default function Navbar() {
         <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-gray-400">
           {session?.user?.role === "NGO" ? (
             <>
-              <Link href="/ngo/dashboard" className={`hover:text-white transition ${pathname === "/ngo/dashboard" ? "text-white" : ""}`}>
-                NGO Dashboard
-              </Link>
-              <Link href="/ngo/projects/new" className={`hover:text-white transition ${pathname === "/ngo/projects/new" ? "text-white" : ""}`}>
-                Launch Project
-              </Link>
-              <span className="text-gray-700 select-none">|</span>
               <Link href="/" className={`text-gray-500 font-medium hover:text-gray-300 transition ${pathname === "/" ? "text-white font-bold" : ""}`}>
                 Home
               </Link>
               <Link href="/discover" className={`text-gray-500 font-medium hover:text-gray-300 transition ${pathname === "/discover" ? "text-white font-bold" : ""}`}>
                 Discover NGOs
               </Link>
+              <span className="text-gray-700 select-none">|</span>
+              <Link href="/ngo/dashboard" className={`hover:text-white transition ${pathname === "/ngo/dashboard" ? "text-white" : ""}`}>
+                NGO Dashboard
+              </Link>
+              <Link href="/ngo/crm" className={`hover:text-white transition ${pathname === "/ngo/crm" ? "text-white" : ""}`}>
+                Donor CRM
+              </Link>
+              <Link href="/ngo/projects/new" className={`hover:text-white transition ${pathname === "/ngo/projects/new" ? "text-white" : ""}`}>
+                Launch Project
+              </Link>
+              <Link href="/ngo/inquiries" className={`hover:text-white transition ${pathname === "/ngo/inquiries" ? "text-white" : ""}`}>
+                Inquiries
+              </Link>
             </>
           ) : (
             <>
-              <Link href="/" className={`hover:text-white transition ${pathname === "/" ? "text-white" : ""}`}>
-                Home
-              </Link>
-              <Link href="/discover" className={`hover:text-white transition ${pathname === "/discover" ? "text-white" : ""}`}>
-                Discover NGOs
-              </Link>
+              {/* Admins get only the console pills — Home/Discover stay reachable
+                  via the logo, keeping the bar to a single clean row */}
+              {session?.user?.role !== "ADMIN" && (
+                <>
+                  <Link href="/" className={`hover:text-white transition ${pathname === "/" ? "text-white" : ""}`}>
+                    Home
+                  </Link>
+                  <Link href="/discover" className={`hover:text-white transition ${pathname === "/discover" ? "text-white" : ""}`}>
+                    Discover NGOs
+                  </Link>
+                </>
+              )}
 
               {/* Donor role specific links */}
               {session?.user?.role === "DONOR" && (
-                <Link href="/donor/portfolio" className={`hover:text-white transition ${pathname === "/donor/portfolio" ? "text-white" : ""}`}>
-                  My Impact Portfolio
-                </Link>
+                <>
+                  <Link href="/donor/portfolio" className={`hover:text-white transition ${pathname === "/donor/portfolio" ? "text-white" : ""}`}>
+                    My Impact Portfolio
+                  </Link>
+                  <Link href="/donor/impact" className={`hover:text-white transition ${pathname === "/donor/impact" ? "text-white" : ""}`}>
+                    Impact Feed
+                  </Link>
+                </>
               )}
               
-              {/* Admin role specific links */}
+              {/* Admin role specific links — grouped as one visual "console" so it
+                  reads as a distinct workspace, not more items in a flat list */}
               {session?.user?.role === "ADMIN" && (
-                <Link href="/admin/dashboard" className={`hover:text-white transition ${pathname === "/admin/dashboard" ? "text-white" : ""}`}>
-                  Admin Verifications
-                </Link>
+                <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full p-1">
+                  {[
+                    { href: "/admin/today", label: "Today", icon: ListChecks, match: (p: string) => p === "/admin/today" },
+                    { href: "/admin/dashboard", label: "Verifications", icon: ShieldCheck, match: (p: string) => p === "/admin/dashboard" },
+                    { href: "/admin/inquiries", label: "Inquiries", icon: MessageCircleQuestion, match: (p: string) => p === "/admin/inquiries" },
+                    { href: "/admin/donors", label: "Donors", icon: Users, match: (p: string) => p.startsWith("/admin/donors") },
+                    { href: "/admin/impact-health", label: "Impact Health", icon: HeartPulse, match: (p: string) => p === "/admin/impact-health" },
+                    { href: "/admin/trust-trends", label: "Trends", icon: TrendingUp, match: (p: string) => p === "/admin/trust-trends" },
+                  ].map(({ href, label, icon: Icon, match }) => {
+                    const active = match(pathname);
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        title={label}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
+                          active
+                            ? "bg-emerald-600 text-white shadow-sm"
+                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                        }`}
+                      >
+                        <Icon size={14} strokeWidth={2.5} className="shrink-0" />
+                        {/* Labels hide on narrower screens so the pills never wrap */}
+                        <span className="hidden lg:inline">{label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
 
               {/* Fallback general links for guests */}
@@ -101,6 +146,7 @@ export default function Navbar() {
             <div className="h-8 w-8 animate-pulse bg-gray-900 rounded-full" />
           ) : session?.user ? (
             <div className="flex items-center gap-3 relative">
+              <NotificationBell />
               {/* User details */}
               <div className="hidden lg:block text-right">
                 <div className="text-xs font-extrabold text-white truncate max-w-[150px]">{session.user.name}</div>
@@ -110,11 +156,15 @@ export default function Navbar() {
               {/* Profile Avatar Initials Trigger */}
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="w-8 h-8 rounded-full bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-center text-xs select-none hover:bg-emerald-650/30 transition focus:outline-none relative"
+                className="w-8 h-8 rounded-full bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-center text-xs select-none hover:bg-emerald-650/30 transition focus:outline-none relative overflow-hidden"
                 aria-haspopup="true"
                 aria-expanded={dropdownOpen}
               >
-                {(session.user.name || "U").charAt(0).toUpperCase()}
+                {session.user.image ? (
+                  <img src={session.user.image} alt={session.user.name || "User"} className="w-full h-full object-cover" />
+                ) : (
+                  (session.user.name || "U").charAt(0).toUpperCase()
+                )}
               </button>
 
               {/* Dropdown Menu */}
@@ -132,6 +182,32 @@ export default function Navbar() {
                       >
                         Profile
                       </Link>
+                    )}
+                    {session.user.role === "NGO" && (
+                      <>
+                        <Link
+                          href="/ngo/settings/profile"
+                          onClick={() => setDropdownOpen(false)}
+                          className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
+                        >
+                          My Profile
+                        </Link>
+                        <Link
+                          href="/ngo/settings/team"
+                          onClick={() => setDropdownOpen(false)}
+                          className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
+                        >
+                          Team Settings
+                        </Link>
+                        <Link
+                          href="/ngo/pitch-deck"
+                          onClick={() => setDropdownOpen(false)}
+                          className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center justify-between"
+                        >
+                          Pitch Deck
+                          <span className="bg-emerald-500/20 text-emerald-400 text-[9px] uppercase px-1.5 py-0.5 rounded-full font-bold leading-none">New</span>
+                        </Link>
+                      </>
                     )}
                     <Link
                       href="/help"

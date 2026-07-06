@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
-import { getFinancialYear, generateReceiptNumber, numberToIndianWords } from "@/lib/finance-utils";
-import { generateTaxReceiptPDF, ReceiptData } from "@/lib/receipt-generator";
-import { uploadFile } from "@/lib/storage";
-import { sendTaxReceiptEmail, sendPaymentRetryEmail } from "@/lib/email";
+import { sendPaymentRetryEmail } from "@/lib/email";
 import { generateRetryToken, getRetryDelay } from "@/lib/retry-utils";
+import { evaluateReceiptEligibility, issueTaxReceipt, queueReceiptClaim } from "@/lib/tax-receipt";
 
 export async function POST(req: Request) {
   try {
@@ -55,6 +53,50 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true }, { status: 200 });
       }
 
+      // ── Compliance snapshot (IMMUTABLE) ────────────────────────────────────
+      // Point-in-time record of the donor's and NGO's compliance state at the
+      // moment the payment was confirmed. Written once, inside the same
+      // transaction that marks the donation SUCCESS; never modified afterwards
+      // (corrections become new audit events). Audits read this — not live state.
+      let complianceSnapshot: Record<string, unknown> | null = null;
+      try {
+        const [ngoCompliance, hasImpactProof] = await Promise.all([
+          prisma.nGOCompliance.findUnique({
+            where: { ngoId: donation.project.ngoId },
+          }),
+          (async () => {
+            const { hasVerifiedImpactProof } = await import("@/lib/ngo-compliance");
+            return hasVerifiedImpactProof(donation.project.ngoId);
+          })(),
+        ]);
+        const { computeCompliance, deriveFcraStatus } = await import("@/lib/ngo-compliance");
+        const compliance = computeCompliance(ngoCompliance, hasImpactProof);
+        const liveFcra =
+          ngoCompliance?.fcraExpiryDate &&
+          ["ACTIVE", "EXPIRING_SOON", "EXPIRED"].includes(ngoCompliance.fcraStatus)
+            ? deriveFcraStatus(ngoCompliance.fcraExpiryDate) ?? ngoCompliance.fcraStatus
+            : ngoCompliance?.fcraStatus ?? "NONE";
+
+        complianceSnapshot = {
+          version: 1,
+          capturedAt: new Date().toISOString(),
+          panStatus: donation.donor.panStatus,
+          panVerifiedVia: donation.donor.panVerifiedVia,
+          donorCategory: donation.donor.donorCategory,
+          nriSourceDeclaration: donation.donor.nriSourceDeclaration,
+          ngoFcraStatus: liveFcra,
+          ngoComplianceScore: compliance.score,
+          ngoHealthScore:
+            donation.project.ngo.healthScore != null
+              ? Number(donation.project.ngo.healthScore)
+              : null,
+        };
+      } catch (snapErr) {
+        // Never block payment confirmation on snapshot assembly — but log loudly,
+        // because a missing snapshot is permanently unreconstructable.
+        console.error(`[webhook] FAILED to build compliance snapshot for donation ${donation.id}:`, snapErr);
+      }
+
       // Run all updates in a transaction
       await prisma.$transaction(async (tx) => {
         // a) Update donation status
@@ -63,6 +105,7 @@ export async function POST(req: Request) {
           data: {
             status: "SUCCESS",
             razorpayPaymentId: paymentId,
+            ...(complianceSnapshot ? { complianceSnapshot: complianceSnapshot as any } : {}),
           },
         });
 
@@ -111,74 +154,23 @@ export async function POST(req: Request) {
         throw new Error("Failed to retrieve updated donation record");
       }
 
-      // Build ReceiptData
-      const financialYear = getFinancialYear(updatedDonation.createdAt);
-      const existingCount = await prisma.taxReceipt.count({
-        where: { financialYear },
-      });
-      const receiptNumber = generateReceiptNumber(existingCount + 1, financialYear);
-      const amountInWords = numberToIndianWords(Number(updatedDonation.amount));
+      // Auto-subscribe the donor to this project's impact feed — donating IS
+      // the expression of interest (opt-out model, idempotent upsert).
+      try {
+        const { ensureImpactSubscription } = await import("@/lib/impact-events");
+        await ensureImpactSubscription(donation.donorId, donation.projectId);
+      } catch (subErr) {
+        console.error("Failed to create impact subscription:", subErr);
+      }
 
-      const formatDate = (date: Date): string => {
-        const day = date.getDate().toString().padStart(2, "0");
-        const month = (date.getMonth() + 1).toString().padStart(2, "0");
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
-      };
-
-      const receiptData: ReceiptData = {
-        donorName: updatedDonation.donor.name,
-        donorPan: updatedDonation.donor.panNumber ?? "NOT PROVIDED",
-        donorAddress: updatedDonation.donor.city ?? "India",
-        ngoName: updatedDonation.project.ngo.orgName,
-        ngoPan: updatedDonation.project.ngo.panNumber,
-        ngoRegistrationNumber: updatedDonation.project.ngo.registrationNumber,
-        ngo80GNumber: `${updatedDonation.project.ngo.registrationNumber}/80G`,
-        ngo80GValidityFrom: "AY 2022-23",
-        ngo80GValidityTo: "AY 2026-27",
-        ngoAddress: updatedDonation.project.ngo.address,
-        donationId: updatedDonation.id,
-        receiptNumber,
-        amount: Number(updatedDonation.amount),
-        amountInWords,
-        projectTitle: updatedDonation.project.title,
-        financialYear,
-        donationDate: formatDate(updatedDonation.createdAt),
-        paymentMode: "Online (Razorpay)",
-      };
-
-      // Generate PDF buffer
-      const pdfBuffer = await generateTaxReceiptPDF(receiptData);
-
-      // Upload to storage
-      const pdfUrl = await uploadFile(pdfBuffer, `receipt-${receiptNumber}.pdf`, "receipts");
-
-      // Create TaxReceipt row
-      await prisma.taxReceipt.create({
-        data: {
-          donationId: updatedDonation.id,
-          receiptNumber,
-          financialYear,
-          pdfUrl,
-        },
-      });
-
-      // Update Donation.receiptUrl
-      await prisma.donation.update({
-        where: { id: updatedDonation.id },
-        data: { receiptUrl: pdfUrl },
-      });
-
-      // Send receipt email to donor
-      await sendTaxReceiptEmail(
-        updatedDonation.donor.email,
-        updatedDonation.donor.name,
-        updatedDonation.project.ngo.orgName,
-        Number(updatedDonation.amount),
-        receiptNumber,
-        financialYear,
-        pdfUrl
-      );
+      // 80G receipt is only issued once the donor's PAN is verified. If it's not
+      // yet verified, withhold the receipt and nudge the donor to verify + claim.
+      const { eligible } = evaluateReceiptEligibility(updatedDonation.donor);
+      if (eligible) {
+        await issueTaxReceipt(updatedDonation.id);
+      } else {
+        await queueReceiptClaim(updatedDonation);
+      }
 
       // NOTE: Replace with Inngest or Vercel Cron in production.
       const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;

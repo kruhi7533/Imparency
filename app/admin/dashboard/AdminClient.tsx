@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import AskNgoBox from "@/app/admin/components/AskNgoBox";
 
 interface ScreeningChecklistEntry {
   present: boolean;
@@ -639,6 +640,14 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                         ))}
                       </td>
                       <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                        <AskNgoBox
+                          ngoId={ngo.id}
+                          ngoName={ngo.orgName}
+                          subject="Question about your registration documents"
+                          entityType="NGO_VERIFICATION"
+                          entityId={ngo.id}
+                          buttonLabel="✉️ Ask"
+                        />
                         <button
                           onClick={() => setExpandedNgoId(expandedNgoId === ngo.id ? null : ngo.id)}
                           className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold py-1.5 px-3 rounded-lg text-xs transition"

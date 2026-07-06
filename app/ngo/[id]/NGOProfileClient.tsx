@@ -66,6 +66,7 @@ export default function NGOProfileClient({
   const [followersCount, setFollowersCount] = useState(initialFollowersCount);
   
   const [donorCategory, setDonorCategory] = useState<string | null>(null);
+  const [nriSourceDeclaration, setNriSourceDeclaration] = useState<string | null>(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showDonateModal, setShowDonateModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -76,8 +77,9 @@ export default function NGOProfileClient({
     fetch("/api/user/donor-category")
       .then((r) => r.json())
       .then((data) => {
-        if (data.isSet) {
+        if (data && data.donorCategory) {
           setDonorCategory(data.donorCategory);
+          setNriSourceDeclaration(data.nriSourceDeclaration);
         }
         setCategoryCheckDone(true);
       })
@@ -477,8 +479,9 @@ export default function NGOProfileClient({
       {/* FCRA Category Declaration Modal */}
       <DonorCategoryModal
         isOpen={showCategoryModal}
-        onComplete={(category) => {
+        onComplete={(category, nriSource) => {
           setDonorCategory(category);
+          setNriSourceDeclaration(nriSource ?? null);
           setShowCategoryModal(false);
           setShowDonateModal(true);
         }}
@@ -502,7 +505,8 @@ export default function NGOProfileClient({
           }}
           ngoName={ngo.orgName}
           ngoId={ngo.id}
-          donorCategory={donorCategory ?? "INDIAN_RESIDENT"}
+          donorCategory={donorCategory ?? "INDIAN_IN_INDIA"}
+          nriSourceDeclaration={nriSourceDeclaration}
         />
       )}
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { sendNGOApprovalEmail, sendNGORejectionEmail } from "@/lib/email";
+import { logAdminAction } from "@/lib/admin-log";
 
 export async function POST(request: Request) {
   try {
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
       where: { id: ngoId },
       include: {
         user: { select: { email: true } },
-        screening: { select: { flags: true } },
+        screening: { select: { flags: true, recommendation: true, confidence: true } },
         compliance: { select: { id: true, a12DocumentUrl: true } },
       },
     });
@@ -36,12 +37,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "NGO Profile not found" }, { status: 404 });
     }
 
-    // Server-side friction: require justification note to override LIKELY_FRAUD
-    if (action === "APPROVE" && ngo.ai_verification_report) {
-      const report = ngo.ai_verification_report as any;
-      if (report.recommendation === "LIKELY_FRAUD" && (!adminNote || !adminNote.trim())) {
-        return NextResponse.json({ error: "Justification note is required to override AI fraud warning." }, { status: 400 });
-      }
+    // State guard: only PENDING applications can be acted on. Prevents
+    // re-approving a verified NGO or double-processing (mirrors project review).
+    if (ngo.verificationStatus !== "PENDING") {
+      return NextResponse.json(
+        { error: `NGO is not awaiting verification (current status: ${ngo.verificationStatus}).` },
+        { status: 409 }
+      );
+    }
+
+    // Snapshot the AI signals at decision time — the screening can be re-run
+    // later, so the log must capture what the admin actually saw.
+    const aiReport = (ngo.ai_verification_report as any) || null;
+    const aiRecommendation: string | null =
+      aiReport?.recommendation ?? ngo.screening?.recommendation ?? null;
+    const aiSaysProblematic =
+      aiRecommendation === "LIKELY_FRAUD" || aiRecommendation === "LOOKS_PROBLEMATIC";
+    const overrodeAi =
+      (action === "APPROVE" && aiSaysProblematic) ||
+      (action === "REJECT" && aiRecommendation === "LOOKS_CLEAR");
+
+    // Server-side friction: approving against a negative AI recommendation
+    // requires a written disagreement reason (extends the LIKELY_FRAUD rule).
+    if (action === "APPROVE" && aiSaysProblematic && (!adminNote || !adminNote.trim())) {
+      return NextResponse.json(
+        { error: `Justification note is required to approve against the AI recommendation (${aiRecommendation}).` },
+        { status: 400 }
+      );
     }
 
     const noteText = adminNote ? adminNote.trim() : "All documents verified successfully.";
@@ -122,7 +144,29 @@ export async function POST(request: Request) {
       }
     }
 
-    // 5. Send notification email to NGO owner
+    // 5. Audit trail — who decided, what changed, what the AI said at the time.
+    await logAdminAction({
+      adminId,
+      action: action === "APPROVE" ? "NGO_APPROVED" : "NGO_REJECTED",
+      entityType: "NGO",
+      entityId: ngoId,
+      oldValue: { verificationStatus: "PENDING" },
+      newValue: { verificationStatus: updatedStatus },
+      note: noteText,
+      metadata: {
+        ai: aiRecommendation
+          ? {
+              recommendation: aiRecommendation,
+              confidence: aiReport?.confidence ?? ngo.screening?.confidence ?? null,
+            }
+          : null,
+        overrodeAi,
+        ...(overrodeAi ? { disagreementReason: noteText } : {}),
+      },
+      request,
+    });
+
+    // 6. Send notification email to NGO owner
     if (action === "APPROVE") {
       await sendNGOApprovalEmail(ngo.user.email, ngo.orgName);
     } else {

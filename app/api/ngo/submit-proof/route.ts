@@ -4,7 +4,6 @@ import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/storage";
 import { validateMilestoneProof } from "@/lib/gemini/validate-proof";
 import { Role } from "@prisma/client";
-import { triggerMilestoneCompleted } from "@/lib/notification-triggers";
 import { recalculateNGOHealthScore } from "@/lib/ngo-health";
 
 export const runtime = "nodejs";
@@ -135,21 +134,36 @@ export async function POST(request: Request) {
       },
     });
 
-    // Run Gemini score fraud alert checks
+    // Run Gemini score risk checks (creates RiskReview for admin — no auto-suspension)
     try {
-      const { checkGeminiScore } = require("@/lib/fraud-alerts");
+      const { checkGeminiScore } = require("@/lib/risk-agent");
       await checkGeminiScore(milestone.id, validationResult.score);
     } catch (fraudErr) {
-      console.error("Failed to run Gemini score fraud check:", fraudErr);
+      console.error("Failed to run Gemini score risk check:", fraudErr);
     }
 
-    // Resolve milestone status based on AI score
-    const finalStatus = validationResult.score >= 70 ? "COMPLETED" : "PROOF_SUBMITTED";
-
+    // Always queue for admin review — milestones never auto-complete regardless of AI score.
+    // The AI score is surfaced to the admin as a recommendation, not a decision.
     await prisma.milestone.update({
       where: { id: milestone.id },
-      data: { status: finalStatus },
+      data: { status: "PROOF_SUBMITTED" },
     });
+
+    // Impact feed: tell subscribed donors that proof was submitted (pending
+    // verification — the wording matters; nothing is "verified" yet).
+    try {
+      const { emitProjectImpactEvent } = await import("@/lib/impact-events");
+      await emitProjectImpactEvent({
+        projectId: milestone.projectId,
+        milestoneId: milestone.id,
+        type: "PROOF_SUBMITTED",
+        title: `Progress proof submitted for "${milestone.title}"`,
+        body: `The NGO submitted ${files.length} file(s) of evidence for this milestone. Our admin team is reviewing it — you'll be notified once it's verified.`,
+        payload: { proofId: proof.id, mediaUrls, aiScore: validationResult.score },
+      });
+    } catch (impactErr) {
+      console.error("Failed to emit impact event on proof submission:", impactErr);
+    }
 
     // Recalculate NGO health score
     try {
@@ -158,16 +172,7 @@ export async function POST(request: Request) {
       console.error("Failed to recalculate health score on proof submission:", healthErr);
     }
 
-    console.log(`Milestone proof submitted for ${milestone.id}. AI Score: ${validationResult.score}. Status: ${finalStatus}`);
-
-    // If auto-completed, trigger notifications (Plan 4.4 implementation)
-    if (finalStatus === "COMPLETED") {
-      try {
-        await triggerMilestoneCompleted(milestone.id);
-      } catch (triggerErr) {
-        console.warn("Milestone completion trigger could not execute:", triggerErr);
-      }
-    }
+    console.log(`Milestone proof submitted for ${milestone.id}. AI Score: ${validationResult.score}. Awaiting admin review.`);
 
     return NextResponse.json({
       success: true,
@@ -176,7 +181,7 @@ export async function POST(request: Request) {
       flags: validationResult.flags,
       suggestion: validationResult.suggestion,
       proofId: proof.id,
-      status: finalStatus,
+      status: "PROOF_SUBMITTED",
     });
 
   } catch (err: any) {

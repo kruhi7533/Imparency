@@ -42,6 +42,8 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
+    const trimmedName = name.trim();
+
     // Validate donor persona if provided
     let verifiedPersona: DonorPersona | null = null;
     if (donorPersona) {
@@ -50,18 +52,85 @@ export async function PUT(request: Request) {
       }
     }
 
+    // ── PAN verification (risk-based / just-in-time) ───────────────────────────
+    // A verified PAN is what gates 80G receipt issuance, so we verify it here on
+    // save rather than at signup. Fields default to "clear PAN → UNVERIFIED".
+    const normalizedPan = panNumber ? panNumber.trim().toUpperCase() : null;
+    let panData: {
+      panStatus: "UNVERIFIED" | "VERIFIED" | "FAILED" | "PROVIDER_ERROR";
+      panVerifiedAt: Date | null;
+      panVerifiedVia: "MOCK" | "SUREPASS" | "MANUAL_ADMIN" | null;
+      panRegisteredName: string | null;
+      panNameMatch: boolean | null;
+    } | null = null;
+    let panMismatch = false;
+
+    if (normalizedPan) {
+      // 1. Format pre-check before hitting the provider.
+      if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(normalizedPan)) {
+        return NextResponse.json(
+          { error: "Invalid PAN format. Expected 10 characters like ABCDE1234F." },
+          { status: 400 }
+        );
+      }
+
+      // 2. Skip re-verification if the PAN is unchanged and already verified.
+      const current = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { panNumber: true, panStatus: true },
+      });
+      const alreadyVerified =
+        current?.panStatus === "VERIFIED" &&
+        current.panNumber?.trim().toUpperCase() === normalizedPan;
+
+      if (!alreadyVerified) {
+        const { verifyPan, namesMatch } = await import("@/lib/pan-verification");
+        const r = await verifyPan(normalizedPan);
+
+        if (!r.valid) {
+          return NextResponse.json(
+            { error: "PAN could not be verified in government records. Please check and resubmit." },
+            { status: 400 }
+          );
+        }
+
+        // r.error present = provider failed open (unavailable) — retryable, not a pass.
+        const providerError = !!r.error;
+        const nameMatch = r.registeredName ? namesMatch(trimmedName, r.registeredName) : null;
+        panMismatch = !providerError && nameMatch === false;
+
+        panData = {
+          panStatus: providerError ? "PROVIDER_ERROR" : "VERIFIED",
+          panVerifiedAt: providerError ? null : new Date(),
+          panVerifiedVia: process.env.SUREPASS_API_TOKEN ? "SUREPASS" : "MOCK",
+          panRegisteredName: r.registeredName ?? null,
+          panNameMatch: nameMatch,
+        };
+      }
+    } else {
+      // PAN cleared → reset verification state.
+      panData = {
+        panStatus: "UNVERIFIED",
+        panVerifiedAt: null,
+        panVerifiedVia: null,
+        panRegisteredName: null,
+        panNameMatch: null,
+      };
+    }
+
     // Update user profile in database
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
       data: {
-        name: name.trim(),
+        name: trimmedName,
         phone: phone ? phone.trim() : null,
         city: city ? city.trim() : null,
         billingAddress: billingAddress ? billingAddress.trim() : null,
-        panNumber: panNumber ? panNumber.trim() : null,
+        panNumber: normalizedPan,
         isCorporate: !!isCorporate,
         companyName: isCorporate && companyName ? companyName.trim() : null,
         gstNumber: isCorporate && gstNumber ? gstNumber.trim() : null,
+        ...(panData ?? {}),
         donorPersona: verifiedPersona,
         hniAdvisorName: hniAdvisorName ? hniAdvisorName.trim() : null,
         hniAdvisorEmail: hniAdvisorEmail ? hniAdvisorEmail.trim() : null,
@@ -74,6 +143,46 @@ export async function PUT(request: Request) {
       },
     });
 
+    // Append-only PAN lifecycle events (Donor 360 timeline)
+    if (panData) {
+      try {
+        const { logDonorEvent } = await import("@/lib/donor-events");
+        const eventType =
+          panData.panStatus === "VERIFIED"
+            ? "PAN_VERIFIED"
+            : panData.panStatus === "UNVERIFIED"
+              ? "PAN_CLEARED"
+              : "PAN_SUBMITTED"; // PROVIDER_ERROR — submitted, verification pending retry
+        await logDonorEvent({
+          donorId: session.user.id,
+          eventType,
+          newValue: {
+            panStatus: panData.panStatus,
+            panVerifiedVia: panData.panVerifiedVia,
+            panNameMatch: panData.panNameMatch,
+          },
+          initiatedBy: session.user.id,
+          source: "USER",
+        });
+      } catch (evtErr) {
+        console.error("Failed to log donor PAN event:", evtErr);
+      }
+    }
+
+    // Name-mismatch → verified but flagged for admin (mirrors NGO registration).
+    if (panMismatch) {
+      const { createFraudAlert } = await import("@/lib/fraud-alerts");
+      await createFraudAlert(
+        "PAN_API_MISMATCH",
+        updatedUser.id,
+        "DONOR",
+        `Donor name "${trimmedName}" does not match the name registered to this PAN in government records.`,
+        "HIGH",
+        "FRAUD_ALERT",
+        "PAN_API_MISMATCH"
+      );
+    }
+
     return NextResponse.json({
       success: true,
       message: "Profile updated successfully",
@@ -85,6 +194,8 @@ export async function PUT(request: Request) {
         city: updatedUser.city,
         billingAddress: updatedUser.billingAddress,
         panNumber: updatedUser.panNumber,
+        panStatus: updatedUser.panStatus,
+        panNameMatch: updatedUser.panNameMatch,
         isCorporate: updatedUser.isCorporate,
         companyName: updatedUser.companyName,
         gstNumber: updatedUser.gstNumber,

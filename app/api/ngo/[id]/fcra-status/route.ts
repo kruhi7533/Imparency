@@ -1,49 +1,34 @@
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { deriveFcraStatus } from "@/lib/ngo-compliance";
 
+export const runtime = "nodejs";
+
+/**
+ * Public-read endpoint — no auth required.
+ * The UI calls this before showing the donate button to international donors.
+ */
 export async function GET(
-  request: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const ngo = await prisma.nGOProfile.findUnique({
-      where: { id: params.id, isDeleted: false },
-      select: {
-        id: true,
-        orgName: true,
-        // fcraStatus may not exist if A1/A2 schema hasn't run yet
-        // Use a try-catch or select with fallback
-      },
-    });
+  const compliance = await prisma.nGOCompliance.findUnique({
+    where: { ngoId: params.id },
+    select: { fcraStatus: true, fcraExpiryDate: true },
+  });
 
-    if (!ngo) {
-      return NextResponse.json({ error: "NGO not found" }, { status: 404 });
-    }
-
-    // Safely read fcraStatus — field may not exist in schema yet
-    const fcraStatus = (ngo as any).fcraStatus ?? "NOT_REGISTERED";
-
-    const isBlockedForForeign =
-      fcraStatus !== "ACTIVE";
-
-    return NextResponse.json({
-      ngoId: params.id,
-      fcraStatus,
-      isBlockedForForeign,
-      message:
-        fcraStatus === "ACTIVE"
-          ? "This NGO can accept foreign contributions."
-          : fcraStatus === "EXPIRING_SOON"
-          ? "This NGO's FCRA registration is expiring soon. Foreign contributions may be affected."
-          : fcraStatus === "EXPIRED"
-          ? "This NGO's FCRA registration has expired. Foreign contributions cannot be accepted."
-          : "This NGO is not registered for foreign contributions (FCRA).",
-    });
-  } catch (err: any) {
-    console.error("FCRA Status Error:", err);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+  if (!compliance) {
+    return NextResponse.json({ fcraStatus: "NONE", fcraRequired: false });
   }
+
+  const liveStatus =
+    compliance.fcraExpiryDate &&
+    ["ACTIVE", "EXPIRING_SOON", "EXPIRED"].includes(compliance.fcraStatus)
+      ? (deriveFcraStatus(compliance.fcraExpiryDate) ?? compliance.fcraStatus)
+      : compliance.fcraStatus;
+
+  return NextResponse.json({
+    fcraStatus: liveStatus,
+    fcraActive: liveStatus === "ACTIVE",
+  });
 }

@@ -16,6 +16,7 @@ declare module "next-auth" {
     role: Role;
     ngoProfileId: string | null;
     donorPersona: DonorPersona | null;
+    avatar?: string | null;
   }
 }
 
