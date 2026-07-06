@@ -4,6 +4,8 @@ import { SDG_MASTER, IRIS_MASTER } from "./impact-metrics";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
+const baseUrl = process.env.BASE_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
+
 // Gmail SMTP transport — only built when a Gmail App Password is configured.
 const gmailTransport = process.env.GMAIL_APP_PASSWORD
   ? nodemailer.createTransport({
@@ -715,7 +717,7 @@ export async function sendDonationSuccessEmail({
 
     ${receiptUrl ? `
     <div style="text-align: center; margin: 30px 0 10px 0;">
-      <a href="${receiptUrl}" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 14px; transition: background-color 0.2s;">Download 80G Tax Receipt</a>
+      <a href="${receiptUrl.startsWith('http') ? receiptUrl : `${baseUrl}${receiptUrl}`}" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 14px; transition: background-color 0.2s;">Download 80G Tax Receipt</a>
     </div>
     ` : `
     <p style="font-size: 12px; color: #9ca3af; text-align: center; margin-top: 15px;">Your 80G tax receipt will be issued and emailed to you shortly after compliance verification.</p>
