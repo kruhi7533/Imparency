@@ -28,10 +28,11 @@ interface SendEmailParams {
   body: string;
   attachments?: Attachment[];
   from?: string;
+  isHtml?: boolean;
 }
 
-async function sendEmail({ to, subject, body, attachments, from }: SendEmailParams) {
-  const html = body.replace(/\n/g, "<br/>");
+async function sendEmail({ to, subject, body, attachments, from, isHtml }: SendEmailParams) {
+  const html = isHtml ? body : body.replace(/\n/g, "<br/>");
 
   // 1. Gmail SMTP — preferred when a Gmail App Password is configured.
   if (gmailTransport) {
@@ -592,4 +593,140 @@ If you believe this was a mistake, please contact your NGO administrator.
 Best regards,
 The Imparency Team`;
   return sendEmail({ to, subject, body });
+}
+
+export async function sendDonationApprovalEmail({
+  to,
+  donorName,
+  ngoName,
+  projectTitle,
+  amount,
+  approveUrl,
+  cancelUrl,
+  expiryMinutes,
+}: {
+  to: string;
+  donorName: string;
+  ngoName: string;
+  projectTitle: string;
+  amount: number;
+  approveUrl: string;
+  cancelUrl: string;
+  expiryMinutes: number;
+}) {
+  const subject = `Confirm your donation of Rs.${amount.toLocaleString("en-IN")} to ${ngoName}`;
+  
+  const body = `
+<div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #0b0f19; color: #f3f4f6; border-radius: 16px; border: 1px solid #1f2937;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1 style="color: #10b981; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Imparency</h1>
+    <p style="color: #9ca3af; font-size: 14px; margin-top: 5px;">Mock Email-Approval Payment Gate</p>
+  </div>
+
+  <div style="background-color: #111827; padding: 30px; border-radius: 12px; border: 1px solid #374151; margin-bottom: 30px;">
+    <h2 style="margin-top: 0; font-size: 20px; font-weight: 700; color: #ffffff;">Hi ${donorName},</h2>
+    <p style="font-size: 15px; line-height: 1.6; color: #d1d5db;">You initiated a donation on our platform. Since this is in <strong>test mode</strong>, please approve or cancel the payment using the buttons below.</p>
+    
+    <div style="margin: 25px 0; padding: 20px; background-color: #1f2937; border-radius: 8px; border-left: 4px solid #10b981;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #d1d5db;">
+        <tr>
+          <td style="padding: 6px 0; font-weight: bold; color: #9ca3af; width: 120px;">To NGO:</td>
+          <td style="padding: 6px 0; color: #ffffff; font-weight: 600;">${ngoName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: bold; color: #9ca3af;">Initiative:</td>
+          <td style="padding: 6px 0; color: #ffffff; font-weight: 600;">${projectTitle}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: bold; color: #9ca3af;">Amount:</td>
+          <td style="padding: 6px 0; color: #10b981; font-size: 18px; font-weight: 800;">Rs. ${amount.toLocaleString("en-IN")}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin: 35px 0 20px 0;">
+      <a href="${approveUrl}" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; font-size: 15px; margin-right: 15px; transition: background-color 0.2s;">Approve Payment</a>
+      <a href="${cancelUrl}" style="display: inline-block; background-color: #374151; color: #d1d5db; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; font-size: 15px; transition: background-color 0.2s;">Cancel</a>
+    </div>
+
+    <p style="font-size: 12px; color: #9ca3af; text-align: center; margin-top: 25px;">This approval link will expire in <strong>${expiryMinutes} minutes</strong>. If you did not initiate this payment, you can safely ignore this email.</p>
+  </div>
+
+  <div style="text-align: center; font-size: 12px; color: #6b7280; line-height: 1.5;">
+    <p>This is an automated system simulation message from Imparency.<br/>Foreign Contribution (Regulation) Act, 2010 Compliance Engine.</p>
+  </div>
+</div>
+`;
+
+  return sendEmail({ to, subject, body, isHtml: true });
+}
+
+export async function sendDonationSuccessEmail({
+  to,
+  donorName,
+  ngoName,
+  projectTitle,
+  amount,
+  receiptUrl,
+}: {
+  to: string;
+  donorName: string;
+  ngoName: string;
+  projectTitle: string;
+  amount: number;
+  receiptUrl?: string | null;
+}) {
+  const subject = `Receipt: Your donation of Rs.${amount.toLocaleString("en-IN")} to ${ngoName} is confirmed!`;
+  
+  const body = `
+<div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #0b0f19; color: #f3f4f6; border-radius: 16px; border: 1px solid #1f2937;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <div style="width: 56px; height: 56px; border-radius: 50%; background-color: #064e3b; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 15px; border: 2px solid #10b981; line-height: 56px; text-align: center;">
+      <span style="color: #10b981; font-size: 28px; font-weight: bold;">✓</span>
+    </div>
+    <h1 style="color: #10b981; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Donation Confirmed!</h1>
+    <p style="color: #9ca3af; font-size: 14px; margin-top: 5px;">Thank you for your generous support</p>
+  </div>
+
+  <div style="background-color: #111827; padding: 30px; border-radius: 12px; border: 1px solid #374151; margin-bottom: 30px;">
+    <h2 style="margin-top: 0; font-size: 18px; font-weight: 700; color: #ffffff;">Hi ${donorName},</h2>
+    <p style="font-size: 15px; line-height: 1.6; color: #d1d5db;">We have received your donation. Your payment has been processed successfully under the mock payment gateway.</p>
+    
+    <div style="margin: 25px 0; padding: 20px; background-color: #1f2937; border-radius: 8px; border: 1px solid #374151;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #d1d5db;">
+        <tr>
+          <td style="padding: 6px 0; font-weight: bold; color: #9ca3af; width: 120px;">NGO:</td>
+          <td style="padding: 6px 0; color: #ffffff; font-weight: 600;">${ngoName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: bold; color: #9ca3af;">Project:</td>
+          <td style="padding: 6px 0; color: #ffffff; font-weight: 600;">${projectTitle}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: bold; color: #9ca3af;">Amount:</td>
+          <td style="padding: 6px 0; color: #10b981; font-weight: 800; font-size: 16px;">Rs. ${amount.toLocaleString("en-IN")}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: bold; color: #9ca3af;">Status:</td>
+          <td style="padding: 6px 0; color: #10b981; font-weight: 600;">SUCCESS (Mock)</td>
+        </tr>
+      </table>
+    </div>
+
+    ${receiptUrl ? `
+    <div style="text-align: center; margin: 30px 0 10px 0;">
+      <a href="${receiptUrl}" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 14px; transition: background-color 0.2s;">Download 80G Tax Receipt</a>
+    </div>
+    ` : `
+    <p style="font-size: 12px; color: #9ca3af; text-align: center; margin-top: 15px;">Your 80G tax receipt will be issued and emailed to you shortly after compliance verification.</p>
+    `}
+  </div>
+
+  <div style="text-align: center; font-size: 12px; color: #6b7280; line-height: 1.5;">
+    <p>This is a payment receipt confirmation from Imparency.<br/>For any questions, contact support@imparency.org.</p>
+  </div>
+</div>
+`;
+
+  return sendEmail({ to, subject, body, isHtml: true });
 }

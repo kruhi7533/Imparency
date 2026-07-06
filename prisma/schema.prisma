@@ -47,8 +47,10 @@ enum MilestoneStatus {
 
 enum DonationStatus {
   PENDING
+  PENDING_APPROVAL
   SUCCESS
   FAILED
+  EXPIRED
   REFUNDED
 }
 
@@ -372,6 +374,11 @@ model Donation {
   lastFailedAt        DateTime?
   retryToken          String?        @unique
   retryTokenExpiresAt DateTime?
+
+  // New fields for mock payment system
+  approvalTokenHash   String?        @unique
+  tokenExpiresAt      DateTime?
+  resolvedAt          DateTime?
 
   // INVARIANT: point-in-time compliance snapshot captured when the payment is
   // confirmed (webhook). IMMUTABLE — never modified afterwards, not even by

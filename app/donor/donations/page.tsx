@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 interface Donation {
   id: string;
   amount: string;
-  status: "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
+  status: "PENDING" | "PENDING_APPROVAL" | "SUCCESS" | "FAILED" | "EXPIRED" | "REFUNDED";
   createdAt: string;
   retryToken: string | null;
   retryTokenExpiresAt: string | null;

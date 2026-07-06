@@ -52,6 +52,42 @@ export function DonateModal({
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [donationId, setDonationId] = useState<string | null>(null);
+  const [showApprovalPending, setShowApprovalPending] = useState(false);
+
+  // Poll donation status to auto-resolve payment modal
+  useEffect(() => {
+    let intervalId: any = null;
+
+    if (showApprovalPending && donationId) {
+      intervalId = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/donations/${donationId}/status`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.status === "SUCCESS") {
+              setPaymentSuccess(true);
+              setShowApprovalPending(false);
+              clearInterval(intervalId);
+            } else if (data.status === "FAILED") {
+              setPaymentError("Donation payment was cancelled or rejected.");
+              setShowApprovalPending(false);
+              clearInterval(intervalId);
+            } else if (data.status === "EXPIRED") {
+              setPaymentError("The payment confirmation link expired. Please try again.");
+              setShowApprovalPending(false);
+              clearInterval(intervalId);
+            }
+          }
+        } catch (err) {
+          console.error("Error polling status:", err);
+        }
+      }, 2500);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [showApprovalPending, donationId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -59,6 +95,7 @@ export function DonateModal({
     setPaymentError(null);
     setIsLoadingOrder(false);
     setDonationId(null);
+    setShowApprovalPending(false);
     setFcraLoading(true);
     fetch(`/api/ngo/${ngoId}/fcra-status`)
       .then((r) => r.json())
@@ -103,6 +140,62 @@ export function DonateModal({
   const effectiveAmount = showCustom
     ? parseInt(customAmount, 10)
     : amount;
+
+  if (showApprovalPending) {
+    return (
+      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-8 text-center animate-fadeIn relative">
+          {/* Close button */}
+          <button
+            onClick={() => {
+              setShowApprovalPending(false);
+              onClose();
+            }}
+            className="absolute top-4 right-4 text-gray-500 hover:text-white transition cursor-pointer"
+          >
+            ✕
+          </button>
+
+          {/* Pending Spinner Icon */}
+          <div className="relative w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+            <div className="absolute inset-0 border-4 border-emerald-500/20 rounded-full" />
+            <div className="absolute inset-0 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <svg viewBox="0 0 24 24" fill="none" className="w-8 h-8 text-emerald-500 animate-pulse">
+              <path
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+
+          <h2 className="text-lg font-black text-white mb-2">
+            Confirm Your Donation
+          </h2>
+          <p className="text-sm text-gray-400 mb-4">
+            We have sent a mock payment confirmation link to your email.
+          </p>
+          <div className="p-3 bg-emerald-950/30 border border-emerald-800/40 rounded-xl mb-6">
+            <p className="text-xs text-emerald-400 font-medium">
+              Please click <strong>Approve</strong> in the email to complete your donation of <span className="font-bold">Rs.{effectiveAmount?.toLocaleString("en-IN")}</span>.
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              setShowApprovalPending(false);
+              onClose();
+            }}
+            className="w-full py-3 rounded-xl text-sm font-bold bg-gray-800 hover:bg-gray-700 text-gray-300 transition cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (paymentSuccess) {
     return (
@@ -178,8 +271,8 @@ export function DonateModal({
     setIsLoadingOrder(true);
 
     try {
-      // Step 1: Create Razorpay order on server
-      const orderRes = await fetch("/api/donations/create-order", {
+      // Step 1: Initiate mock payment on server
+      const orderRes = await fetch("/api/donations/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -194,81 +287,15 @@ export function DonateModal({
       const orderData = await orderRes.json();
 
       if (!orderRes.ok) {
-        setPaymentError(orderData.error || "Failed to create order");
+        setPaymentError(orderData.error || "Failed to initiate payment");
         setIsLoadingOrder(false);
         return;
       }
 
-      // Step 2: Load Razorpay checkout script
-      await loadRazorpayScript();
-
-      // Step 3: Open Razorpay checkout modal
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.amount,       // already in paise from server
-        currency: orderData.currency,
-        name: "Imparency",
-        description: `Donation to ${orderData.projectTitle}`,
-        image: "/logo.png",             // add your logo if available
-        order_id: orderData.orderId,
-        prefill: {},
-        notes: {
-          donationId: orderData.donationId,
-          projectTitle: orderData.projectTitle,
-        },
-        theme: {
-          color: "#059669", // emerald-600
-        },
-        handler: async function (response: {
-          razorpay_order_id: string;
-          razorpay_payment_id: string;
-          razorpay_signature: string;
-        }) {
-          // Step 4: Verify payment signature on server
-          try {
-            const verifyRes = await fetch("/api/donations/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                razorpayOrderId: response.razorpay_order_id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-                donationId: orderData.donationId,
-              }),
-            });
-
-            const verifyData = await verifyRes.json();
-
-            if (verifyData.success) {
-              setPaymentSuccess(true);
-              setDonationId(orderData.donationId);
-            } else {
-              setPaymentError("Payment verification failed. Contact support.");
-            }
-          } catch {
-            setPaymentError("Verification error. If amount was deducted, contact support.");
-          }
-        },
-        modal: {
-          ondismiss: function () {
-            // Donor closed the checkout modal without paying
-            setIsLoadingOrder(false);
-            setPaymentError(null);
-            // Do not set failure — just let them try again
-          },
-        },
-      };
-
-      const rzp = new (window as any).Razorpay(options);
-
-      rzp.on("payment.failed", function (response: any) {
-        setPaymentError(
-          response.error?.description ||
-          "Payment failed. Please try a different payment method."
-        );
-      });
-
-      rzp.open();
+      // Step 2: Show the email approval pending screen and begin status polling
+      setDonationId(orderData.donationId);
+      setShowApprovalPending(true);
+      setIsLoadingOrder(false);
     } catch (err) {
       console.error("Payment error:", err);
       setPaymentError("Something went wrong. Please try again.");
