@@ -4,10 +4,10 @@ import prisma from "@/lib/prisma";
 import { Role, DonorCategory } from "@prisma/client";
 import { DECLARATION_VERSION } from "@/lib/fcra-gate";
 
-const VALID_CATEGORIES = new Set<DonorCategory>([
-  DonorCategory.INDIAN_IN_INDIA,
-  DonorCategory.INDIAN_ABROAD,
-  DonorCategory.FOREIGN_NATIONAL,
+const VALID_CATEGORIES = new Set<string>([
+  "INDIAN_IN_INDIA",
+  "INDIAN_ABROAD",
+  "FOREIGN_NATIONAL",
 ]);
 
 const VALID_NRI_SOURCES = new Set([

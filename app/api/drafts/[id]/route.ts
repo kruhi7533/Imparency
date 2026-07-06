@@ -22,7 +22,7 @@ export async function GET(
 
     const { id } = params;
 
-    const draft = await prisma.draftProof.findUnique({
+    const draft = await (prisma as any).draftProof.findUnique({
       where: { id },
       include: {
         fieldWorker: true,
@@ -81,7 +81,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
-    const draft = await prisma.draftProof.findUnique({
+    const draft = await (prisma as any).draftProof.findUnique({
       where: { id },
       include: { 
         fieldWorker: true,
@@ -101,7 +101,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Draft already processed' }, { status: 400 });
     }
 
-    const updatedDraft = await prisma.$transaction(async (tx) => {
+    const updatedDraft = await prisma.$transaction(async (tx: any) => {
       // 1. Update draft status
       const d = await tx.draftProof.update({
         where: { id },
@@ -220,13 +220,13 @@ export async function DELETE(
       return NextResponse.json({ error: 'NGO Profile not found' }, { status: 404 });
     }
 
-    const draft = await prisma.draftProof.findUnique({ where: { id } });
+    const draft = await (prisma as any).draftProof.findUnique({ where: { id } });
 
     if (!draft || draft.ngoId !== profile.id) {
       return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
     }
 
-    await prisma.draftProof.delete({ where: { id } });
+    await (prisma as any).draftProof.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {
