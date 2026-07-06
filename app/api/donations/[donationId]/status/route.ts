@@ -8,7 +8,7 @@ export async function GET(
   const { donationId } = params;
 
   try {
-    const donation = await prisma.donation.findUnique({
+    const donation = await (prisma as any).donation.findUnique({
       where: { id: donationId },
       select: { status: true, tokenExpiresAt: true },
     });
@@ -21,19 +21,19 @@ export async function GET(
 
     // Lazily evaluate token expiry
     if (
-      status === "PENDING_APPROVAL" &&
-      donation.tokenExpiresAt &&
-      donation.tokenExpiresAt < new Date()
+      (status as any) === "PENDING_APPROVAL" &&
+      (donation as any).tokenExpiresAt &&
+      new Date((donation as any).tokenExpiresAt) < new Date()
     ) {
-      await prisma.donation.update({
+      await (prisma as any).donation.update({
         where: { id: donationId },
         data: {
           status: "EXPIRED",
           approvalTokenHash: null,
           tokenExpiresAt: null,
-        },
+        } as any,
       });
-      status = "EXPIRED";
+      status = "EXPIRED" as any;
     }
 
     return NextResponse.json({ status });

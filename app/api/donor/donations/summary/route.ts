@@ -22,10 +22,10 @@ export async function GET() {
         _count: true,
       }),
       prisma.donation.count({
-        where: { donorId: session.user.id, status: { in: ["PENDING", "PENDING_APPROVAL"] } }
+        where: { donorId: session.user.id, status: { in: ["PENDING", "PENDING_APPROVAL"] } as any }
       }),
       prisma.donation.count({
-        where: { donorId: session.user.id, status: { in: ["FAILED", "EXPIRED"] } }
+        where: { donorId: session.user.id, status: { in: ["FAILED", "EXPIRED"] } as any }
       }),
     ]);
 
