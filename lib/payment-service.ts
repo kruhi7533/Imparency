@@ -97,21 +97,21 @@ export async function initiatePayment({
   const tokenExpiresAt = new Date(Date.now() + EXPIRY_MINUTES * 60 * 1000);
 
   // 6. Create donation record with PENDING_APPROVAL status
-  const donation = await (prisma as any).donation.create({
+  const donation = await prisma.donation.create({
     data: {
       donorId,
       projectId,
       amount,
-      status: "PENDING_APPROVAL" as any,
+      status: "PENDING_APPROVAL",
       razorpayOrderId: `mock_order_${crypto.randomBytes(8).toString("hex")}`,
       milestoneIds,
       approvalTokenHash,
       tokenExpiresAt,
-    } as any,
+    },
   });
 
   // 7. Send approval email
-  const baseUrl = process.env.BASE_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const approveUrl = `${baseUrl}/api/donations/approve/${donation.id}/${rawToken}`;
   const cancelUrl = `${baseUrl}/api/donations/reject/${donation.id}/${rawToken}`;
 
@@ -149,23 +149,23 @@ export async function approvePayment(
     return { success: false, reason: "DONATION_NOT_FOUND" };
   }
 
-  if ((donation.status as any) !== "PENDING_APPROVAL") {
+  if (donation.status !== "PENDING_APPROVAL") {
     return { success: false, reason: "ALREADY_PROCESSED" };
   }
 
-  if ((donation as any).approvalTokenHash !== tokenHash) {
+  if (donation.approvalTokenHash !== tokenHash) {
     return { success: false, reason: "INVALID_TOKEN" };
   }
 
-  if ((donation as any).tokenExpiresAt && (donation as any).tokenExpiresAt < new Date()) {
+  if (donation.tokenExpiresAt && donation.tokenExpiresAt < new Date()) {
     // Lazily mark EXPIRED
-    await (prisma as any).donation.update({
+    await prisma.donation.update({
       where: { id: donationId },
       data: {
-        status: "EXPIRED" as any,
+        status: "EXPIRED",
         approvalTokenHash: null,
         tokenExpiresAt: null,
-      } as any,
+      },
     });
     return { success: false, reason: "TOKEN_EXPIRED" };
   }
@@ -193,8 +193,8 @@ export async function approvePayment(
     complianceSnapshot = {
       version: 1,
       capturedAt: new Date().toISOString(),
-      panStatus: (donation.donor as any).panStatus,
-      panVerifiedVia: (donation.donor as any).panVerifiedVia,
+      panStatus: donation.donor.panStatus,
+      panVerifiedVia: donation.donor.panVerifiedVia,
       donorCategory: donation.donor.donorCategory,
       nriSourceDeclaration: donation.donor.nriSourceDeclaration,
       ngoFcraStatus: liveFcra,
@@ -211,18 +211,18 @@ export async function approvePayment(
   // 2. Perform database updates in a transaction
   let updatedDonation: any = null;
   try {
-    updatedDonation = await prisma.$transaction(async (tx: any) => {
+    updatedDonation = await prisma.$transaction(async (tx) => {
       // Update Donation record
       const d = await tx.donation.update({
         where: { id: donationId },
         data: {
-          status: "SUCCESS" as any,
+          status: "SUCCESS",
           resolvedAt: new Date(),
           razorpayPaymentId: `mock_pay_${crypto.randomBytes(8).toString("hex")}`,
           approvalTokenHash: null,
           tokenExpiresAt: null,
           ...(complianceSnapshot ? { complianceSnapshot: complianceSnapshot as any } : {}),
-        } as any,
+        },
         include: {
           donor: true,
           project: { include: { ngo: true } },
@@ -318,23 +318,23 @@ export async function rejectPayment(
     return { success: false, reason: "DONATION_NOT_FOUND" };
   }
 
-  if ((donation.status as any) !== "PENDING_APPROVAL") {
+  if (donation.status !== "PENDING_APPROVAL") {
     return { success: false, reason: "ALREADY_PROCESSED" };
   }
 
-  if ((donation as any).approvalTokenHash !== tokenHash) {
+  if (donation.approvalTokenHash !== tokenHash) {
     return { success: false, reason: "INVALID_TOKEN" };
   }
 
   // Cancel donation
-  const updatedDonation = await (prisma as any).donation.update({
+  const updatedDonation = await prisma.donation.update({
     where: { id: donationId },
     data: {
-      status: "FAILED" as any,
+      status: "FAILED",
       resolvedAt: new Date(),
       approvalTokenHash: null,
       tokenExpiresAt: null,
-    } as any,
+    },
   });
 
   console.log(`[MOCK PAYMENT] Donation ${donationId} rejected.`);
