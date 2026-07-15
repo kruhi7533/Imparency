@@ -285,7 +285,9 @@ export default function RiskComplianceClient({
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-black text-gray-900 dark:text-white">{r.ngo.orgName}</p>
+                          <a href={`/admin/ngos/${r.ngoId}`} className="text-sm font-black text-gray-900 dark:text-white hover:text-emerald-600 hover:underline">
+                            {r.ngo.orgName}
+                          </a>
                           <span className={`text-[10px] font-extrabold px-2 py-0.5 border rounded-full ${SEVERITY_BADGE[r.riskLevel] || SEVERITY_BADGE.LOW}`}>
                             {r.riskLevel}
                           </span>
@@ -444,7 +446,9 @@ export default function RiskComplianceClient({
                           }`}
                         >
                           <td className="px-5 py-4">
-                            <p className="text-xs font-bold text-gray-900 dark:text-white">{s.orgName}</p>
+                            <a href={`/admin/ngos/${s.ngoId}`} className="text-xs font-bold text-gray-900 dark:text-white hover:text-emerald-600 hover:underline">
+                              {s.orgName}
+                            </a>
                             <p className="text-[10px] text-gray-400">{s.email}</p>
                             <div className="mt-1.5">
                               <AskNgoBox

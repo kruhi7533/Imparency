@@ -607,7 +607,9 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                   <React.Fragment key={ngo.id}>
                     <tr className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
                       <td className="px-6 py-4">
-                        <div className="text-sm font-bold text-gray-900 dark:text-white">{ngo.orgName}</div>
+                        <a href={`/admin/ngos/${ngo.id}`} className="text-sm font-bold text-gray-900 dark:text-white hover:text-emerald-600 hover:underline">
+                          {ngo.orgName}
+                        </a>
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{ngo.user.email}</div>
                         <div className="text-xs text-gray-400 mt-0.5">Founded: {ngo.foundedYear}</div>
                         <div className="flex flex-wrap gap-1 mt-2">

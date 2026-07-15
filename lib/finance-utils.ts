@@ -22,8 +22,8 @@ function convertWholeNumberToWords(n: number): string {
       if (num > 0) str += " ";
     }
     if (num >= 20) {
-      str += tens[Math.floor(num / 20)];
-      num %= 20;
+      str += tens[Math.floor(num / 10)];
+      num %= 10;
       if (num > 0) str += " " + ones[num];
     } else if (num > 0) {
       str += ones[num];

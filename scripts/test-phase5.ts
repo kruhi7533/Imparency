@@ -8,6 +8,9 @@ async function runPhase5Tests() {
 
   const testSuffix = `test-${Date.now()}`;
 
+  // Cleanup runs in `finally` (looked up via testSuffix) so a failed
+  // assertion never leaves sandbox rows behind to pollute later runs.
+  try {
   // 1. Create corporate donor user
   const corporateDonor = await prisma.user.create({
     data: {
@@ -233,7 +236,7 @@ async function runPhase5Tests() {
   }
 
   // Test: Gemini Score < 40 Alert and Suspension
-  console.log("Testing consecutive Gemini score alerts & auto-suspension...");
+  console.log("Testing consecutive Gemini score alerts & risk review escalation...");
 
   // Update proof 1's validation score to 35 (< 40)
   await prisma.milestoneProof.update({
@@ -251,7 +254,10 @@ async function runPhase5Tests() {
     throw new Error("Expected a EXTREMELY_LOW_PROOF_SCORE alert to be logged.");
   }
 
-  // Create second proof for milestone 2 with score 30 (< 40)
+  // Create second proof for milestone 2 with score 30 (< 40).
+  // submittedAt is offset +1s so the "2 most recent proofs" ordering in
+  // checkGeminiScore is deterministic even when both inserts land in the
+  // same millisecond.
   const proof2 = await prisma.milestoneProof.create({
     data: {
       milestoneId: milestone2.id,
@@ -259,56 +265,91 @@ async function runPhase5Tests() {
       description: "Water filter installation completion report.",
       mediaUrls: ["http://example.com/filter-photo.jpg"],
       documentUrls: ["http://example.com/filter-report.pdf"],
-      submittedAt: new Date(),
+      submittedAt: new Date(Date.now() + 1000),
       aiValidationScore: 30,
       aiValidationResult: JSON.stringify({ score: 30, reasoning: "Proof contains unconvincing evidence.", flags: ["BLURRY_PHOTOS"] })
     }
   });
 
-  // Trigger check 2
+  // Trigger check 2 — two consecutive low scores raise a CRITICAL alert and
+  // open a RiskReview for a manual suspension decision (no auto-suspension).
   await checkGeminiScore(milestone2.id, 30);
   let consecutiveAlert = await prisma.fraudAlert.findFirst({
-    where: { type: "CONSECUTIVE_LOW_SCORES_SUSPENSION", entityId: ngoProfile.id }
+    where: { type: "CONSECUTIVE_LOW_SCORES", entityId: ngoProfile.id }
   });
   console.log("Consecutive low score alert logged:", consecutiveAlert ? "YES" : "NO");
   if (!consecutiveAlert) {
-    throw new Error("Expected a CONSECUTIVE_LOW_SCORES_SUSPENSION alert to be logged.");
+    throw new Error("Expected a CONSECUTIVE_LOW_SCORES alert to be logged.");
+  }
+
+  const riskReview = await prisma.riskReview.findFirst({
+    where: { ngoId: ngoProfile.id, status: "OPEN" }
+  });
+  console.log("Open RiskReview created:", riskReview ? `YES (${riskReview.riskLevel})` : "NO");
+  if (!riskReview || riskReview.riskLevel !== "CRITICAL") {
+    throw new Error("Expected an OPEN CRITICAL RiskReview to be created for the consecutive low scores.");
   }
 
   updatedProfile = await prisma.nGOProfile.findUnique({
     where: { id: ngoProfile.id }
   });
   console.log("NGO Suspended Status:", updatedProfile?.isSuspended ? "SUSPENDED" : "ACTIVE");
-  if (!updatedProfile?.isSuspended) {
-    throw new Error("Expected the NGO to be auto-suspended after two consecutive low Gemini scores.");
+  if (updatedProfile?.isSuspended) {
+    throw new Error("NGO must NOT be auto-suspended — suspension is a manual admin decision via RiskReview.");
   }
 
-  console.log("\nAll tests passed successfully! Cleaning up sandbox data...");
+  console.log("\nAll tests passed successfully!");
+  } finally {
+    console.log("Cleaning up sandbox data...");
 
-  // Cleanup sandbox
-  await prisma.fraudAlert.deleteMany({
-    where: { entityId: { in: [ngoProfile.id, milestone1.id, milestone2.id, duplicateUser.id] } }
-  });
-  await prisma.milestoneProof.deleteMany({
-    where: { milestoneId: { in: [milestone1.id, milestone2.id] } }
-  });
-  await prisma.donation.deleteMany({
-    where: { projectId: project.id }
-  });
-  await prisma.milestone.deleteMany({
-    where: { projectId: project.id }
-  });
-  await prisma.project.delete({
-    where: { id: project.id }
-  });
-  await prisma.nGOProfile.delete({
-    where: { id: ngoProfile.id }
-  });
-  await prisma.user.deleteMany({
-    where: { id: { in: [corporateDonor.id, donor2.id, donor3.id, ngoUser.id, duplicateUser.id] } }
-  });
+    const users = await prisma.user.findMany({
+      where: { email: { contains: testSuffix } },
+      select: { id: true }
+    });
+    const userIds = users.map((u) => u.id);
+    const profiles = await prisma.nGOProfile.findMany({
+      where: { userId: { in: userIds } },
+      select: { id: true }
+    });
+    const profileIds = profiles.map((p) => p.id);
+    const projects = await prisma.project.findMany({
+      where: { ngoId: { in: profileIds } },
+      select: { id: true }
+    });
+    const projectIds = projects.map((p) => p.id);
+    const milestones = await prisma.milestone.findMany({
+      where: { projectId: { in: projectIds } },
+      select: { id: true }
+    });
+    const milestoneIds = milestones.map((m) => m.id);
 
-  console.log("Clean up finished. Phase 5 integration tests complete.");
+    await prisma.fraudAlert.deleteMany({
+      where: { entityId: { in: [...profileIds, ...milestoneIds, ...userIds] } }
+    });
+    await prisma.riskReview.deleteMany({
+      where: { ngoId: { in: profileIds } }
+    });
+    await prisma.milestoneProof.deleteMany({
+      where: { milestoneId: { in: milestoneIds } }
+    });
+    await prisma.donation.deleteMany({
+      where: { projectId: { in: projectIds } }
+    });
+    await prisma.milestone.deleteMany({
+      where: { projectId: { in: projectIds } }
+    });
+    await prisma.project.deleteMany({
+      where: { id: { in: projectIds } }
+    });
+    await prisma.nGOProfile.deleteMany({
+      where: { id: { in: profileIds } }
+    });
+    await prisma.user.deleteMany({
+      where: { id: { in: userIds } }
+    });
+
+    console.log("Clean up finished. Phase 5 integration tests complete.");
+  }
 }
 
 runPhase5Tests().catch((err) => {

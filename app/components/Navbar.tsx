@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { ShieldCheck, MessageCircleQuestion, Users, HeartPulse, ListChecks, TrendingUp } from "lucide-react";
@@ -31,13 +32,14 @@ export default function Navbar() {
   };
 
   return (
-    <header className="border-b border-gray-900 bg-gray-950/80 backdrop-blur sticky top-0 z-50">
+    <header className="border-b border-gray-900 bg-gray-950/95 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
-        {/* Left: Branding Logo */}
-        <div className="flex items-center gap-3">
-          <Link href="/" className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent tracking-tight">
-            ImpactBridge
+        {/* Left: Branding Logo — shrink-0 + whitespace-nowrap so it can never
+            be squeezed by the center nav on medium widths */}
+        <div className="flex items-center gap-3 shrink-0">
+          <Link href="/" className="font-display text-2xl font-semibold italic text-white tracking-tight whitespace-nowrap">
+            ImpactBridge<span className="text-gold-400">.</span>
           </Link>
           {session?.user && (
             <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${getRoleBadge(session.user.role)}`}>
@@ -117,7 +119,7 @@ export default function Navbar() {
                         title={label}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
                           active
-                            ? "bg-emerald-600 text-white shadow-sm"
+                            ? "bg-trust-600 text-white shadow-sm"
                             : "text-gray-400 hover:text-white hover:bg-white/5"
                         }`}
                       >
@@ -130,11 +132,17 @@ export default function Navbar() {
                 </div>
               )}
 
-              {/* Fallback general links for guests */}
+              {/* Guests get real parity: a path to give AND a path to raise —
+                  not just the NGO side of the platform */}
               {!session?.user && (
-                <Link href="/ngo/register" className={`hover:text-white transition ${pathname === "/ngo/register" ? "text-white" : ""}`}>
-                  NGO Onboarding
-                </Link>
+                <>
+                  <Link href="/login" className={`hover:text-white transition ${pathname === "/login" ? "text-white" : ""}`}>
+                    Become a Donor
+                  </Link>
+                  <Link href="/ngo/register" className={`hover:text-white transition ${pathname === "/ngo/register" ? "text-white" : ""}`}>
+                    NGO Onboarding
+                  </Link>
+                </>
               )}
             </>
           )}
@@ -156,7 +164,7 @@ export default function Navbar() {
               {/* Profile Avatar Initials Trigger */}
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="w-8 h-8 rounded-full bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-center text-xs select-none hover:bg-emerald-650/30 transition focus:outline-none relative overflow-hidden"
+                className="w-8 h-8 rounded-full bg-trust-600/20 border border-trust-500/30 text-trust-300 font-bold flex items-center justify-center text-xs select-none hover:bg-trust-600/30 transition focus:outline-none relative overflow-hidden"
                 aria-haspopup="true"
                 aria-expanded={dropdownOpen}
               >
@@ -168,12 +176,19 @@ export default function Navbar() {
               </button>
 
               {/* Dropdown Menu */}
+              <AnimatePresence>
               {dropdownOpen && (
                 <>
                   {/* Backdrop overlay to close on outside click */}
                   <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)}></div>
-                  
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-gray-950 border border-gray-900 rounded-xl shadow-xl py-2 z-20 animate-fadeIn origin-top-right">
+
+                  <motion.div
+                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="absolute right-0 top-full mt-2 w-48 bg-gray-950 border border-gray-800 rounded-xl shadow-xl py-2 z-20 origin-top-right"
+                  >
                     {session.user.role === "DONOR" && (
                       <Link
                         href="/donor/profile"
@@ -226,15 +241,16 @@ export default function Navbar() {
                     >
                       Sign Out
                     </button>
-                  </div>
+                  </motion.div>
                 </>
               )}
+              </AnimatePresence>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2 px-4 rounded-xl text-xs shadow-md shadow-emerald-500/10 transition"
+                className="bg-trust-600 hover:bg-trust-500 text-white font-semibold py-2 px-4 rounded-lg text-xs transition"
               >
                 Sign In / Register
               </Link>
