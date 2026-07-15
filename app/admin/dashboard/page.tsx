@@ -1,7 +1,4 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import AdminClient from "./AdminClient";
 
 export const runtime = "nodejs";
@@ -163,16 +160,6 @@ async function loadDashboardData() {
 }
 
 export default async function AdminDashboardPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  if (session.user.role !== "ADMIN") {
-    redirect("/unauthorized");
-  }
-
   let data: Awaited<ReturnType<typeof loadDashboardData>>;
   try {
     data = await loadDashboardData();
@@ -187,57 +174,11 @@ export default async function AdminDashboardPage() {
     avgHealth,
     totalDonorsCount, corporateDonorsCount,
     milestoneCompletionRate, completedMilestonesCount, totalMilestonesCount,
-    unresolvedAlertsTotal,
     topNGOs, topProjects,
   } = data;
 
-  const pendingProjectCount = await prisma.project.count({
-    where: { status: "PENDING_APPROVAL", isDeleted: false },
-  });
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
-
-      {/* Navbar */}
-      <nav className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-6 py-4 flex justify-between items-center shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-black text-emerald-600 tracking-tight">ImpactBridge</span>
-          <span className="text-xs px-2 py-0.5 bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-full font-bold">Admin Console</span>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="flex gap-4 text-sm font-semibold">
-            <a href="/admin/dashboard" className="text-emerald-600 hover:text-emerald-700 transition underline decoration-2 underline-offset-4">NGO Verification</a>
-            <a href="/admin/project-review" className="text-gray-500 hover:text-emerald-600 transition flex items-center gap-1.5">
-              <span>Project Review</span>
-              {pendingProjectCount > 0 && (
-                <span className="bg-red-100 dark:bg-red-950/45 text-red-600 dark:text-red-400 text-[10px] font-black px-1.5 py-0.5 rounded-full">
-                  {pendingProjectCount}
-                </span>
-              )}
-            </a>
-            <a href="/admin/proof-review" className="text-gray-500 hover:text-emerald-600 transition">Proof Review</a>
-            <a href="/admin/risk-compliance" className="text-gray-500 hover:text-emerald-600 transition flex items-center gap-1.5">
-              <span>Risk &amp; Compliance</span>
-              {unresolvedAlertsTotal > 0 && (
-                <span className="bg-red-100 dark:bg-red-950/45 text-red-600 dark:text-red-400 text-[10px] font-black px-1.5 py-0.5 rounded-full">
-                  {unresolvedAlertsTotal}
-                </span>
-              )}
-            </a>
-            <a href="/admin/fcra-review" className="text-gray-500 hover:text-emerald-600 transition">FCRA Review</a>
-          </div>
-          <div className="h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Administrator</span>
-            <form method="POST" action="/api/auth/signout">
-              <button type="submit" className="text-xs font-semibold text-gray-500 hover:text-red-500 transition">
-                Logout
-              </button>
-            </form>
-          </div>
-        </div>
-      </nav>
-
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
         <div>

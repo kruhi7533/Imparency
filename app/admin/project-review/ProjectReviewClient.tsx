@@ -170,7 +170,10 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
                         <div>
                           <h3 className="text-lg font-bold text-gray-900 dark:text-white">{p.title}</h3>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {p.ngo.orgName} · {p.location} · {p.causeCategory}
+                            <a href={`/admin/ngos/${p.ngo.id}`} className="hover:text-emerald-600 hover:underline">
+                              {p.ngo.orgName}
+                            </a>{" "}
+                            · {p.location} · {p.causeCategory}
                           </p>
                         </div>
                         <div className="text-right shrink-0">

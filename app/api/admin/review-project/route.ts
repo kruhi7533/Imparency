@@ -85,8 +85,11 @@ export async function POST(request: Request) {
     }
 
     if (action === "APPROVE") {
-      await prisma.project.update({
-        where: { id: projectId },
+      // Conditioned on the status still being PENDING_APPROVAL — the earlier
+      // findUnique check alone leaves a race window where two concurrent
+      // requests could both pass and double-approve/publish the project.
+      const { count } = await prisma.project.updateMany({
+        where: { id: projectId, status: "PENDING_APPROVAL" },
         data: {
           status: "ACTIVE",
           reviewNote: null,
@@ -94,6 +97,12 @@ export async function POST(request: Request) {
           reviewedById: adminId,
         },
       });
+      if (count === 0) {
+        return NextResponse.json(
+          { error: "Project was just decided by another admin action. Refresh and check its current status." },
+          { status: 409 }
+        );
+      }
 
       await prisma.projectReview.create({
         data: { projectId, adminId, action: "APPROVED", note: rejectionReason?.trim() || null },
@@ -129,8 +138,8 @@ export async function POST(request: Request) {
     } else {
       const reason = rejectionReason.trim();
 
-      await prisma.project.update({
-        where: { id: projectId },
+      const { count } = await prisma.project.updateMany({
+        where: { id: projectId, status: "PENDING_APPROVAL" },
         data: {
           status: "DRAFT",
           reviewNote: reason,
@@ -138,6 +147,12 @@ export async function POST(request: Request) {
           reviewedById: adminId,
         },
       });
+      if (count === 0) {
+        return NextResponse.json(
+          { error: "Project was just decided by another admin action. Refresh and check its current status." },
+          { status: 409 }
+        );
+      }
 
       await prisma.projectReview.create({
         data: { projectId, adminId, action: "REJECTED", note: reason },

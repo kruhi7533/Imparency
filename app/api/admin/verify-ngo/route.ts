@@ -89,15 +89,24 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Update status in database
+    // 4. Update status in database — conditioned on the status still being
+    // PENDING so a concurrent decision on the same NGO can't both go through
+    // (the earlier findUnique check alone leaves a race window between read
+    // and write).
     const updatedStatus = action === "APPROVE" ? "VERIFIED" : "REJECTED";
-    await prisma.nGOProfile.update({
-      where: { id: ngoId },
+    const { count } = await prisma.nGOProfile.updateMany({
+      where: { id: ngoId, verificationStatus: "PENDING" },
       data: {
         verificationStatus: updatedStatus,
         adminNote: ngoFacingNote,
       },
     });
+    if (count === 0) {
+      return NextResponse.json(
+        { error: "NGO was just decided by another admin action. Refresh and check its current status." },
+        { status: 409 }
+      );
+    }
 
     // 4b. On approval, record per-document compliance verification + audit trail.
     // The core docs (Registration, PAN, 80G) were all reviewed together, so they're

@@ -356,7 +356,9 @@ export default function FCRAReviewClient({
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-black text-gray-900 dark:text-white">{rec.orgName}</h3>
+                    <a href={`/admin/ngos/${rec.ngoId}`} className="text-sm font-black text-gray-900 dark:text-white hover:text-emerald-600 hover:underline">
+                      {rec.orgName}
+                    </a>
                     <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${STATUS_BADGE[rec.fcraStatus] || "bg-gray-100 text-gray-600"}`}>
                       {STATUS_LABEL[rec.fcraStatus] || rec.fcraStatus}
                     </span>
