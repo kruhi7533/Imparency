@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { projectId, amount } = body;
+    const { projectId, amount, milestoneIds = [] } = body;
 
     if (!projectId) {
       return NextResponse.json({ error: "Project ID is required" }, { status: 400 });
@@ -26,6 +26,25 @@ export async function POST(request: Request) {
 
     if (!amount || typeof amount !== "number" || amount < 100) {
       return NextResponse.json({ error: "Amount must be a number and at least Rs. 100" }, { status: 400 });
+    }
+
+    // If milestoneIds are provided, verify they all belong to this project and are donatable
+    if (milestoneIds && milestoneIds.length > 0) {
+      const validMilestones = await prisma.milestone.findMany({
+        where: {
+          id: { in: milestoneIds },
+          projectId,
+          status: { in: ["PENDING", "IN_PROGRESS"] },
+        },
+        select: { id: true },
+      });
+
+      if (validMilestones.length !== milestoneIds.length) {
+        return NextResponse.json(
+          { error: "One or more selected milestones are invalid or not accepting donations." },
+          { status: 400 }
+        );
+      }
     }
 
     // Fetch project
@@ -104,6 +123,7 @@ export async function POST(request: Request) {
         donorId: session.user.id,
         projectId,
         amount,
+        milestoneIds,
       },
     });
 
