@@ -10,7 +10,16 @@ export async function GET(
   try {
     const donation = await (prisma as any).donation.findUnique({
       where: { id: donationId },
-      select: { status: true, tokenExpiresAt: true },
+      select: {
+        status: true,
+        tokenExpiresAt: true,
+        amount: true,
+        project: {
+          select: {
+            title: true,
+          },
+        },
+      },
     });
 
     if (!donation) {
@@ -36,7 +45,11 @@ export async function GET(
       status = "EXPIRED" as any;
     }
 
-    return NextResponse.json({ status });
+    return NextResponse.json({
+      status,
+      amount: donation.amount,
+      projectTitle: donation.project?.title,
+    });
   } catch (error: any) {
     console.error("[status route] Error checking donation status:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
