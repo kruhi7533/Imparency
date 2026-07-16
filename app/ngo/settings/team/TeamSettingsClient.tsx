@@ -107,7 +107,7 @@ export default function TeamSettingsClient({ teamMembers, currentUserRole }: { t
             </button>
           </form>
           <p className="text-xs text-gray-500 mt-3">
-            Note: The user must already have an Imparency account with this email address.
+            Note: The user must already have an ImpactBridge account with this email address.
           </p>
         </div>
       )}
@@ -148,7 +148,7 @@ export default function TeamSettingsClient({ teamMembers, currentUserRole }: { t
                     </span>
                   </td>
                   <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
-                    {new Date(member.createdAt).toLocaleDateString()}
+                    {new Date(member.createdAt).toLocaleDateString("en-IN")}
                   </td>
                   {canManage && (
                     <td className="px-6 py-4 text-right">

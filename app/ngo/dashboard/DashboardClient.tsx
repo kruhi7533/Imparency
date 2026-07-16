@@ -512,7 +512,7 @@ export default function DashboardClient({
           <div className="space-y-1">
             <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400">Total Funds Raised</h3>
             <p className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-              ₹{totalFundsRaised.toLocaleString()}
+              ₹{totalFundsRaised.toLocaleString("en-IN")}
             </p>
             <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
               across active projects
@@ -648,7 +648,7 @@ export default function DashboardClient({
                           </span>
                         </div>
                         <div className="text-xs text-gray-500">
-                          {new Date(draft.createdAt).toLocaleDateString()}
+                          {new Date(draft.createdAt).toLocaleDateString("en-IN")}
                         </div>
                       </div>
                     </div>
@@ -865,7 +865,7 @@ export default function DashboardClient({
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center text-xs font-bold">
                       <span className="text-gray-500 dark:text-gray-400">
-                        Raised: <strong className="text-gray-900 dark:text-white font-extrabold">₹{raised.toLocaleString()}</strong> of ₹{target.toLocaleString()}
+                        Raised: <strong className="text-gray-900 dark:text-white font-extrabold">₹{raised.toLocaleString("en-IN")}</strong> of ₹{target.toLocaleString("en-IN")}
                       </span>
                       <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{percent}% funded</span>
                     </div>
@@ -990,7 +990,7 @@ export default function DashboardClient({
                                   </div>
                                   <p className="text-[11px] text-gray-500 dark:text-gray-400 max-w-xl">{milestone.description}</p>
                                   <div className="text-[9px] text-gray-400 font-bold">
-                                    Allocation: ₹{Number(milestone.targetAmount).toLocaleString()} • Deadline: {new Date(milestone.deadline).toLocaleDateString("en-IN")}
+                                    Allocation: ₹{Number(milestone.targetAmount).toLocaleString("en-IN")} • Deadline: {new Date(milestone.deadline).toLocaleDateString("en-IN")}
                                   </div>
                                 </div>
 
@@ -1150,6 +1150,7 @@ export default function DashboardClient({
           targetAmount={sharingProject.targetAmount}
           causeCategory={sharingProject.causeCategory}
           location={sharingProject.location}
+          status={sharingProject.status}
         />
       )}
     </div>
