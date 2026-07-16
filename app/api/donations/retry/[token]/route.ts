@@ -89,9 +89,11 @@ export async function GET(
     });
   } catch (error) {
     const err = error as Error;
+    // Log the real error server-side, but never forward raw internal/SDK
+    // error text (e.g. Razorpay credential errors) to the donor.
     console.error("Error in donation retry endpoint:", err);
     return NextResponse.json(
-      { error: err.message || "An unexpected error occurred while setting up retry." },
+      { error: "We couldn't set up your retry payment right now. Please try again in a moment." },
       { status: 500 }
     );
   }

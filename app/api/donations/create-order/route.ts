@@ -135,9 +135,11 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const err = error as Error;
+    // Log the real error server-side, but never forward raw internal/SDK
+    // error text (e.g. Razorpay credential errors) to the donor.
     console.error("Error creating donation order:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to create donation order" },
+      { error: "We couldn't start your donation right now. Please try again in a moment." },
       { status: 500 }
     );
   }
