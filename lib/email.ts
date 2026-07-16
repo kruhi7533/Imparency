@@ -390,16 +390,16 @@ This receipt is valid for claiming deduction under Section 80G of the
 Income Tax Act, 1961. Please retain it for your tax filing records.
 
 If you have any questions, reply to this email or contact us at
-support@imparency.in
+support@impactbridge.in
 
 Best regards,
-The Imparency Team`;
+The ImpactBridge Team`;
 
   return sendEmail({
     to,
     subject,
     body,
-    from: "Imparency <onboarding@resend.dev>",
+    from: "ImpactBridge <onboarding@resend.dev>",
   });
 }
 
@@ -423,7 +423,7 @@ ${profileUrl}
 Your donation is eligible for deduction under Section 80G of the Income Tax Act, 1961.
 
 Best regards,
-The Imparency Team`;
+The ImpactBridge Team`;
   return sendEmail({ to, subject, body });
 }
 
@@ -449,10 +449,10 @@ This link is valid for 24 hours. After that, you will need to initiate
 a new donation from the project page.
 
 If you believe this is an error or your account was charged, please
-contact us at support@imparency.in and we will resolve it immediately.
+contact us at support@impactbridge.in and we will resolve it immediately.
 
 Best regards,
-The Imparency Team`;
+The ImpactBridge Team`;
   return sendEmail({ to, subject, body });
 }
 
@@ -465,7 +465,7 @@ export async function sendTierUpgradeEmail(
   const subject = `You've made ${donationCount} donations — ready to go deeper?`;
   const body = `Hi ${donorName},
 
-You've now donated ${donationCount} times through Imparency. That's
+You've now donated ${donationCount} times through ImpactBridge. That's
 real, verified impact — and you can see exactly where every rupee went.
 
 Donors who make a monthly standing commitment see 3x more impact
@@ -477,7 +477,7 @@ ${ctaUrl}
 Thank you for being one of our most consistent supporters.
 
 Best regards,
-The Imparency Team`;
+The ImpactBridge Team`;
   return sendEmail({ to, subject, body });
 }
 
@@ -499,7 +499,7 @@ saw the full report.
 We thought you might want to know about another organization doing
 similar work: ${referredNGO}.
 
-They're verified on Imparency and have a strong transparency record.
+They're verified on ImpactBridge and have a strong transparency record.
 See their profile here:
 ${baseUrl}/ngo/${referredNGOId}
 
@@ -507,7 +507,7 @@ You can also view this on your dashboard:
 ${ctaUrl}
 
 Best regards,
-The Imparency Team`;
+The ImpactBridge Team`;
   return sendEmail({ to, subject, body });
 }
 
@@ -522,7 +522,7 @@ export async function sendGrantModeEmail(
   const body = `Hi ${donorName},
 
 Your organization has contributed Rs.${totalDonated.toLocaleString("en-IN")}
-through Imparency. That's a significant commitment, and we want to
+through ImpactBridge. That's a significant commitment, and we want to
 make sure you're getting the most from it.
 
 For organizations at your giving level, a structured multi-year grant
@@ -533,7 +533,7 @@ We'd love to explore this with you. See your options on the dashboard:
 ${ctaUrl}
 
 Best regards,
-The Imparency Team`;
+The ImpactBridge Team`;
   return sendEmail({ to, subject, body });
 }
 
@@ -559,7 +559,7 @@ ${ctaUrl}
 No commitment required — just an expression of interest.
 
 Best regards,
-The Imparency Team`;
+The ImpactBridge Team`;
   return sendEmail({ to, subject, body });
 }
 
@@ -576,20 +576,20 @@ export async function sendTeamInviteEmail({
   role: string;
   dashboardUrl: string;
 }) {
-  const subject = `You've been added to ${ngoName} on Imparency`;
+  const subject = `You've been added to ${ngoName} on ImpactBridge`;
   const body = `Hi ${recipientName},
 
-Great news! You have been added as a team member of ${ngoName} on Imparency with the role: ${role}.
+Great news! You have been added as a team member of ${ngoName} on ImpactBridge with the role: ${role}.
 
 You now have access to the NGO Dashboard where you can collaborate on projects, review field updates, and manage fundraising campaigns.
 
 👉 Access your dashboard here: ${dashboardUrl}
 
-If you don't have an Imparency account yet, please sign up first at ${process.env.NEXTAUTH_URL}/login and then visit the link above.
+If you don't have an ImpactBridge account yet, please sign up first at ${process.env.NEXTAUTH_URL}/login and then visit the link above.
 
 If you believe this was a mistake, please contact your NGO administrator.
 
 Best regards,
-The Imparency Team`;
+The ImpactBridge Team`;
   return sendEmail({ to, subject, body });
 }

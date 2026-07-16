@@ -174,7 +174,7 @@ export default function OnboardingPage() {
       {/* Header */}
       <header className="flex justify-between items-center max-w-4xl w-full mx-auto mb-8">
         <Link href="/" className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent tracking-tight">
-          Imparency
+          ImpactBridge
         </Link>
         <div className="flex items-center gap-2">
           <div className="h-1.5 w-32 bg-gray-800 rounded-full overflow-hidden">

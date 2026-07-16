@@ -84,7 +84,7 @@ export async function POST(req: Request) {
       } else {
         // Unknown number, no valid join code — ask them to register
         return twimlResponse(
-          `👋 Hello! I'm the Imparency field reporting bot.\n\nI don't recognise your number yet. Please send your *NGO Join Code* to get registered.\n\nYour NGO coordinator will share this code with you. It looks like: *ANANDA-2026*`
+          `👋 Hello! I'm the ImpactBridge field reporting bot.\n\nI don't recognise your number yet. Please send your *NGO Join Code* to get registered.\n\nYour NGO coordinator will share this code with you. It looks like: *ANANDA-2026*`
         );
       }
     }
