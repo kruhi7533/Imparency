@@ -42,9 +42,12 @@ export async function POST(request: Request) {
 
     const adminId = auth.session.user.id;
 
-    // Mark as resolved with full attribution
-    await prisma.fraudAlert.update({
-      where: { id: alertId },
+    // Mark as resolved with full attribution — conditioned on the alert still
+    // being unresolved so two concurrent resolutions can't both go through
+    // (the earlier findUnique check alone leaves a race window between read
+    // and write).
+    const { count } = await prisma.fraudAlert.updateMany({
+      where: { id: alertId, resolved: false },
       data: {
         resolved: true,
         resolutionNote: resolutionNote.trim(),
@@ -52,6 +55,12 @@ export async function POST(request: Request) {
         resolvedAt: new Date(),
       }
     });
+    if (count === 0) {
+      return NextResponse.json(
+        { error: "This alert has already been resolved." },
+        { status: 409 }
+      );
+    }
 
     await logAdminAction({
       adminId,

@@ -1,16 +1,24 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
-import { signIn } from "next-auth/react";
+import React, { useState, useEffect, Suspense } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+  const { status: sessionStatus } = useSession();
+
   // Get redirect callback path if redirected by middleware
   const callbackUrl = searchParams.get("callbackUrl") || "/";
+
+  // Already signed in — skip the form and go straight to the destination.
+  useEffect(() => {
+    if (sessionStatus === "authenticated") {
+      router.replace(callbackUrl);
+    }
+  }, [sessionStatus, callbackUrl, router]);
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState("");
@@ -131,43 +139,53 @@ function LoginContent() {
     signIn("google", { callbackUrl });
   };
 
+  // While the session check or the redirect is in flight, show the same
+  // quiet card as the Suspense fallback instead of flashing the form.
+  if (sessionStatus === "loading" || sessionStatus === "authenticated") {
+    return (
+      <div className="max-w-md w-full bg-gray-900/40 border border-gray-800 border-t-2 border-t-gold-500/70 rounded-xl p-8 sm:p-10 flex items-center justify-center min-h-[300px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-trust-500"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-md w-full bg-gray-900/40 border border-gray-900 rounded-2xl p-8 sm:p-10 shadow-2xl relative">
-      
+    <div className="max-w-md w-full bg-gray-900/40 border border-gray-800 border-t-2 border-t-gold-500/70 rounded-xl p-8 sm:p-10 relative">
+
       {/* Logo Branding */}
       <div className="text-center mb-8">
-        <Link href="/" className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent tracking-tight">
-          ImpactBridge
+        <Link href="/" className="font-display text-3xl font-semibold italic text-white tracking-tight">
+          ImpactBridge<span className="text-gold-400">.</span>
         </Link>
-        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1.5">
-          Trust-First Donation Protocol
+        <p className="font-mono text-[11px] text-gray-500 uppercase tracking-widest mt-2">
+          Every rupee verified
         </p>
       </div>
 
       {/* Form State Tabs */}
-      <div className="flex bg-gray-950 p-1 rounded-xl border border-gray-900 mb-6">
+      <div className="flex border-b border-gray-800 mb-6">
         <button
           onClick={() => { setIsSignUp(false); setError(""); setSuccess(""); }}
-          className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${!isSignUp ? "bg-emerald-600 text-white shadow" : "text-gray-400 hover:text-white"}`}
+          className={`flex-1 pb-2.5 text-sm font-semibold transition ${!isSignUp ? "text-white border-b-2 border-trust-400" : "text-gray-500 hover:text-gray-300"}`}
         >
           Sign In
         </button>
         <button
           onClick={() => { setIsSignUp(true); setError(""); setSuccess(""); }}
-          className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${isSignUp ? "bg-emerald-600 text-white shadow" : "text-gray-400 hover:text-white"}`}
+          className={`flex-1 pb-2.5 text-sm font-semibold transition ${isSignUp ? "text-white border-b-2 border-trust-400" : "text-gray-500 hover:text-gray-300"}`}
         >
           Register Account
         </button>
       </div>
 
       {error && (
-        <div className="mb-4 p-3.5 bg-red-50 dark:bg-red-950/30 border-l-4 border-red-500 rounded text-xs text-red-700 dark:text-red-300">
+        <div className="mb-4 p-3.5 bg-red-950/40 border-l-2 border-red-500 rounded-r text-xs text-red-300">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="mb-4 p-3.5 bg-emerald-50 dark:bg-emerald-950/30 border-l-4 border-emerald-500 rounded text-xs text-emerald-700 dark:text-emerald-300">
+        <div className="mb-4 p-3.5 bg-emerald-950/30 border-l-2 border-emerald-500 rounded-r text-xs text-emerald-300">
           {success}
         </div>
       )}
@@ -180,7 +198,7 @@ function LoginContent() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-950 border border-gray-900 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+              className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition [&:-webkit-autofill]:[-webkit-text-fill-color:#fff] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#030712]"
               placeholder="e.g. John Doe"
               required
             />
@@ -193,7 +211,7 @@ function LoginContent() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 bg-gray-950 border border-gray-900 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+            className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition [&:-webkit-autofill]:[-webkit-text-fill-color:#fff] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#030712]"
             placeholder="e.g. name@organization.org"
             required
           />
@@ -205,7 +223,7 @@ function LoginContent() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 bg-gray-950 border border-gray-900 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+            className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition [&:-webkit-autofill]:[-webkit-text-fill-color:#fff] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#030712]"
             placeholder="••••••••"
             required
           />
@@ -218,7 +236,7 @@ function LoginContent() {
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as "DONOR" | "NGO")}
-                className="w-full px-4 py-2 bg-gray-950 border border-gray-900 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition [&:-webkit-autofill]:[-webkit-text-fill-color:#fff] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#030712]"
               >
                 <option value="DONOR">Donor Account (Fund projects & track impact)</option>
                 <option value="NGO">NGO Organization (Publish projects & submit proof)</option>
@@ -234,11 +252,11 @@ function LoginContent() {
                   setConsentGiven(e.target.checked);
                   if (e.target.checked) setConsentError("");
                 }}
-                className="mt-1 h-4 w-4 rounded border-gray-900 bg-gray-950 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-gray-950 transition cursor-pointer"
+                className="mt-1 h-4 w-4 rounded border-gray-800 bg-gray-950 text-trust-600 focus:ring-trust-500 focus:ring-offset-gray-950 transition cursor-pointer"
               />
               <label htmlFor="consentCheckbox" className="text-xs text-gray-400 leading-normal cursor-pointer select-none">
                 I consent to Imparency collecting and processing my personal data (name, email) for donation tracking and tax receipt generation, as required under India's DPDP Act 2023.{" "}
-                <Link href="/privacy-policy" target="_blank" className="text-emerald-500 hover:underline">
+                <Link href="/privacy-policy" target="_blank" className="text-trust-300 hover:text-trust-200 hover:underline">
                   Privacy Policy
                 </Link>
               </label>
@@ -254,7 +272,7 @@ function LoginContent() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition disabled:opacity-50 flex items-center justify-center gap-2 mt-6"
+          className="w-full bg-trust-600 hover:bg-trust-500 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 mt-6"
         >
           {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
           {isSignUp ? "Register Account" : "Sign In"}
@@ -263,9 +281,9 @@ function LoginContent() {
 
       <div className="relative my-6 text-center">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-900"></div>
+          <div className="w-full border-t border-gray-800"></div>
         </div>
-        <span className="relative bg-gray-950 px-3 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+        <span className="relative bg-gray-950 px-3 font-mono text-[10px] text-gray-600 uppercase tracking-widest">
           or continue with
         </span>
       </div>
@@ -274,7 +292,7 @@ function LoginContent() {
       <button
         onClick={handleGoogleLogin}
         type="button"
-        className="w-full border border-gray-900 hover:border-gray-800 bg-gray-950 hover:bg-gray-900 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow"
+        className="w-full border border-gray-800 hover:border-gray-700 bg-gray-950 hover:bg-gray-900 text-gray-200 font-medium py-2.5 px-4 rounded-lg text-sm transition flex items-center justify-center gap-2"
       >
         <svg className="h-4 w-4" viewBox="0 0 24 24">
           <path
@@ -303,18 +321,19 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4 sm:p-6 font-sans relative overflow-hidden">
-      
-      {/* Background radial glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
+    <div className="min-h-screen bg-gray-950 bg-gradient-to-b from-trust-950/60 via-gray-950 to-gray-950 text-white flex flex-col items-center justify-center p-4 sm:p-6 font-sans relative overflow-hidden">
 
       <Suspense fallback={
-        <div className="max-w-md w-full bg-gray-900/40 border border-gray-900 rounded-2xl p-8 sm:p-10 shadow-2xl flex items-center justify-center min-h-[300px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+        <div className="max-w-md w-full bg-gray-900/40 border border-gray-800 border-t-2 border-t-gold-500/70 rounded-xl p-8 sm:p-10 flex items-center justify-center min-h-[300px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-trust-500"></div>
         </div>
       }>
         <LoginContent />
       </Suspense>
+
+      <p className="font-mono text-[10px] text-gray-600 text-center mt-6">
+        Secured by Razorpay · DPDP Act 2023 compliant
+      </p>
     </div>
   );
 }

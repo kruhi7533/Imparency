@@ -31,11 +31,11 @@ export default function QuickDonateSelector() {
               setCustomAmount("");
             }}
             className={`
-              px-6 py-3 rounded-2xl text-sm font-black transition-all duration-150
+              px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-150
               border-2 min-w-[100px] cursor-pointer
               ${selected === amount && !showCustom
-                ? "bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-105"
-                : "bg-gray-900/60 border-gray-800 text-gray-300 hover:border-emerald-700 hover:text-white hover:bg-gray-900"
+                ? "bg-gold-500/10 border-gold-400 text-gold-200"
+                : "bg-gray-900/60 border-gray-800 text-gray-300 hover:border-gold-700 hover:text-white hover:bg-gray-900"
               }
             `}
           >
@@ -74,9 +74,9 @@ export default function QuickDonateSelector() {
             placeholder="Enter amount"
             autoFocus
             className="
-              w-40 px-4 py-3 bg-gray-900 border-2 border-emerald-600
-              rounded-2xl text-white font-bold text-center text-sm
-              focus:outline-none focus:ring-2 focus:ring-emerald-500
+              w-40 px-4 py-3 bg-gray-900 border-2 border-gold-500/50
+              rounded-lg text-white font-semibold text-center text-sm
+              focus:outline-none focus:border-gold-400
               placeholder-gray-600
               [appearance:textfield]
               [&::-webkit-outer-spin-button]:appearance-none
@@ -95,10 +95,10 @@ export default function QuickDonateSelector() {
           }}
           disabled={!isReady}
           className={`
-            px-10 py-4 rounded-2xl text-sm font-extrabold transition-all duration-200
+            px-10 py-4 rounded-lg text-sm font-semibold transition-all duration-200
             ${isReady
-              ? "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20 hover:-translate-y-0.5 cursor-pointer"
-              : "bg-gray-850 text-gray-600 cursor-not-allowed border border-gray-800"
+              ? "bg-trust-600 hover:bg-trust-500 text-white cursor-pointer"
+              : "bg-gray-900 text-gray-600 cursor-not-allowed border border-gray-800"
             }
           `}
         >
@@ -109,8 +109,8 @@ export default function QuickDonateSelector() {
         </button>
       </div>
 
-      <p className="text-[11px] text-gray-600 mt-3">
-        Minimum donation ₹100 · Secured by Razorpay · 80G receipt auto-generated
+      <p className="font-mono text-[10px] text-gray-600 mt-3 uppercase tracking-wider">
+        Min ₹100 · Secured by Razorpay · 80G receipt auto-generated
       </p>
     </div>
   );
