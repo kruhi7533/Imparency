@@ -14,6 +14,9 @@ export default async function NGOProfilePage({ params }: { params: { id: string 
       projects: {
         where: { isDeleted: false },
         orderBy: { createdAt: "desc" },
+        include: {
+          milestones: true,
+        },
       },
       _count: {
         select: {

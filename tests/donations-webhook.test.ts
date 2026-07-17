@@ -99,7 +99,12 @@ beforeEach(() => {
   // Fake timers keep the handler's 48h/30s setTimeout callbacks from running.
   vi.useFakeTimers();
   vi.stubEnv("RAZORPAY_WEBHOOK_SECRET", SECRET);
-  mocked(prisma.$transaction).mockResolvedValue([] as never);
+  mocked(prisma.$transaction).mockImplementation(async (arg) => {
+    if (typeof arg === "function") {
+      return arg(prisma);
+    }
+    return [];
+  });
 });
 
 afterEach(() => {
