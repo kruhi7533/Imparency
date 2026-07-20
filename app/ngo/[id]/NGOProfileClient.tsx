@@ -280,12 +280,14 @@ export default function NGOProfileClient({
                           key={project.id}
                           className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-150"
                         >
-                          <div className="h-40 bg-gray-200 dark:bg-gray-800 relative">
+                          <Link href={`/projects/${project.id}`} className="block h-40 bg-gray-200 dark:bg-gray-800 relative">
                             <ProjectCoverImage src={project.coverImage} alt={project.title} causeCategory={project.causeCategory} className="w-full h-full object-cover object-center" />
-                          </div>
+                          </Link>
                           <div className="p-5 space-y-3">
                             <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{project.causeCategory}</span>
-                            <h4 className="text-base font-extrabold text-gray-900 dark:text-white mt-1 line-clamp-1">{project.title}</h4>
+                            <Link href={`/projects/${project.id}`} className="block">
+                              <h4 className="text-base font-extrabold text-gray-900 dark:text-white mt-1 line-clamp-1 hover:text-emerald-600 transition">{project.title}</h4>
+                            </Link>
                             <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{project.description}</p>
                             <div className="pt-2">
                               <div className="flex justify-between text-[10px] font-bold text-gray-500 mb-1">
@@ -299,13 +301,19 @@ export default function NGOProfileClient({
                                 ></div>
                               </div>
                             </div>
-                            <div className="pt-2">
+                            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+                              <Link
+                                href={`/projects/${project.id}`}
+                                className="flex-1 text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl text-xs shadow-md transition flex items-center justify-center"
+                              >
+                                View Details & Donate
+                              </Link>
                               <button
                                 type="button"
                                 onClick={() => handleDonateClick(project)}
-                                className="w-full block text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs shadow-md transition cursor-pointer"
+                                className="flex-1 text-center border border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 font-bold py-2 px-3 rounded-xl text-xs transition cursor-pointer"
                               >
-                                Donate to this Project
+                                Quick Donate
                               </button>
                             </div>
                           </div>
