@@ -75,6 +75,13 @@ export async function POST(request: Request) {
       select: { donorCategory: true, nriSourceDeclaration: true },
     });
 
+    if (!freshUser) {
+      return NextResponse.json(
+        { error: "Stale session", message: "Your session has expired or your user account no longer exists. Please sign out and sign in again." },
+        { status: 401 }
+      );
+    }
+
     const ngoCompliance = await prisma.nGOCompliance.findUnique({
       where: { ngoId: project.ngoId },
       select: { fcraStatus: true, fcraExpiryDate: true },
