@@ -137,6 +137,7 @@ model User {
   reEngagementEvents  ReEngagementEvent[]
   teamMemberships     NGOTeamMember[]
   adminActionLogs     AdminActionLog[]    @relation("AdminActionLogs")
+  donorInquiries      DonorInquiry[]
 }
 
 model NGOProfile {
@@ -184,6 +185,7 @@ model NGOProfile {
   draftProofs  DraftProof[]
   teamMembers  NGOTeamMember[]
   teamInvites  TeamInvite[]
+  donorInquiries DonorInquiry[]
 }
 
 model NGOTeamMember {
@@ -831,4 +833,35 @@ model TeamInvite {
   expiresAt DateTime
 
   @@unique([email, ngoId])
+}
+
+// ─── Donor-NGO Inquiry Chat System ──────────────────────────────────────────
+
+model DonorInquiry {
+  id        String                @id @default(uuid())
+  ngoId     String
+  ngo       NGOProfile            @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  donorId   String
+  donor     User                  @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  subject   String                @default("General Inquiry")
+  status    String                @default("OPEN") // "OPEN" | "RESPONDED" | "RESOLVED"
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  messages  DonorInquiryMessage[]
+
+  @@unique([ngoId, donorId]) // Consolidate into a single thread per donor-NGO pair
+  @@index([ngoId])
+  @@index([donorId])
+}
+
+model DonorInquiryMessage {
+  id         String       @id @default(uuid())
+  threadId   String
+  thread     DonorInquiry @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderId   String
+  senderRole String       // "DONOR" | "NGO"
+  body       String
+  createdAt  DateTime     @default(now())
+
+  @@index([threadId])
 }

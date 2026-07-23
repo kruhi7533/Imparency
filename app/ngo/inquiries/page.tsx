@@ -19,12 +19,23 @@ export default async function NgoInquiriesPage() {
   const ngoId = profile?.id ?? (session.user as any).ngoProfileId ?? null;
   if (!ngoId) redirect("/ngo/register");
 
-  const threads = await prisma.reviewThread.findMany({
-    where: { subjectType: "NGO", subjectId: ngoId },
-    orderBy: { updatedAt: "desc" },
-    take: 100,
-    include: { messages: { orderBy: { createdAt: "asc" } } },
-  });
+  const [threads, donorInquiries] = await Promise.all([
+    prisma.reviewThread.findMany({
+      where: { subjectType: "NGO", subjectId: ngoId },
+      orderBy: { updatedAt: "desc" },
+      take: 100,
+      include: { messages: { orderBy: { createdAt: "asc" } } },
+    }),
+    prisma.donorInquiry.findMany({
+      where: { ngoId },
+      orderBy: { updatedAt: "desc" },
+      take: 100,
+      include: {
+        donor: { select: { name: true, email: true, totalDonated: true } },
+        messages: { orderBy: { createdAt: "asc" } },
+      },
+    }),
+  ]);
 
   const serialized = threads.map((t) => ({
     id: t.id,
@@ -41,12 +52,29 @@ export default async function NgoInquiriesPage() {
     })),
   }));
 
+  const serializedDonorInquiries = donorInquiries.map((t) => ({
+    id: t.id,
+    donorName: t.donor.name || "Anonymous",
+    donorEmail: t.donor.email,
+    donorTotalDonated: Number(t.donor.totalDonated),
+    status: t.status,
+    createdAt: t.createdAt.toISOString(),
+    updatedAt: t.updatedAt.toISOString(),
+    messages: t.messages.map((m) => ({
+      id: m.id,
+      senderId: m.senderId,
+      senderRole: m.senderRole,
+      body: m.body,
+      createdAt: m.createdAt.toISOString(),
+    })),
+  }));
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Inquiries &amp; Appeals</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Questions from the admin team about your submissions, and appeals you&apos;ve raised.
+          Questions from the admin team and direct inquiries from your donors.
         </p>
 
         {profile?.isSuspended && (
@@ -62,7 +90,10 @@ export default async function NgoInquiriesPage() {
         )}
 
         <div className="mt-8">
-          <NgoInquiriesClient initialThreads={serialized} />
+          <NgoInquiriesClient 
+            initialThreads={serialized} 
+            initialDonorInquiries={serializedDonorInquiries}
+          />
         </div>
       </div>
     </div>

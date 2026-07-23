@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import ProjectCoverImage from "@/app/components/ProjectCoverImage";
+import DonorChatBox from "@/app/components/DonorChatBox";
 
 interface Project {
   id: string;
@@ -426,6 +427,12 @@ export default function NGOProfileClient({
         </div>
       </div>
 
+      {/* Floating Inquiry Chatbox */}
+      <DonorChatBox 
+        ngoId={ngo.id}
+        ngoName={ngo.orgName}
+        isAuthenticated={isAuthenticated}
+      />
     </div>
   );
 }
