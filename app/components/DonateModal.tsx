@@ -2,16 +2,26 @@
 
 import React, { useState } from "react";
 
+interface Milestone {
+  id: string;
+  title: string;
+  description: string;
+  targetAmount: number;
+  status: string;
+  sequenceOrder: number;
+}
+
 interface DonateModalProps {
   projectId: string;
   projectTitle: string;
   ngoName: string;
   onClose: () => void;
+  milestones?: Milestone[];
 }
 
 const PRESET_AMOUNTS = [500, 1000, 2000, 5000];
 
-export default function DonateModal({ projectId, projectTitle, ngoName, onClose }: DonateModalProps) {
+export default function DonateModal({ projectId, projectTitle, ngoName, onClose, milestones = [] }: DonateModalProps) {
   const [amount, setAmount] = useState<number>(1000);
   const [customAmount, setCustomAmount] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
@@ -25,6 +35,31 @@ export default function DonateModal({ projectId, projectTitle, ngoName, onClose 
   const [addressCity, setAddressCity] = useState<string>("");
   const [addressState, setAddressState] = useState<string>("");
   const [addressPincode, setAddressPincode] = useState<string>("");
+
+  const [selectedMilestoneIds, setSelectedMilestoneIds] = useState<string[]>([]);
+  const [activeStepTab, setActiveStepTab] = useState<"amount" | "milestones">("amount");
+
+  const toggleMilestone = (id: string) => {
+    const newSelectedIds = selectedMilestoneIds.includes(id)
+      ? selectedMilestoneIds.filter((mId) => mId !== id)
+      : [...selectedMilestoneIds, id];
+
+    setSelectedMilestoneIds(newSelectedIds);
+
+    // Sum up target amounts of selected milestones
+    const sum = newSelectedIds.reduce((acc, mId) => {
+      const m = milestones.find((mi) => mi.id === mId);
+      return acc + (m ? Number(m.targetAmount) : 0);
+    }, 0);
+
+    if (sum > 0) {
+      setCustomAmount(sum.toString());
+      setAmount(0);
+    } else {
+      setCustomAmount("");
+      setAmount(1000);
+    }
+  };
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -82,6 +117,7 @@ export default function DonateModal({ projectId, projectTitle, ngoName, onClose 
           name: showDetailsForm ? donorName.trim() : undefined,
           panNumber: showDetailsForm ? panNumber.toUpperCase().trim() : undefined,
           billingAddress,
+          milestoneIds: selectedMilestoneIds,
         }),
       });
 
@@ -145,7 +181,7 @@ export default function DonateModal({ projectId, projectTitle, ngoName, onClose 
         </button>
 
         {!showDetailsForm ? (
-          /* Step 1: Select Amount */
+          /* Step 1: Select Amount / Milestones */
           <div className="space-y-6">
             <div>
               <h3 className="text-xl font-black text-gray-900 dark:text-white">Make a Donation</h3>
@@ -158,46 +194,169 @@ export default function DonateModal({ projectId, projectTitle, ngoName, onClose 
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              {PRESET_AMOUNTS.map((amt) => (
+            {/* Top Navigation Tabs */}
+            {milestones && milestones.length > 0 && (
+              <div className="flex border-b border-gray-100 dark:border-gray-850 mb-2">
                 <button
-                  key={amt}
                   type="button"
-                  onClick={() => {
-                    setAmount(amt);
-                    setCustomAmount("");
-                  }}
-                  className={`py-3 rounded-2xl text-xs font-bold border transition ${
-                    amount === amt && !customAmount
-                      ? "bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-500/10"
-                      : "bg-gray-50 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                  onClick={() => setActiveStepTab("amount")}
+                  className={`flex-1 pb-3 text-sm font-bold text-center border-b-2 transition ${
+                    activeStepTab === "amount"
+                      ? "border-emerald-600 text-emerald-600 dark:text-emerald-400"
+                      : "border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-250"
                   }`}
                 >
-                  ₹{amt.toLocaleString()}
+                  Donation Amount
                 </button>
-              ))}
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Custom Amount (INR)</label>
-              <div className="relative flex items-center bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-1.5 focus-within:ring-2 focus-within:ring-emerald-500 transition">
-                <span className="pl-3 text-sm font-bold text-gray-400">₹</span>
-                <input
-                  type="number"
-                  value={customAmount}
-                  onChange={(e) => {
-                    setCustomAmount(e.target.value);
-                    setAmount(0);
-                  }}
-                  placeholder="Enter other amount..."
-                  className="w-full bg-transparent border-0 focus:outline-none pl-2 pr-4 py-2 text-sm dark:text-white"
-                />
+                <button
+                  type="button"
+                  onClick={() => setActiveStepTab("milestones")}
+                  className={`flex-1 pb-3 text-sm font-bold text-center border-b-2 transition ${
+                    activeStepTab === "milestones"
+                      ? "border-emerald-600 text-emerald-600 dark:text-emerald-400"
+                      : "border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-250"
+                  }`}
+                >
+                  Milestones
+                </button>
               </div>
-            </div>
+            )}
 
-            <p className="text-[10px] text-gray-500 leading-normal text-center bg-gray-50 dark:bg-gray-950 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
-              By proceeding, you consent to sharing your name and PAN with {ngoName} for 80G tax certificate issuance as required by the Income Tax Act, 1961.
-            </p>
+            {/* Tab 1: Donation Amount */}
+            {(activeStepTab === "amount" || !milestones || milestones.length === 0) && (
+              <div className="space-y-5 animate-in fade-in duration-200">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Select Donation Amount</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {PRESET_AMOUNTS.map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => {
+                          setAmount(amt);
+                          setCustomAmount("");
+                        }}
+                        className={`py-3 rounded-2xl text-xs font-bold border transition ${
+                          amount === amt && !customAmount
+                            ? "bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-500/10"
+                            : "bg-gray-50 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                        }`}
+                      >
+                        ₹{amt.toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Custom Amount (INR)</label>
+                  <div className="relative flex items-center bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-1.5 focus-within:ring-2 focus-within:ring-emerald-500 transition">
+                    <span className="pl-3 text-sm font-bold text-gray-400">₹</span>
+                    <input
+                      type="number"
+                      value={customAmount}
+                      onChange={(e) => {
+                        setCustomAmount(e.target.value);
+                        setAmount(0);
+                      }}
+                      placeholder="Enter other amount..."
+                      className="w-full bg-transparent border-0 focus:outline-none pl-2 pr-4 py-2 text-sm dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-gray-500 leading-normal text-center bg-gray-50 dark:bg-gray-950 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                  By proceeding, you consent to sharing your name and PAN with {ngoName} for 80G tax certificate issuance as required by the Income Tax Act, 1961.
+                </p>
+              </div>
+            )}
+
+            {/* Tab 2: Earmark Milestones */}
+            {activeStepTab === "milestones" && milestones && milestones.length > 0 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="flex flex-col text-left">
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Earmark Milestones (Optional)
+                  </label>
+                  <span className="text-[10px] text-gray-500 mt-1 font-medium">
+                    Select specific milestones to target your donation, or leave unselected to support the general campaign.
+                  </span>
+                </div>
+                <div className="max-h-64 overflow-y-auto space-y-2 pr-1 border border-gray-100 dark:border-gray-800 rounded-2xl p-3 bg-gray-50 dark:bg-gray-950 text-left">
+                  {milestones.map((m) => {
+                    const isSelectable = m.status === "PENDING" || m.status === "IN_PROGRESS";
+                    const isSelected = selectedMilestoneIds.includes(m.id);
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => isSelectable && toggleMilestone(m.id)}
+                        className={`flex items-start gap-3 p-2.5 rounded-xl border transition ${
+                          !isSelectable
+                            ? "opacity-60 bg-gray-100/50 dark:bg-gray-800/30 border-gray-150 dark:border-gray-850 cursor-not-allowed"
+                            : isSelected
+                            ? "bg-emerald-50/50 border-emerald-500 dark:bg-emerald-950/20 dark:border-emerald-500 cursor-pointer"
+                            : "bg-white border-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:border-gray-800 dark:hover:bg-gray-800 cursor-pointer"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={!isSelectable}
+                          onChange={() => {}} // Controlled input
+                          className="mt-1 h-3.5 w-3.5 text-emerald-650 border-gray-300 rounded focus:ring-emerald-500 pointer-events-none"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start gap-2">
+                            <p className={`text-xs font-bold truncate ${isSelected ? "text-emerald-700 dark:text-emerald-400" : "text-gray-700 dark:text-gray-300"}`}>
+                              {m.title}
+                            </p>
+                            <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-full ${
+                              m.status === "COMPLETED" || m.status === "VERIFIED"
+                                ? "bg-gray-100 dark:bg-gray-800 text-gray-500"
+                                : m.status === "IN_PROGRESS"
+                                ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30"
+                                : "bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30"
+                            }`}>
+                              {m.status}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 line-clamp-1 mt-0.5">{m.description}</p>
+                          <p className="text-[9px] font-semibold text-gray-500 mt-1">Target: ₹{Number(m.targetAmount).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Donation Amount Input specifically for Milestones view */}
+                <div className="pt-2 text-left space-y-2">
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Donation Amount (INR)
+                  </label>
+                  <div className="relative flex items-center bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-1.5 focus-within:ring-2 focus-within:ring-emerald-500 transition">
+                    <span className="pl-3 text-sm font-bold text-gray-400">₹</span>
+                    <input
+                      type="number"
+                      value={customAmount || (amount > 0 ? amount.toString() : "")}
+                      onChange={(e) => {
+                        setCustomAmount(e.target.value);
+                        setAmount(0);
+                      }}
+                      placeholder="Enter amount..."
+                      className="w-full bg-transparent border-0 focus:outline-none pl-2 pr-4 py-2 text-sm dark:text-white"
+                    />
+                  </div>
+                  {selectedMilestoneIds.length > 0 && (
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      Aggregate Milestone Target: ₹{selectedMilestoneIds.reduce((acc, mId) => {
+                        const m = milestones.find((mi) => mi.id === mId);
+                        return acc + (m ? Number(m.targetAmount) : 0);
+                      }, 0).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             <button
               onClick={() => handleCheckoutInit()}
