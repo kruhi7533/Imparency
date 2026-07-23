@@ -100,7 +100,7 @@ export default function DonorChatBox({ ngoId, ngoName, isAuthenticated }: DonorC
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 font-sans">
+    <div className="fixed bottom-6 right-24 z-50 font-sans">
       {/* Floating Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
