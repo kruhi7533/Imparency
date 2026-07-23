@@ -63,7 +63,7 @@ export default async function NgoInquiriesPage() {
     messages: t.messages.map((m) => ({
       id: m.id,
       senderId: m.senderId,
-      senderRole: m.senderRole,
+      senderRole: m.senderRole as "DONOR" | "NGO",
       body: m.body,
       createdAt: m.createdAt.toISOString(),
     })),
