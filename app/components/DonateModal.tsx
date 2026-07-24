@@ -132,6 +132,12 @@ export default function DonateModal({ projectId, projectTitle, ngoName, onClose,
         throw new Error(data.error || "Failed to initiate payment");
       }
 
+      if (data.isMock) {
+        console.log("[MOCK MODE] Bypassing Razorpay popup. Redirecting to success handler...");
+        window.location.href = `/donor/donations/${data.donationId}/pending?payment_id=${data.orderId}`;
+        return;
+      }
+
       // Load SDK & open popup
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
