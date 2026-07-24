@@ -4,13 +4,23 @@ import React, { useState } from "react";
 import DonateModal from "@/app/components/DonateModal";
 import { useSession } from "next-auth/react";
 
+interface Milestone {
+  id: string;
+  title: string;
+  description: string;
+  targetAmount: number;
+  status: string;
+  sequenceOrder: number;
+}
+
 interface ProjectClientProps {
   projectId: string;
   projectTitle: string;
   ngoName: string;
+  milestones: Milestone[];
 }
 
-export default function ProjectClient({ projectId, projectTitle, ngoName }: ProjectClientProps) {
+export default function ProjectClient({ projectId, projectTitle, ngoName, milestones }: ProjectClientProps) {
   const { data: session } = useSession();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -59,6 +69,7 @@ export default function ProjectClient({ projectId, projectTitle, ngoName }: Proj
           projectTitle={projectTitle}
           ngoName={ngoName}
           onClose={() => setIsModalOpen(false)}
+          milestones={milestones}
         />
       )}
     </>
