@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { rateLimit } from "@/lib/rate-limiter";
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -15,9 +16,25 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Missing email or password");
+        }
+
+        // NextAuth's authorize() doesn't receive a real Fetch Request, just a
+        // plain headers object — extract the client IP directly and use the
+        // lower-level rateLimit() rather than checkRateLimit() (which expects
+        // a Request instance). 5 attempts / 15 minutes per IP.
+        const headers = (req?.headers ?? {}) as Record<string, string | string[] | undefined>;
+        const forwardedFor = headers["x-forwarded-for"];
+        const ip =
+          (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor)?.split(",")[0]?.trim() ||
+          (headers["x-real-ip"] as string) ||
+          "unknown";
+
+        const { success } = await rateLimit(ip, "auth/login", 5, 900);
+        if (!success) {
+          throw new Error("Too many login attempts. Please try again in a few minutes.");
         }
 
         const user = await prisma.user.findUnique({

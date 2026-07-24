@@ -6,18 +6,34 @@ import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
+// Twilio parses our reply as XML — any user-controlled value (e.g. a WhatsApp
+// display name) interpolated into a <Message> body must be escaped, or a
+// crafted value could break the response or inject extra TwiML elements.
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 export async function POST(req: Request) {
   try {
     // 1. Twilio signature validation
-    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN!;
+    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
     const twilioSignature = req.headers.get('x-twilio-signature') ?? '';
-    const webhookUrl = process.env.TWILIO_WEBHOOK_URL!;
+    const webhookUrl = process.env.TWILIO_WEBHOOK_URL;
 
     const rawBody = await req.text();
     const params: Record<string, string> = {};
     new URLSearchParams(rawBody).forEach((v, k) => { params[k] = v });
 
     if (process.env.NODE_ENV !== 'development') {
+      if (!twilioAuthToken || !webhookUrl) {
+        console.error('[webhook] Rejected: TWILIO_AUTH_TOKEN or TWILIO_WEBHOOK_URL is not configured — cannot validate signature.');
+        return new NextResponse('Forbidden', { status: 403 });
+      }
       const isValid = twilio.validateRequest(twilioAuthToken, twilioSignature, webhookUrl, params);
       if (!isValid) {
         console.warn('[webhook] Rejected: invalid Twilio signature');
@@ -79,7 +95,7 @@ export async function POST(req: Request) {
           }
         });
         return twimlResponse(
-          `✅ Welcome ${profileName}! You have been registered as a field worker for *${ngo.orgName}*.\n\nYou can now send field updates, photos, and your GPS location directly in this chat. Our AI will review each submission and forward it to the NGO team!`
+          `✅ Welcome ${escapeXml(profileName)}! You have been registered as a field worker for *${escapeXml(ngo.orgName)}*.\n\nYou can now send field updates, photos, and your GPS location directly in this chat. Our AI will review each submission and forward it to the NGO team!`
         );
       } else {
         // Unknown number, no valid join code — ask them to register
@@ -101,7 +117,7 @@ export async function POST(req: Request) {
           data: { ngoId: ngo.id, isPending: false }
         });
         return twimlResponse(
-          `✅ You are now registered with *${ngo.orgName}*! You can start sending field updates.`
+          `✅ You are now registered with *${escapeXml(ngo.orgName)}*! You can start sending field updates.`
         );
       } else {
         return twimlResponse(

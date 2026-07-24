@@ -129,6 +129,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       orderId: order.id,
+      // razorpayOrderId/keyId/donorName/donorEmail: DonateModal.tsx reads
+      // these exact field names to construct the Razorpay Checkout options —
+      // this response previously didn't include them at all, so the widget
+      // could never actually open even when order creation succeeded.
+      razorpayOrderId: order.id,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      donorName: session.user.name,
+      donorEmail: session.user.email,
       amount,
       currency: "INR",
       donationId: donation.id,

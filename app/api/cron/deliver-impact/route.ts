@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendImpactUpdateEmail } from "@/lib/email";
+import crypto from "crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,7 +10,10 @@ const MAX_ATTEMPTS = 5;
 const BATCH_SIZE = 50; // bounded — a viral project drains over several runs, never times out
 
 /**
- * Outbox drainer for impact deliveries. Runs every 10 minutes (vercel.json).
+ * Outbox drainer for impact deliveries. Runs once daily (vercel.json) — a
+ * Vercel Hobby-plan constraint (Hobby only allows daily cron jobs); the
+ * original design intent was every 10 minutes for true INSTANT delivery.
+ * Upgrade to Pro and tighten this schedule if near-real-time delivery matters.
  *
  * Guarantees:
  * - At-least-once delivery with capped retries; exhausted rows become FAILED
@@ -21,7 +25,13 @@ const BATCH_SIZE = 50; // bounded — a viral project drains over several runs, 
  */
 export async function GET(req: Request) {
   const secret = req.headers.get("x-cron-secret") ?? req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+  const expected = process.env.CRON_SECRET;
+  const isAuthorized =
+    !!expected &&
+    !!secret &&
+    secret.length === expected.length &&
+    crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(expected));
+  if (!isAuthorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
