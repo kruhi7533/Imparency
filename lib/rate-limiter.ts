@@ -83,12 +83,16 @@ export async function rateLimit(
  * Standard request rate-limiter wrapper for API Routes.
  * Extracts client IP and returns a 429 response if limit is exceeded.
  */
+type RateLimitCheck =
+  | { isBlocked: true; response: NextResponse; headers?: undefined }
+  | { isBlocked: false; response: null; headers: Record<string, string> };
+
 export async function checkRateLimit(
   request: Request,
   route: string,
   maxRequests: number,
   windowSeconds: number
-) {
+): Promise<RateLimitCheck> {
   // Extract client IP address
   const xForwardedFor = request.headers.get("x-forwarded-for");
   let ip = "unknown";

@@ -364,7 +364,7 @@ export default function ProofReviewClient({
                       </p>
                       <div className="mt-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-4">
                         <span>Budget: ₹{milestone.targetAmount.toLocaleString("en-IN")}</span>
-                        <span>Deadline: {new Date(milestone.deadline).toLocaleDateString()}</span>
+                        <span>Deadline: {new Date(milestone.deadline).toLocaleDateString("en-IN")}</span>
                       </div>
                     </div>
 
@@ -733,7 +733,7 @@ export default function ProofReviewClient({
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(record.reviewedAt).toLocaleString()}
+                        {new Date(record.reviewedAt).toLocaleString("en-IN")}
                       </td>
                     </tr>
                   ))}

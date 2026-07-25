@@ -39,6 +39,22 @@ export default async function NGODashboardPage() {
 
   const status = profile.verificationStatus;
 
+  // Prisma Decimal fields aren't plain objects and can't cross the server->client
+  // boundary — convert them to numbers before handing the profile to DashboardClient.
+  const serializedProfile = {
+    ...profile,
+    healthScore: profile.healthScore !== null ? Number(profile.healthScore) : null,
+    projects: profile.projects.map((project) => ({
+      ...project,
+      targetAmount: Number(project.targetAmount),
+      raisedAmount: Number(project.raisedAmount),
+      milestones: project.milestones.map((milestone) => ({
+        ...milestone,
+        targetAmount: Number(milestone.targetAmount),
+      })),
+    })),
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
       
@@ -119,8 +135,8 @@ export default async function NGODashboardPage() {
 
         {/* State 3: VERIFIED (Full Dashboard) */}
         {status === "VERIFIED" && (
-          <DashboardClient 
-            profile={profile as any} 
+          <DashboardClient
+            profile={serializedProfile as any}
             whatsappBotNumber={process.env.TWILIO_WHATSAPP_NUMBER}
             joinCode={profile.joinCode ?? null}
           />

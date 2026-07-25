@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { DonationStatus } from "@prisma/client";
 
 export async function GET(request: Request) {
   try {
@@ -24,10 +25,15 @@ export async function GET(request: Request) {
     const limit = isNaN(limitParam) || limitParam < 1 ? 10 : Math.min(limitParam, 50);
 
     const where: any = { donorId: session.user.id };
-    
-    // Status filter
+
+    // Status filter. Also guard against rows whose `status` predates the
+    // current DonationStatus enum (a stale/unmigrated database can contain
+    // values Prisma no longer knows about) — without this, a single such
+    // row throws PrismaClientUnknownRequestError and 500s the whole list.
     if (statusParam && statusParam !== "ALL") {
       where.status = statusParam;
+    } else {
+      where.status = { in: Object.values(DonationStatus) };
     }
 
     const [donations, total] = await Promise.all([

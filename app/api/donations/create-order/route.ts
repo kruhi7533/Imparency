@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { projectId, amount } = body;
+    const { projectId, amount, milestoneIds = [] } = body;
 
     if (!projectId) {
       return NextResponse.json({ error: "Project ID is required" }, { status: 400 });
@@ -26,6 +26,25 @@ export async function POST(request: Request) {
 
     if (!amount || typeof amount !== "number" || amount < 100) {
       return NextResponse.json({ error: "Amount must be a number and at least Rs. 100" }, { status: 400 });
+    }
+
+    // If milestoneIds are provided, verify they all belong to this project and are donatable
+    if (milestoneIds && milestoneIds.length > 0) {
+      const validMilestones = await prisma.milestone.findMany({
+        where: {
+          id: { in: milestoneIds },
+          projectId,
+          status: { in: ["PENDING", "IN_PROGRESS"] },
+        },
+        select: { id: true },
+      });
+
+      if (validMilestones.length !== milestoneIds.length) {
+        return NextResponse.json(
+          { error: "One or more selected milestones are invalid or not accepting donations." },
+          { status: 400 }
+        );
+      }
     }
 
     // Fetch project
@@ -56,6 +75,13 @@ export async function POST(request: Request) {
       select: { donorCategory: true, nriSourceDeclaration: true },
     });
 
+    if (!freshUser) {
+      return NextResponse.json(
+        { error: "Stale session", message: "Your session has expired or your user account no longer exists. Please sign out and sign in again." },
+        { status: 401 }
+      );
+    }
+
     const ngoCompliance = await prisma.nGOCompliance.findUnique({
       where: { ngoId: project.ngoId },
       select: { fcraStatus: true, fcraExpiryDate: true },
@@ -84,6 +110,132 @@ export async function POST(request: Request) {
     }
     // ──────────────────────────────────────────────────────────────────────────
 
+    const isMock = !process.env.RAZORPAY_KEY_ID || 
+                   process.env.RAZORPAY_KEY_ID.includes("xxxxxxxxxxxx") || 
+                   process.env.RAZORPAY_KEY_ID === "";
+
+    if (isMock) {
+      console.log(`[MOCK CHECKOUT] Initiating mock donation order for project ${projectId} amount ${amount}`);
+      const mockOrderId = `order_mock_${Date.now()}`;
+      
+      // Calculate compliance snapshot
+      let complianceSnapshot: Record<string, unknown> | null = null;
+      try {
+        const [ngoComp, hasImpactProof] = await Promise.all([
+          prisma.nGOCompliance.findUnique({
+            where: { ngoId: project.ngoId },
+          }),
+          (async () => {
+            const { hasVerifiedImpactProof } = await import("@/lib/ngo-compliance");
+            return hasVerifiedImpactProof(project.ngoId);
+          })(),
+        ]);
+        const { computeCompliance, deriveFcraStatus } = await import("@/lib/ngo-compliance");
+        const compliance = computeCompliance(ngoComp, hasImpactProof);
+        const liveFcra =
+          ngoComp?.fcraExpiryDate &&
+          ["ACTIVE", "EXPIRING_SOON", "EXPIRED"].includes(ngoComp.fcraStatus)
+            ? deriveFcraStatus(ngoComp.fcraExpiryDate) ?? ngoComp.fcraStatus
+            : ngoComp?.fcraStatus ?? "NONE";
+
+        complianceSnapshot = {
+          version: 1,
+          capturedAt: new Date().toISOString(),
+          panStatus: freshUser?.donorCategory === "INDIAN_IN_INDIA" ? "VERIFIED" : "MOCK", 
+          panVerifiedVia: "MOCK",
+          donorCategory: freshUser?.donorCategory || "INDIAN_IN_INDIA",
+          nriSourceDeclaration: freshUser?.nriSourceDeclaration || null,
+          ngoFcraStatus: liveFcra,
+          ngoComplianceScore: compliance.score,
+          ngoHealthScore: 80,
+        };
+      } catch (snapErr) {
+        console.error(`[MOCK CHECKOUT] FAILED to build compliance snapshot:`, snapErr);
+      }
+
+      // Execute transaction to update raisedAmount, totalDonated, milestone status, and create Donation
+      const donation = await prisma.$transaction(async (tx) => {
+        // Create Donation in SUCCESS state
+        const d = await tx.donation.create({
+          data: {
+            status: "SUCCESS",
+            razorpayOrderId: mockOrderId,
+            razorpayPaymentId: `pay_mock_${Date.now()}`,
+            donorId: session.user.id,
+            projectId,
+            amount,
+            milestoneIds,
+            ...(complianceSnapshot ? { complianceSnapshot: complianceSnapshot as any } : {}),
+          },
+          include: {
+            donor: true,
+            project: { include: { ngo: true } },
+          },
+        });
+
+        // Update Project raised amount
+        await tx.project.update({
+          where: { id: projectId },
+          data: {
+            raisedAmount: {
+              increment: amount,
+            },
+          },
+        });
+
+        // Update Donor totalDonated
+        await tx.user.update({
+          where: { id: session.user.id },
+          data: {
+            totalDonated: {
+              increment: amount,
+            },
+          },
+        });
+
+        // If milestones, move PENDING -> IN_PROGRESS
+        if (milestoneIds && milestoneIds.length > 0) {
+          await tx.milestone.updateMany({
+            where: {
+              id: { in: milestoneIds },
+              status: "PENDING",
+            },
+            data: { status: "IN_PROGRESS" },
+          });
+        }
+
+        return d;
+      });
+
+      // Post-resolve actions (impact feed subscription, 80G receipt)
+      try {
+        const { ensureImpactSubscription } = await import("@/lib/impact-events");
+        await ensureImpactSubscription(donation.donorId, donation.projectId);
+      } catch (subErr) {
+        console.error("[MOCK CHECKOUT] Failed to create impact subscription:", subErr);
+      }
+
+      try {
+        const { evaluateReceiptEligibility, issueTaxReceipt, queueReceiptClaim } = await import("@/lib/tax-receipt");
+        const { eligible } = evaluateReceiptEligibility(donation.donor);
+        if (eligible) {
+          await issueTaxReceipt(donation.id);
+        } else {
+          await queueReceiptClaim(donation);
+        }
+      } catch (receiptErr) {
+        console.error("[MOCK CHECKOUT] Failed to generate/queue tax receipt:", receiptErr);
+      }
+
+      return NextResponse.json({
+        orderId: mockOrderId,
+        amount,
+        currency: "INR",
+        donationId: donation.id,
+        isMock: true,
+      });
+    }
+
     // Create Razorpay order
     const razorpay = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
@@ -104,20 +256,31 @@ export async function POST(request: Request) {
         donorId: session.user.id,
         projectId,
         amount,
+        milestoneIds,
       },
     });
 
     return NextResponse.json({
       orderId: order.id,
+      // razorpayOrderId/keyId/donorName/donorEmail: DonateModal.tsx reads
+      // these exact field names to construct the Razorpay Checkout options —
+      // this response previously didn't include them at all, so the widget
+      // could never actually open even when order creation succeeded.
+      razorpayOrderId: order.id,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      donorName: session.user.name,
+      donorEmail: session.user.email,
       amount,
       currency: "INR",
       donationId: donation.id,
     });
   } catch (error) {
     const err = error as Error;
+    // Log the real error server-side, but never forward raw internal/SDK
+    // error text (e.g. Razorpay credential errors) to the donor.
     console.error("Error creating donation order:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to create donation order" },
+      { error: "We couldn't start your donation right now. Please try again in a moment." },
       { status: 500 }
     );
   }

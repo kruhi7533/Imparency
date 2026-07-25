@@ -339,6 +339,14 @@ export default async function ProjectPage({
                 projectId={project.id} 
                 projectTitle={project.title} 
                 ngoName={project.ngo.orgName} 
+                milestones={project.milestones.map((m) => ({
+                  id: m.id,
+                  title: m.title,
+                  description: m.description,
+                  targetAmount: Number(m.targetAmount),
+                  status: m.status,
+                  sequenceOrder: m.sequenceOrder,
+                }))}
               />
               
             </div>

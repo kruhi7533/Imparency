@@ -38,7 +38,7 @@ export default function RetryPage() {
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
       amount: data.amount * 100, // paise
       currency: "INR",
-      name: "Imparency",
+      name: "ImpactBridge",
       description: `Donation retry — ${data.projectTitle}`,
       order_id: data.orderId,
       prefill: {
@@ -126,7 +126,7 @@ export default function RetryPage() {
         {/* Branding header */}
         <div className="mb-8">
           <Link href="/" className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent tracking-tight">
-            Imparency
+            ImpactBridge
           </Link>
           <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">
             Donation Recovery Portal

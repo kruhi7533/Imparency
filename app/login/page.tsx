@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
-import { signIn, useSession } from "next-auth/react";
+import { signIn, useSession, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -141,9 +141,17 @@ function LoginContent() {
 
       // 3. Post-Auth Routing Logic
       setTimeout(async () => {
-        if (role === "NGO" || callbackUrl.includes("/ngo")) {
-          router.push("/ngo/register");
-        } else if (callbackUrl.includes("/admin")) {
+        // `role` state only reflects the sign-up form's choice; on a plain
+        // sign-in it's untouched. Read the real session role instead so
+        // existing NGO/ADMIN accounts route correctly too.
+        const session = await getSession();
+        const actualRole = session?.user?.role;
+
+        if (actualRole === "NGO" || role === "NGO" || callbackUrl.includes("/ngo")) {
+          // Already has an NGOProfile (existing/verified NGO) -> their dashboard.
+          // No profile yet (fresh NGO signup) -> the registration form.
+          router.push(session?.user?.ngoProfileId ? "/ngo/dashboard" : "/ngo/register");
+        } else if (actualRole === "ADMIN" || callbackUrl.includes("/admin")) {
           router.push("/admin/dashboard");
         } else {
           // For DONOR: check if persona is set via a quick API call
@@ -338,7 +346,7 @@ function LoginContent() {
                 className="mt-1 h-4 w-4 rounded border-gray-800 bg-gray-950 text-trust-600 focus:ring-trust-500 focus:ring-offset-gray-950 transition cursor-pointer"
               />
               <label htmlFor="consentCheckbox" className="text-xs text-gray-400 leading-normal cursor-pointer select-none">
-                I consent to Imparency collecting and processing my personal data (name, email) for donation tracking and tax receipt generation, as required under India's DPDP Act 2023.{" "}
+                I consent to ImpactBridge collecting and processing my personal data (name, email) for donation tracking and tax receipt generation, as required under India's DPDP Act 2023.{" "}
                 <Link href="/privacy-policy" target="_blank" className="text-trust-300 hover:text-trust-200 hover:underline">
                   Privacy Policy
                 </Link>
