@@ -20,7 +20,8 @@ Answer architecture questions from that document plus a targeted re-read of the 
 - There **is** now a Vitest suite: `npm test` runs `tests/*.test.ts` (10 files / 89 tests, config in `vitest.config.ts`, `@` alias resolved). Prisma is mocked per-test, so no database is needed. Add tests there rather than writing new `scripts/test-*.ts` harnesses.
 
 ## Schema / migrations — read before changing `prisma/schema.prisma`
-The repo has `prisma/migrations/`, but the dev database was built with `prisma db push` and has **no `_prisma_migrations` table**. Consequences:
-- `prisma migrate deploy` will fail against it (it starts from `init` and hits existing tables). The database must be baselined first with `prisma migrate resolve --applied <name>` for each existing migration.
-- `build` is plain `next build` — nothing applies schema on deploy. Schema changes only land when someone runs `predev`/`db:sync` locally.
-- Adding a model therefore needs **both** a schema edit and a migration, or the table will never exist in a migrations-managed environment.
+**This repo uses Prisma Migrate. Do not run `prisma db push`.**
+- Add a field/model with `npm run db:migrate` (`prisma migrate dev`) so a migration lands in `prisma/migrations/` and gets committed. A new model needs **both** the schema edit and the migration, or its table will never exist anywhere else.
+- `predev` and `build` both run `prisma migrate deploy`, so schema ships with the deploy instead of depending on someone running a command.
+- `npm run db:status` shows drift. `db:sync` is an alias for `migrate deploy` (several admin pages print it in their empty states).
+- History: the dev database was originally built entirely with `db push` and had no `_prisma_migrations` table, so `migrate deploy` would have failed against it. It was brought in sync and baselined on 2026-07-25 (all three migrations marked applied). Reintroducing `db push` would recreate that drift — don't.
