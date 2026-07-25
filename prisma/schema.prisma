@@ -137,7 +137,20 @@ model User {
   reEngagementEvents  ReEngagementEvent[]
   teamMemberships     NGOTeamMember[]
   adminActionLogs     AdminActionLog[]    @relation("AdminActionLogs")
+  passwordResetTokens PasswordResetToken[]
   donorInquiries      DonorInquiry[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model NGOProfile {
@@ -644,6 +657,15 @@ model PitchLead {
   organization String?
   createdAt    DateTime @default(now())
   downloaded   Boolean  @default(false)
+}
+
+// Platform-wide key/value settings (admin-managed toggles). Kept generic so new
+// switches are a row, not a migration. Values are stored as strings; typed
+// accessors live in lib/app-settings.ts.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 // ─── Admin accountability (Phase 1) ─────────────────────────────────────────
