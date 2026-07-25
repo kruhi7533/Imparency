@@ -21,17 +21,47 @@ function LoginContent() {
   }, [sessionStatus, callbackUrl, router]);
 
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"DONOR" | "NGO">("DONOR");
-  
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
-  
+
   const [consentGiven, setConsentGiven] = useState(false);
   const [consentError, setConsentError] = useState("");
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (!email) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Something went wrong. Please try again.");
+      }
+      setSuccess(data.message || "If an account exists for this email, we've sent password reset instructions.");
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,20 +193,22 @@ function LoginContent() {
       </div>
 
       {/* Form State Tabs */}
-      <div className="flex border-b border-gray-800 mb-6">
-        <button
-          onClick={() => { setIsSignUp(false); setError(""); setSuccess(""); }}
-          className={`flex-1 pb-2.5 text-sm font-semibold transition ${!isSignUp ? "text-white border-b-2 border-trust-400" : "text-gray-500 hover:text-gray-300"}`}
-        >
-          Sign In
-        </button>
-        <button
-          onClick={() => { setIsSignUp(true); setError(""); setSuccess(""); }}
-          className={`flex-1 pb-2.5 text-sm font-semibold transition ${isSignUp ? "text-white border-b-2 border-trust-400" : "text-gray-500 hover:text-gray-300"}`}
-        >
-          Register Account
-        </button>
-      </div>
+      {!isForgotPassword && (
+        <div className="flex border-b border-gray-800 mb-6">
+          <button
+            onClick={() => { setIsSignUp(false); setError(""); setSuccess(""); }}
+            className={`flex-1 pb-2.5 text-sm font-semibold transition ${!isSignUp ? "text-white border-b-2 border-trust-400" : "text-gray-500 hover:text-gray-300"}`}
+          >
+            Sign In
+          </button>
+          <button
+            onClick={() => { setIsSignUp(true); setError(""); setSuccess(""); }}
+            className={`flex-1 pb-2.5 text-sm font-semibold transition ${isSignUp ? "text-white border-b-2 border-trust-400" : "text-gray-500 hover:text-gray-300"}`}
+          >
+            Register Account
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 p-3.5 bg-red-950/40 border-l-2 border-red-500 rounded-r text-xs text-red-300">
@@ -190,6 +222,46 @@ function LoginContent() {
         </div>
       )}
 
+      {isForgotPassword ? (
+        <>
+          <p className="text-xs text-gray-400 mb-4">
+            Enter the email address on your account and we'll send you a link to reset your password.
+          </p>
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Email Address *</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition"
+                placeholder="e.g. name@organization.org"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-trust-600 hover:bg-trust-500 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+            >
+              {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+              Send Reset Link
+            </button>
+          </form>
+
+          <p className="text-center mt-6">
+            <button
+              type="button"
+              onClick={() => { setIsForgotPassword(false); setError(""); setSuccess(""); }}
+              className="text-xs text-trust-300 hover:text-trust-200 hover:underline"
+            >
+              Back to Sign In
+            </button>
+          </p>
+        </>
+      ) : (
+      <>
       <form onSubmit={handleSubmit} className="space-y-4">
         {isSignUp && (
           <div>
@@ -227,6 +299,17 @@ function LoginContent() {
             placeholder="••••••••"
             required
           />
+          {!isSignUp && (
+            <div className="text-right mt-1.5">
+              <button
+                type="button"
+                onClick={() => { setIsForgotPassword(true); setError(""); setSuccess(""); }}
+                className="text-xs text-trust-300 hover:text-trust-200 hover:underline"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
         </div>
 
         {isSignUp && (
@@ -314,6 +397,8 @@ function LoginContent() {
         </svg>
         Sign In with Google
       </button>
+      </>
+      )}
 
     </div>
   );

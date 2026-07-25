@@ -9,6 +9,7 @@ import {
 } from "@/lib/notification-triggers";
 import { recalculateNGOHealthScore } from "@/lib/ngo-health";
 import { logAdminAction } from "@/lib/admin-log";
+import { isBudgetViolation, getBudgetVerdict } from "@/lib/budget-rule";
 
 export const runtime = "nodejs";
 
@@ -73,6 +74,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // Strict budget rule: approving a proof that fails budget compliance
+    // (over budget / no receipts / unclear) also requires a written justification.
+    // Enforced here so it can't be bypassed by calling the API directly. Read
+    // through the shared parser so this verdict matches what the admin UI showed.
+    const budgetStatus = getBudgetVerdict(latestProof?.aiValidationResult)?.status ?? null;
+    const overrodeBudget = action === "APPROVE" && isBudgetViolation(budgetStatus);
+    if (overrodeBudget && (!rejectionReason || !rejectionReason.trim())) {
+      return NextResponse.json(
+        { error: `A justification note is required to approve proof that fails the budget rule (${budgetStatus}).` },
+        { status: 400 }
+      );
+    }
+
     if (action === "APPROVE") {
       await prisma.milestone.update({
         where: { id: milestoneId },
@@ -103,6 +117,9 @@ export async function POST(request: Request) {
           ai: aiScore !== null ? { score: aiScore } : null,
           overrodeAi,
           ...(overrodeAi ? { disagreementReason: rejectionReason.trim() } : {}),
+          budgetStatus,
+          overrodeBudget,
+          ...(overrodeBudget ? { budgetJustification: rejectionReason.trim() } : {}),
         },
         request,
       });
@@ -167,6 +184,10 @@ export async function POST(request: Request) {
           proofId: latestProof?.id ?? null,
           ai: aiScore !== null ? { score: aiScore } : null,
           overrodeAi: false,
+          // Recorded on rejections too, so an audit query filtering on
+          // budgetStatus sees the same shape on both decision paths.
+          budgetStatus,
+          overrodeBudget: false,
         },
         request,
       });

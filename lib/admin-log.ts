@@ -40,12 +40,13 @@ export type AdminAction =
   | "THREAD_RESOLVED"
   | "PAN_MANUALLY_VERIFIED"
   | "PAN_MANUALLY_REJECTED"
-  | "REMINDERS_SENT";
+  | "REMINDERS_SENT"
+  | "SETTING_UPDATED";
 
 export interface AdminActionParams {
   adminId: string;
   action: AdminAction;
-  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM";
+  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING";
   entityId: string;
   oldValue?: Record<string, unknown> | null;
   newValue?: Record<string, unknown> | null;
