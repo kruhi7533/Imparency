@@ -11,6 +11,7 @@ import NgoMarquee from "@/components/home/NgoMarquee";
 import BridgeArt from "@/components/home/BridgeArt";
 import HeroField from "@/components/home/HeroField";
 import ImpactStories from "@/components/home/ImpactStories";
+import EmergencyReliefSection from "@/components/home/EmergencyReliefSection";
 import { getPlatformStats } from "@/lib/platform-stats";
 
 export const revalidate = 60;
@@ -104,6 +105,10 @@ export default async function Home() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
         <BridgeArt />
       </section>
+
+      {/* Emergency Relief — only renders when a verified crisis is active,
+          deliberately above the normal campaign-discovery flow below */}
+      <EmergencyReliefSection />
 
       {/* Verified NGOs marquee — the "partners strip", except every name is real */}
       <NgoMarquee names={stats.verifiedNgoNames} />

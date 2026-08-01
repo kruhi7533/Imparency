@@ -236,6 +236,30 @@ export async function sendImpactUpdateEmail(
   return sendEmail({ to, subject, body });
 }
 
+export async function sendCrisisAlertEmail(
+  to: string,
+  donorName: string,
+  crisis: { title: string; slug: string; disasterType: string; severity: string; affectedLocation: string; description: string; coverImage: string }
+) {
+  const subject = `Emergency: ${crisis.title} — ${crisis.affectedLocation}`;
+  const url = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/crisis/${crisis.slug}`;
+  const unsubscribeUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/donor/profile?tab=notifications`;
+  const body = `Hi ${donorName},\n\nA new emergency has been verified and needs urgent support: ${crisis.disasterType.replace("_", " ")} — ${crisis.severity} severity, ${crisis.affectedLocation}.\n\n${crisis.description}\n\nSee photos, live progress, and donate directly:\n${url}\n\nCover image: ${crisis.coverImage}\n\nEvery donation is tracked from the crisis fund down to the NGO or individual on the ground.\n\nBest regards,\nThe ImpactBridge Team\n\n---\nDon't want emergency alerts? Turn them off here: ${unsubscribeUrl}`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendInitiativeVerifiedEmail(to: string, submitterName: string, organizerName: string) {
+  const subject = `Your relief initiative is now live on ImpactBridge`;
+  const body = `Hi ${submitterName},\n\nGood news — your relief initiative "${organizerName}" has been verified and is now published. Donors can find and support it on ImpactBridge.\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendInitiativeRejectedEmail(to: string, submitterName: string, organizerName: string, reason: string) {
+  const subject = `Update on your relief initiative submission`;
+  const body = `Hi ${submitterName},\n\nWe reviewed your relief initiative submission "${organizerName}" and couldn't verify it at this time.\n\nReason:\n"${reason}"\n\nYou're welcome to resubmit with corrected details.\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
 export async function sendNGOSuspendedEmail(to: string, orgName: string, reason: string) {
   const subject = `Important: ${orgName} has been suspended on ImpactBridge`;
   const body = `Hi there,\n\nFollowing a risk review, our administration team has suspended "${orgName}" on ImpactBridge.\n\nReason:\n"${reason}"\n\nWhat this means:\n- Your projects can no longer receive donations while suspended.\n- You cannot submit new milestone proofs.\n\nIf you believe this decision is incorrect, you can respond to our team from your dashboard inquiries page — your reply goes directly to the reviewing admin.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`;

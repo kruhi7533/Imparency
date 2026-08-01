@@ -40,12 +40,21 @@ export type AdminAction =
   | "THREAD_RESOLVED"
   | "PAN_MANUALLY_VERIFIED"
   | "PAN_MANUALLY_REJECTED"
-  | "REMINDERS_SENT";
+  | "REMINDERS_SENT"
+  | "CRISIS_EVENT_CREATED"
+  | "CRISIS_EVENT_UPDATED"
+  | "CRISIS_EVENT_VERIFIED"
+  | "CRISIS_EVENT_REJECTED"
+  | "CRISIS_EVENT_FEATURED"
+  | "CRISIS_EVENT_UNFEATURED"
+  | "CRISIS_EVENT_ARCHIVED"
+  | "INITIATIVE_VERIFIED"
+  | "INITIATIVE_REJECTED";
 
 export interface AdminActionParams {
   adminId: string;
   action: AdminAction;
-  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM";
+  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "CRISIS_EVENT" | "RELIEF_INITIATIVE";
   entityId: string;
   oldValue?: Record<string, unknown> | null;
   newValue?: Record<string, unknown> | null;

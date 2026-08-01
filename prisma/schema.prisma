@@ -138,6 +138,13 @@ model User {
   teamMemberships     NGOTeamMember[]
   adminActionLogs     AdminActionLog[]    @relation("AdminActionLogs")
   donorInquiries      DonorInquiry[]
+
+  // Emergency Crisis Relief
+  crisisAlertsOptOut  Boolean            @default(false)
+  crisisEventsCreated CrisisEvent[]      @relation("CrisisEventsCreated")
+  initiativesSubmitted ReliefInitiative[] @relation("InitiativesSubmitted")
+  crisisDonations     CrisisDonation[]
+  crisisDeliveries    CrisisNotificationDelivery[]
 }
 
 model NGOProfile {
@@ -186,6 +193,8 @@ model NGOProfile {
   teamMembers  NGOTeamMember[]
   teamInvites  TeamInvite[]
   donorInquiries DonorInquiry[]
+  crisisParticipants CrisisParticipant[]
+  crisisUpdates      CrisisUpdate[]
 }
 
 model NGOTeamMember {
@@ -286,9 +295,15 @@ model Project {
   aiScreeningScore  Int?
   aiScreeningResult String? // JSON: { score, recommendation, reasoning, flags }
 
-  milestones     Milestone[]
-  donations      Donation[]
-  projectReviews ProjectReview[]
+  // Emergency Crisis Relief — nullable, zero impact on non-crisis projects
+  crisisEventId       String?
+  crisisEvent         CrisisEvent? @relation(fields: [crisisEventId], references: [id])
+  isCrisisGeneralFund Boolean      @default(false)
+
+  milestones             Milestone[]
+  donations              Donation[]
+  projectReviews         ProjectReview[]
+  crisisDonationsAsTarget CrisisDonation[]
 }
 
 model ProjectReview {
@@ -864,4 +879,241 @@ model DonorInquiryMessage {
   createdAt  DateTime     @default(now())
 
   @@index([threadId])
+}
+
+// ─── Emergency Crisis Relief Campaign System ────────────────────────────────
+// Additive-only: no existing model's required fields or constraints change.
+// Crisis campaigns ARE Project rows (tagged via Project.crisisEventId) so they
+// inherit milestones, proof review, and AI screening for free. Direct-to-crisis
+// and initiative donations get their own CrisisDonation table rather than
+// relaxing Donation.projectId (NOT NULL, live production data) — see the
+// architecture spec for the full reasoning.
+
+enum DisasterType {
+  FLOOD
+  EARTHQUAKE
+  CYCLONE
+  WILDFIRE
+  LANDSLIDE
+  DROUGHT
+  WAR_CONFLICT
+  EPIDEMIC
+  OTHER
+}
+
+enum CrisisSeverity {
+  LOW
+  MODERATE
+  HIGH
+  CRITICAL
+}
+
+enum CrisisStatus {
+  UPCOMING
+  ACTIVE
+  CLOSED
+}
+
+enum InitiativeStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  VERIFIED
+  PUBLISHED
+  REJECTED
+}
+
+enum CrisisDonationTarget {
+  CRISIS_DIRECT
+  NGO_CAMPAIGN
+  INITIATIVE
+}
+
+enum CrisisUpdateType {
+  PHOTO
+  VIDEO
+  REPORT
+  FUND_UTILIZATION
+  BENEFICIARY_UPDATE
+  TEXT
+}
+
+model CrisisEvent {
+  id                 String              @id @default(uuid())
+  title              String
+  slug               String              @unique
+  disasterType       DisasterType
+  description        String
+  affectedLocation   String
+  country            String              @default("India")
+  stateName          String?
+  city               String?
+  latitude           Float?
+  longitude          Float?
+  severity           CrisisSeverity      @default(MODERATE)
+  coverImage         String
+  galleryImages      String[]
+  status             CrisisStatus        @default(UPCOMING)
+  verificationStatus VerificationStatus  @default(PENDING)
+  verifiedById       String?
+  verifiedAt         DateTime?
+  isFeatured         Boolean             @default(false)
+  isArchived         Boolean             @default(false)
+  startDate          DateTime
+  expectedEndDate    DateTime?
+  closedAt           DateTime?
+
+  createdById String
+  createdBy   User   @relation("CrisisEventsCreated", fields: [createdById], references: [id])
+
+  // Running aggregates — updated transactionally on each donation/join/campaign,
+  // never derived at read time.
+  totalRaised    Decimal @default(0.00) @db.Decimal(12, 2)
+  totalDonors    Int     @default(0)
+  totalCampaigns Int     @default(0)
+  totalNgos      Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaigns    Project[]
+  participants CrisisParticipant[]
+  initiatives  ReliefInitiative[]
+  donations    CrisisDonation[]
+  updates      CrisisUpdate[]
+  deliveries   CrisisNotificationDelivery[]
+
+  @@index([status])
+  @@index([verificationStatus])
+  @@index([disasterType])
+  @@index([isFeatured])
+  @@index([country, stateName, city])
+}
+
+model CrisisParticipant {
+  id            String      @id @default(uuid())
+  crisisEventId String
+  crisisEvent   CrisisEvent @relation(fields: [crisisEventId], references: [id], onDelete: Cascade)
+  ngoId         String
+  ngo           NGOProfile  @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  joinedAt      DateTime    @default(now())
+
+  @@unique([crisisEventId, ngoId])
+  @@index([ngoId])
+}
+
+model ReliefInitiative {
+  id            String       @id @default(uuid())
+  crisisEventId String?
+  crisisEvent   CrisisEvent? @relation(fields: [crisisEventId], references: [id])
+
+  submittedById String
+  submittedBy   User   @relation("InitiativesSubmitted", fields: [submittedById], references: [id])
+
+  organizerName String // "Organization/Person"
+  organizerType String // "INDIVIDUAL" | "INFORMAL_GROUP"
+  description   String
+  location      String
+  latitude      Float?
+  longitude     Float?
+  requiredFunds Decimal @db.Decimal(12, 2)
+  raisedAmount  Decimal @default(0.00) @db.Decimal(12, 2)
+  totalDonors   Int     @default(0)
+
+  // Bank details — application-layer AES-256-GCM encrypted before write (lib/crisis/bank-encryption.ts)
+  bankAccountName      String
+  bankAccountNumberEnc String
+  bankIfsc             String
+  bankProofUrl         String // cancelled cheque / passbook photo
+
+  images    String[]
+  documents String[] // ID proof, any registration doc if available
+
+  status       InitiativeStatus @default(SUBMITTED)
+  reviewNote   String?
+  reviewedById String?
+  reviewedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  donations CrisisDonation[]
+  updates   CrisisUpdate[]
+
+  @@index([status])
+  @@index([crisisEventId])
+}
+
+model CrisisDonation {
+  id      String @id @default(uuid())
+  donorId String
+  donor   User   @relation(fields: [donorId], references: [id])
+
+  crisisEventId String
+  crisisEvent   CrisisEvent          @relation(fields: [crisisEventId], references: [id])
+  targetType    CrisisDonationTarget
+
+  campaignProjectId String?
+  campaignProject   Project? @relation(fields: [campaignProjectId], references: [id])
+  initiativeId      String?
+  initiative        ReliefInitiative? @relation(fields: [initiativeId], references: [id])
+
+  amount             Decimal        @db.Decimal(10, 2)
+  razorpayOrderId    String
+  razorpayPaymentId  String?
+  status             DonationStatus @default(PENDING)
+  receiptUrl         String?
+  complianceSnapshot Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([crisisEventId])
+  @@index([donorId])
+  @@index([campaignProjectId])
+  @@index([initiativeId])
+  @@index([razorpayOrderId])
+}
+
+model CrisisUpdate {
+  id            String      @id @default(uuid())
+  crisisEventId String
+  crisisEvent   CrisisEvent @relation(fields: [crisisEventId], references: [id], onDelete: Cascade)
+
+  postedById    String // NGOTeamMember user id, or initiative submitter id
+  postedByNgoId String?
+  postedByNgo   NGOProfile? @relation(fields: [postedByNgoId], references: [id])
+  initiativeId  String?
+  initiative    ReliefInitiative? @relation(fields: [initiativeId], references: [id])
+
+  type                 CrisisUpdateType
+  title                String
+  body                 String
+  mediaUrls            String[]
+  documentUrls         String[] // expense reports, receipts
+  fundsUtilized        Decimal? @db.Decimal(12, 2)
+  beneficiariesReached Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([crisisEventId, createdAt])
+}
+
+// Notification outbox — same shape as the proven ImpactDelivery pattern, reusing
+// its ImpactChannel/ImpactDeliveryStatus enums for identical dedup/retry semantics.
+model CrisisNotificationDelivery {
+  id            String               @id @default(uuid())
+  crisisEventId String
+  crisisEvent   CrisisEvent          @relation(fields: [crisisEventId], references: [id], onDelete: Cascade)
+  donorId       String
+  donor         User                 @relation(fields: [donorId], references: [id])
+  channel       ImpactChannel
+  status        ImpactDeliveryStatus @default(PENDING)
+  attempts      Int                  @default(0)
+  lastError     String?
+  sentAt        DateTime?
+  createdAt     DateTime             @default(now())
+
+  @@unique([crisisEventId, donorId, channel])
+  @@index([status, attempts])
+  @@index([donorId])
 }
