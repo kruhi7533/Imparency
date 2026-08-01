@@ -153,7 +153,7 @@ const ReceiptDocument = ({ data }: { data: ReceiptData }) => {
       <Page size="A4" style={styles.page}>
         {/* Section 1: Logo & Header */}
         <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>IMPARENCY</Text>
+          <Text style={styles.logoText}>IMPACTBRIDGE</Text>
         </View>
 
         <View style={styles.header}>
@@ -264,7 +264,7 @@ const ReceiptDocument = ({ data }: { data: ReceiptData }) => {
             This is a computer-generated receipt and does not require a physical signature.
           </Text>
           <Text style={styles.verifiedBy}>
-            Verified by Imparency Platform | www.imparency.in
+            Verified by ImpactBridge Platform | www.impactbridge.in
           </Text>
         </View>
       </Page>

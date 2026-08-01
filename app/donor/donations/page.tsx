@@ -59,6 +59,8 @@ export default function DonationsPage() {
 
   // Expired link local state tracker
   const [expiredDonationIds, setExpiredDonationIds] = useState<Record<string, string>>({});
+  const [fetchError, setFetchError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   // Fetch summary once on mount
   useEffect(() => {
@@ -99,16 +101,20 @@ export default function DonationsPage() {
           }
           setHasMore(data.pagination.hasMore);
           setTotalCount(data.pagination.total);
+          setFetchError(false);
+        } else {
+          setFetchError(true);
         }
       } catch (err) {
         console.error("Failed to fetch donations list", err);
+        setFetchError(true);
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     }
     fetchDonations();
-  }, [statusFilter, page]);
+  }, [statusFilter, page, retryKey]);
 
   const handleTabChange = (newStatus: "ALL" | "SUCCESS" | "PENDING" | "FAILED") => {
     setStatusFilter(newStatus);
@@ -247,6 +253,21 @@ export default function DonationsPage() {
             <DonationSkeleton />
             <DonationSkeleton />
           </>
+        ) : fetchError ? (
+          <div className="bg-red-950/30 border border-red-900 rounded-2xl p-12 text-center flex flex-col items-center justify-center">
+            <h3 className="font-extrabold text-red-300 text-sm mb-1.5">
+              Couldn't load your donations right now.
+            </h3>
+            <p className="text-xs text-red-400/80 mb-4">
+              This is on our end, not yours — your donation history hasn't gone anywhere. Please try again.
+            </p>
+            <button
+              onClick={() => setRetryKey((k) => k + 1)}
+              className="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-xl text-xs transition shadow-sm"
+            >
+              Try Again
+            </button>
+          </div>
         ) : donations.length > 0 ? (
           donations.map((donation) => {
             const amountValue = Number(donation.amount);

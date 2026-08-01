@@ -146,7 +146,7 @@ export default function DonateModal({ projectId, projectTitle, ngoName, onClose,
 
       const options = {
         key: data.keyId,
-        amount: data.amount,
+        amount: Math.round(data.amount * 100), // paise, matching the order created server-side
         currency: "INR",
         name: "ImpactBridge",
         description: `Donation to ${projectTitle}`,

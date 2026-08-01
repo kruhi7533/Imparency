@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { v2 as cloudinary } from "cloudinary";
 import fs from "fs/promises";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
@@ -13,8 +14,14 @@ const s3Client = new S3Client({
   ...(process.env.AWS_ENDPOINT && { endpoint: process.env.AWS_ENDPOINT }), // Custom endpoint for Cloudflare R2
 });
 
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 /**
- * Uploads a file buffer to the configured storage provider (local or S3/R2).
+ * Uploads a file buffer to the configured storage provider (local, S3/R2, or Cloudinary).
  * Returns the public URL of the uploaded file.
  */
 export async function uploadFile(
@@ -26,8 +33,41 @@ export async function uploadFile(
   const filename = `${uuidv4()}${ext}`;
   const provider = (process.env.STORAGE_PROVIDER || "local").toLowerCase();
 
-  if (provider === "s3" || provider === "r2") {
-    const bucketName = process.env.AWS_BUCKET_NAME || "";
+  if (provider === "cloudinary") {
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      throw new Error(
+        `STORAGE_PROVIDER is "cloudinary" but CLOUDINARY_CLOUD_NAME/CLOUDINARY_API_KEY/CLOUDINARY_API_SECRET are not fully set — refusing to upload to an unconfigured account.`
+      );
+    }
+
+    const publicId = `${folder}/${filename.replace(ext, "")}`;
+    const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          { public_id: publicId, resource_type: "auto" },
+          (err, res) => (err || !res ? reject(err ?? new Error("Cloudinary upload returned no result")) : resolve(res))
+        )
+        .end(file);
+    });
+
+    return result.secure_url;
+  } else if (provider === "s3" || provider === "r2") {
+    const bucketName = process.env.AWS_BUCKET_NAME;
+    const cdnUrl = process.env.AWS_CDN_URL;
+
+    if (!bucketName) {
+      throw new Error(
+        `STORAGE_PROVIDER is "${provider}" but AWS_BUCKET_NAME is not set — refusing to upload to an unconfigured bucket.`
+      );
+    }
+    // R2 has no S3-style default public URL (unlike AWS S3), so without a
+    // CDN/public URL configured, uploads would "succeed" but be unreachable.
+    if (provider === "r2" && !cdnUrl) {
+      throw new Error(
+        `STORAGE_PROVIDER is "r2" but AWS_CDN_URL is not set — set it to your R2 public bucket URL (r2.dev subdomain or custom domain) so uploaded files are actually reachable.`
+      );
+    }
+
     const key = `${folder}/${filename}`;
 
     await s3Client.send(
@@ -39,12 +79,14 @@ export async function uploadFile(
       })
     );
 
-    // Return custom CDN URL if defined, otherwise default S3 URL
-    const cdnUrl = process.env.AWS_CDN_URL;
+    // Return custom CDN URL if defined, otherwise the region-qualified
+    // virtual-hosted-style S3 URL (the region-less `bucket.s3.amazonaws.com`
+    // form only reliably resolves for us-east-1 buckets).
     if (cdnUrl) {
       return `${cdnUrl.replace(/\/$/, "")}/${key}`;
     }
-    return `https://${bucketName}.s3.amazonaws.com/${key}`;
+    const region = process.env.AWS_REGION || "us-east-1";
+    return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
   } else {
     // Default: Local Storage
     const uploadDir = path.join(process.cwd(), "public", "uploads", folder);
@@ -65,7 +107,27 @@ export async function uploadFile(
 export async function deleteFile(fileUrl: string): Promise<void> {
   const provider = (process.env.STORAGE_PROVIDER || "local").toLowerCase();
 
-  if (provider === "s3" || provider === "r2") {
+  if (provider === "cloudinary") {
+    // e.g. https://res.cloudinary.com/<cloud>/image/upload/v.../folder/filename.jpg
+    // The public_id is everything after the version segment, without the extension.
+    // resource_type (image/video/raw) must be read from the URL and passed to
+    // destroy() explicitly — it defaults to "image" otherwise, which silently
+    // no-ops (returns "not found" rather than throwing) for non-image uploads
+    // like PDFs/docs, which upload as "raw" via resource_type: "auto".
+    try {
+      const parsedUrl = new URL(fileUrl);
+      const parts = parsedUrl.pathname.split("/");
+      const versionIdx = parts.findIndex((p) => /^v\d+$/.test(p));
+      if (versionIdx === -1) return;
+      const publicIdWithExt = parts.slice(versionIdx + 1).join("/");
+      const publicId = publicIdWithExt.replace(path.extname(publicIdWithExt), "");
+      if (!publicId) return;
+      const resourceType = parts[versionIdx - 2] || "image"; // .../<resource_type>/upload/v.../...
+      await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+    } catch (err) {
+      console.error("Failed to delete Cloudinary asset:", fileUrl, err);
+    }
+  } else if (provider === "s3" || provider === "r2") {
     const bucketName = process.env.AWS_BUCKET_NAME || "";
     
     // Extract key from URL

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
+import { notifyAdminsOfNgoThreadActivity } from "@/lib/notify-admin-thread";
 
 export const runtime = "nodejs";
 
@@ -90,6 +91,14 @@ export async function POST(request: Request) {
           },
         },
       },
+    });
+
+    // A new appeal lands in the admin queue immediately — notify them.
+    await notifyAdminsOfNgoThreadActivity({
+      ngoId,
+      threadSubject: thread.subject,
+      kind: thread.kind,
+      body: message,
     });
 
     return NextResponse.json({ success: true, threadId: thread.id });

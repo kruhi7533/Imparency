@@ -166,7 +166,7 @@ export function DonorSidebarShell({
         {/* Sidebar Header / Wordmark */}
         <div className="p-6 border-b border-gray-800/80">
           <h2 className="text-lg font-black tracking-tight bg-gradient-to-r from-emerald-400 to-emerald-500 bg-clip-text text-transparent">
-            IMPARENCY
+            IMPACTBRIDGE
           </h2>
           <span className="block text-[9px] font-bold text-gray-500 tracking-wider uppercase mt-0.5">
             Donor Portal

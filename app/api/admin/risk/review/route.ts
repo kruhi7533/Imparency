@@ -11,6 +11,18 @@ export async function POST(req: NextRequest) {
   const { authorized, response, session } = await verifySessionRole("ADMIN");
   if (!authorized) return response;
 
+  try {
+    return await handleRiskReview(req, session);
+  } catch (err) {
+    console.error("Risk review action failed:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleRiskReview(req: NextRequest, session: { user: { id: string } }) {
   const body = await req.json();
   const { reviewId, action, reviewNote } = body;
 

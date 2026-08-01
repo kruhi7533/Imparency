@@ -262,15 +262,25 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       orderId: order.id,
+      // razorpayOrderId/keyId/donorName/donorEmail: DonateModal.tsx reads
+      // these exact field names to construct the Razorpay Checkout options —
+      // this response previously didn't include them at all, so the widget
+      // could never actually open even when order creation succeeded.
+      razorpayOrderId: order.id,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      donorName: session.user.name,
+      donorEmail: session.user.email,
       amount,
       currency: "INR",
       donationId: donation.id,
     });
   } catch (error) {
     const err = error as Error;
+    // Log the real error server-side, but never forward raw internal/SDK
+    // error text (e.g. Razorpay credential errors) to the donor.
     console.error("Error creating donation order:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to create donation order" },
+      { error: "We couldn't start your donation right now. Please try again in a moment." },
       { status: 500 }
     );
   }

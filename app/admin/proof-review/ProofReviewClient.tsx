@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { isBudgetViolation, getBudgetVerdict, parseValidationResult } from "@/lib/budget-rule";
 
 interface Proof {
   id: string;
@@ -164,6 +165,32 @@ export default function ProofReviewClient({
     return score !== null && score < 40;
   };
 
+  // Strict budget rule — the statuses that count as a violation live in
+  // lib/budget-rule.ts, shared with the server so the UI gate and the API's
+  // enforcement can never disagree about what fails.
+  const getBudget = (milestone: Milestone | null) =>
+    getBudgetVerdict(milestone?.proofs?.[0]?.aiValidationResult ?? null);
+  const milestoneFailsBudget = (milestone: Milestone | null) =>
+    isBudgetViolation(getBudget(milestone)?.status);
+
+  // Approving a proof that fails the strict budget rule OR that the AI scored
+  // below 40 requires a written justification (recorded in the audit log).
+  const needsApprovalJustification = (milestone: Milestone | null, action: "APPROVE" | "REJECT" | null) =>
+    action === "APPROVE" && (isAiOverride(milestone, action) || milestoneFailsBudget(milestone));
+
+  // Every reason this approval needs a justification. Both gates can fire on the
+  // same proof, so this returns a list rather than picking one.
+  const overrideReasons = (milestone: Milestone | null, action: "APPROVE" | "REJECT" | null) => {
+    const reasons: string[] = [];
+    if (isAiOverride(milestone, action)) {
+      reasons.push(`the AI scored it ${milestone?.proofs[0]?.aiValidationScore}/100`);
+    }
+    if (milestoneFailsBudget(milestone)) {
+      reasons.push(`it fails the budget rule (${(getBudget(milestone)?.status ?? "").replace(/_/g, " ")})`);
+    }
+    return reasons;
+  };
+
   const handleReviewAction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMilestone || !actionType) return;
@@ -173,8 +200,15 @@ export default function ProofReviewClient({
       return;
     }
 
-    if (isAiOverride(selectedMilestone, actionType) && !rejectionReason.trim()) {
-      setError("A written justification is required to approve proof the AI scored below 40/100.");
+    if (needsApprovalJustification(selectedMilestone, actionType) && !rejectionReason.trim()) {
+      // A proof can fail both gates at once (a weak proof with no receipts is the
+      // typical case) — name every reason, don't let one mask the other.
+      setError(
+        `A written justification is required to approve this proof: ${overrideReasons(
+          selectedMilestone,
+          actionType
+        ).join(" and ")}.`
+      );
       return;
     }
 
@@ -191,7 +225,7 @@ export default function ProofReviewClient({
           milestoneId: selectedMilestone.id,
           action: actionType,
           rejectionReason:
-            actionType === "REJECT" || isAiOverride(selectedMilestone, actionType)
+            actionType === "REJECT" || needsApprovalJustification(selectedMilestone, actionType)
               ? rejectionReason.trim()
               : undefined,
         }),
@@ -234,15 +268,9 @@ export default function ProofReviewClient({
     }
   };
 
-  // Parses the stringified AI validation JSON
-  const parseAIResult = (resultStr: string | null) => {
-    if (!resultStr) return null;
-    try {
-      return JSON.parse(resultStr);
-    } catch (e) {
-      return null;
-    }
-  };
+  // Parses the stringified AI validation JSON. Shared with the server via
+  // lib/budget-rule.ts so both read the stored column the same way.
+  const parseAIResult = parseValidationResult;
 
   return (
     <div className="space-y-6">
@@ -336,7 +364,7 @@ export default function ProofReviewClient({
                       </p>
                       <div className="mt-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-4">
                         <span>Budget: ₹{milestone.targetAmount.toLocaleString("en-IN")}</span>
-                        <span>Deadline: {new Date(milestone.deadline).toLocaleDateString()}</span>
+                        <span>Deadline: {new Date(milestone.deadline).toLocaleDateString("en-IN")}</span>
                       </div>
                     </div>
 
@@ -504,6 +532,55 @@ export default function ProofReviewClient({
                             )}
                           </div>
 
+                          {/* Budget Compliance Card (strict rule) */}
+                          {aiDetails && aiDetails.budgetStatus && (() => {
+                            const status = String(aiDetails.budgetStatus);
+                            const violation = isBudgetViolation(status);
+                            const clean = status === "ALIGNED";
+                            const label = status.replace(/_/g, " ");
+                            const tone = clean
+                              ? "bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-900/20"
+                              : violation
+                              ? "bg-red-50/60 dark:bg-red-950/10 border-red-200/60 dark:border-red-900/30"
+                              : "bg-blue-50/50 dark:bg-blue-950/10 border-blue-100/50 dark:border-blue-900/20";
+                            const badgeTone = clean
+                              ? "bg-emerald-100 text-emerald-800"
+                              : violation
+                              ? "bg-red-100 text-red-800"
+                              : "bg-blue-100 text-blue-800";
+                            return (
+                              <div className={`p-4 rounded-xl border space-y-2 ${tone}`}>
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider flex items-center justify-between text-gray-700 dark:text-gray-300">
+                                  Budget Compliance
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeTone}`}>
+                                    {label}
+                                  </span>
+                                </h3>
+                                <div className="text-[11px] text-gray-600 dark:text-gray-400 flex items-center gap-3">
+                                  <span>Budget: <strong>₹{milestone.targetAmount.toLocaleString("en-IN")}</strong></span>
+                                  <span>
+                                    Evidenced spend:{" "}
+                                    <strong>
+                                      {typeof aiDetails.budgetClaimedAmount === "number"
+                                        ? `₹${Number(aiDetails.budgetClaimedAmount).toLocaleString("en-IN")}`
+                                        : "—"}
+                                    </strong>
+                                  </span>
+                                </div>
+                                {aiDetails.budgetReasoning && (
+                                  <p className="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed italic">
+                                    {aiDetails.budgetReasoning}
+                                  </p>
+                                )}
+                                {violation && (
+                                  <p className="text-[10px] font-bold text-red-600 dark:text-red-400 leading-tight">
+                                    ⚠ Fails the strict budget rule — approving requires a written justification.
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
+
                           {/* Theory of Change Alignment Card */}
                           {aiDetails && typeof aiDetails.tocAlignmentScore === "number" && (
                             <div className="bg-blue-50/50 dark:bg-blue-950/10 p-4 rounded-xl border border-blue-100/50 dark:border-blue-900/20 space-y-3">
@@ -656,7 +733,7 @@ export default function ProofReviewClient({
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(record.reviewedAt).toLocaleString()}
+                        {new Date(record.reviewedAt).toLocaleString("en-IN")}
                       </td>
                     </tr>
                   ))}
@@ -771,18 +848,21 @@ export default function ProofReviewClient({
                 </div>
               )}
 
-              {isAiOverride(selectedMilestone, actionType) && (
+              {needsApprovalJustification(selectedMilestone, actionType) && (
                 <div>
                   <label className="block text-xs font-bold text-red-600 dark:text-red-400 mb-1">
-                    AI Override Justification * (AI scored this proof{" "}
-                    {selectedMilestone.proofs[0]?.aiValidationScore}/100)
+                    {`Override Justification * (${overrideReasons(selectedMilestone, actionType).join("; ")})`}
                   </label>
                   <textarea
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
                     rows={4}
                     required
-                    placeholder="Why is this proof acceptable despite the low AI score? This is recorded in the audit log."
+                    placeholder={
+                      milestoneFailsBudget(selectedMilestone)
+                        ? "Why is this proof acceptable despite failing the budget rule (e.g. receipts verified offline)? Recorded in the audit log."
+                        : "Why is this proof acceptable despite the low AI score? This is recorded in the audit log."
+                    }
                     className="w-full px-3 py-2 border border-red-200 dark:border-red-900 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500 transition resize-none"
                   />
                 </div>

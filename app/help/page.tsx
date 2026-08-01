@@ -17,7 +17,7 @@ export default function HelpPage() {
     },
     {
       question: "Why did my payment fail?",
-      answer: "Payment failures are usually temporary network or bank issues. Imparency retries automatically and sends a retry link to your email if the issue persists. Click the link to complete your donation within 24 hours."
+      answer: "Payment failures are usually temporary network or bank issues. ImpactBridge retries automatically and sends a retry link to your email if the issue persists. Click the link to complete your donation within 24 hours."
     },
     {
       question: "How do I know my donation reached the NGO?",
@@ -98,8 +98,8 @@ export default function HelpPage() {
           <h3 className="font-bold text-white text-sm">Still need help?</h3>
           <p className="text-xs text-gray-500">
             Email us at{" "}
-            <a href="mailto:support@imparency.in" className="text-emerald-400 hover:text-emerald-300 font-bold underline">
-              support@imparency.in
+            <a href="mailto:support@impactbridge.in" className="text-emerald-400 hover:text-emerald-300 font-bold underline">
+              support@impactbridge.in
             </a>
           </p>
         </section>

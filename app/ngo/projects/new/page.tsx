@@ -37,6 +37,7 @@ export default function NewProjectPage() {
 
   const [title, setTitle] = useState("");
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
+  const [createdProjectStatus, setCreatedProjectStatus] = useState<string | undefined>(undefined);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [problemStatement, setProblemStatement] = useState("");
@@ -238,6 +239,7 @@ export default function NewProjectPage() {
       }
 
       setCreatedProjectId(result.projectId);
+      setCreatedProjectStatus(result.status);
       setIsShareOpen(true);
       setSuccess(true);
     } catch (err: any) {
@@ -671,6 +673,7 @@ export default function NewProjectPage() {
           targetAmount={targetAmount}
           causeCategory={causeCategory}
           location={location}
+          status={createdProjectStatus}
         />
       )}
     </div>

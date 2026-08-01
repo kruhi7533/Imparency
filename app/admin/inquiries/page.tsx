@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { getBoolSetting, SETTING_KEYS } from "@/lib/app-settings";
 import InquiriesClient from "./InquiriesClient";
 
 export const runtime = "nodejs";
@@ -30,6 +31,8 @@ export default async function AdminInquiriesPage() {
     ...donors.map((d) => [d.id, d.name] as [string, string]),
   ]);
 
+  const emailOnNgoReply = await getBoolSetting(SETTING_KEYS.EMAIL_ON_NGO_REPLY, true);
+
   const serialized = threads.map((t) => ({
     id: t.id,
     kind: t.kind,
@@ -59,7 +62,7 @@ export default async function AdminInquiriesPage() {
           Threaded conversations with NGOs — clarification questions you&apos;ve sent and appeals they&apos;ve raised.
         </p>
         <div className="mt-8">
-          <InquiriesClient initialThreads={serialized} />
+          <InquiriesClient initialThreads={serialized} initialEmailToggle={emailOnNgoReply} />
         </div>
       </div>
     </div>

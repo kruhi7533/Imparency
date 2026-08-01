@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
+import { notifyAdminsOfNgoThreadActivity } from "@/lib/notify-admin-thread";
 
 export const runtime = "nodejs";
 
@@ -53,6 +54,14 @@ export async function POST(
     await prisma.reviewThread.update({
       where: { id: thread.id },
       data: { status: "NGO_RESPONDED" },
+    });
+
+    // Push the reply to admins (in-app always, email if the toggle is on).
+    await notifyAdminsOfNgoThreadActivity({
+      ngoId,
+      threadSubject: thread.subject,
+      kind: thread.kind,
+      body: message,
     });
 
     return NextResponse.json({ success: true });

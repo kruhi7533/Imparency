@@ -200,7 +200,7 @@ export default function RiskComplianceClient({
                     <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">{alert.description}</p>
                   </td>
                   <td className="px-5 py-4 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                    {new Date(alert.createdAt).toLocaleString()}
+                    {new Date(alert.createdAt).toLocaleString("en-IN")}
                   </td>
                   <td className="px-5 py-4 text-right">
                     <button
@@ -296,7 +296,7 @@ export default function RiskComplianceClient({
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {r.findings?.reason?.replace(/_/g, " ")} · Opened {new Date(r.createdAt).toLocaleDateString()}
+                          {r.findings?.reason?.replace(/_/g, " ")} · Opened {new Date(r.createdAt).toLocaleDateString("en-IN")}
                         </p>
                         {r.findings?.recommendedAction && (
                           <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 font-semibold">
@@ -369,7 +369,7 @@ export default function RiskComplianceClient({
                             </span>
                           </td>
                           <td className="px-5 py-4 max-w-xs"><p className="text-xs text-gray-500 italic">"{a.resolutionNote}"</p></td>
-                          <td className="px-5 py-4 text-xs text-gray-500 whitespace-nowrap">{new Date(a.createdAt).toLocaleDateString()}</td>
+                          <td className="px-5 py-4 text-xs text-gray-500 whitespace-nowrap">{new Date(a.createdAt).toLocaleDateString("en-IN")}</td>
                         </tr>
                       ))}
                     </tbody>

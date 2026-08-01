@@ -5,9 +5,13 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { checkRateLimit } from "@/lib/rate-limiter";
 
 export async function POST(request: Request) {
   try {
+    const rl = await checkRateLimit(request, "auth/signup", 5, 3600);
+    if (rl.isBlocked) return rl.response;
+
     const { name, email, password, role, inviteToken } = await request.json();
     
     if (!name || !email || !password || !role) {
