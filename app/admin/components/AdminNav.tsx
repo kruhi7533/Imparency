@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 interface AdminNavProps {
   pendingProjectCount: number;
   unresolvedAlertsTotal: number;
+  pendingCrisisCount?: number;
   inquiriesNeedingResponse: number;
 }
 
@@ -20,7 +21,7 @@ interface NavGroup {
   links: NavLink[];
 }
 
-export default function AdminNav({ pendingProjectCount, unresolvedAlertsTotal, inquiriesNeedingResponse }: AdminNavProps) {
+export default function AdminNav({ pendingProjectCount, unresolvedAlertsTotal, pendingCrisisCount, inquiriesNeedingResponse }: AdminNavProps) {
   const pathname = usePathname();
 
   const groups: NavGroup[] = [
@@ -35,6 +36,8 @@ export default function AdminNav({ pendingProjectCount, unresolvedAlertsTotal, i
         { href: "/admin/project-review", label: "Project Review", badge: pendingProjectCount },
         { href: "/admin/proof-review", label: "Proof Review" },
         { href: "/admin/fcra-review", label: "FCRA Review" },
+        { href: "/admin/crisis", label: "Crisis Relief", badge: pendingCrisisCount },
+        { href: "/admin/initiatives", label: "Relief Initiatives" },
       ],
     },
     {

@@ -56,6 +56,7 @@ export async function POST(
     // Validate NGO profile
     const ngo = await prisma.nGOProfile.findUnique({
       where: { id: ngoId },
+      include: { user: true },
     });
     if (!ngo) {
       return NextResponse.json({ error: "NGO Profile not found" }, { status: 404 });
@@ -104,6 +105,33 @@ export async function POST(
         },
       });
     });
+
+    // Send notifications to the NGO owner (async, non-blocking)
+    try {
+      if (ngo && ngo.userId) {
+        const { sendPushNotification } = await import("@/lib/notification");
+        const { sendDonorInquiryReceivedEmail } = await import("@/lib/email");
+        
+        const donorName = session.user.name || "A donor";
+        
+        await sendPushNotification(
+          ngo.userId,
+          "New Inquiry Received",
+          `${donorName} sent you a message: "${body.slice(0, 60)}${body.length > 60 ? "..." : ""}"`
+        );
+
+        if (ngo.user?.email) {
+          await sendDonorInquiryReceivedEmail(
+            ngo.user.email,
+            donorName,
+            ngo.orgName,
+            body
+          );
+        }
+      }
+    } catch (notifErr) {
+      console.error("Failed to send donor inquiry notification:", notifErr);
+    }
 
     return NextResponse.json({ inquiry: result });
   } catch (err: any) {
