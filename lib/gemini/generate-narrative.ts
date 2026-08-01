@@ -16,16 +16,27 @@ export async function generateImpactNarrative(
     ? Math.round((Number(donation.amount) / Number(project.raisedAmount)) * 100)
     : 0;
 
-  if (!apiKey) {
-    console.warn("GEMINI_API_KEY is not defined. Falling back to Mock narrative in development.");
-    const nextText = nextMilestoneTitle 
-      ? `The next milestone "${nextMilestoneTitle}" is already underway.` 
+  // Deterministic fallback narrative — used both when no API key is configured
+  // and when a configured key still fails at request time (quota, transient
+  // outage). A donor's milestone-completed report must never depend on Gemini
+  // being reachable at this exact moment; the alternative is silently losing
+  // their ImpactReport, push notification and email (reproduced live: 7 of 8
+  // donors on one 8-donor milestone got nothing because Gemini's free-tier
+  // per-minute quota was exceeded by that many concurrent calls at once).
+  const buildFallbackNarrative = () => {
+    const nextText = nextMilestoneTitle
+      ? `The next milestone "${nextMilestoneTitle}" is already underway.`
       : "The project is now complete!";
     return {
       narrative: `Hi ${donor.name}, through your contribution of ₹${donation.amount.toLocaleString()} (representing ${percentage}% of the total funds raised), ${ngo.orgName} successfully completed the milestone "${milestone.title}" for the campaign "${project.title}". Your funding supported: ${milestone.description}. ${nextText}`,
       sdgTags: ["SDG3", "SDG4"],
       irisMetrics: ["PI1000", "PI2822"]
     };
+  };
+
+  if (!apiKey) {
+    console.warn("GEMINI_API_KEY is not defined. Falling back to template narrative.");
+    return buildFallbackNarrative();
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -82,7 +93,10 @@ Choose ONLY from these IDs: ${Object.keys(IRIS_MASTER).join(", ")}.`;
       irisMetrics: data.irisMetrics || []
     };
   } catch (err: any) {
-    console.error("Gemini narrative generation API error:", err);
-    throw new Error(`Gemini Narrative failed: ${err.message}`);
+    // Degrade to the template narrative rather than throwing — a donor still
+    // gets a truthful (if less personalized) report, push and email instead
+    // of silently getting nothing. See buildFallbackNarrative() above for why.
+    console.error("Gemini narrative generation API error — falling back to template narrative:", err.message);
+    return buildFallbackNarrative();
   }
 }

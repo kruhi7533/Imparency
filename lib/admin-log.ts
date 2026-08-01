@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { captureError } from "@/lib/observability";
 
 /**
  * Admin action audit trail (Phase 1 — admin accountability).
@@ -98,6 +99,20 @@ export async function logAdminAction(params: AdminActionParams): Promise<void> {
       },
     });
   } catch (err) {
-    console.error(`[admin-log] FAILED to record admin action ${params.action} on ${params.entityType} ${params.entityId}:`, err);
+    // The action itself already succeeded; only its audit record is missing.
+    // That's an accountability hole an auditor would care about, so it must be
+    // visible rather than sitting in an ephemeral log line.
+    captureError(
+      err,
+      {
+        scope: "lib/admin-log",
+        operation: "record_admin_action",
+        entityType: params.entityType,
+        entityId: params.entityId,
+        userId: params.adminId,
+        extra: { adminAction: params.action },
+      },
+      "fatal"
+    );
   }
 }

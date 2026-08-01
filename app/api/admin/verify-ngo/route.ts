@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { sendNGOApprovalEmail, sendNGORejectionEmail } from "@/lib/email";
 import { logAdminAction } from "@/lib/admin-log";
+import { captureError } from "@/lib/observability";
 
 export async function POST(request: Request) {
   try {
@@ -84,7 +85,19 @@ export async function POST(request: Request) {
           flags: [...aiFlags, ...screeningFlags],
         });
       } catch (guidanceErr) {
-        console.error("Failed to compose rejection guidance:", guidanceErr);
+        // Degrades to the raw admin note — the NGO still gets a reason, just a
+        // terser one. Worth knowing about if the AI path is failing constantly.
+        captureError(
+          guidanceErr,
+          {
+            scope: "admin/verify-ngo",
+            operation: "compose_rejection_guidance",
+            entityType: "NGO",
+            entityId: ngoId,
+            userId: adminId,
+          },
+          "warning"
+        );
         ngoFacingNote = noteText;
       }
     }
@@ -148,8 +161,16 @@ export async function POST(request: Request) {
           await logComplianceEvent(compliance.id, "12A_VERIFIED", "12A certificate verified.", adminId);
         }
       } catch (complianceErr) {
-        console.error("Failed to record compliance verification:", complianceErr);
-        // Non-fatal: the NGO is still approved.
+        // Non-fatal: the NGO is still approved. But its compliance record and
+        // audit trail now disagree with that approval, which is exactly the
+        // kind of drift a regulator would find rather than us.
+        captureError(complianceErr, {
+          scope: "admin/verify-ngo",
+          operation: "record_compliance_verification",
+          entityType: "NGO",
+          entityId: ngoId,
+          userId: adminId,
+        });
       }
     }
 

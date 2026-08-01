@@ -465,7 +465,12 @@ model RateLimitLog {
   requestCount Int      @default(1)
   windowStart  DateTime @default(now())
 
-  @@index([identifier, route])
+  // Every rate-limited request looks up (identifier, route, windowStart) before
+  // it does anything else — including on the auth path. Without this the lookup
+  // is a sequential scan over a table that grows with traffic, so the limiter
+  // gets slower exactly as load increases.
+  @@index([identifier, route, windowStart])
+  // Supports the expired-window prune, which filters on windowStart alone.
   @@index([windowStart])
 }
 
