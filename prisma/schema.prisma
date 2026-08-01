@@ -436,7 +436,11 @@ model RateLimitLog {
   route        String
   requestCount Int      @default(1)
   windowStart  DateTime @default(now())
+
+  @@index([identifier, route])
+  @@index([windowStart])
 }
+
 
 model NgoScreening {
   id                String     @id @default(uuid())

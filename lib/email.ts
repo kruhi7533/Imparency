@@ -593,3 +593,26 @@ Best regards,
 The Imparency Team`;
   return sendEmail({ to, subject, body });
 }
+
+export async function sendDonorInquiryReceivedEmail(
+  to: string,
+  donorName: string,
+  ngoName: string,
+  messageBody: string
+) {
+  const subject = `New Inquiry from Donor on Imparency`;
+  const body = `Hi there,\n\nYou have received a new inquiry from donor "${donorName}" for your NGO "${ngoName}".\n\nMessage preview:\n"${messageBody.slice(0, 300)}${messageBody.length > 300 ? "..." : ""}"\n\nPlease log in to your dashboard to view the full message and reply:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/inquiries\n\nBest regards,\nThe Imparency Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendNGOReplyReceivedEmail(
+  to: string,
+  donorName: string,
+  ngoName: string,
+  messageBody: string
+) {
+  const subject = `New Reply from ${ngoName} on Imparency`;
+  const body = `Hi ${donorName},\n\nYou have received a new reply from "${ngoName}" regarding your inquiry.\n\nMessage preview:\n"${messageBody.slice(0, 300)}${messageBody.length > 300 ? "..." : ""}"\n\nYou can view the full thread and reply on your donor dashboard:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/donor/dashboard\n\nBest regards,\nThe Imparency Team`;
+  return sendEmail({ to, subject, body });
+}
+
