@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { sendPaymentRetryEmail } from "@/lib/email";
 import { generateRetryToken, getRetryDelay } from "@/lib/retry-utils";
 import { evaluateReceiptEligibility, issueTaxReceipt, queueReceiptClaim } from "@/lib/tax-receipt";
+import { captureError } from "@/lib/observability";
 
 export async function POST(req: Request) {
   try {
@@ -92,9 +93,14 @@ export async function POST(req: Request) {
               : null,
         };
       } catch (snapErr) {
-        // Never block payment confirmation on snapshot assembly — but log loudly,
+        // Never block payment confirmation on snapshot assembly — but capture it,
         // because a missing snapshot is permanently unreconstructable.
-        console.error(`[webhook] FAILED to build compliance snapshot for donation ${donation.id}:`, snapErr);
+        captureError(snapErr, {
+          scope: "donations/webhook",
+          operation: "build_compliance_snapshot",
+          entityType: "DONATION",
+          entityId: donation.id,
+        });
       }
 
       // Update database: status: SUCCESS, increment project.raisedAmount, increment user.totalDonated
@@ -284,8 +290,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (error) {
     const err = error as Error;
-    console.error("Error processing Razorpay webhook:", err);
-    // Wrap entire handler in try/catch and return 200 even on error (log the error server-side). Razorpay stops retrying on 200.
+    // Returning 200 stops Razorpay retrying, so anything that lands here is a
+    // payment we took and may never have recorded. There is no second chance
+    // and no automatic recovery — this is the most important error in the app.
+    captureError(
+      err,
+      { scope: "donations/webhook", operation: "process_webhook" },
+      "fatal"
+    );
     return NextResponse.json({ error: err.message, fallback: true }, { status: 200 });
   }
 }

@@ -12,7 +12,7 @@ export default function PendingDonationPage() {
   const paymentId = searchParams.get("payment_id");
 
   const [status, setStatus] = useState<"PENDING" | "SUCCESS" | "FAILED" | "UNKNOWN">("PENDING");
-  const [details, setDetails] = useState<{ amount: number; projectTitle: string } | null>(null);
+  const [details, setDetails] = useState<{ amount: number; projectTitle: string; receiptUrl: string | null } | null>(null);
   const [attempts, setAttempts] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
@@ -30,7 +30,8 @@ export default function PendingDonationPage() {
         
         setDetails({
           amount: Number(data.amount),
-          projectTitle: data.projectTitle
+          projectTitle: data.projectTitle,
+          receiptUrl: data.receiptUrl ?? null
         });
 
         if (data.status === "SUCCESS") {
@@ -131,7 +132,11 @@ export default function PendingDonationPage() {
                 <div className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100/50 dark:border-emerald-900/30 rounded-2xl p-5 text-xs text-emerald-800 dark:text-emerald-300 text-left space-y-2">
                   <div><strong>Project:</strong> {details.projectTitle}</div>
                   <div className="text-sm font-black text-emerald-600 dark:text-emerald-400"><strong>Contributed:</strong> ₹{details.amount.toLocaleString()}</div>
-                  <div className="text-[10px] text-gray-400">An 80G tax receipt has been generated and dispatched to your email.</div>
+                  <div className="text-[10px] text-gray-400">
+                    {details.receiptUrl
+                      ? "An 80G tax receipt has been generated and dispatched to your email."
+                      : "Your 80G tax receipt is on hold until your PAN is verified — verify it from your profile to receive it by email."}
+                  </div>
                 </div>
               )}
 
