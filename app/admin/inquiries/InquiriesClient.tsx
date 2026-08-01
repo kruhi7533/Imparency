@@ -26,6 +26,7 @@ interface Thread {
 
 interface Props {
   initialThreads: Thread[];
+  initialEmailToggle: boolean;
 }
 
 type Tab = "needs_response" | "open" | "resolved";
@@ -44,7 +45,7 @@ const STATUS_BADGE: Record<string, string> = {
   RESOLVED: "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30",
 };
 
-export default function InquiriesClient({ initialThreads }: Props) {
+export default function InquiriesClient({ initialThreads, initialEmailToggle }: Props) {
   const router = useRouter();
   const [threads, setThreads] = useState<Thread[]>(initialThreads);
   const [tab, setTab] = useState<Tab>("needs_response");
@@ -52,6 +53,30 @@ export default function InquiriesClient({ initialThreads }: Props) {
   const [reply, setReply] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [emailToggle, setEmailToggle] = useState(initialEmailToggle);
+  const [togglingEmail, setTogglingEmail] = useState(false);
+
+  async function toggleEmail() {
+    const next = !emailToggle;
+    setTogglingEmail(true);
+    setError("");
+    setEmailToggle(next); // optimistic
+    try {
+      const res = await fetch("/api/admin/settings/ngo-reply-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update setting");
+      setEmailToggle(data.enabled);
+    } catch (err: any) {
+      setEmailToggle(!next); // revert
+      setError(err.message || "Could not update the email setting");
+    } finally {
+      setTogglingEmail(false);
+    }
+  }
 
   const visible = threads.filter((t) => {
     if (tab === "needs_response") return t.status === "NGO_RESPONDED";
@@ -115,6 +140,37 @@ export default function InquiriesClient({ initialThreads }: Props) {
           {error}
         </div>
       )}
+
+      {/* Email notification toggle */}
+      <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-3.5 shadow-sm">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-gray-900 dark:text-white">
+            Email the admin inbox when an NGO replies
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {emailToggle
+              ? "On top of the in-app badge, the shared admin inbox gets an email the moment an NGO responds or opens an appeal. This setting applies to all admins."
+              : "Email alerts are off. New NGO replies still show up here and as a count badge on “Inquiries” in the top nav. This setting applies to all admins."}
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={emailToggle}
+          aria-label="Toggle admin inbox email notifications for NGO replies"
+          disabled={togglingEmail}
+          onClick={toggleEmail}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+            emailToggle ? "bg-emerald-600" : "bg-gray-300 dark:bg-gray-700"
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+              emailToggle ? "translate-x-6" : "translate-x-1"
+            }`}
+          />
+        </button>
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-2">

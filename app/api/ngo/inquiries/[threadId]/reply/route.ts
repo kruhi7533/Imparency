@@ -41,6 +41,7 @@ export async function POST(
     // Find the thread
     const thread = await prisma.donorInquiry.findUnique({
       where: { id: threadId },
+      include: { donor: true, ngo: true },
     });
 
     if (!thread) {
@@ -77,6 +78,33 @@ export async function POST(
         },
       });
     });
+
+    // Send notifications to the donor (async, non-blocking)
+    try {
+      if (thread && thread.ngo && thread.donor) {
+        const { sendPushNotification } = await import("@/lib/notification");
+        const { sendNGOReplyReceivedEmail } = await import("@/lib/email");
+        
+        const ngoName = thread.ngo.orgName || "NGO";
+        
+        await sendPushNotification(
+          thread.donorId,
+          `Reply from ${ngoName}`,
+          `NGO "${ngoName}" replied to your inquiry: "${body.slice(0, 60)}${body.length > 60 ? "..." : ""}"`
+        );
+
+        if (thread.donor.email) {
+          await sendNGOReplyReceivedEmail(
+            thread.donor.email,
+            thread.donor.name || "Donor",
+            ngoName,
+            body
+          );
+        }
+      }
+    } catch (notifErr) {
+      console.error("Failed to send NGO reply notification:", notifErr);
+    }
 
     return NextResponse.json({ inquiry: result });
   } catch (err: any) {

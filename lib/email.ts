@@ -5,6 +5,9 @@ import { SDG_MASTER, IRIS_MASTER } from "./impact-metrics";
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // Gmail SMTP transport — only built when a Gmail App Password is configured.
+// Timeouts are explicit: nodemailer's defaults (2min connect / 10min socket) are
+// far too generous for sends that happen inline in a request, where a stalled
+// Gmail connection would hang the user's response for minutes.
 const gmailTransport = process.env.GMAIL_APP_PASSWORD
   ? nodemailer.createTransport({
       service: "gmail",
@@ -12,6 +15,9 @@ const gmailTransport = process.env.GMAIL_APP_PASSWORD
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_APP_PASSWORD,
       },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
     })
   : null;
 
@@ -356,6 +362,19 @@ export async function sendProofQuestionEmail(
   return sendEmail({ to, subject, body });
 }
 
+export async function sendAdminNgoReplyEmail(
+  adminEmail: string,
+  orgName: string,
+  threadSubject: string,
+  kind: string, // "INQUIRY" | "APPEAL"
+  preview: string
+) {
+  const label = kind === "APPEAL" ? "appeal" : "inquiry";
+  const subject = `[Inquiries] ${orgName} responded — "${threadSubject}"`;
+  const body = `Hi Admin,\n\n${orgName} has responded on the ${label} thread "${threadSubject}":\n\n"${preview}"\n\nOpen the thread to read the full message and reply:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/admin/inquiries\n\nBest regards,\nImpactBridge System`;
+  return sendEmail({ to: adminEmail, subject, body });
+}
+
 export async function sendAdminInquiryEmail(
   to: string,
   orgName: string,
@@ -587,6 +606,26 @@ The ImpactBridge Team`;
   return sendEmail({ to, subject, body });
 }
 
+export async function sendPasswordResetEmail(
+  to: string,
+  name: string,
+  resetUrl: string
+) {
+  const subject = `Reset your Imparency password`;
+  const body = `Hi ${name},
+
+We received a request to reset the password for your Imparency account.
+
+Reset your password here:
+${resetUrl}
+
+This link is valid for 1 hour. If you didn't request a password reset, you can safely ignore this email — your password will remain unchanged.
+
+Best regards,
+The Imparency Team`;
+  return sendEmail({ to, subject, body });
+}
+
 export async function sendTeamInviteEmail({
   to,
   recipientName,
@@ -617,3 +656,26 @@ Best regards,
 The ImpactBridge Team`;
   return sendEmail({ to, subject, body });
 }
+
+export async function sendDonorInquiryReceivedEmail(
+  to: string,
+  donorName: string,
+  ngoName: string,
+  messageBody: string
+) {
+  const subject = `New Inquiry from Donor on Imparency`;
+  const body = `Hi there,\n\nYou have received a new inquiry from donor "${donorName}" for your NGO "${ngoName}".\n\nMessage preview:\n"${messageBody.slice(0, 300)}${messageBody.length > 300 ? "..." : ""}"\n\nPlease log in to your dashboard to view the full message and reply:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/inquiries\n\nBest regards,\nThe Imparency Team`;
+  return sendEmail({ to, subject, body });
+}
+
+export async function sendNGOReplyReceivedEmail(
+  to: string,
+  donorName: string,
+  ngoName: string,
+  messageBody: string
+) {
+  const subject = `New Reply from ${ngoName} on Imparency`;
+  const body = `Hi ${donorName},\n\nYou have received a new reply from "${ngoName}" regarding your inquiry.\n\nMessage preview:\n"${messageBody.slice(0, 300)}${messageBody.length > 300 ? "..." : ""}"\n\nYou can view the full thread and reply on your donor dashboard:\n${process.env.NEXTAUTH_URL || "http://localhost:3000"}/donor/dashboard\n\nBest regards,\nThe Imparency Team`;
+  return sendEmail({ to, subject, body });
+}
+

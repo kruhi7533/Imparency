@@ -7,6 +7,7 @@ interface AdminNavProps {
   pendingProjectCount: number;
   unresolvedAlertsTotal: number;
   pendingCrisisCount?: number;
+  inquiriesNeedingResponse: number;
 }
 
 interface NavLink {
@@ -20,7 +21,7 @@ interface NavGroup {
   links: NavLink[];
 }
 
-export default function AdminNav({ pendingProjectCount, unresolvedAlertsTotal, pendingCrisisCount }: AdminNavProps) {
+export default function AdminNav({ pendingProjectCount, unresolvedAlertsTotal, pendingCrisisCount, inquiriesNeedingResponse }: AdminNavProps) {
   const pathname = usePathname();
 
   const groups: NavGroup[] = [
@@ -51,7 +52,7 @@ export default function AdminNav({ pendingProjectCount, unresolvedAlertsTotal, p
       label: "People",
       links: [
         { href: "/admin/donors", label: "Donors" },
-        { href: "/admin/inquiries", label: "Inquiries" },
+        { href: "/admin/inquiries", label: "Inquiries", badge: inquiriesNeedingResponse },
       ],
     },
   ];
