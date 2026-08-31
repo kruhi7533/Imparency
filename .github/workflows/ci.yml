@@ -8,6 +8,15 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+
+    # Mapped to job-level env so steps can test for their presence. The
+    # `secrets` context is not reliably available inside a step-level `if`,
+    # but `env` is — this is what makes the database steps below
+    # self-activating rather than something someone has to remember to enable.
+    env:
+      CI_DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+      CI_DIRECT_URL: ${{ secrets.CI_DIRECT_URL }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -28,8 +37,60 @@ jobs:
       - name: Test
         run: npm test
 
-      # Non-blocking until the existing lint backlog (~40 errors) is cleared;
-      # then remove continue-on-error so lint gates merges too.
+      # ---------------------------------------------------------------------
+      # Database-backed gates.
+      #
+      # These run ONLY once `CI_DATABASE_URL` / `CI_DIRECT_URL` exist as repo
+      # secrets, pointing at an EMPTY Neon branch reserved for CI. Until then
+      # they skip, and a skipped step does not fail the job — so adding the
+      # secrets is the single action that turns these on. No workflow edit
+      # needed, and CI is never knowingly red in the meantime.
+      #
+      # Why an empty database and not a copy of dev: the point of the migrate
+      # step is to prove that what is COMMITTED in prisma/migrations/ can build
+      # the schema from nothing. A pre-populated database would already have
+      # the tables and would hide exactly the bug this catches — a schema edit
+      # whose migration folder was never `git add`ed. That change passes
+      # typecheck and passes tests (Prisma is mocked, no DB is touched), so
+      # this is the only gate in the pipeline that can see it.
+      # ---------------------------------------------------------------------
+      - name: Apply migrations to CI database
+        if: env.CI_DATABASE_URL != ''
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.CI_DIRECT_URL }}
+
+      # Not `npm run build` — that script is
+      # `prisma generate && prisma migrate deploy && next build`, and the
+      # migrate step is already run above against the CI database.
+      #
+      # This needs a real database because `app/page.tsx` is ISR
+      # (`revalidate = 60`) and calls getPlatformStats(), so `/` is rendered at
+      # build time and queries Postgres. A placeholder connection string is not
+      # enough — verified failing 2026-08-31 with
+      # "Export encountered errors on following paths: /page: /". A plain
+      # Postgres service container would not work either: lib/prisma.ts uses
+      # the Neon serverless driver over websockets.
+      - name: Build
+        if: env.CI_DATABASE_URL != ''
+        run: npx next build
+        env:
+          DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.CI_DIRECT_URL }}
+          NEXTAUTH_SECRET: ci-placeholder-not-a-real-secret
+          NEXTAUTH_URL: http://localhost:3000
+
+      # Makes the gap visible in the CI log instead of silently absent — a
+      # skipped gate that nobody notices is worse than no gate.
+      - name: Warn that database gates are inactive
+        if: env.CI_DATABASE_URL == ''
+        run: |
+          echo "::warning title=CI database not configured::Migration and build gates were SKIPPED. The Definition of Done requires a green build gate. Create an empty Neon branch and add CI_DATABASE_URL and CI_DIRECT_URL as repository secrets to activate them."
+
+      # Non-blocking until the existing lint backlog (~40 errors) is cleared.
+      # The Definition of Done requires lint to be a green gate, so this
+      # continue-on-error MUST be removed before the pilot gate.
       - name: Lint
         run: npm run lint
         continue-on-error: true
