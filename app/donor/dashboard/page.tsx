@@ -23,8 +23,14 @@ export default async function DonorDashboardPage({
 
   const userId = session.user.id;
 
-  // Fetch donor user data along with their successful donations, followed NGOs, and impact reports
-  const donor = await prisma.user.findUnique({
+  // Fetch donor user data along with their successful donations, followed NGOs, and impact reports.
+  //
+  // The re-engagement lookup goes in the same round trip: it keys off userId
+  // and the URL, never off the donor row, so awaiting it separately only bought
+  // a second trip to the database. Everything further down *does* depend on one
+  // of these two results and has to stay ordered.
+  const [donor, activeEvent] = await Promise.all([
+    prisma.user.findUnique({
     where: { id: userId },
     include: {
       donations: {
@@ -62,7 +68,28 @@ export default async function DonorDashboardPage({
         orderBy: { sentAt: "desc" },
       },
     },
-  });
+    }),
+    // An explicit `?reEngagement=` in the URL pins one specific event (the
+    // donor followed a link from an email); otherwise show the most recent
+    // undismissed one.
+    searchParams.reEngagement
+      ? prisma.reEngagementEvent.findFirst({
+          where: {
+            id: searchParams.reEngagement,
+            donorId: userId,
+            dismissed: false,
+          },
+        })
+      : prisma.reEngagementEvent.findFirst({
+          where: {
+            donorId: userId,
+            dismissed: false,
+          },
+          orderBy: {
+            emailSentAt: "desc",
+          },
+        }),
+  ]);
 
   if (!donor) {
     redirect("/login");
@@ -91,28 +118,6 @@ export default async function DonorDashboardPage({
     { label: "NGOs Followed", value: String(followedCount), sub: "organizations" },
     { label: "Donor Tier", value: getTierLabel(tier), sub: "tier status" },
   ];
-
-  // Fetch active (non-dismissed) re-engagement event
-  let activeEvent = null;
-  if (searchParams.reEngagement) {
-    activeEvent = await prisma.reEngagementEvent.findFirst({
-      where: {
-        id: searchParams.reEngagement,
-        donorId: userId,
-        dismissed: false,
-      },
-    });
-  } else {
-    activeEvent = await prisma.reEngagementEvent.findFirst({
-      where: {
-        donorId: userId,
-        dismissed: false,
-      },
-      orderBy: {
-        emailSentAt: "desc",
-      },
-    });
-  }
 
   // Find referred NGO details if the path is NGO_REFERRAL
   let referredNgoName = null;

@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 /**
  * ADMIN-only, on-demand. Generates a plain-English risk read for a donor from
  * signals we already record (PAN state, velocity, fraud alerts, category
- * history). Never changes donor status — purely advisory, like screen-ngo.
+ * history). Never changes donor status — purely advisory.
  */
 export async function POST(
   request: Request,

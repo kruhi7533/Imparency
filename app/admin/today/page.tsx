@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth/next";
+import SchemaOutOfSync from "@/app/admin/components/SchemaOutOfSync";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
@@ -42,23 +43,6 @@ const SEVERITY_STYLE: Record<Severity, { label: string; classes: string }> = {
   low: { label: "FYI", classes: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30" },
 };
 
-function SchemaOutOfSync({ detail }: { detail?: string }) {
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-6">
-      <div className="max-w-lg w-full bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/40 rounded-2xl shadow-sm p-8">
-        <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">Today Inbox failed to load</h1>
-        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-          A database query failed — usually the branch&apos;s Neon DB is behind the Prisma schema. Run:
-        </p>
-        <pre className="mt-3 rounded-lg bg-gray-900 text-emerald-300 text-sm px-4 py-3 font-mono">npm run db:sync</pre>
-        {detail && (
-          <p className="mt-4 text-xs text-gray-400 font-mono break-all border-t border-gray-100 dark:border-gray-800 pt-3">{detail}</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 /**
  * Unified admin inbox — a read-only aggregation over queues that already
  * exist elsewhere (NGO verification, project/proof/FCRA review, fraud alerts,
@@ -78,6 +62,18 @@ export default async function TodayInboxPage() {
 
   let data;
   try {
+    // Hoisted out of the Promise.all below: an `await` inside an array literal
+    // suspends construction of the array, so the overdue-milestone query at the
+    // end could not start until this one finished. See the identical fix in
+    // `admin/impact-health` — measured 987ms before, 366ms after.
+    const recentlyActiveProjectIds = (
+      await prisma.projectImpactEvent.findMany({
+        where: { createdAt: { gte: thirtyDaysAgo } },
+        select: { projectId: true },
+        distinct: ["projectId"],
+      })
+    ).map((e) => e.projectId);
+
     data = await Promise.all([
       prisma.nGOProfile.findMany({
         where: { verificationStatus: "PENDING" },
@@ -115,13 +111,7 @@ export default async function TodayInboxPage() {
           projects: {
             some: {
               status: "ACTIVE",
-              id: { notIn: (
-                await prisma.projectImpactEvent.findMany({
-                  where: { createdAt: { gte: thirtyDaysAgo } },
-                  select: { projectId: true },
-                  distinct: ["projectId"],
-                })
-              ).map((e) => e.projectId) },
+              id: { notIn: recentlyActiveProjectIds },
             },
           },
         },
@@ -135,7 +125,7 @@ export default async function TodayInboxPage() {
     ]);
   } catch (err: any) {
     if (err?.code === "P2021" || err?.code === "P2022") {
-      return <SchemaOutOfSync detail={err?.meta?.table || err?.meta?.column || err?.message} />;
+      return <SchemaOutOfSync title="Today Inbox failed to load" detail={err?.meta?.table || err?.meta?.column || err?.message} />;
     }
     throw err;
   }

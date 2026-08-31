@@ -57,6 +57,7 @@ const securityHeaders = [
 const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["@react-pdf/renderer", "@google/genai", "firebase-admin"],
+    optimizePackageImports: ["lucide-react", "framer-motion", "react-icons"],
   },
   eslint: {
     ignoreDuringBuilds: true,

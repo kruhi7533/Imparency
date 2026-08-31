@@ -22,7 +22,7 @@ export async function createFraudAlert(
   subType?: AlertSubType
 ): Promise<void> {
   try {
-    await prisma.fraudAlert.create({
+    const created = await prisma.fraudAlert.create({
       data: {
         type,
         entityId,
@@ -35,6 +35,13 @@ export async function createFraudAlert(
       }
     });
     console.log(`[${alertCategory} - ${severity}]: ${type} on ${entityType} ${entityId} - ${description}`);
+
+    // Every HIGH-severity NGO alert is a candidate for a full investigation,
+    // regardless of which of the platform's many call sites raised it. See
+    // lib/fraud-investigator/trigger.ts for why this lives here and not at
+    // each call site.
+    const { maybeInvestigate } = await import("@/lib/fraud-investigator/trigger");
+    await maybeInvestigate(entityType, entityId, severity, created.id);
   } catch (error) {
     console.error("Failed to create fraud alert:", error);
   }

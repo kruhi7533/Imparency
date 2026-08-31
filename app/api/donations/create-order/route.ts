@@ -4,6 +4,7 @@ import Razorpay from "razorpay";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { checkFcraGate } from "@/lib/fcra-gate";
+import { checkRateLimit } from "@/lib/rate-limiter";
 
 export async function POST(request: Request) {
   try {
@@ -16,6 +17,15 @@ export async function POST(request: Request) {
     if (session.user.role !== "DONOR") {
       return NextResponse.json({ error: "Only donors can make donations" }, { status: 403 });
     }
+
+    // Order creation is the one donation endpoint that costs money to abuse: it
+    // opens a Razorpay order per call, which is the shape of a card-testing
+    // run. 10/min is far above any real donor — a person retrying a failed
+    // payment a few times never approaches it — and well below a useful attack
+    // rate. `lib/risk-agent.ts` treats >5 donations in 10min as suspicious, so
+    // anything getting close here is already worth an alert.
+    const rl = await checkRateLimit(request, "donations/create-order", 10, 60);
+    if (rl.isBlocked) return rl.response!;
 
     const body = await request.json();
     const { projectId, amount, milestoneIds = [] } = body;

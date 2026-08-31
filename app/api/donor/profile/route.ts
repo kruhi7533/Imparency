@@ -183,6 +183,21 @@ export async function PUT(request: Request) {
       );
     }
 
+    // Same PAN on more than one donor account — one person running several
+    // identities, or a stolen PAN being used to claim someone else's 80G
+    // deduction. Distinct from the NGO duplicate check in
+    // lib/verification-triage.ts, which looks at NGOProfile rather than User.
+    if (normalizedPan) {
+      const { checkPANUsage } = await import("@/lib/fraud-alerts");
+      await checkPANUsage(normalizedPan, updatedUser.id);
+    }
+
+    // CSR registration number format — donor-side rule check (see lib/risk-agent.ts).
+    if (verifiedPersona === "CSR_OFFICER") {
+      const { checkCsrRegistrationFormat } = await import("@/lib/risk-agent");
+      await checkCsrRegistrationFormat(updatedUser.id);
+    }
+
     return NextResponse.json({
       success: true,
       message: "Profile updated successfully",

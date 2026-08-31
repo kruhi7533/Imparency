@@ -2,62 +2,36 @@
 
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { ADMIN_HUBS, hubForPath } from "./hubs";
 
 interface AdminNavProps {
   pendingProjectCount: number;
   unresolvedAlertsTotal: number;
   pendingCrisisCount?: number;
   inquiriesNeedingResponse: number;
+  fieldsNeedingReview?: number;
 }
 
-interface NavLink {
-  href: string;
-  label: string;
-  badge?: number;
-}
-
-interface NavGroup {
-  label: string;
-  links: NavLink[];
-}
-
-export default function AdminNav({ pendingProjectCount, unresolvedAlertsTotal, pendingCrisisCount, inquiriesNeedingResponse }: AdminNavProps) {
+/**
+ * Top-level navigation: one link per hub, in lifecycle order.
+ *
+ * The pages themselves did not change — only how they are grouped and reached.
+ * See ./hubs.ts for why, and AdminTabs for the second level.
+ */
+export default function AdminNav({ pendingProjectCount, unresolvedAlertsTotal, pendingCrisisCount, inquiriesNeedingResponse, fieldsNeedingReview }: AdminNavProps) {
   const pathname = usePathname();
 
-  const groups: NavGroup[] = [
-    {
-      label: "Overview",
-      links: [{ href: "/admin/today", label: "Today" }],
-    },
-    {
-      label: "Approvals",
-      links: [
-        { href: "/admin/dashboard", label: "NGO Verification" },
-        { href: "/admin/project-review", label: "Project Review", badge: pendingProjectCount },
-        { href: "/admin/proof-review", label: "Proof Review" },
-        { href: "/admin/fcra-review", label: "FCRA Review" },
-        { href: "/admin/crisis", label: "Crisis Relief", badge: pendingCrisisCount },
-        { href: "/admin/initiatives", label: "Relief Initiatives" },
-      ],
-    },
-    {
-      label: "Trust",
-      links: [
-        { href: "/admin/risk-compliance", label: "Risk & Compliance", badge: unresolvedAlertsTotal },
-        { href: "/admin/trust-trends", label: "Trust Trends" },
-        { href: "/admin/impact-health", label: "Impact Health" },
-      ],
-    },
-    {
-      label: "People",
-      links: [
-        { href: "/admin/donors", label: "Donors" },
-        { href: "/admin/inquiries", label: "Inquiries", badge: inquiriesNeedingResponse },
-      ],
-    },
-  ];
+  // Counts belong to a hub, not to a page inside it: the badge answers "which
+  // hub needs me", and the tab bar inside answers "which part of it".
+  const badgeFor: Record<string, number | undefined> = {
+    verification: fieldsNeedingReview,
+    delivery: pendingProjectCount,
+    risk: unresolvedAlertsTotal,
+    crisis: pendingCrisisCount,
+    people: inquiriesNeedingResponse,
+  };
 
-  const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
+  const activeHub = hubForPath(pathname);
 
   return (
     <nav className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-6 py-3 shadow-sm">
@@ -83,32 +57,29 @@ export default function AdminNav({ pendingProjectCount, unresolvedAlertsTotal, p
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto mt-2 flex flex-wrap items-center gap-x-6 gap-y-2">
-        {groups.map((group, i) => (
-          <div key={group.label} className="flex items-center gap-x-6">
-            {i > 0 && <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block" />}
-            <div className="flex items-center gap-4 text-sm font-semibold">
-              {group.links.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className={
-                    isActive(link.href)
-                      ? "text-emerald-600 hover:text-emerald-700 transition underline decoration-2 underline-offset-4 flex items-center gap-1.5"
-                      : "text-gray-500 hover:text-emerald-600 transition flex items-center gap-1.5"
-                  }
-                >
-                  <span>{link.label}</span>
-                  {!!link.badge && link.badge > 0 && (
-                    <span className="bg-red-100 dark:bg-red-950/45 text-red-600 dark:text-red-400 text-[10px] font-black px-1.5 py-0.5 rounded-full">
-                      {link.badge}
-                    </span>
-                  )}
-                </a>
-              ))}
-            </div>
-          </div>
-        ))}
+      <div className="max-w-7xl mx-auto mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
+        {ADMIN_HUBS.map((hub) => {
+          const active = activeHub?.key === hub.key;
+          const badge = badgeFor[hub.key];
+          return (
+            <a
+              key={hub.key}
+              href={hub.href}
+              className={
+                active
+                  ? "text-emerald-600 hover:text-emerald-700 transition underline decoration-2 underline-offset-4 flex items-center gap-1.5 text-sm font-semibold"
+                  : "text-gray-500 hover:text-emerald-600 transition flex items-center gap-1.5 text-sm font-semibold"
+              }
+            >
+              <span>{hub.label}</span>
+              {!!badge && badge > 0 && (
+                <span className="bg-red-100 dark:bg-red-950/45 text-red-600 dark:text-red-400 text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                  {badge}
+                </span>
+              )}
+            </a>
+          );
+        })}
       </div>
     </nav>
   );

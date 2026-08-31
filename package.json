@@ -18,6 +18,7 @@
     "seed-inquiry": "npx tsx scripts/seed-inquiry-notification.ts",
     "seed-pending": "npx tsx scripts/seed-pending-projects.ts",
     "clear-demo": "npx tsx scripts/clear-demo.ts",
+    "eval:fraud-investigator": "npx tsx scripts/eval/run-eval.ts",
     "generate:pitch": "node scripts/generate-pitch.js",
     "generate:pitch:watch": "nodemon --watch lib/ --ext ts,js --exec 'node scripts/generate-pitch.js'"
   },
@@ -66,6 +67,7 @@
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.1",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.23.12",
     "typescript": "^5.4.5",
     "vitest": "^4.1.10"
   }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import crypto from "crypto";
+import { verifyRazorpaySignature } from "@/lib/razorpay-webhook";
 import { sendPaymentRetryEmail } from "@/lib/email";
 import { generateRetryToken, getRetryDelay } from "@/lib/retry-utils";
 import { evaluateReceiptEligibility, issueTaxReceipt, queueReceiptClaim } from "@/lib/tax-receipt";
@@ -17,12 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Configuration error" }, { status: 500 });
     }
 
-    const expectedSignature = crypto
-      .createHmac("sha256", secret)
-      .update(rawBody)
-      .digest("hex");
-
-    if (expectedSignature !== signature) {
+    if (!verifyRazorpaySignature(rawBody, signature, secret)) {
       console.warn("Invalid Razorpay webhook signature");
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
@@ -160,6 +155,22 @@ export async function POST(req: Request) {
         await ensureImpactSubscription(donation.donorId, donation.projectId);
       } catch (subErr) {
         console.error("Failed to create impact subscription:", subErr);
+      }
+
+      // Donor-side fraud rules (lib/risk-agent.ts) — deterministic, not the
+      // NGO fraud-investigator agent. Never block payment confirmation on
+      // these; each is already try/caught internally, this is belt-and-braces.
+      try {
+        const { checkDonationRate, checkDonationStructuring, checkCsrBudgetOverrun } = await import(
+          "@/lib/risk-agent"
+        );
+        await Promise.all([
+          checkDonationRate(donation.donorId),
+          checkDonationStructuring(donation.donorId, updatedDonation.project.ngoId),
+          checkCsrBudgetOverrun(donation.donorId),
+        ]);
+      } catch (riskErr) {
+        console.error("[donations/webhook] donor risk checks failed:", riskErr);
       }
 
       // 80G receipt is only issued once the donor's PAN is verified. If it's not

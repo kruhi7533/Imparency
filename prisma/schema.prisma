@@ -131,21 +131,21 @@ model User {
   impactReports       ImpactReport[]
   followers           NGOFollower[]
   milestoneProofs     MilestoneProof[]
-  adminReviews        MilestoneReview[]   @relation("AdminReviews")
-  adminProjectReviews ProjectReview[]     @relation("AdminProjectReviews")
+  adminReviews        MilestoneReview[]    @relation("AdminReviews")
+  adminProjectReviews ProjectReview[]      @relation("AdminProjectReviews")
   consentLogs         ConsentLog[]
   reEngagementEvents  ReEngagementEvent[]
   teamMemberships     NGOTeamMember[]
-  adminActionLogs     AdminActionLog[]    @relation("AdminActionLogs")
+  adminActionLogs     AdminActionLog[]     @relation("AdminActionLogs")
   passwordResetTokens PasswordResetToken[]
   donorInquiries      DonorInquiry[]
 
   // Emergency Crisis Relief
-  crisisAlertsOptOut  Boolean            @default(false)
-  crisisEventsCreated CrisisEvent[]      @relation("CrisisEventsCreated")
-  initiativesSubmitted ReliefInitiative[] @relation("InitiativesSubmitted")
-  crisisDonations     CrisisDonation[]
-  crisisDeliveries    CrisisNotificationDelivery[]
+  crisisAlertsOptOut   Boolean                      @default(false)
+  crisisEventsCreated  CrisisEvent[]                @relation("CrisisEventsCreated")
+  initiativesSubmitted ReliefInitiative[]           @relation("InitiativesSubmitted")
+  crisisDonations      CrisisDonation[]
+  crisisDeliveries     CrisisNotificationDelivery[]
 }
 
 model PasswordResetToken {
@@ -188,6 +188,26 @@ model NGOProfile {
   cover_image_url        String?
   joinCode               String?            @unique // Used for field worker self-registration via WhatsApp
 
+  /// ─── Re-verification ──────────────────────────────────────────────────
+  /// Set when evidence gathered AFTER approval contradicts that approval.
+  ///
+  /// `verificationStatus` deliberately stays VERIFIED. This organisation WAS
+  /// approved by a named human on a date, and rewriting that to PENDING would
+  /// erase the decision rather than question it. These fields say "the evidence
+  /// behind that decision has since failed", which is a different statement.
+  ///
+  /// Nothing here suspends anyone. The platform does not take adverse action
+  /// against an organisation on its own; it puts the decision back in front of
+  /// a human with a deadline. See lib/verification-reversal.ts.
+  reverificationRequiredAt  DateTime?
+  reverificationReason      String?
+  /// When a human is expected to have re-decided by. Past this, the case
+  /// escalates in the console and the admin is emailed again — it still does
+  /// not act on its own.
+  reverificationDueAt       DateTime?
+  /// Stops the overdue sweep emailing about the same case every single night.
+  reverificationEscalatedAt DateTime?
+
   // Consent Tracking
   dataProcessingConsent     Boolean   @default(false)
   dataProcessingConsentDate DateTime?
@@ -196,18 +216,29 @@ model NGOProfile {
   consentRevoked            Boolean   @default(false)
   consentRevokedAt          DateTime?
 
-  projects     Project[]
-  followers    NGOFollower[]
-  screening    NgoScreening?
-  compliance   NGOCompliance?
-  riskReviews  RiskReview[]
-  fieldWorkers FieldWorker[]
-  draftProofs  DraftProof[]
-  teamMembers  NGOTeamMember[]
-  teamInvites  TeamInvite[]
-  donorInquiries DonorInquiry[]
+  projects           Project[]
+  followers          NGOFollower[]
+  screening          NgoScreening?
+  compliance         NGOCompliance?
+  riskReviews        RiskReview[]
+  fieldWorkers       FieldWorker[]
+  draftProofs        DraftProof[]
+  teamMembers        NGOTeamMember[]
+  teamInvites        TeamInvite[]
+  donorInquiries     DonorInquiry[]
   crisisParticipants CrisisParticipant[]
   crisisUpdates      CrisisUpdate[]
+
+  documentAnalyses    NgoDocumentAnalysis[]
+  extractedFields     ExtractedField[]
+  agentCases          AgentCase[]
+  fraudInvestigations FraudInvestigation[]
+
+  // Discover, the admin verification queue and every public listing filter on
+  // verification state plus the two independent "shouldn't be visible" flags.
+  // The unique keys already on this model cover PAN/registration/joinCode/user
+  // lookups, but none of them help these.
+  @@index([verificationStatus, isDeleted, isSuspended])
 }
 
 model NGOTeamMember {
@@ -313,10 +344,16 @@ model Project {
   crisisEvent         CrisisEvent? @relation(fields: [crisisEventId], references: [id])
   isCrisisGeneralFund Boolean      @default(false)
 
-  milestones             Milestone[]
-  donations              Donation[]
-  projectReviews         ProjectReview[]
+  milestones              Milestone[]
+  donations               Donation[]
+  projectReviews          ProjectReview[]
   crisisDonationsAsTarget CrisisDonation[]
+
+  @@index([ngoId])
+  // Discover, admin review queues and the NGO profile all filter on these two
+  // together — and `isDeleted` must be part of it, since a soft-deleted row is
+  // excluded from essentially every read.
+  @@index([status, isDeleted])
 }
 
 model ProjectReview {
@@ -328,6 +365,8 @@ model ProjectReview {
   action     String // "APPROVED" | "REJECTED"
   note       String?
   reviewedAt DateTime @default(now())
+
+  @@index([projectId])
 }
 
 model Milestone {
@@ -346,6 +385,11 @@ model Milestone {
   proofs        MilestoneProof[]
   impactReports ImpactReport[]
   reviews       MilestoneReview[]
+
+  @@index([projectId])
+  // The overdue sweep (risk-sweep cron, Today inbox, Impact Health) filters on
+  // exactly this pair, and it is the one query here that scans the most rows.
+  @@index([status, deadline])
 }
 
 model MilestoneProof {
@@ -367,6 +411,8 @@ model MilestoneProof {
   theoryOfChangeGaps           String[]
 
   submittedAt DateTime @default(now())
+
+  @@index([milestoneId])
 }
 
 model MilestoneReview {
@@ -380,6 +426,8 @@ model MilestoneReview {
   note        String?
   aiScore     Int?
   reviewedAt  DateTime  @default(now())
+
+  @@index([milestoneId])
 }
 
 model Donation {
@@ -410,6 +458,19 @@ model Donation {
 
   impactReports ImpactReport[]
   taxReceipt    TaxReceipt?
+
+  // Postgres does not index foreign keys automatically and Prisma only emits
+  // indexes for @id and field-level @unique, so every one of these columns was
+  // being sequential-scanned. Harmless at a few hundred rows, linear in table
+  // size after that — see the matching indexes on Project/Milestone.
+  @@index([projectId])
+  // Donor-facing lists always filter by owner and usually by status together.
+  @@index([donorId, status])
+  // The admin dashboard's today/week/month/FY sums.
+  @@index([status, createdAt])
+  // The payment webhook looks a donation up by this on the confirmation path;
+  // an unindexed scan here would sit directly in the money flow.
+  @@index([razorpayOrderId])
 }
 
 model ImpactReport {
@@ -425,6 +486,9 @@ model ImpactReport {
   irisMetrics          String[]
   sentAt               DateTime  @default(now())
   readAt               DateTime?
+
+  @@index([donationId])
+  @@index([donorId])
 }
 
 model NGOFollower {
@@ -446,6 +510,12 @@ model Notification {
   body      String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  // This table had zero index scans in pg_stat_user_tables — every read of the
+  // notification bell was a full scan. Ordering by createdAt is part of the
+  // same query, so the composite serves both the filter and the sort, and its
+  // leftmost prefix still covers plain userId lookups and unread counts.
+  @@index([userId, createdAt])
 }
 
 model TaxReceipt {
@@ -465,15 +535,22 @@ model RateLimitLog {
   requestCount Int      @default(1)
   windowStart  DateTime @default(now())
 
-  // Every rate-limited request looks up (identifier, route, windowStart) before
-  // it does anything else — including on the auth path. Without this the lookup
-  // is a sequential scan over a table that grows with traffic, so the limiter
-  // gets slower exactly as load increases.
-  @@index([identifier, route, windowStart])
+  // One row per (identifier, route). This is what lets `rateLimit()` do its
+  // whole job in a single atomic INSERT .. ON CONFLICT DO UPDATE instead of a
+  // findFirst followed by a create/update: it halves the round trips, and more
+  // importantly it closes the race where two concurrent requests both read a
+  // count below the limit and both increment, letting a caller exceed it.
+  // The window is expressed as `windowStart` on the row and reset in the same
+  // statement once it ages out, so a single row still models a rolling window.
+  //
+  // This also replaces the old [identifier, route, windowStart] index, which a
+  // unique key on the first two columns makes redundant — there can only ever
+  // be one matching row now, so the extra column bought nothing and cost a
+  // second index to maintain on a write-heavy table.
+  @@unique([identifier, route])
   // Supports the expired-window prune, which filters on windowStart alone.
   @@index([windowStart])
 }
-
 
 model NgoScreening {
   id                String     @id @default(uuid())
@@ -489,6 +566,88 @@ model NgoScreening {
   status            String     @default("PENDING") // PENDING | READY | FAILED
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
+}
+
+// ─── Field-level document extraction (Requirements Analyst agent) ────────────
+// NgoScreening produces ONE confidence for a whole document set and its
+// extractedFields blob is never read back. These two models make extraction
+// field-level so each NGOCompliance.*Verified flag can be earned by a
+// specific, human-validated field instead of being set wholesale on approve.
+//
+// NGOProfile.documents is an untyped String[] — the agent classifies each
+// upload by content rather than requiring the NGO to label it at registration.
+
+enum NgoDocumentType {
+  REGISTRATION_CERTIFICATE
+  PAN_CARD
+  TAX_EXEMPTION_12A
+  TAX_EXEMPTION_80G
+  FCRA_CERTIFICATE
+  BANK_PROOF
+  UNKNOWN
+}
+
+enum ExtractionStatus {
+  EXTRACTED // confidence >= threshold and format checks passed; awaiting admin confirm
+  NEEDS_REVIEW // low confidence, failed format check, or absent — mandatory human review
+  VALIDATED // an admin confirmed (or corrected) the value
+  REJECTED // an admin rejected the extracted value
+}
+
+model NgoDocumentAnalysis {
+  id            String     @id @default(uuid())
+  ngoId         String
+  ngo           NGOProfile @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  documentIndex Int // position in NGOProfile.documents[]
+  documentUrl   String
+
+  docType           NgoDocumentType @default(UNKNOWN)
+  docTypeConfidence Float           @default(0)
+  readable          Boolean         @default(false)
+  note              String? // why unreadable / why classified this way
+
+  /// The organisation name as printed on THIS document. Stored per-document so
+  /// the documents can be compared against EACH OTHER — the per-field answer
+  /// reports one winning name, which hides a certificate belonging to a
+  /// differently-named entity. See findNameDisagreement in
+  /// lib/verification-triage.ts.
+  orgNameOnDocument String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fields ExtractedField[]
+
+  @@unique([ngoId, documentIndex])
+  @@index([ngoId])
+}
+
+model ExtractedField {
+  id         String               @id @default(uuid())
+  ngoId      String
+  ngo        NGOProfile           @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  analysisId String?
+  analysis   NgoDocumentAnalysis? @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+
+  fieldKey         String // "orgName" | "panNumber" | "registrationNumber" | "a12Number" | "eightyGNumber" | ...
+  extractedValue   String? // null is a legitimate answer — the agent must not invent one
+  submittedValue   String? // what the NGO typed on the registration form, for cross-check
+  matchesSubmitted Boolean? // null when there is nothing to compare against
+
+  confidence Float            @default(0)
+  status     ExtractionStatus @default(NEEDS_REVIEW)
+  flags      Json             @default("[]") // [{ severity, issue }]
+
+  validatedValue String? // admin's corrected value, when they edited rather than accepted
+  validatedById  String?
+  validatedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ngoId, fieldKey])
+  @@index([ngoId])
+  @@index([status])
 }
 
 enum AlertCategory {
@@ -522,6 +681,15 @@ model FraudAlert {
   resolvedById   String? // admin user id — every resolution must be attributable
   resolvedAt     DateTime?
   createdAt      DateTime      @default(now())
+
+  // The open-alert queues and dashboard badge counts.
+  @@index([resolved, severity])
+  // The risk sweep's dedupe lookup ("has this entity already been alerted for
+  // this type?") — see checkGeneralPlatformAlerts in lib/risk-agent.ts.
+  @@index([type, entityId, resolved])
+  // entityId is also queried on its own, which the composite above cannot
+  // serve because it is not the leftmost column.
+  @@index([entityId])
 }
 
 model RiskReview {
@@ -537,6 +705,141 @@ model RiskReview {
   reviewNote String?
   createdAt  DateTime   @default(now())
   resolvedAt DateTime?
+
+  // The fraud investigator checks for an existing OPEN review per NGO before
+  // committing findings; the leftmost prefix also covers plain ngoId lookups.
+  @@index([ngoId, status])
+  // The Risk & Compliance queue filters by status alone.
+  @@index([status])
+}
+
+/// ─── Risk engines ───────────────────────────────────────────────────────────
+/// One standing risk score per entity, worst-first rankable.
+///
+/// NGO and DONOR scores live in the same table but are NEVER ranked against
+/// each other: an NGO at 80 means "this organisation may not be what it claims"
+/// and a donor at 80 means "this money may not be what it claims" — different
+/// evidence, different queue, different action. Every read filters by
+/// entityType, which is why the ranking index leads with it.
+///
+/// This is a MATERIALISED score, not a source of truth. It exists because a
+/// worst-first page cannot sort or paginate over a value computed per row on
+/// read (see the platform sweep that was 466ms of a 624ms page before it moved
+/// to cron). The inputs remain derived on read where they already are —
+/// `computeCompliance` in lib/ngo-compliance.ts is still never stored — and
+/// `computedAt` is surfaced so a stale score is visibly stale rather than
+/// quietly wrong.
+model EntityRiskScore {
+  id         String         @id @default(uuid())
+  entityType RiskEntityType
+  entityId   String
+
+  /// 0..100, HIGHER IS WORSE — the opposite direction to healthScore and
+  /// complianceScore, both of which are "higher is better". Named `score` with
+  /// this comment rather than something like `riskPoints` because every band
+  /// boundary below reads naturally in this direction; do not silently flip it.
+  score Int
+  band  RiskBand
+
+  /// [{ code, label, points, detail }] — what actually drove the score, in the
+  /// order applied. The Radar shows the top few verbatim: a number nobody can
+  /// account for is a number nobody will act on.
+  signals Json @default("[]")
+
+  /// Inputs that could not be evaluated at all (e.g. an NGO with no extracted
+  /// fields). Tracked separately from `score` because absence of evidence must
+  /// never read as evidence of safety — a fully unknown entity is banded
+  /// UNKNOWN, never LOW.
+  unknownInputs Int @default(0)
+
+  computedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([entityType, entityId])
+  /// The Radar's only query shape: one entity type, worst first.
+  @@index([entityType, score])
+  @@index([entityType, band])
+}
+
+enum RiskEntityType {
+  NGO
+  DONOR
+}
+
+enum RiskBand {
+  LOW
+  MEDIUM
+  HIGH
+  /// Not "no risk found" — "not enough evidence to say". Sorts with HIGH in the
+  /// console, never with LOW.
+  UNKNOWN
+}
+
+/// One routing decision made from a risk score: what the Radar decided to do
+/// about an entity, and what came of it.
+///
+/// A durable queue rather than a direct call, because the expensive end of this
+/// pipeline has a hard throughput ceiling — measured 2026-08-26, roughly one
+/// investigation per six minutes against a free-tier token cap. Firing an
+/// investigation the moment a score crossed a line would mean a batch of newly
+/// scored NGOs all launching at once and starving each other. A queue plus a
+/// drain turns throughput into a number in a config file.
+///
+/// It is also the audit trail for the automated half of the pipeline: every
+/// decision to spend the agent on an entity is a row here, with the score that
+/// justified it captured at the time, so a later re-score cannot quietly
+/// rewrite why something was investigated.
+model RiskDispatch {
+  id         String         @id @default(uuid())
+  entityType RiskEntityType
+  entityId   String
+
+  action RiskAction
+  status DispatchStatus @default(QUEUED)
+
+  /// Score and band AS THEY WERE when this was queued. Deliberately copied
+  /// rather than joined: EntityRiskScore is overwritten on every sweep, and a
+  /// dispatch must stay explainable after the score that caused it has moved.
+  scoreAtQueue Int
+  bandAtQueue  RiskBand
+  /// Human-readable justification, shown in the console next to the outcome.
+  reason       String
+
+  /// What the run produced — a FraudInvestigation id for INVESTIGATE, a field
+  /// count for EXTRACT. Null until it finishes.
+  resultRef String?
+  error     String?
+
+  queuedAt   DateTime  @default(now())
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  /// The drain's query: oldest queued first, highest score first.
+  @@index([status, scoreAtQueue])
+  @@index([entityType, entityId, status])
+}
+
+enum RiskAction {
+  /// Send it to the fraud investigator: there is evidence and it looks bad.
+  INVESTIGATE
+  /// Read its documents first. An entity banded UNKNOWN has nothing for the
+  /// investigator to reason about — it would call get_document_evidence, get
+  /// `analysed: false`, and correctly conclude nothing, at full token cost.
+  /// Extraction is the cheap step that turns an unknown into a real score.
+  EXTRACT
+  /// Explicitly decided to spend nothing. Recorded rather than implied so the
+  /// audit trail shows the choice was made.
+  MONITOR
+}
+
+enum DispatchStatus {
+  QUEUED
+  RUNNING
+  DONE
+  FAILED
+  /// Became irrelevant before it ran — usually the entity was re-scored and no
+  /// longer warrants the action.
+  SKIPPED
 }
 
 model FcraQuarterlyReport {
@@ -698,9 +1001,19 @@ model AppSetting {
 // JSON snapshots of ONLY the fields the action changed — never full entity
 // dumps (PII retention). metadata carries the AI-vs-human decision snapshot.
 model AdminActionLog {
-  id            String   @id @default(uuid())
-  adminId       String
-  admin         User     @relation("AdminActionLogs", fields: [adminId], references: [id])
+  id String @id @default(uuid())
+
+  /// Null means the PLATFORM took this action, not a person.
+  ///
+  /// Originally required, because every entry came from an admin clicking
+  /// something. That stopped being true once the platform started deciding
+  /// things on its own — routing a risk score to an investigation, re-opening a
+  /// verification whose evidence had failed. Those are exactly the actions an
+  /// auditor most wants to see, and forcing them into a parallel log nobody
+  /// reads, or attributing them to a real person who did not do them, are both
+  /// worse than a nullable column.
+  adminId       String?
+  admin         User?    @relation("AdminActionLogs", fields: [adminId], references: [id])
   action        String // e.g. "NGO_APPROVED", "PROJECT_REJECTED", "ALERT_RESOLVED", "NGO_SUSPENDED"
   entityType    String // "NGO" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA"
   entityId      String
@@ -905,7 +1218,7 @@ model DonorInquiryMessage {
   threadId   String
   thread     DonorInquiry @relation(fields: [threadId], references: [id], onDelete: Cascade)
   senderId   String
-  senderRole String       // "DONOR" | "NGO"
+  senderRole String // "DONOR" | "NGO"
   body       String
   createdAt  DateTime     @default(now())
 
@@ -969,26 +1282,26 @@ enum CrisisUpdateType {
 }
 
 model CrisisEvent {
-  id                 String              @id @default(uuid())
+  id                 String             @id @default(uuid())
   title              String
-  slug               String              @unique
+  slug               String             @unique
   disasterType       DisasterType
   description        String
   affectedLocation   String
-  country            String              @default("India")
+  country            String             @default("India")
   stateName          String?
   city               String?
   latitude           Float?
   longitude          Float?
-  severity           CrisisSeverity      @default(MODERATE)
+  severity           CrisisSeverity     @default(MODERATE)
   coverImage         String
   galleryImages      String[]
-  status             CrisisStatus        @default(UPCOMING)
-  verificationStatus VerificationStatus  @default(PENDING)
+  status             CrisisStatus       @default(UPCOMING)
+  verificationStatus VerificationStatus @default(PENDING)
   verifiedById       String?
   verifiedAt         DateTime?
-  isFeatured         Boolean             @default(false)
-  isArchived         Boolean             @default(false)
+  isFeatured         Boolean            @default(false)
+  isArchived         Boolean            @default(false)
   startDate          DateTime
   expectedEndDate    DateTime?
   closedAt           DateTime?
@@ -1084,7 +1397,7 @@ model CrisisDonation {
   targetType    CrisisDonationTarget
 
   campaignProjectId String?
-  campaignProject   Project? @relation(fields: [campaignProjectId], references: [id])
+  campaignProject   Project?          @relation(fields: [campaignProjectId], references: [id])
   initiativeId      String?
   initiative        ReliefInitiative? @relation(fields: [initiativeId], references: [id])
 
@@ -1112,7 +1425,7 @@ model CrisisUpdate {
 
   postedById    String // NGOTeamMember user id, or initiative submitter id
   postedByNgoId String?
-  postedByNgo   NGOProfile? @relation(fields: [postedByNgoId], references: [id])
+  postedByNgo   NGOProfile?       @relation(fields: [postedByNgoId], references: [id])
   initiativeId  String?
   initiative    ReliefInitiative? @relation(fields: [initiativeId], references: [id])
 
@@ -1121,7 +1434,7 @@ model CrisisUpdate {
   body                 String
   mediaUrls            String[]
   documentUrls         String[] // expense reports, receipts
-  fundsUtilized        Decimal? @db.Decimal(12, 2)
+  fundsUtilized        Decimal?         @db.Decimal(12, 2)
   beneficiariesReached Int?
 
   createdAt DateTime @default(now())
@@ -1147,4 +1460,198 @@ model CrisisNotificationDelivery {
   @@unique([crisisEventId, donorId, channel])
   @@index([status, attempts])
   @@index([donorId])
+}
+
+// ─── Verification caseworker agent ──────────────────────────────────────────
+// See docs/AGENT-VERIFICATION-CASEWORKER.md for the full design.
+//
+// Why these exist: lib/extraction-runner.ts is a fixed 3-step pipeline whose
+// step count is known before it starts — correctly a single model call. The
+// caseworker is an agent because step N+1 depends on what step N found (a name
+// discrepancy between two certificates makes it read a third document and draft
+// a question naming both values), so the run has to be a durable, resumable,
+// auditable object rather than one request.
+//
+// The invariant these models do NOT change: only a human PATCH to
+// app/api/admin/ngo-fields/[fieldId] can make a field VALIDATED, and only a
+// VALIDATED field earns an NGOCompliance flag (lib/compliance-evidence.ts).
+// The agent proposes evidence; it decides nothing.
+
+enum AgentCaseStatus {
+  NEW
+  GATHERING
+  ANALYZING
+  AWAITING_NGO // question sent, waiting on the organisation
+  AWAITING_ADMIN // a gated action is queued for a human
+  RESOLVED
+  ESCALATED
+  ABANDONED // reminders exhausted or case aged out
+  FAILED
+}
+
+enum AgentStepKind {
+  MODEL_CALL // one generateContent round trip
+  TOOL_CALL // a function the model asked for
+  TOOL_RESULT // what it got back (truncated for storage)
+  GATE // a write was queued for human approval
+  TRANSITION // status change
+  ERROR
+}
+
+/// One NGO's verification case. `state` holds the model conversation so a worker
+/// can resume mid-case without replaying tool calls. Unique per (ngoId, caseType)
+/// so a nudge can never fork a second case against the same NGO.
+model AgentCase {
+  id       String          @id @default(uuid())
+  ngoId    String
+  ngo      NGOProfile      @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  caseType String          @default("NGO_VERIFICATION")
+  status   AgentCaseStatus @default(NEW)
+
+  // Budgets. Every one of these is a hard stop that ends in ESCALATED, never a
+  // silent halt — a stopped case must always be visible to a human.
+  stepsUsed     Int @default(0)
+  stepBudget    Int @default(12)
+  tokensIn      Int @default(0)
+  tokensOut     Int @default(0)
+  costPaise     Int @default(0) // integer paise; money is never a float
+  remindersSent Int @default(0)
+
+  /// Model conversation + scratchpad. Documents never enter here (they are read
+  /// in an isolated model call), so this stays text-sized.
+  state Json @default("{}")
+
+  /// Optimistic worker claim, extended by a heartbeat while a case runs. A
+  /// killed worker stops heartbeating and the case is reclaimed when this lapses.
+  lockedUntil DateTime?
+  lockedBy    String? // worker instance id, so a stuck lock is diagnosable
+
+  waitingSince DateTime? // set when AWAITING_*; drives the SLA sweep
+  nextWakeAt   DateTime? // earliest time a worker should pick this up again
+
+  summary          String? // agent's closing summary, admin-facing
+  escalationReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  steps          AgentStep[]
+  pendingActions AgentPendingAction[]
+
+  @@unique([ngoId, caseType])
+  @@index([status, nextWakeAt])
+  @@index([lockedUntil])
+}
+
+/// Append-only replay log — one row per loop event. This is the observability
+/// substrate: usageMetadata is captured nowhere else in this repo, so "what does
+/// one verification cost" is currently unanswerable.
+model AgentStep {
+  id     String        @id @default(uuid())
+  caseId String
+  case   AgentCase     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  seq    Int
+  kind   AgentStepKind
+
+  toolName     String?
+  args         Json?
+  result       Json? // truncated for storage; see TOOL_RESULT_MAX_CHARS
+  ok           Boolean @default(true)
+  errorMessage String?
+
+  modelName String?
+  tokensIn  Int     @default(0)
+  tokensOut Int     @default(0)
+  latencyMs Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@unique([caseId, seq])
+  @@index([caseId, seq])
+}
+
+/// The human gate. Any tool marked `gated` lands here instead of executing.
+/// EDITED keeps both the agent's draft (args) and the admin's rewrite
+/// (finalArgs) — that delta is the quality metric, mirroring the `overrodeAi`
+/// flag written by app/api/admin/ngo-fields/[fieldId]/route.ts.
+model AgentPendingAction {
+  id      String    @id @default(uuid())
+  caseId  String
+  case    AgentCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  stepSeq Int
+
+  toolName  String
+  args      Json // the agent's draft
+  finalArgs Json? // what the admin actually approved, when edited
+
+  status       String    @default("PENDING_APPROVAL") // PENDING_APPROVAL | APPROVED | EDITED | REJECTED | EXECUTED | EXPIRED
+  decidedById  String?
+  decidedAt    DateTime?
+  rejectReason String?
+  executedAt   DateTime?
+  resultRef    String? // e.g. the created ReviewThread.id
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@index([caseId])
+}
+
+// ─── Fraud investigator (read-only, tool-calling) ───────────────────────────
+// The one agent in this codebase that clears the agentic bar: given a single
+// FraudAlert, it follows it — which query to run next depends on what the last
+// one returned, and the hypothesis space (how an NGO might be gaming the
+// platform) is open-ended, unlike NGO verification's fixed 5-field checklist.
+//
+// It runs to completion in ONE synchronous call — unlike the (deleted)
+// verification caseworker, it never waits on a human reply or an NGO upload
+// mid-run, so it needs no worker process, no lock/heartbeat, no pause/resume
+// state machine. See lib/fraud-investigator/.
+
+enum InvestigationStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model FraudInvestigation {
+  id     String              @id @default(uuid())
+  ngoId  String
+  ngo    NGOProfile          @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  status InvestigationStatus @default(RUNNING)
+
+  /// What triggered this run: a FraudAlert id, a RiskReview id, or "manual:<adminId>".
+  triggeredBy String
+
+  /// The FraudAlert this run was investigating, if any — separate from
+  /// triggeredBy, which only encodes this for the automatic ("alert:<id>")
+  /// path. A manual run (triggeredBy = "manual:<adminId>") still passes an
+  /// alertId when started from a specific alert, but that used to go nowhere:
+  /// a manual investigation that found nothing had no persisted link back to
+  /// the alert it was run against, so the admin console couldn't tell "this
+  /// was checked and it's clean" from "nobody has looked at this yet" for
+  /// that case. Nullable — plenty of runs (manual, no alert context) have none.
+  alertId String?
+
+  stepsUsed Int @default(0)
+  tokensIn  Int @default(0)
+  tokensOut Int @default(0)
+  costPaise Int @default(0)
+
+  /// Full tool-call trace: [{ seq, kind, toolName, args, result, ok }]. One-shot
+  /// runs never need to resume, so this is a JSON array rather than a table —
+  /// the caseworker's AgentStep table earned its keep by supporting crash
+  /// recovery across days; nothing here runs longer than one request.
+  trace Json @default("[]")
+
+  riskLevel    String? // LOW | MEDIUM | HIGH | CRITICAL — null if it found nothing
+  summary      String?
+  riskReviewId String? // set if this run opened or added to a RiskReview
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ngoId])
+  @@index([status])
+  @@index([alertId])
 }

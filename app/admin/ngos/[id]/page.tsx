@@ -62,7 +62,6 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
     where: { id: params.id },
     include: {
       user: { select: { email: true } },
-      screening: true,
       compliance: true,
       riskReviews: { orderBy: { createdAt: "desc" }, take: 20 },
       projects: {
@@ -171,12 +170,6 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
               <Field label="Causes" value={ngo.causeCategories.join(", ") || "—"} />
               <Field label="Applied" value={fmtDate(ngo.createdAt)} />
             </div>
-            {ngo.screening && (
-              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-                <p className="text-xs font-bold text-gray-400 mb-1">AI Screening ({ngo.screening.recommendation})</p>
-                <p className="text-sm text-gray-700 dark:text-gray-300">{ngo.screening.summary}</p>
-              </div>
-            )}
           </Section>
 
           {/* Compliance */}
@@ -258,7 +251,7 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
                     <span className="text-xs text-gray-400">{fmt(a.createdAt)}</span>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    by {a.admin?.name || a.admin?.email || "unknown"}
+                    by {a.admin ? a.admin.name || a.admin.email : "the platform (automated)"}
                     {a.note ? ` — ${a.note}` : ""}
                   </p>
                 </div>

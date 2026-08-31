@@ -71,11 +71,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
       if (!(file instanceof File) || file.size === 0) continue;
       mediaUrls.push(await uploadFile(Buffer.from(await file.arrayBuffer()), file.name, "crisis/updates"));
     }
-    const documentUrls: string[] = [];
-    for (const file of documentFiles) {
-      if (!(file instanceof File) || file.size === 0) continue;
-      documentUrls.push(await uploadFile(Buffer.from(await file.arrayBuffer()), file.name, "crisis/update-documents"));
-    }
+    // Independent uploads, sent together rather than in series — see the same
+    // change in `crisis/[id]/initiatives`. Promise.all preserves input order.
+    const documentUrls = await Promise.all(
+      documentFiles
+        .filter((file) => file instanceof File && file.size > 0)
+        .map(async (file) =>
+          uploadFile(Buffer.from(await file.arrayBuffer()), file.name, "crisis/update-documents")
+        )
+    );
 
     const update = await prisma.crisisUpdate.create({
       data: {

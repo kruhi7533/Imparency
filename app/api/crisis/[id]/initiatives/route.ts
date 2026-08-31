@@ -74,11 +74,18 @@ export async function POST(request: Request, { params }: { params: { id: string 
       if (!(file instanceof File) || file.size === 0) continue;
       imageUrls.push(await uploadFile(Buffer.from(await file.arrayBuffer()), file.name, "crisis/initiative-images"));
     }
-    const documentUrls: string[] = [];
-    for (const file of documents) {
-      if (!(file instanceof File) || file.size === 0) continue;
-      documentUrls.push(await uploadFile(Buffer.from(await file.arrayBuffer()), file.name, "crisis/initiative-documents"));
-    }
+    // Uploads are independent of one another, so they go out together rather
+    // than one at a time — a submission with several documents was paying the
+    // full round trip to object storage once per file, in series, while the
+    // user waited on the form. Promise.all preserves input order, so the stored
+    // URLs still line up with the order the documents were attached in.
+    const documentUrls = await Promise.all(
+      documents
+        .filter((file) => file instanceof File && file.size > 0)
+        .map(async (file) =>
+          uploadFile(Buffer.from(await file.arrayBuffer()), file.name, "crisis/initiative-documents")
+        )
+    );
 
     const initiative = await prisma.reliefInitiative.create({
       data: {
