@@ -61,6 +61,32 @@ jobs:
           DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
           DIRECT_URL: ${{ secrets.CI_DIRECT_URL }}
 
+      # The gate that catches the bug nothing else in this pipeline can see:
+      # a change to prisma/schema.prisma whose migration folder was never
+      # committed. That change passes `tsc` (the generated client matches the
+      # schema file) AND passes `npm test` (Prisma is mocked, no DB is touched),
+      # so it reaches main and then breaks every other developer and every
+      # deploy on a table or column that exists nowhere but the author's laptop.
+      #
+      # Compares the LIVE CI database — built a moment ago from only what is
+      # committed in prisma/migrations/ — against schema.prisma. If the schema
+      # file describes anything the migrations do not produce, they diverge and
+      # `--exit-code` returns 2, failing the job.
+      #
+      # Deliberately uses --from-url (the real database) rather than
+      # --from-migrations: the latter requires a shadow database that Prisma
+      # RESETS, which would wipe the schema the Build step below depends on.
+      # Uses DIRECT_URL because migration tooling must bypass the pooler.
+      - name: Check schema and migrations agree
+        if: env.CI_DATABASE_URL != ''
+        run: |
+          npx prisma migrate diff             --from-url "$DIRECT_URL"             --to-schema-datamodel ./prisma/schema.prisma             --exit-code           || {
+            echo "::error title=Uncommitted migration::prisma/schema.prisma does not match prisma/migrations/. You almost certainly edited the schema and ran 'npm run db:migrate' without committing the generated folder in prisma/migrations/. Commit it, or run 'npm run db:migrate' to create it."
+            exit 1
+          }
+        env:
+          DIRECT_URL: ${{ secrets.CI_DIRECT_URL }}
+
       # Not `npm run build` — that script is
       # `prisma generate && prisma migrate deploy && next build`, and the
       # migrate step is already run above against the CI database.
