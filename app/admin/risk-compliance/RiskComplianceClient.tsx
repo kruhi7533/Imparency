@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { NGOComplianceSummary } from "@/lib/compliance-agent";
 import AskNgoBox from "@/app/admin/components/AskNgoBox";
+import InvestigationTrace, { type Investigation } from "@/app/admin/components/InvestigationTrace";
 
 interface FraudAlert {
   id: string;
@@ -37,10 +38,108 @@ interface Props {
   initialResolved: FraudAlert[];
   initialRiskReviews: RiskReview[];
   complianceSummaries: NGOComplianceSummary[];
+  initialInvestigations: Investigation[];
+  /** Per-alert AI investigation status — see the comment in page.tsx for how it's built. */
+  investigationStatusByAlertId: Record<string, { status: string; riskLevel: string | null; summary: string | null }>;
+}
+
+const INVESTIGATION_STATUS_BADGE: Record<string, string> = {
+  FAILED: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30",
+  RUNNING: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30",
+  HIGH: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30",
+  MEDIUM: "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30",
+  LOW: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30",
+  CLEAN: "bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700",
+  NOT_RUN: "bg-gray-50 text-gray-400 border-gray-200 dark:bg-gray-900 dark:text-gray-500 dark:border-gray-800",
+};
+
+/**
+ * A row-level answer to "did the AI already look at this?" — distinct from
+ * investigationResult below, which only reflects a fresh click made THIS
+ * session. Without this, an alert the automatic trigger already investigated
+ * (found clean, failed, or timed out) is visually identical to one nobody has
+ * looked at yet.
+ */
+function InvestigationStatusBadge({
+  alert,
+  status,
+}: {
+  alert: FraudAlert;
+  status: { status: string; riskLevel: string | null; summary: string | null } | undefined;
+}) {
+  if (alert.entityType !== "NGO") return null; // the investigator only covers NGOs
+
+  if (!status) {
+    // Only HIGH NGO alerts auto-trigger (lib/fraud-investigator/trigger.ts) — for
+    // anything else, "not run" is expected, not a gap worth flagging.
+    if (alert.severity !== "HIGH") return null;
+    return (
+      <span
+        className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${INVESTIGATION_STATUS_BADGE.NOT_RUN}`}
+        title="No HIGH-severity NGO investigation has run against this alert yet."
+      >
+        AI: not yet investigated
+      </span>
+    );
+  }
+
+  if (status.status === "FAILED") {
+    return (
+      <span
+        className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${INVESTIGATION_STATUS_BADGE.FAILED}`}
+        title={status.summary ?? "The investigation run failed."}
+      >
+        AI: investigation failed — needs manual review
+      </span>
+    );
+  }
+  if (status.status === "RUNNING") {
+    return (
+      <span className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${INVESTIGATION_STATUS_BADGE.RUNNING}`}>
+        AI: investigating…
+      </span>
+    );
+  }
+  if (status.riskLevel) {
+    return (
+      <span
+        className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${INVESTIGATION_STATUS_BADGE[status.riskLevel] || INVESTIGATION_STATUS_BADGE.LOW}`}
+        title={status.summary ?? undefined}
+      >
+        AI: {status.riskLevel} found
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${INVESTIGATION_STATUS_BADGE.CLEAN}`}
+      title={status.summary ?? "Investigated — nothing filed."}
+    >
+      AI: investigated, clean
+    </span>
+  );
 }
 
 type MainTab = "risk" | "compliance";
-type RiskSubTab = "fraud" | "doc_errors" | "reviews" | "history";
+/**
+ * Two tabs, not five.
+ *
+ * It used to be Fraud Alerts / Document Errors / Risk Reviews / Investigations
+ * / History. Three of those were the SAME table sliced by a column —
+ * FraudAlert filtered on alertCategory, then on resolved — which made a filter
+ * look like a destination and forced an admin to switch tabs to compare a
+ * document error against the fraud alert on the same NGO. The other two are
+ * one-to-one in practice: an investigation exists to produce a review, so
+ * showing them apart meant cross-referencing by hand.
+ *
+ * Nothing was removed. Every list is still here; the three alert views are
+ * filter chips inside "alerts", and an investigation now renders beneath the
+ * case it belongs to.
+ */
+type RiskSubTab = "alerts" | "cases";
+
+/** Which slice of the alert table is showing. Was three separate tabs. */
+type AlertFilter = "fraud" | "doc_errors" | "resolved";
 
 const SEVERITY_BADGE: Record<string, string> = {
   HIGH: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30",
@@ -64,12 +163,42 @@ export default function RiskComplianceClient({
   initialResolved,
   initialRiskReviews,
   complianceSummaries,
+  initialInvestigations,
+  investigationStatusByAlertId,
 }: Props) {
   const router = useRouter();
   const [mainTab, setMainTab] = useState<MainTab>("risk");
-  const [riskSubTab, setRiskSubTab] = useState<RiskSubTab>("fraud");
+  const [riskSubTab, setRiskSubTab] = useState<RiskSubTab>("alerts");
+  const [alertFilter, setAlertFilter] = useState<AlertFilter>("fraud");
 
   const [fraudAlerts, setFraudAlerts] = useState(initialFraudAlerts);
+  const [investigatingId, setInvestigatingId] = useState<string | null>(null);
+  const [investigationResult, setInvestigationResult] = useState<{ alertId: string; summary: string; riskLevel: string | null; riskReviewId: string | null } | null>(null);
+
+  const runInvestigation = async (alert: FraudAlert) => {
+    setInvestigatingId(alert.id);
+    setInvestigationResult(null);
+    try {
+      const res = await fetch("/api/admin/fraud-investigations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ngoId: alert.entityId, alertId: alert.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Investigation failed");
+      setInvestigationResult({
+        alertId: alert.id,
+        summary: data.result.summary || "No summary returned.",
+        riskLevel: data.result.riskLevel,
+        riskReviewId: data.result.riskReviewId,
+      });
+      if (data.result.riskReviewId) router.refresh();
+    } catch (err: any) {
+      setInvestigationResult({ alertId: alert.id, summary: `Error: ${err.message}`, riskLevel: null, riskReviewId: null });
+    } finally {
+      setInvestigatingId(null);
+    }
+  };
   const [docErrors, setDocErrors] = useState(initialDocErrors);
   const [resolved, setResolved] = useState(initialResolved);
   const [riskReviews, setRiskReviews] = useState(initialRiskReviews);
@@ -203,12 +332,39 @@ export default function RiskComplianceClient({
                     {new Date(alert.createdAt).toLocaleString("en-IN")}
                   </td>
                   <td className="px-5 py-4 text-right">
-                    <button
-                      onClick={() => { setSelectedAlert(alert); setResolutionNote(""); setAlertError(""); }}
-                      className="bg-slate-700 hover:bg-slate-800 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition"
-                    >
-                      Resolve
-                    </button>
+                    <div className="flex justify-end mb-1.5">
+                      <InvestigationStatusBadge alert={alert} status={investigationStatusByAlertId[alert.id]} />
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      {alert.entityType === "NGO" && (
+                        <button
+                          onClick={() => runInvestigation(alert)}
+                          disabled={investigatingId === alert.id}
+                          className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition flex items-center gap-1.5"
+                          title="Follow this alert: check team overlap, duplicate identity, donor overlap, and proof history"
+                        >
+                          {investigatingId === alert.id && <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>}
+                          {investigatingId === alert.id ? "Investigating…" : "Investigate"}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { setSelectedAlert(alert); setResolutionNote(""); setAlertError(""); }}
+                        className="bg-slate-700 hover:bg-slate-800 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition"
+                      >
+                        Resolve
+                      </button>
+                    </div>
+                    {investigationResult?.alertId === alert.id && (
+                      <div className="mt-2 text-left text-xs bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-900 rounded-lg px-3 py-2 max-w-sm ml-auto">
+                        {investigationResult.riskLevel && (
+                          <span className="font-black text-violet-700 dark:text-violet-400">{investigationResult.riskLevel}: </span>
+                        )}
+                        <span className="text-gray-700 dark:text-gray-300">{investigationResult.summary}</span>
+                        {investigationResult.riskReviewId && (
+                          <p className="text-[10px] text-gray-400 mt-1">Findings added to this NGO's risk review.</p>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -250,10 +406,8 @@ export default function RiskComplianceClient({
           {/* Risk sub-tabs */}
           <div className="flex border-b border-gray-200 dark:border-gray-800">
             {([
-              { key: "fraud", label: "Fraud Alerts", count: fraudAlerts.length, color: "border-red-400 text-red-600 dark:text-red-400" },
-              { key: "doc_errors", label: "Document Errors", count: docErrors.length, color: "border-amber-400 text-amber-600 dark:text-amber-400" },
-              { key: "reviews", label: "Risk Reviews", count: riskReviews.length, color: "border-blue-400 text-blue-600 dark:text-blue-400" },
-              { key: "history", label: "History", count: resolved.length, color: "border-emerald-500 text-emerald-600 dark:text-emerald-400" },
+              { key: "alerts", label: "Alerts", count: fraudAlerts.length + docErrors.length, color: "border-red-400 text-red-600 dark:text-red-400" },
+              { key: "cases", label: "Cases", count: riskReviews.length, color: "border-blue-400 text-blue-600 dark:text-blue-400" },
             ] as { key: RiskSubTab; label: string; count: number; color: string }[]).map(t => (
               <button
                 key={t.key}
@@ -268,10 +422,36 @@ export default function RiskComplianceClient({
             ))}
           </div>
 
-          {riskSubTab === "fraud" && renderAlertTable(fraudAlerts, "No active fraud alerts", "🛡️")}
-          {riskSubTab === "doc_errors" && renderAlertTable(docErrors, "No document errors", "📄")}
+          {riskSubTab === "alerts" && (
+            <div className="flex flex-wrap items-center gap-2 px-1 pt-3">
+              {([
+                { key: "fraud", label: "Fraud", count: fraudAlerts.length },
+                { key: "doc_errors", label: "Document errors", count: docErrors.length },
+                { key: "resolved", label: "Resolved", count: resolved.length },
+              ] as { key: AlertFilter; label: string; count: number }[]).map(f => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setAlertFilter(f.key)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
+                    alertFilter === f.key
+                      ? "bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-800"
+                  }`}
+                >
+                  {f.label}
+                  <span className={`ml-1.5 tabular-nums ${alertFilter === f.key ? "opacity-70" : "text-gray-400 dark:text-gray-600"}`}>
+                    {f.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
 
-          {riskSubTab === "reviews" && (
+          {riskSubTab === "alerts" && alertFilter === "fraud" && renderAlertTable(fraudAlerts, "No active fraud alerts", "🛡️")}
+          {riskSubTab === "alerts" && alertFilter === "doc_errors" && renderAlertTable(docErrors, "No document errors", "📄")}
+
+          {riskSubTab === "cases" && (
             riskReviews.length === 0 ? (
               <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center shadow-sm">
                 <span className="text-4xl mb-3 block">🔍</span>
@@ -339,7 +519,36 @@ export default function RiskComplianceClient({
             )
           )}
 
-          {riskSubTab === "history" && (
+          {/* Investigations sit under the reviews rather than beside them: an
+              investigation exists to produce a review, and splitting them meant
+              reading a finding in one tab and the reasoning behind it in another. */}
+          {riskSubTab === "cases" && (
+            <h3 className="mt-8 mb-3 text-xs font-black uppercase tracking-wider text-gray-400 dark:text-gray-600">
+              Investigations ({initialInvestigations.length})
+            </h3>
+          )}
+
+          {riskSubTab === "cases" && (
+            initialInvestigations.length === 0 ? (
+              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center shadow-sm">
+                <span className="text-4xl mb-3 block">🕵️</span>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">No investigations yet</p>
+                <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
+                  An investigation starts automatically on a HIGH-severity NGO alert, or when you press
+                  Investigate on an alert above. It reads records only — it can never suspend, reject, or
+                  clear an NGO. Requires <span className="font-mono">INVESTIGATOR_ENABLED=true</span>.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {initialInvestigations.map(inv => (
+                  <InvestigationTrace key={inv.id} investigation={inv} />
+                ))}
+              </div>
+            )
+          )}
+
+          {riskSubTab === "alerts" && alertFilter === "resolved" && (
             resolved.length === 0 ? (
               <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center shadow-sm">
                 <span className="text-4xl mb-3 block">📂</span>
@@ -461,10 +670,24 @@ export default function RiskComplianceClient({
                             </div>
                           </td>
                           <td className="px-5 py-4">
-                            <span className={`text-sm font-black ${s.complianceScore >= 80 ? "text-emerald-600" : s.complianceScore >= 50 ? "text-amber-600" : "text-red-500"}`}>
-                              {s.complianceScore}
-                            </span>
-                            <span className="text-[10px] text-gray-400">/100</span>
+                            {/* A score of 0 means two very different things, and
+                                a bare "0/100" says neither: nothing was verified,
+                                or nobody ever looked. */}
+                            {!s.hasExtraction ? (
+                              <span
+                                className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
+                                title="No document has ever been analysed for this organisation. This is not a score of zero — it is the absence of one."
+                              >
+                                NOT ASSESSED
+                              </span>
+                            ) : (
+                              <>
+                                <span className={`text-sm font-black ${s.complianceScore >= 80 ? "text-emerald-600" : s.complianceScore >= 50 ? "text-amber-600" : "text-red-500"}`}>
+                                  {s.complianceScore}
+                                </span>
+                                <span className="text-[10px] text-gray-400">/100</span>
+                              </>
+                            )}
                             <a
                               href="/admin/proof-review"
                               className="block text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline underline-offset-2 mt-0.5"
@@ -472,11 +695,40 @@ export default function RiskComplianceClient({
                               Proofs →
                             </a>
                           </td>
-                          {[s.panVerified, s.registrationVerified, s.eightyGVerified, s.a12Verified].map((v, i) => (
-                            <td key={i} className="px-5 py-4 text-center">
-                              <span className={`text-sm font-black ${v ? "text-emerald-600" : "text-gray-300 dark:text-gray-600"}`}>{v ? "✓" : "—"}</span>
-                            </td>
-                          ))}
+                          {/* Three states per flag, not two.
+                              ✓  earned — a validated field supports it.
+                              !  CLAIMED but unevidenced — the platform is
+                                 displaying this badge publicly with nothing
+                                 behind it. Legacy rows from when approval set
+                                 flags unconditionally; the nightly sweep
+                                 retracts them.
+                              —  not verified.
+                              A tick that might mean either of the first two is
+                              worse than no tick at all. */}
+                          {([
+                            ["panVerified", s.panVerified],
+                            ["registrationVerified", s.registrationVerified],
+                            ["eightyGVerified", s.eightyGVerified],
+                            ["a12Verified", s.a12Verified],
+                          ] as [string, boolean][]).map(([flag, v], i) => {
+                            const unbacked = v && s.unbackedFlags?.includes(flag);
+                            return (
+                              <td key={i} className="px-5 py-4 text-center">
+                                {unbacked ? (
+                                  <span
+                                    className="text-[10px] font-black px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                                    title="Claimed, but no validated field supports it. This badge is shown to donors with nothing behind it."
+                                  >
+                                    ! claimed
+                                  </span>
+                                ) : (
+                                  <span className={`text-sm font-black ${v ? "text-emerald-600" : "text-gray-300 dark:text-gray-600"}`}>
+                                    {v ? "✓" : "—"}
+                                  </span>
+                                )}
+                              </td>
+                            );
+                          })}
                           <td className="px-5 py-4">
                             <div className="flex flex-col gap-1.5 items-start">
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${FCRA_BADGE[s.fcraBadge] || FCRA_BADGE.NONE}`}>

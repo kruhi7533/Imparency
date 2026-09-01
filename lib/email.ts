@@ -95,6 +95,23 @@ export async function sendNGOApprovalEmail(to: string, orgName: string) {
   return sendEmail({ to, subject, body });
 }
 
+/**
+ * Sent automatically when the document check finds fixable problems — a missing
+ * value, an unreadable upload. Deliberately neutral: it asks for a re-upload,
+ * it does not accuse anyone of anything.
+ *
+ * Serious findings (a name that disagrees with the form, an identity already in
+ * use) NEVER reach this email. Those go to an admin only — an accusation needs a
+ * human behind it, and naming the check that caught a real fraudster just tells
+ * them what to fix next time. See lib/verification-triage.ts.
+ */
+export async function sendNGODocumentIssueEmail(to: string, orgName: string, issues: string[]) {
+  const subject = `Action needed on the documents for ${orgName}`;
+  const list = issues.map((issue) => `  • ${issue}`).join("\n");
+  const body = `Hi there,\n\nThanks for registering "${orgName}" on ImpactBridge.\n\nWhile checking the documents you uploaded, we found a few things that need your attention before an administrator can complete your verification:\n\n${list}\n\nPlease upload clear, complete copies of the affected documents from your dashboard. Your application stays in the queue in the meantime — this is a request for better copies, not a rejection.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
 export async function sendNGORejectionEmail(to: string, orgName: string, reason: string) {
   const subject = `Update regarding your NGO application for ${orgName}`;
   const body = `Hi there,\n\nThank you for submitting your registration details for "${orgName}".\n\nUnfortunately, our administration team was unable to verify your application at this time due to the following reason:\n\n"${reason}"\n\nPlease update your documentation or registration details on your dashboard and resubmit them for verification.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`;
@@ -227,6 +244,59 @@ export async function sendFcraRejectionEmail(to: string, orgName: string, reason
 export async function sendFcraReuploadEmail(to: string, orgName: string, reason: string) {
   const subject = `Action needed: re-upload your FCRA certificate for ${orgName}`;
   const body = `Hi there,\n\nWe've started reviewing the FCRA registration for "${orgName}" but need a clearer or corrected document before we can verify it:\n\n"${reason}"\n\nPlease re-upload your FCRA certificate from your dashboard at your earliest convenience.\n\nLink to Dashboard: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/ngo/dashboard\n\nBest regards,\nThe ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
+/**
+ * Evidence gathered after approval has contradicted that approval.
+ *
+ * Addressed to the ADMIN, not the organisation. The platform has not decided
+ * anything against them — it has decided a human needs to look again — and
+ * telling an NGO "your approval is in question" before a person has reviewed it
+ * would turn an automated suspicion into an accusation.
+ */
+export async function sendReverificationRequiredEmail(
+  to: string,
+  details: { orgName: string; ngoId: string; reason: string; severity: string; dueAt: Date }
+) {
+  const label = details.severity === "IDENTITY" ? "Identity contradiction" : "Evidence failure";
+  const due = details.dueAt.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+  const subject = `Re-verification needed: ${details.orgName}`;
+  const body = `${label} — ${details.orgName}
+
+This organisation is currently VERIFIED, but document evidence gathered since that approval no longer supports it:
+
+"${details.reason}"
+
+It has NOT been suspended and its profile is still live. The decision has been put back in your queue so a person can make it.
+
+Please re-decide by ${due}.
+
+Review: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/admin/dashboard
+
+ImpactBridge`;
+  return sendEmail({ to, subject, body });
+}
+
+/** The 14-day window has passed and nobody has re-decided. */
+export async function sendReverificationOverdueEmail(
+  to: string,
+  cases: { orgName: string; reason: string; daysOverdue: number }[]
+) {
+  const subject = `${cases.length} re-verification${cases.length === 1 ? "" : "s"} overdue`;
+  const lines = cases
+    .map((c) => `- ${c.orgName} — ${c.daysOverdue} day(s) past due
+  ${c.reason}`)
+    .join("\n\n");
+  const body = `These organisations are still VERIFIED and still live, on evidence that has failed. The re-verification window has passed and no decision has been recorded.
+
+${lines}
+
+Nothing has been done to them automatically and nothing will be. They stay exactly as they are until someone decides.
+
+Review: ${process.env.NEXTAUTH_URL || "http://localhost:3000"}/admin/dashboard
+
+ImpactBridge`;
   return sendEmail({ to, subject, body });
 }
 

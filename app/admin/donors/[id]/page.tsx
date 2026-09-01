@@ -77,7 +77,10 @@ export default async function DonorDetailPage({ params }: { params: { id: string
       at: a.createdAt,
       kind: "ADMIN" as const,
       label: a.action.replace(/_/g, " "),
-      detail: `by ${a.admin.name || a.admin.email}${a.note ? ` — "${a.note}"` : ""}`,
+      // A null admin means the platform did this, not a person — see
+      // AdminActionLog.adminId. Say so plainly rather than rendering "unknown",
+      // which reads like missing data instead of an automated decision.
+      detail: `by ${a.admin ? a.admin.name || a.admin.email : "the platform (automated)"}${a.note ? ` — "${a.note}"` : ""}`,
     })),
     ...alerts.map((al) => ({
       at: al.createdAt,

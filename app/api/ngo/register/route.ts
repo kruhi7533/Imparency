@@ -336,65 +336,11 @@ export async function POST(request: Request) {
       // Non-fatal: registration still succeeds; admin can request re-upload later.
     }
 
-    // Trigger AI Document Verification Agent
-    let aiReport = null;
-    try {
-      const { verifyNGODocuments } = require("@/lib/gemini/verify-ngo-docs");
-      const { createFraudAlert } = require("@/lib/fraud-alerts");
-      const regBuffer = Buffer.from(await regFile!.arrayBuffer());
-      const panBuffer = Buffer.from(await panFile!.arrayBuffer());
-      const taxBuffer = Buffer.from(await taxFile!.arrayBuffer());
-
-      aiReport = await verifyNGODocuments(
-        profile.id,
-        orgName,
-        registrationNumber,
-        panNumber,
-        [
-          { buffer: regBuffer, filename: regFile!.name, mimeType: "application/pdf" },
-          { buffer: panBuffer, filename: panFile!.name, mimeType: "application/pdf" },
-          { buffer: taxBuffer, filename: taxFile!.name, mimeType: "application/pdf" }
-        ]
-      );
-
-      if (aiReport) {
-        await prisma.nGOProfile.update({
-          where: { id: profile.id },
-          data: { ai_verification_report: aiReport }
-        });
-
-        // Create one FraudAlert per HIGH flag, using its category from the AI report
-        const highFlags = Array.isArray(aiReport.flags)
-          ? aiReport.flags.filter((f: any) => f.severity === "HIGH")
-          : [];
-
-        for (const flag of highFlags) {
-          const category = flag.category === "DOCUMENT_ERROR" ? "DOCUMENT_ERROR" : "FRAUD_ALERT";
-          await createFraudAlert(
-            category === "DOCUMENT_ERROR" ? "AI_DOCUMENT_ERROR" : "AI_DOCUMENT_VERIFICATION",
-            profile.id,
-            "NGO",
-            flag.issue,
-            "HIGH",
-            category
-          );
-        }
-
-        // If overall recommendation is LIKELY_FRAUD but no individual HIGH flags were flagged yet, create a summary alert
-        if (aiReport.recommendation === "LIKELY_FRAUD" && highFlags.length === 0) {
-          await createFraudAlert(
-            "AI_DOCUMENT_VERIFICATION",
-            profile.id,
-            "NGO",
-            aiReport.summary || "AI document verification marked profile as LIKELY_FRAUD.",
-            "HIGH",
-            "FRAUD_ALERT"
-          );
-        }
-      }
-
-      // PAN API mismatch alert (created after profile exists)
-      if (panMismatch) {
+    // PAN API mismatch alert. Independent of document analysis — this compares
+    // the government PAN record against the form, so it stands on its own.
+    if (panMismatch) {
+      try {
+        const { createFraudAlert } = require("@/lib/fraud-alerts");
         await createFraudAlert(
           "PAN_API_MISMATCH",
           profile.id,
@@ -404,21 +350,32 @@ export async function POST(request: Request) {
           "FRAUD_ALERT",
           "PAN_API_MISMATCH"
         );
+      } catch (alertErr) {
+        console.error("Failed to create PAN mismatch alert:", alertErr);
       }
-    } catch (aiErr) {
-      console.error("AI Document Verification failed:", aiErr);
-      // Fail gracefully: let the admin proceed with manual review
     }
 
-    // Fire-and-forget NGO pre-screening (do NOT await — keep submission fast).
-    // This only writes a summary record; it never changes verification status.
+    // ONE document-analysis pass.
+    //
+    // This used to be three overlapping AI passes over the same three PDFs —
+    // verifyNGODocuments (awaited, so it blocked the registration response),
+    // runAndStoreNgoScreening, and runAndStoreNgoExtraction. They read the same
+    // files, disagreed about what those files were, and only extraction's answer
+    // ever reached a human. Now there is one pass: it writes the per-field
+    // evidence rows the admin validates (lib/compliance-evidence.ts), then
+    // triages the result — a clean profile goes to normal admin approval, a
+    // defective one opens a RiskReview in Risk & Compliance
+    // (lib/verification-triage.ts).
+    //
+    // Fire-and-forget so registration stays fast, and re-runnable from the admin
+    // console if it never lands.
     try {
-      const { runAndStoreNgoScreening } = require("@/lib/screening-runner");
-      runAndStoreNgoScreening(profile.id).catch((screenErr: any) =>
-        console.error("Background NGO screening failed:", screenErr)
+      const { runAndStoreNgoExtraction } = require("@/lib/extraction-runner");
+      runAndStoreNgoExtraction(profile.id).catch((analysisErr: any) =>
+        console.error("Background NGO document analysis failed:", analysisErr)
       );
     } catch (triggerErr) {
-      console.error("Failed to trigger NGO screening:", triggerErr);
+      console.error("Failed to trigger NGO document analysis:", triggerErr);
     }
 
     return NextResponse.json({ success: true, profileId: profile.id });

@@ -26,6 +26,8 @@ export type AdminAction =
   | "NGO_REJECTED"
   | "NGO_SUSPENDED"
   | "NGO_FLAGGED_FOR_RISK"
+  | "NGO_FIELD_VALIDATED"
+  | "NGO_FIELD_REJECTED"
   | "PROJECT_APPROVED"
   | "PROJECT_REJECTED"
   | "PROOF_APPROVED"
@@ -51,12 +53,24 @@ export type AdminAction =
   | "CRISIS_EVENT_UNFEATURED"
   | "CRISIS_EVENT_ARCHIVED"
   | "INITIATIVE_VERIFIED"
-  | "INITIATIVE_REJECTED";
+  | "INITIATIVE_REJECTED"
+  // Verification caseworker. APPROVED carries `overrodeAgent` in metadata — the
+  // mirror of `overrodeAi` on field validation, and the metric that decides
+  // whether the agent ever earns a wider leash.
+  | "AGENT_ACTION_APPROVED"
+  | "AGENT_ACTION_REJECTED"
+  | "AGENT_CASE_STARTED"
+  // Taken by the platform, not by a person — logged with adminId null. See the
+  // comment on AdminActionLog.adminId for why these live in the same trail as
+  // human actions rather than a separate one.
+  | "NGO_REVERIFICATION_REQUIRED"
+  | "NGO_REVERIFICATION_CLEARED";
 
 export interface AdminActionParams {
-  adminId: string;
+  /** Null for an action the platform took on its own. */
+  adminId: string | null;
   action: AdminAction;
-  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING" | "CRISIS_EVENT" | "RELIEF_INITIATIVE";
+  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING" | "CRISIS_EVENT" | "RELIEF_INITIATIVE" | "AGENT_CASE";
   entityId: string;
   oldValue?: Record<string, unknown> | null;
   newValue?: Record<string, unknown> | null;
@@ -109,7 +123,7 @@ export async function logAdminAction(params: AdminActionParams): Promise<void> {
         operation: "record_admin_action",
         entityType: params.entityType,
         entityId: params.entityId,
-        userId: params.adminId,
+        userId: params.adminId ?? undefined,
         extra: { adminAction: params.action },
       },
       "fatal"

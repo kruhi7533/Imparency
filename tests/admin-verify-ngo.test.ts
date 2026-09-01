@@ -4,6 +4,7 @@ vi.mock("@/lib/prisma", () => ({
   default: {
     nGOProfile: { findUnique: vi.fn(), updateMany: vi.fn() },
     nGOCompliance: { upsert: vi.fn() },
+    extractedField: { findMany: vi.fn(), count: vi.fn() },
   },
 }));
 
@@ -32,20 +33,26 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { sendNGOApprovalEmail, sendNGORejectionEmail } from "@/lib/email";
 import { logAdminAction } from "@/lib/admin-log";
+import { logComplianceEvent } from "@/lib/ngo-compliance";
 import { POST } from "@/app/api/admin/verify-ngo/route";
 
 const prismaMock = prisma as any;
 const getSessionMock = getServerSession as any;
 const logAdminActionMock = logAdminAction as any;
+const logComplianceEventMock = logComplianceEvent as any;
 
 function pendingNgo(overrides: Record<string, unknown> = {}) {
   return {
     id: "ngo_1",
     orgName: "Sahyog Foundation",
     verificationStatus: "PENDING",
-    ai_verification_report: null,
     user: { email: "ngo@example.com" },
-    screening: null,
+    // No open RiskReview = triage found the documents clean.
+    riskReviews: [],
+    // The front gate refuses to approve an organisation with no documents at
+    // all — there would be nothing to approve on. Every fixture here is meant
+    // to be approvable unless the test says otherwise, so it has one.
+    documents: ["https://storage.test/registration.pdf"],
     compliance: { id: "comp_1", a12DocumentUrl: null },
     ...overrides,
   };
@@ -71,6 +78,16 @@ describe("POST /api/admin/verify-ngo", () => {
     getSessionMock.mockResolvedValue({ user: { id: "admin_1", role: "ADMIN" } });
     prismaMock.nGOProfile.updateMany.mockResolvedValue({ count: 1 });
     prismaMock.nGOCompliance.upsert.mockResolvedValue({ id: "comp_1" });
+    // Default: extraction has run and every field was validated, so the
+    // pre-existing approval/rejection tests are unaffected by the new gate.
+    prismaMock.extractedField.findMany.mockResolvedValue([
+      { fieldKey: "panNumber", status: "VALIDATED" },
+      { fieldKey: "registrationNumber", status: "VALIDATED" },
+      { fieldKey: "eightyGNumber", status: "VALIDATED" },
+      { fieldKey: "a12Number", status: "VALIDATED" },
+    ]);
+    // The front gate counts fields before it will allow an approval.
+    prismaMock.extractedField.count.mockResolvedValue(4);
   });
 
   it("approves an NGO genuinely awaiting verification", async () => {
@@ -88,26 +105,102 @@ describe("POST /api/admin/verify-ngo", () => {
     expect(sendNGOApprovalEmail).toHaveBeenCalledWith("ngo@example.com", "Sahyog Foundation");
   });
 
-  it("records per-document compliance verification on approval", async () => {
+  it("sets only the compliance flags backed by a VALIDATED extracted field", async () => {
     prismaMock.nGOProfile.findUnique.mockResolvedValue(pendingNgo());
-
-    await POST(approveRequest());
-
-    expect(prismaMock.nGOCompliance.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { ngoId: "ngo_1" },
-        update: expect.objectContaining({ panVerified: true, registrationVerified: true, eightyGVerified: true }),
-      })
-    );
-  });
-
-  it("does not mark 12A verified when no 12A document was supplied", async () => {
-    prismaMock.nGOProfile.findUnique.mockResolvedValue(pendingNgo());
+    prismaMock.extractedField.findMany.mockResolvedValue([
+      { fieldKey: "panNumber", status: "VALIDATED" },
+      { fieldKey: "registrationNumber", status: "VALIDATED" },
+      // Read clearly but never confirmed by a human.
+      { fieldKey: "eightyGNumber", status: "EXTRACTED" },
+    ]);
 
     await POST(approveRequest());
 
     const upsertArg = prismaMock.nGOCompliance.upsert.mock.calls[0][0];
+    expect(upsertArg.update.panVerified).toBe(true);
+    expect(upsertArg.update.registrationVerified).toBe(true);
+    expect(upsertArg.update.eightyGVerified).toBeUndefined();
     expect(upsertArg.update.a12Verified).toBeUndefined();
+  });
+
+  it("refuses to approve an NGO whose documents have never been analysed", async () => {
+    // This used to assert that approval SUCCEEDED and merely claimed no
+    // compliance flags. That was the weaker guarantee, and it is what let three
+    // organisations reach VERIFIED on no evidence: not claiming a flag is not
+    // the same as not making the decision. The front gate now blocks it.
+    prismaMock.nGOProfile.findUnique.mockResolvedValue(pendingNgo());
+    prismaMock.extractedField.count.mockResolvedValue(0);
+    prismaMock.extractedField.findMany.mockResolvedValue([]);
+
+    const res = await POST(approveRequest());
+
+    expect(res.status).toBe(400);
+    expect(prismaMock.nGOProfile.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.nGOCompliance.upsert).not.toHaveBeenCalled();
+  });
+
+  it("refuses to approve an NGO that has uploaded no documents at all", async () => {
+    prismaMock.nGOProfile.findUnique.mockResolvedValue(pendingNgo({ documents: [] }));
+    prismaMock.extractedField.count.mockResolvedValue(0);
+
+    const res = await POST(approveRequest("Looks fine to me."));
+
+    // Not note-overridable: there is no evidence for a note to be about.
+    expect(res.status).toBe(400);
+    expect(prismaMock.nGOProfile.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses to approve over an identity contradiction, even with a note", async () => {
+    prismaMock.nGOProfile.findUnique.mockResolvedValue(
+      pendingNgo({
+        riskReviews: [
+          {
+            riskLevel: "HIGH",
+            findings: [
+              { fieldKey: "panNumber", severity: "HIGH", issue: "PAN on document does not match the form" },
+            ],
+          },
+        ],
+      })
+    );
+    prismaMock.extractedField.count.mockResolvedValue(5);
+
+    const res = await POST(approveRequest("I checked with them over the phone."));
+
+    // A missing 80G is an everyday approval. A PAN that disagrees with the PAN
+    // on the form is a question about who this organisation is, and a sentence
+    // in a text box is not an answer to it.
+    expect(res.status).toBe(400);
+    expect(prismaMock.nGOProfile.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("does not write a compliance audit entry for a flag it did not set", async () => {
+    prismaMock.nGOProfile.findUnique.mockResolvedValue(pendingNgo());
+    prismaMock.extractedField.findMany.mockResolvedValue([
+      { fieldKey: "panNumber", status: "VALIDATED" },
+    ]);
+
+    await POST(approveRequest());
+
+    const events = logComplianceEventMock.mock.calls.map((c: any[]) => c[1]);
+    expect(events).toContain("PAN_VERIFIED");
+    expect(events).not.toContain("80G_VERIFIED");
+    expect(events).not.toContain("REGISTRATION_VERIFIED");
+  });
+
+  it("blocks approval with unreviewed fields unless the admin explains why", async () => {
+    prismaMock.nGOProfile.findUnique.mockResolvedValue(pendingNgo());
+    prismaMock.extractedField.findMany.mockResolvedValue([
+      { fieldKey: "panNumber", status: "NEEDS_REVIEW" },
+    ]);
+
+    const blocked = await POST(approveRequest());
+    expect(blocked.status).toBe(400);
+    expect(prismaMock.nGOProfile.updateMany).not.toHaveBeenCalled();
+
+    // The gate is friction, not a hard block: a written reason lets it through.
+    const allowed = await POST(approveRequest("PAN card is illegible; verified by phone with the registrar."));
+    expect(allowed.status).toBe(200);
   });
 
   it("refuses to re-verify an NGO that is already VERIFIED", async () => {
@@ -135,9 +228,9 @@ describe("POST /api/admin/verify-ngo", () => {
     expect(logAdminActionMock).not.toHaveBeenCalled();
   });
 
-  it("requires a justification note to approve against an AI fraud recommendation", async () => {
+  it("requires a justification note to approve against a HIGH risk finding", async () => {
     prismaMock.nGOProfile.findUnique.mockResolvedValue(
-      pendingNgo({ ai_verification_report: { recommendation: "LIKELY_FRAUD", flags: [] } })
+      pendingNgo({ riskReviews: [{ riskLevel: "HIGH", findings: [{ severity: "HIGH", issue: "PAN already registered to another organisation." }] }] })
     );
 
     const res = await POST(approveRequest());
@@ -146,9 +239,9 @@ describe("POST /api/admin/verify-ngo", () => {
     expect(prismaMock.nGOProfile.updateMany).not.toHaveBeenCalled();
   });
 
-  it("allows approval against an AI fraud recommendation once a justification is given", async () => {
+  it("allows approval against a HIGH risk finding once a justification is given", async () => {
     prismaMock.nGOProfile.findUnique.mockResolvedValue(
-      pendingNgo({ ai_verification_report: { recommendation: "LIKELY_FRAUD", flags: [] } })
+      pendingNgo({ riskReviews: [{ riskLevel: "HIGH", findings: [{ severity: "HIGH", issue: "PAN already registered to another organisation." }] }] })
     );
 
     const res = await POST(approveRequest("Manually verified registration certificate with the issuing authority."));

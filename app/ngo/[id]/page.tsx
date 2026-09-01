@@ -7,21 +7,38 @@ import NGOProfileClient from "./NGOProfileClient";
 export default async function NGOProfilePage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
 
-  // Fetch NGO Profile details along with projects, followers count, and active follows
-  const ngo = await prisma.nGOProfile.findUnique({
-    where: { id: params.id, isDeleted: false, verificationStatus: "VERIFIED" },
-    include: {
-      projects: {
-        where: { isDeleted: false },
-        orderBy: { createdAt: "desc" },
-      },
-      _count: {
-        select: {
-          followers: true,
+  // Fetch NGO Profile details along with projects, followers count, and active follows.
+  //
+  // The follow check rides along in the same round trip rather than waiting for
+  // the profile: it is keyed on `params.id`, which is the same value the
+  // profile lookup filters by, so it never needed the fetched row. (The donor
+  // count below is different — it genuinely depends on this NGO's project ids.)
+  const [ngo, followRecord] = await Promise.all([
+    prisma.nGOProfile.findUnique({
+      where: { id: params.id, isDeleted: false, verificationStatus: "VERIFIED" },
+      include: {
+        projects: {
+          where: { isDeleted: false },
+          orderBy: { createdAt: "desc" },
+        },
+        _count: {
+          select: {
+            followers: true,
+          },
         },
       },
-    },
-  });
+    }),
+    session?.user
+      ? prisma.nGOFollower.findUnique({
+          where: {
+            donorId_ngoId: {
+              donorId: session.user.id,
+              ngoId: params.id,
+            },
+          },
+        })
+      : null,
+  ]);
 
   if (!ngo) {
     notFound();
@@ -39,19 +56,7 @@ export default async function NGOProfilePage({ params }: { params: { id: string 
   });
   const donorsCount = donations.length;
 
-  // Check if current authenticated user follows this NGO
-  let isFollowed = false;
-  if (session?.user) {
-    const followRecord = await prisma.nGOFollower.findUnique({
-      where: {
-        donorId_ngoId: {
-          donorId: session.user.id,
-          ngoId: ngo.id,
-        },
-      },
-    });
-    isFollowed = !!followRecord;
-  }
+  const isFollowed = !!followRecord;
 
   return (
     <NGOProfileClient
