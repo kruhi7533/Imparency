@@ -17,7 +17,7 @@ Answer architecture questions from that document plus a targeted re-read of the 
 - `Notification` rows are written and pushed via FCM but never surfaced in any UI (no notifications route/bell/list).
 - ~~`app/donor/dashboard/page.tsx` is a hardcoded stub~~ — fixed; it is now wired to real Prisma data.
 - `app/api/ngo/whatsapp-drafts/convert/route.ts` is dead code referencing a schema that no longer exists.
-- There **is** now a Vitest suite: `npm test` runs `tests/*.test.ts` (19 files / 202 tests, config in `vitest.config.ts`, `@` alias resolved). Prisma is mocked per-test, so no database is needed. Add tests there rather than writing new `scripts/test-*.ts` harnesses.
+- There **is** now a Vitest suite: `npm test` runs `tests/*.test.ts` (25 files / 264 tests as of 2026-08-31, config in `vitest.config.ts`, `@` alias resolved). Prisma is mocked per-test, so no database is needed. Add tests there rather than writing new `scripts/test-*.ts` harnesses.
 
 ## NGO verification: ONE pass, then triage
 Registration used to fire three overlapping AI passes over the same three PDFs — `verifyNGODocuments` (awaited, so it blocked the response), `runAndStoreNgoScreening`, and `runAndStoreNgoExtraction`. They disagreed about what the files were and only extraction's answer ever reached a human. All three are now one:
