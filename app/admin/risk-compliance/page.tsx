@@ -2,10 +2,15 @@ import prisma from "@/lib/prisma";
 import SchemaOutOfSync from "@/app/admin/components/SchemaOutOfSync";
 import { getAllComplianceSummaries } from "@/lib/compliance-agent";
 import RiskComplianceClient from "./RiskComplianceClient";
+import { buildInvestigationStatusByAlertId } from "@/lib/risk-compliance-view";
 
 export const runtime = "nodejs";
 
-export default async function RiskCompliancePage() {
+export default async function RiskCompliancePage({
+  searchParams,
+}: {
+  searchParams: { case?: string };
+}) {
   // The platform alert sweep (deadline-exceeded milestones, inactive funded
   // campaigns) used to run here, awaited before this page fetched anything.
   // Measured at 466ms against 158ms for the page's own data — three quarters
@@ -51,41 +56,15 @@ export default async function RiskCompliancePage() {
 
   const serialize = (a: typeof allUnresolved[0]) => ({ ...a, createdAt: a.createdAt.toISOString() });
 
-  // Per-alert investigation status, so an admin scanning the alert list can see
-  // "AI already looked at this" without opening the separate Investigations tab
-  // or clicking Investigate themselves. Three sources, newest-first (investigations
-  // is already ordered that way), first match wins:
-  //   1. FraudInvestigation.alertId — the direct link (added in the
-  //      add_alertid_to_fraud_investigation migration). Covers every outcome,
-  //      auto-triggered or manual, clean or flagged.
-  //   2. triggeredBy === "alert:<id>" — fallback for rows seeded before that
-  //      migration existed, which have alertId = null but still encode it here.
-  //   3. RiskReview.alertIds — covers a finding filed under a DIFFERENT alertId
-  //      that got attached to this one too (debounce reuse).
-  const investigationStatusByAlertId: Record<
-    string,
-    { status: string; riskLevel: string | null; summary: string | null }
-  > = {};
-  for (const inv of investigations as any[]) {
-    const alertId: string | null =
-      inv.alertId ??
-      (typeof inv.triggeredBy === "string" && inv.triggeredBy.startsWith("alert:")
-        ? inv.triggeredBy.slice("alert:".length)
-        : null);
-    if (alertId) {
-      // Investigations are already ordered newest-first; keep the first (latest) hit.
-      if (!investigationStatusByAlertId[alertId]) {
-        investigationStatusByAlertId[alertId] = { status: inv.status, riskLevel: inv.riskLevel, summary: inv.summary };
-      }
-    }
-  }
-  for (const review of riskReviews as any[]) {
-    for (const alertId of review.alertIds ?? []) {
-      if (!investigationStatusByAlertId[alertId]) {
-        investigationStatusByAlertId[alertId] = { status: "COMPLETED", riskLevel: review.riskLevel, summary: null };
-      }
-    }
-  }
+  // Per-alert investigation status, so an admin scanning the alert list can
+  // see "AI already looked at this" without opening the separate
+  // Investigations tab or clicking Investigate themselves — logic lives in
+  // lib/risk-compliance-view.ts so it is covered by tests/risk-compliance-view.test.ts
+  // rather than only observed through this rendered page.
+  const investigationStatusByAlertId = buildInvestigationStatusByAlertId(
+    investigations as any[],
+    riskReviews as any[]
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
@@ -114,6 +93,7 @@ export default async function RiskCompliancePage() {
             createdAt: i.createdAt.toISOString(),
           }))}
           investigationStatusByAlertId={investigationStatusByAlertId}
+          initialHighlightReviewId={searchParams.case ?? null}
         />
       </main>
     </div>
