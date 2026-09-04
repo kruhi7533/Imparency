@@ -151,7 +151,7 @@ export async function POST(request: Request) {
       const file = f.file!;
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
-      const url = await uploadFile(buffer, file.name, "documents");
+      const url = await uploadFile(buffer, file.name, "documents", { private: true });
       uploadedUrls.push(url);
     }
 
@@ -159,12 +159,12 @@ export async function POST(request: Request) {
     let a12DocumentUrl: string | null = null;
     if (a12File) {
       const buffer = Buffer.from(await a12File.arrayBuffer());
-      a12DocumentUrl = await uploadFile(buffer, a12File.name, "documents");
+      a12DocumentUrl = await uploadFile(buffer, a12File.name, "documents", { private: true });
     }
     let fcraCertificateUrl: string | null = null;
     if (fcraFile) {
       const buffer = Buffer.from(await fcraFile.arrayBuffer());
-      fcraCertificateUrl = await uploadFile(buffer, fcraFile.name, "documents");
+      fcraCertificateUrl = await uploadFile(buffer, fcraFile.name, "documents", { private: true });
     }
 
     // 7. Check if user already has an NGO Profile (resubmission flow)

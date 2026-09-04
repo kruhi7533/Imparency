@@ -50,3 +50,6 @@ scripts/
 # Generated presentations
 public/downloads/*.pptx
 public/downloads/*.pdf
+
+# Private uploads — sensitive documents served only via /api/documents
+private-uploads/
