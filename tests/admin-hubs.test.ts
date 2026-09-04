@@ -36,10 +36,20 @@ describe("admin hubs", () => {
     expect(hubForPath("/admin/donors/abc-123")?.key).toBe("people");
   });
 
-  it("claims nothing for a page that belongs to no hub", () => {
-    // Detail views are arrived at from a queue, not navigated between — giving
-    // them someone else's tab bar would be worse than giving them none.
-    expect(hubForPath("/admin/ngos/abc-123")).toBeNull();
+  it("puts an NGO detail view under the catalogue that lists it", () => {
+    // This used to assert null. The reasoning was sound at the time: detail
+    // views were arrived at from a queue, never navigated between, so giving
+    // them someone else's tab bar was worse than giving them none.
+    //
+    // Adding /admin/ngos changed the premise. An organisation now HAS a parent
+    // listing, so showing the People tab bar on its detail view is no longer
+    // borrowing an unrelated hub's furniture — it is the way back to where the
+    // user came from.
+    expect(hubForPath("/admin/ngos/abc-123")?.key).toBe("people");
+  });
+
+  it("claims nothing for a path that belongs to no hub", () => {
+    expect(hubForPath("/admin/nonexistent-page")).toBeNull();
     expect(hubForPath(null)).toBeNull();
   });
 });
