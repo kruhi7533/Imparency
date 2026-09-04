@@ -410,6 +410,14 @@ model MilestoneProof {
   theoryOfChangeStrengths      String[]
   theoryOfChangeGaps           String[]
 
+  // GPS provenance — read from the first uploaded image's EXIF data, if
+  // present. Nullable because most phone cameras strip location metadata by
+  // default; absence is not itself suspicious and must not be treated as a
+  // red flag on its own (see lib/proof-location.ts).
+  proofLatitude  Float?
+  proofLongitude Float?
+  gpsSource      String? // "EXIF" today; leaves room for a future capture method without a migration
+
   submittedAt DateTime @default(now())
 
   @@index([milestoneId])
