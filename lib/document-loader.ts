@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { PRIVATE_UPLOAD_ROOT } from "@/lib/storage";
 
 /**
  * Shared document loading for the agents that read stored NGO uploads
@@ -35,6 +36,18 @@ export async function loadDocumentBuffer(url: string): Promise<LoadedDocument | 
     if (url.startsWith("/uploads/")) {
       const filePath = path.join(process.cwd(), "public", url);
       const buffer = await fs.readFile(filePath);
+      return { buffer, mimeType: guessMime(url) };
+    }
+
+    if (url.startsWith("/api/documents/")) {
+      const relativePath = url.slice("/api/documents/".length);
+      const root = path.resolve(process.cwd(), PRIVATE_UPLOAD_ROOT);
+      const resolved = path.resolve(root, relativePath);
+      if (resolved !== root && !resolved.startsWith(root + path.sep)) {
+        console.error(`Refusing to load document outside private root: ${url}`);
+        return null;
+      }
+      const buffer = await fs.readFile(resolved);
       return { buffer, mimeType: guessMime(url) };
     }
 
