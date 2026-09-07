@@ -5,7 +5,6 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { ShieldCheck, MessageCircleQuestion, Users, HeartPulse, ListChecks, TrendingUp } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 
 export default function Navbar() {
@@ -15,6 +14,13 @@ export default function Navbar() {
 
   // Hide Navbar inside the Login / Signup screen to keep it focused
   if (pathname === "/login") return null;
+
+  // The admin console brings its own complete navigation (AdminNav + AdminTabs:
+  // branding, hub links, notifications, identity, logout). Rendering this bar
+  // too stacked two full navbars on every /admin page and gave the console a
+  // second, hardcoded set of links that drifted out of sync with ADMIN_HUBS —
+  // it still offered hubs that had been removed. One source of truth: hubs.ts.
+  if (pathname?.startsWith("/admin")) return null;
 
   const handleSignOut = () => {
     signOut({ callbackUrl: "/" });
@@ -74,18 +80,12 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              {/* Admins get only the console pills — Home/Discover stay reachable
-                  via the logo, keeping the bar to a single clean row */}
-              {session?.user?.role !== "ADMIN" && (
-                <>
-                  <Link href="/" className={`hover:text-white transition ${pathname === "/" ? "text-white" : ""}`}>
-                    Home
-                  </Link>
-                  <Link href="/discover" className={`hover:text-white transition ${pathname === "/discover" ? "text-white" : ""}`}>
-                    Discover NGOs
-                  </Link>
-                </>
-              )}
+              <Link href="/" className={`hover:text-white transition ${pathname === "/" ? "text-white" : ""}`}>
+                Home
+              </Link>
+              <Link href="/discover" className={`hover:text-white transition ${pathname === "/discover" ? "text-white" : ""}`}>
+                Discover NGOs
+              </Link>
 
               {/* Donor role specific links */}
               {session?.user?.role === "DONOR" && (
@@ -99,39 +99,6 @@ export default function Navbar() {
                 </>
               )}
               
-              {/* Admin role specific links — grouped as one visual "console" so it
-                  reads as a distinct workspace, not more items in a flat list */}
-              {session?.user?.role === "ADMIN" && (
-                <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full p-1">
-                  {[
-                    { href: "/admin/today", label: "Today", icon: ListChecks, match: (p: string) => p === "/admin/today" },
-                    { href: "/admin/dashboard", label: "Verifications", icon: ShieldCheck, match: (p: string) => p === "/admin/dashboard" },
-                    { href: "/admin/inquiries", label: "Inquiries", icon: MessageCircleQuestion, match: (p: string) => p === "/admin/inquiries" },
-                    { href: "/admin/donors", label: "Donors", icon: Users, match: (p: string) => p.startsWith("/admin/donors") },
-                    { href: "/admin/impact-health", label: "Impact Health", icon: HeartPulse, match: (p: string) => p === "/admin/impact-health" },
-                    { href: "/admin/trust-trends", label: "Trends", icon: TrendingUp, match: (p: string) => p === "/admin/trust-trends" },
-                  ].map(({ href, label, icon: Icon, match }) => {
-                    const active = match(pathname);
-                    return (
-                      <Link
-                        key={href}
-                        href={href}
-                        title={label}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
-                          active
-                            ? "bg-trust-600 text-white shadow-sm"
-                            : "text-gray-400 hover:text-white hover:bg-white/5"
-                        }`}
-                      >
-                        <Icon size={14} strokeWidth={2.5} className="shrink-0" />
-                        {/* Labels hide on narrower screens so the pills never wrap */}
-                        <span className="hidden lg:inline">{label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-
               {/* Guests get real parity: a path to give AND a path to raise —
                   not just the NGO side of the platform */}
               {!session?.user && (

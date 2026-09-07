@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { ADMIN_HUBS, hubForPath } from "./hubs";
+import NotificationBell from "@/app/components/NotificationBell";
 
 interface AdminNavProps {
   pendingProjectCount: number;
@@ -46,6 +47,9 @@ export default function AdminNav({ pendingProjectCount, unresolvedAlertsTotal, p
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Lives here because the global Navbar is deliberately not rendered
+              on /admin — this is the console's only notification surface. */}
+          <NotificationBell />
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Administrator</span>
           <button
             type="button"

@@ -100,15 +100,6 @@ export const ADMIN_HUBS: Hub[] = [
     ],
   },
   {
-    key: "crisis",
-    label: "Crisis",
-    href: "/admin/crisis",
-    tabs: [
-      { href: "/admin/crisis", label: "Events", hint: "Crisis events awaiting verification before they go public." },
-      { href: "/admin/initiatives", label: "Relief initiatives", hint: "Organisation-submitted relief work under each crisis." },
-    ],
-  },
-  {
     key: "people",
     label: "People",
     href: "/admin/donors",
@@ -120,18 +111,6 @@ export const ADMIN_HUBS: Hub[] = [
         hint: "Every organisation on the platform, searchable. Verified ones live here too — the verification queue only ever shows those still pending.",
       },
       { href: "/admin/inquiries", label: "Inquiries", hint: "Donor questions waiting on an answer." },
-    ],
-  },
-  {
-    key: "insight",
-    label: "Insight",
-    href: "/admin/dashboard",
-    tabs: [
-      // The dashboard's metrics belong here, not in front of the approvals
-      // queue that used to sit underneath them.
-      { href: "/admin/dashboard", label: "Overview", hint: "Donations, verification counts, and platform totals." },
-      { href: "/admin/trust-trends", label: "Trust trends", hint: "How verification and compliance are moving over time." },
-      { href: "/admin/impact-health", label: "Impact health", hint: "Whether funded work is actually reporting outcomes." },
     ],
   },
 ];

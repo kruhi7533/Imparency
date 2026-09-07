@@ -185,10 +185,7 @@ export default async function AdminDashboardPage() {
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Verification Panel</h1>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Review and approve pending NGO registrations and document submissions.
-          </p>
+          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Overview</h1>
         </div>
 
         {/* 1. Analytics Cards Section */}
