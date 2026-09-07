@@ -53,6 +53,27 @@ function normalizeError(error: unknown): {
       stack: error.stack ?? null,
     };
   }
+  // An ErrorEvent (e.g. a dropped Neon WebSocket) isn't an Error, and the
+  // fields worth reading aren't enumerable, so JSON.stringify silently produces
+  // "{}" — pull them out explicitly or the log line is worthless. Matched
+  // structurally because ErrorEvent is not a global in Node and drivers bundle
+  // their own class.
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { constructor?: { name?: string } }).constructor?.name === "ErrorEvent"
+  ) {
+    const event = error as { message?: unknown; error?: unknown };
+    const cause = event.error;
+    const message =
+      (typeof event.message === "string" && event.message) ||
+      (cause instanceof Error ? cause.message : cause != null ? safeStringify(cause) : "");
+    return {
+      name: "ErrorEvent",
+      message: message || "(no message)",
+      stack: cause instanceof Error ? cause.stack ?? null : null,
+    };
+  }
   return {
     name: "NonError",
     message: typeof error === "string" ? error : safeStringify(error),

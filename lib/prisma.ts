@@ -10,6 +10,25 @@ const RETRYABLE_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1017']);
 const MAX_RETRIES = 4;
 const BASE_DELAY_MS = 250;
 
+/**
+ * Neon's serverless driver talks to Postgres over a WebSocket. A dropped
+ * socket surfaces as an `ErrorEvent` from the `error` event — not a
+ * `PrismaClientKnownRequestError` or `PrismaClientInitializationError` — so it
+ * used to fall straight through the checks below and abort on the first
+ * attempt instead of retrying like every other transient connection failure.
+ *
+ * Matched structurally, not with `instanceof`: `ErrorEvent` is not a global in
+ * Node, and the driver bundles its own class, so there is no constructor here
+ * to compare against.
+ */
+export function isTransientWebSocketError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  return (
+    (err as { constructor?: { name?: string } }).constructor?.name === 'ErrorEvent' &&
+    (err as { type?: unknown }).type === 'error'
+  );
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -99,6 +118,19 @@ function recordRetry(
 
 const prismaClientSingleton = () => {
   const neonPool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+  // An idle pooled connection whose WebSocket drops emits 'error' with no
+  // in-flight query to reject. Node treats an unhandled 'error' on an
+  // EventEmitter as fatal, so without this listener a background disconnect can
+  // take down the process rather than being retried on the next query.
+  neonPool.on('error', (err) => {
+    captureError(
+      err,
+      { scope: 'lib/prisma', operation: 'idle_pool_connection_error' },
+      'warning'
+    );
+  });
+
   const adapter = new PrismaNeon(neonPool);
   const client = new PrismaClient({ adapter });
 
@@ -115,12 +147,14 @@ const prismaClientSingleton = () => {
             const code =
               err instanceof Prisma.PrismaClientKnownRequestError ? err.code : undefined;
             const isInitError = err instanceof Prisma.PrismaClientInitializationError;
-            if (attempt < MAX_RETRIES && (isInitError || (code && RETRYABLE_CODES.has(code)))) {
+            const isWsError = isTransientWebSocketError(err);
+            const retryable = isInitError || isWsError || (code && RETRYABLE_CODES.has(code));
+            if (attempt < MAX_RETRIES && retryable) {
               const delayMs = BASE_DELAY_MS * 2 ** attempt;
               // Observe, then behave exactly as before: same condition, same
               // delay, same continue. Recording is synchronous and allocation
               // -only, so it cannot itself add latency to the backoff.
-              recordRetry(err, isInitError ? 'INIT' : code!, model, operation, attempt, delayMs);
+              recordRetry(err, isInitError ? 'INIT' : isWsError ? 'WS_ERROR' : code!, model, operation, attempt, delayMs);
               lastError = err;
               await sleep(delayMs);
               continue;
