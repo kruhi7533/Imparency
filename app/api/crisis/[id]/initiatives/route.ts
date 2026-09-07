@@ -67,7 +67,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: "We couldn't securely process your bank details right now. Please try again." }, { status: 500 });
     }
 
-    const bankProofUrl = await uploadFile(Buffer.from(await bankProof.arrayBuffer()), bankProof.name, "crisis/initiative-bank-proofs");
+    const bankProofUrl = await uploadFile(Buffer.from(await bankProof.arrayBuffer()), bankProof.name, "crisis/initiative-bank-proofs", { private: true });
 
     const imageUrls: string[] = [];
     for (const file of images) {
@@ -83,7 +83,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       documents
         .filter((file) => file instanceof File && file.size > 0)
         .map(async (file) =>
-          uploadFile(Buffer.from(await file.arrayBuffer()), file.name, "crisis/initiative-documents")
+          uploadFile(Buffer.from(await file.arrayBuffer()), file.name, "crisis/initiative-documents", { private: true })
         )
     );
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { NGOComplianceSummary } from "@/lib/compliance-agent";
 import AskNgoBox from "@/app/admin/components/AskNgoBox";
@@ -40,7 +40,9 @@ interface Props {
   complianceSummaries: NGOComplianceSummary[];
   initialInvestigations: Investigation[];
   /** Per-alert AI investigation status — see the comment in page.tsx for how it's built. */
-  investigationStatusByAlertId: Record<string, { status: string; riskLevel: string | null; summary: string | null }>;
+  investigationStatusByAlertId: Record<string, { status: string; riskLevel: string | null; summary: string | null; riskReviewId: string | null }>;
+  /** Deep-link target from ?case=<id> — e.g. the "View case" link on an NGO's own detail page. */
+  initialHighlightReviewId: string | null;
 }
 
 const INVESTIGATION_STATUS_BADGE: Record<string, string> = {
@@ -63,11 +65,27 @@ const INVESTIGATION_STATUS_BADGE: Record<string, string> = {
 function InvestigationStatusBadge({
   alert,
   status,
+  onViewCase,
 }: {
   alert: FraudAlert;
-  status: { status: string; riskLevel: string | null; summary: string | null } | undefined;
+  status: { status: string; riskLevel: string | null; summary: string | null; riskReviewId: string | null } | undefined;
+  onViewCase: (reviewId: string) => void;
 }) {
   if (alert.entityType !== "NGO") return null; // the investigator only covers NGOs
+
+  // Rendered next to every branch below that can carry a riskReviewId, rather
+  // than folded into one branch — a case can exist whether this alert's own
+  // run found something (status.riskLevel set) or it was swept in later via
+  // RiskReview.alertIds after a different alert opened the review.
+  const viewCaseLink = status?.riskReviewId ? (
+    <button
+      type="button"
+      onClick={() => onViewCase(status.riskReviewId!)}
+      className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline underline-offset-2"
+    >
+      View case →
+    </button>
+  ) : null;
 
   if (!status) {
     // Only HIGH NGO alerts auto-trigger (lib/fraud-investigator/trigger.ts) — for
@@ -102,20 +120,31 @@ function InvestigationStatusBadge({
   }
   if (status.riskLevel) {
     return (
-      <span
-        className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${INVESTIGATION_STATUS_BADGE[status.riskLevel] || INVESTIGATION_STATUS_BADGE.LOW}`}
-        title={status.summary ?? undefined}
-      >
-        AI: {status.riskLevel} found
+      <span className="inline-flex items-center gap-2">
+        <span
+          className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${INVESTIGATION_STATUS_BADGE[status.riskLevel] || INVESTIGATION_STATUS_BADGE.LOW}`}
+          title={status.summary ?? undefined}
+        >
+          AI: {status.riskLevel} found
+        </span>
+        {viewCaseLink}
       </span>
     );
   }
   return (
-    <span
-      className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${INVESTIGATION_STATUS_BADGE.CLEAN}`}
-      title={status.summary ?? "Investigated — nothing filed."}
-    >
-      AI: investigated, clean
+    <span className="inline-flex items-center gap-2">
+      <span
+        className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${INVESTIGATION_STATUS_BADGE.CLEAN}`}
+        title={status.summary ?? "Investigated — nothing filed."}
+      >
+        AI: investigated, clean
+      </span>
+      {/* A "clean" verdict can still carry a case: this alert may have been
+          swept into a review opened by an EARLIER, different alert against the
+          same NGO. The badge reflects THIS alert's own outcome; the link
+          reflects the NGO's actual open case, which is not always the same
+          thing. */}
+      {viewCaseLink}
     </span>
   );
 }
@@ -165,10 +194,26 @@ export default function RiskComplianceClient({
   complianceSummaries,
   initialInvestigations,
   investigationStatusByAlertId,
+  initialHighlightReviewId,
 }: Props) {
   const router = useRouter();
   const [mainTab, setMainTab] = useState<MainTab>("risk");
   const [riskSubTab, setRiskSubTab] = useState<RiskSubTab>("alerts");
+
+  // "View case" navigation from an alert to the specific RiskReview it opened
+  // or was swept into. Without this, another admin who lands on an alert has
+  // no way to find the matching case except scanning the whole Cases list by
+  // eye — there is no shared id visible anywhere in the UI to search for.
+  const [highlightedReviewId, setHighlightedReviewId] = useState<string | null>(null);
+  // Set when a navigation targets a case that no longer exists in the list —
+  // resolved between the link being rendered (an NGO detail page, a stale
+  // browser tab) and the click landing here. Without this the effect below
+  // just finds nothing and silently does nothing: no scroll, no highlight, no
+  // error, and an admin left staring at the top of a list wondering if the
+  // click did anything at all.
+  const [missingCaseId, setMissingCaseId] = useState<string | null>(null);
+  const caseRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
   const [alertFilter, setAlertFilter] = useState<AlertFilter>("fraud");
 
   const [fraudAlerts, setFraudAlerts] = useState(initialFraudAlerts);
@@ -202,6 +247,42 @@ export default function RiskComplianceClient({
   const [docErrors, setDocErrors] = useState(initialDocErrors);
   const [resolved, setResolved] = useState(initialResolved);
   const [riskReviews, setRiskReviews] = useState(initialRiskReviews);
+
+  function viewCase(reviewId: string) {
+    setRiskSubTab("cases");
+    setHighlightedReviewId(reviewId);
+    setMissingCaseId(null);
+  }
+
+  // Runs after the tab switch above re-renders the Cases list, so the target
+  // card actually exists in the DOM by the time this fires — for any case
+  // that is still open, which is the only kind riskReviews contains.
+  useEffect(() => {
+    if (!highlightedReviewId || riskSubTab !== "cases") return;
+    const node = caseRefs.current[highlightedReviewId];
+    if (!node) {
+      // Case is gone from this list — most likely resolved (Clear/Suspend)
+      // since the link was rendered. Say so rather than doing nothing.
+      setMissingCaseId(highlightedReviewId);
+      setHighlightedReviewId(null);
+      return;
+    }
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Cleared after a few seconds — a highlight that never fades stops
+    // meaning "this is the one you came for" and starts meaning nothing.
+    const timer = setTimeout(() => setHighlightedReviewId(null), 4000);
+    return () => clearTimeout(timer);
+  }, [highlightedReviewId, riskSubTab, riskReviews]);
+
+  // Arriving via /admin/risk-compliance?case=<id> — e.g. the "View case" link
+  // on an NGO's own detail page — should land in the same place a click from
+  // the alert list would. Runs once on mount, not on every render: re-firing
+  // on riskReviews updates (after Clear/Suspend/Escalate) would yank the admin
+  // back to a case they already finished with.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (initialHighlightReviewId) viewCase(initialHighlightReviewId);
+  }, []);
 
   // Resolve alert modal
   const [selectedAlert, setSelectedAlert] = useState<FraudAlert | null>(null);
@@ -333,7 +414,7 @@ export default function RiskComplianceClient({
                   </td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex justify-end mb-1.5">
-                      <InvestigationStatusBadge alert={alert} status={investigationStatusByAlertId[alert.id]} />
+                      <InvestigationStatusBadge alert={alert} status={investigationStatusByAlertId[alert.id]} onViewCase={viewCase} />
                     </div>
                     <div className="flex items-center justify-end gap-2">
                       {alert.entityType === "NGO" && (
@@ -451,6 +532,22 @@ export default function RiskComplianceClient({
           {riskSubTab === "alerts" && alertFilter === "fraud" && renderAlertTable(fraudAlerts, "No active fraud alerts", "🛡️")}
           {riskSubTab === "alerts" && alertFilter === "doc_errors" && renderAlertTable(docErrors, "No document errors", "📄")}
 
+          {riskSubTab === "cases" && missingCaseId && (
+            <div
+              data-testid="missing-case-banner"
+              className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-semibold text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-400"
+            >
+              <span>That case is no longer open — it was likely resolved since this link was created.</span>
+              <button
+                type="button"
+                onClick={() => setMissingCaseId(null)}
+                className="shrink-0 font-bold hover:underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {riskSubTab === "cases" && (
             riskReviews.length === 0 ? (
               <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center shadow-sm">
@@ -461,7 +558,15 @@ export default function RiskComplianceClient({
             ) : (
               <div className="space-y-3">
                 {riskReviews.map(r => (
-                  <div key={r.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
+                  <div
+                    key={r.id}
+                    ref={(el) => { caseRefs.current[r.id] = el; }}
+                    className={`bg-white dark:bg-gray-900 border rounded-2xl p-5 shadow-sm transition-colors duration-500 ${
+                      highlightedReviewId === r.id
+                        ? "border-blue-400 dark:border-blue-500 ring-2 ring-blue-200 dark:ring-blue-900/50"
+                        : "border-gray-100 dark:border-gray-800"
+                    }`}
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">

@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { computeCompliance, deriveFcraStatus, hasVerifiedImpactProof } from "@/lib/ngo-compliance";
+import { buildNgoRiskAndFraudView } from "@/lib/risk-compliance-view";
 import TrustInsight from "./TrustInsight";
 
 export const runtime = "nodejs";
@@ -215,22 +216,51 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
 
           {/* Fraud alerts & risk reviews */}
           <Section title="Risk & Fraud">
-            {openAlerts.length === 0 && ngo.riskReviews.filter((r) => r.status === "OPEN").length === 0 ? (
-              <p className="text-xs text-emerald-600 font-semibold">No open fraud alerts or risk reviews.</p>
-            ) : (
-              <div className="space-y-2">
-                {openAlerts.map((a) => (
-                  <div key={a.id} className="flex items-center justify-between text-sm p-2 border-b border-gray-100 dark:border-gray-800/50">
-                    <div>
-                      <p className="font-semibold text-gray-800 dark:text-gray-200">{a.type}</p>
-                      <p className="text-xs text-gray-400">{a.description}</p>
+            {(() => {
+              // What to show (empty-state vs. the two lists, and each open
+              // review's display strings) is decided in
+              // lib/risk-compliance-view.ts — see buildNgoRiskAndFraudView's
+              // docstring for the bug this replaced. This component only lays
+              // out the result.
+              const view = buildNgoRiskAndFraudView(openAlerts.length, ngo.riskReviews);
+              if (view.isEmpty) {
+                return <p className="text-xs text-emerald-600 font-semibold">No open fraud alerts or risk reviews.</p>;
+              }
+              return (
+                <div className="space-y-2">
+                  {view.openReviews.map((r) => (
+                    <div key={r.id} className="flex items-center justify-between text-sm p-2 border-b border-gray-100 dark:border-gray-800/50">
+                      <div>
+                        <p className="font-semibold text-gray-800 dark:text-gray-200">
+                          Open risk review
+                          {r.reasonLabel ? ` — ${r.reasonLabel}` : ""}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          Opened {fmtDate(r.createdAt as Date)}
+                          {r.recommendedActionLabel ? ` · Recommended: ${r.recommendedActionLabel}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge className={SEVERITY_BADGE[r.riskLevel] ?? "bg-gray-100 text-gray-600"}>{r.riskLevel}</Badge>
+                        <Link href={r.caseHref} className="text-xs text-emerald-600 hover:underline">
+                          View case →
+                        </Link>
+                      </div>
                     </div>
-                    <Badge className={SEVERITY_BADGE[a.severity] ?? "bg-gray-100 text-gray-600"}>{a.severity}</Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-            {(openAlerts.length > 0 || resolvedAlerts.length > 0) && (
+                  ))}
+                  {openAlerts.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between text-sm p-2 border-b border-gray-100 dark:border-gray-800/50">
+                      <div>
+                        <p className="font-semibold text-gray-800 dark:text-gray-200">{a.type}</p>
+                        <p className="text-xs text-gray-400">{a.description}</p>
+                      </div>
+                      <Badge className={SEVERITY_BADGE[a.severity] ?? "bg-gray-100 text-gray-600"}>{a.severity}</Badge>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+            {(openAlerts.length > 0 || resolvedAlerts.length > 0 || ngo.riskReviews.length > 0) && (
               <Link href="/admin/risk-compliance" className="text-xs text-emerald-600 hover:underline mt-3 inline-block">
                 Open Risk &amp; Compliance queue ↗
               </Link>

@@ -69,7 +69,12 @@ export const ADMIN_HUBS: Hub[] = [
     label: "Delivery",
     href: "/admin/project-review",
     tabs: [
-      { href: "/admin/project-review", label: "Projects", hint: "Campaigns awaiting approval before they can raise funds." },
+      { href: "/admin/project-review", label: "Approvals", hint: "Campaigns awaiting approval before they can raise funds." },
+      {
+        href: "/admin/projects",
+        label: "All Projects",
+        hint: "Every campaign on the platform, searchable — active and completed ones live here too, not only what's still pending.",
+      },
       { href: "/admin/proof-review", label: "Milestone proof", hint: "Evidence submitted against funded milestones." },
     ],
   },
@@ -109,6 +114,11 @@ export const ADMIN_HUBS: Hub[] = [
     href: "/admin/donors",
     tabs: [
       { href: "/admin/donors", label: "Donors", hint: "Donor accounts, giving history, and identity verification." },
+      {
+        href: "/admin/ngos",
+        label: "Organisations",
+        hint: "Every organisation on the platform, searchable. Verified ones live here too — the verification queue only ever shows those still pending.",
+      },
       { href: "/admin/inquiries", label: "Inquiries", hint: "Donor questions waiting on an answer." },
     ],
   },
