@@ -101,8 +101,15 @@ export async function loadVerificationQueue() {
 
       /** Nothing was ever uploaded. There is no evidence to approve on. */
       hasDocuments: (ngo.documents ?? []).length > 0,
-      /** Documents exist but have never been read. */
-      hasExtraction: extractedFields.length > 0,
+      /**
+       * Documents exist but have never been read. Checked against
+       * NgoDocumentAnalysis, not ExtractedField — a total load failure (every
+       * upload unreadable) still writes 5 placeholder ExtractedField rows so
+       * the field grid has something to render, but writes zero document
+       * analyses, because that loop never runs. Gating on ExtractedField count
+       * let a run that read nothing at all pass as "analysed."
+       */
+      hasExtraction: (ngo.documentAnalyses ?? []).length > 0,
       /**
        * A document disagrees with the registration form about WHO this is.
        * Not the same class of problem as a missing 80G, and deliberately not

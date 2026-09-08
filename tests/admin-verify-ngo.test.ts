@@ -5,6 +5,7 @@ vi.mock("@/lib/prisma", () => ({
     nGOProfile: { findUnique: vi.fn(), updateMany: vi.fn() },
     nGOCompliance: { upsert: vi.fn() },
     extractedField: { findMany: vi.fn(), count: vi.fn() },
+    ngoDocumentAnalysis: { count: vi.fn() },
   },
 }));
 
@@ -86,8 +87,9 @@ describe("POST /api/admin/verify-ngo", () => {
       { fieldKey: "eightyGNumber", status: "VALIDATED" },
       { fieldKey: "a12Number", status: "VALIDATED" },
     ]);
-    // The front gate counts fields before it will allow an approval.
-    prismaMock.extractedField.count.mockResolvedValue(4);
+    // The front gate counts document analyses (not extracted fields) before
+    // it will allow an approval — see the gate's own comment for why.
+    prismaMock.ngoDocumentAnalysis.count.mockResolvedValue(3);
   });
 
   it("approves an NGO genuinely awaiting verification", async () => {
@@ -129,7 +131,7 @@ describe("POST /api/admin/verify-ngo", () => {
     // organisations reach VERIFIED on no evidence: not claiming a flag is not
     // the same as not making the decision. The front gate now blocks it.
     prismaMock.nGOProfile.findUnique.mockResolvedValue(pendingNgo());
-    prismaMock.extractedField.count.mockResolvedValue(0);
+    prismaMock.ngoDocumentAnalysis.count.mockResolvedValue(0);
     prismaMock.extractedField.findMany.mockResolvedValue([]);
 
     const res = await POST(approveRequest());
@@ -139,9 +141,30 @@ describe("POST /api/admin/verify-ngo", () => {
     expect(prismaMock.nGOCompliance.upsert).not.toHaveBeenCalled();
   });
 
+  it("refuses to approve an NGO whose extraction totally failed to load any document", async () => {
+    // A total load failure still writes 5 placeholder ExtractedField rows (so
+    // the field grid has something to render) but zero NgoDocumentAnalysis
+    // rows, because that loop never runs on the failure path. Gating on
+    // ExtractedField count let this look "analysed" and only need a note.
+    prismaMock.nGOProfile.findUnique.mockResolvedValue(pendingNgo());
+    prismaMock.ngoDocumentAnalysis.count.mockResolvedValue(0);
+    prismaMock.extractedField.findMany.mockResolvedValue([
+      { fieldKey: "panNumber", status: "NEEDS_REVIEW" },
+      { fieldKey: "registrationNumber", status: "NEEDS_REVIEW" },
+      { fieldKey: "orgName", status: "NEEDS_REVIEW" },
+      { fieldKey: "a12Number", status: "NEEDS_REVIEW" },
+      { fieldKey: "eightyGNumber", status: "NEEDS_REVIEW" },
+    ]);
+
+    const res = await POST(approveRequest("Looks fine to me."));
+
+    expect(res.status).toBe(400);
+    expect(prismaMock.nGOProfile.updateMany).not.toHaveBeenCalled();
+  });
+
   it("refuses to approve an NGO that has uploaded no documents at all", async () => {
     prismaMock.nGOProfile.findUnique.mockResolvedValue(pendingNgo({ documents: [] }));
-    prismaMock.extractedField.count.mockResolvedValue(0);
+    prismaMock.ngoDocumentAnalysis.count.mockResolvedValue(0);
 
     const res = await POST(approveRequest("Looks fine to me."));
 
@@ -163,7 +186,7 @@ describe("POST /api/admin/verify-ngo", () => {
         ],
       })
     );
-    prismaMock.extractedField.count.mockResolvedValue(5);
+    prismaMock.ngoDocumentAnalysis.count.mockResolvedValue(3);
 
     const res = await POST(approveRequest("I checked with them over the phone."));
 
