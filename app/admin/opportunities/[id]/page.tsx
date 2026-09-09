@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import SchemaOutOfSync from "@/app/admin/components/SchemaOutOfSync";
 import { RULES, isRuleKind } from "@/lib/matching/rules";
 import OpportunityActions from "./OpportunityActions";
+import CriteriaEditor from "./CriteriaEditor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -143,12 +144,21 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
         </div>
 
         <section className="mt-10">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Criteria
-          </h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              Criteria
+            </h2>
+            <CriteriaEditor
+              opportunityId={opportunity.id}
+              initial={opportunity.criteria}
+              disabled={opportunity.status === "CLOSED" || opportunity.status === "REJECTED"}
+            />
+          </div>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
             Only these are evaluated. Anything not listed here is never considered — so an
             organisation is not judged on a credential this funder did not ask for.
+            {(opportunity.status === "CLOSED" || opportunity.status === "REJECTED") &&
+              " This opportunity is finished, so criteria can no longer be revised."}
           </p>
 
           <div className="mt-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">

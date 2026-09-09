@@ -3,17 +3,10 @@ import { Role } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { logAdminAction } from "@/lib/admin-log";
-import { RULES, isRuleKind } from "@/lib/matching/rules";
 import { checkFunderEligibility } from "@/lib/matching/funder";
+import { validateCriteria, parseAmount, type CriterionBody } from "@/lib/matching/validate-criteria";
 
 export const runtime = "nodejs";
-
-interface CriterionBody {
-  kind?: string;
-  value?: string | null;
-  values?: string[];
-  required?: boolean;
-}
 
 /**
  * ADMIN-only. Create a funding opportunity and the criteria it declares.
@@ -53,60 +46,19 @@ export async function POST(request: Request) {
       }
     }
 
-    // Money, if it has been agreed yet. Parsed as a string into Decimal —
-    // never through a float, per lib/finance-utils.ts.
-    const rawAmount = body.amount;
-    let amount: string | null = null;
-    if (rawAmount !== undefined && rawAmount !== null && String(rawAmount).trim() !== "") {
-      const n = Number(rawAmount);
-      if (!Number.isFinite(n) || n <= 0) {
-        return NextResponse.json({ error: "Amount must be a positive number." }, { status: 400 });
-      }
-      amount = String(rawAmount).trim();
+    const amountResult = parseAmount(body.amount);
+    if (!amountResult.ok) {
+      return NextResponse.json({ error: amountResult.error }, { status: 400 });
     }
+    const amount = amountResult.amount;
 
     // Validate every criterion before writing any of them: a half-created
     // opportunity with some rules silently missing is worse than a rejection.
-    // Building the rows here rather than in a second pass keeps the narrowing
-    // from isRuleKind, so no cast is needed downstream.
-    const rows: { kind: string; value: string | null; values: string[]; required: boolean }[] = [];
-    const seen = new Set<string>();
-    for (const c of criteria) {
-      if (!c.kind || !isRuleKind(c.kind)) {
-        return NextResponse.json(
-          { error: `Unknown criterion "${c.kind ?? ""}".` },
-          { status: 400 }
-        );
-      }
-      if (seen.has(c.kind)) {
-        return NextResponse.json(
-          { error: `Criterion "${c.kind}" is declared more than once.` },
-          { status: 400 }
-        );
-      }
-      seen.add(c.kind);
-
-      const rule = RULES[c.kind];
-      if (rule.param === "scalar" && !String(c.value ?? "").trim()) {
-        return NextResponse.json(
-          { error: `"${rule.label}" needs a value.` },
-          { status: 400 }
-        );
-      }
-      if (rule.param === "set" && (!Array.isArray(c.values) || c.values.length === 0)) {
-        return NextResponse.json(
-          { error: `"${rule.label}" needs at least one value.` },
-          { status: 400 }
-        );
-      }
-
-      rows.push({
-        kind: rule.kind,
-        value: rule.param === "scalar" ? String(c.value ?? "").trim() : null,
-        values: rule.param === "set" ? (c.values ?? []).map((v) => v.trim()).filter(Boolean) : [],
-        required: c.required !== false,
-      });
+    const criteriaResult = validateCriteria(criteria);
+    if (!criteriaResult.ok) {
+      return NextResponse.json({ error: criteriaResult.error }, { status: 400 });
     }
+    const rows = criteriaResult.rows;
 
     const opportunity = await prisma.fundingOpportunity.create({
       data: {

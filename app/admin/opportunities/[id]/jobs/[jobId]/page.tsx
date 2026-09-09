@@ -203,6 +203,11 @@ export default async function MatchingJobPage({
         {job.status === "COMPLETED" && (
           <div className="mt-5">
             <RequeueButton jobId={job.id} label="Re-run this job" />
+            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
+              Re-running reads the opportunity&apos;s criteria as they stand right now, not what is
+              shown below — if you revised them after this run, this picks up the change.
+              Decisions already made (shortlisted / dismissed) are kept.
+            </p>
           </div>
         )}
 
