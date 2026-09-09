@@ -24,6 +24,8 @@ export default function OpportunityActions({
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rejectNote, setRejectNote] = useState("");
+  const [showReject, setShowReject] = useState(false);
 
   async function call(url: string, body: Record<string, unknown>, label: string) {
     setBusy(label);
@@ -53,18 +55,28 @@ export default function OpportunityActions({
   return (
     <div>
       <div className="flex flex-wrap gap-2">
-        {status === "DRAFT" && (
-          <button
-            type="button"
-            disabled={busy !== null || criteriaCount === 0}
-            onClick={() =>
-              call(`/api/admin/matching/opportunities/${opportunityId}`, { action: "OPEN" }, "open")
-            }
-            title={criteriaCount === 0 ? "Add at least one criterion first" : undefined}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-          >
-            {busy === "open" ? "Opening…" : "Open"}
-          </button>
+        {(status === "DRAFT" || status === "SUBMITTED") && (
+          <>
+            <button
+              type="button"
+              disabled={busy !== null || criteriaCount === 0}
+              onClick={() =>
+                call(`/api/admin/matching/opportunities/${opportunityId}`, { action: "APPROVE" }, "open")
+              }
+              title={criteriaCount === 0 ? "Add at least one criterion first" : undefined}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {busy === "open" ? "Opening…" : status === "SUBMITTED" ? "Approve & open" : "Open"}
+            </button>
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => setShowReject((v) => !v)}
+              className="rounded-lg border border-red-200 dark:border-red-900 px-4 py-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-50"
+            >
+              Reject
+            </button>
+          </>
         )}
 
         {status === "OPEN" && (
@@ -96,6 +108,32 @@ export default function OpportunityActions({
           {busy === "run" ? "Running…" : "Run matching"}
         </button>
       </div>
+
+      {showReject && (
+        <div className="mt-3 max-w-xl">
+          <textarea
+            value={rejectNote}
+            onChange={(e) => setRejectNote(e.target.value)}
+            rows={2}
+            placeholder="Why is this being rejected? The donor will be told."
+            className="w-full rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white"
+          />
+          <button
+            type="button"
+            disabled={busy !== null || !rejectNote.trim()}
+            onClick={() =>
+              call(
+                `/api/admin/matching/opportunities/${opportunityId}`,
+                { action: "REJECT", note: rejectNote.trim() },
+                "reject"
+              )
+            }
+            className="mt-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {busy === "reject" ? "Rejecting…" : "Confirm rejection"}
+          </button>
+        </div>
+      )}
 
       {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>

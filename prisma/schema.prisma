@@ -1691,11 +1691,25 @@ model FundingOpportunity {
   funderName  String
   description String
 
-  /// "DRAFT" | "OPEN" | "CLOSED"
-  /// String + comment rather than an enum, matching RiskReview.status: this
-  /// vocabulary is young and will likely gain PAUSED/AWARDED, and adding a
-  /// member should be a code change rather than a migration.
+  /// "DRAFT" | "SUBMITTED" | "OPEN" | "REJECTED" | "CLOSED"
+  ///
+  ///   DRAFT      an admin is still writing it
+  ///   SUBMITTED  a donor proposed it and it is waiting on an admin decision
+  ///   OPEN       approved; the engine will match against it
+  ///   REJECTED   an admin declined it
+  ///   CLOSED     finished
+  ///
+  /// String + comment rather than an enum, matching RiskReview.status — which
+  /// is exactly why SUBMITTED and REJECTED cost a code change and no migration.
   status String @default("DRAFT")
+
+  /// What the funder is putting up, in rupees. Nullable because an admin may
+  /// record an opportunity before the amount is settled, and because every
+  /// opportunity created before this column existed has no answer.
+  ///
+  /// Decimal, never Float — this is money, and lib/finance-utils.ts exists
+  /// because rounding it through a float is how amounts drift.
+  amount Decimal? @db.Decimal(12, 2)
 
   /// Admin user id. A bare String with no relation, matching
   /// Project.reviewedById — nothing ever joins from a User to the

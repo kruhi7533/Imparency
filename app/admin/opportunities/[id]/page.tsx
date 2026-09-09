@@ -12,7 +12,9 @@ export const dynamic = "force-dynamic";
 
 const STATUS_BADGE: Record<string, string> = {
   OPEN: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+  SUBMITTED: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
   DRAFT: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+  REJECTED: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",
   CLOSED: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500",
 };
 
@@ -43,7 +45,10 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
         description: true,
         status: true,
         createdAt: true,
-        funderUser: { select: { id: true, name: true, email: true, companyName: true } },
+        amount: true,
+        funderUser: {
+          select: { id: true, name: true, email: true, companyName: true, panStatus: true },
+        },
         criteria: {
           orderBy: { createdAt: "asc" },
           select: { id: true, kind: true, value: true, values: true, required: true },
@@ -95,15 +100,36 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
 
         {/* Whether the funder can be reached at all is the difference between
             "they will be told" and "you will have to tell them yourself". */}
-        {opportunity.funderUser ? (
-          <p className="mt-3 text-xs text-emerald-600 dark:text-emerald-400">
-            Funder account linked ({opportunity.funderUser.companyName || opportunity.funderUser.name || opportunity.funderUser.email})
-            — notified whenever an organisation is shortlisted.
+        {opportunity.amount !== null && (
+          <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
+            ₹{Number(opportunity.amount).toLocaleString("en-IN")} offered
+          </p>
+        )}
+
+        {/* Whether there is a checked identity behind the money. This is the
+            condition for opening, so it is stated before the buttons. */}
+        {!opportunity.funderUser ? (
+          <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+            No funder account linked. &ldquo;{opportunity.funderName}&rdquo; is a label only — nobody is
+            notified on the funder side, and this opportunity cannot be opened until a verified
+            donor account stands behind it.
+          </p>
+        ) : opportunity.funderUser.panStatus !== "VERIFIED" ? (
+          <p className="mt-3 text-xs text-red-600 dark:text-red-400">
+            Funder{" "}
+            {opportunity.funderUser.companyName || opportunity.funderUser.name || opportunity.funderUser.email}{" "}
+            is not identity-verified (PAN {opportunity.funderUser.panStatus.toLowerCase()}). Verify
+            their PAN on the{" "}
+            <Link href={`/admin/donors/${opportunity.funderUser.id}`} className="underline">
+              donor record
+            </Link>{" "}
+            before opening — an unverified funder must not be put in front of an organisation.
           </p>
         ) : (
-          <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
-            No funder account linked. &ldquo;{opportunity.funderName}&rdquo; is a label only — nobody on
-            the funder side is notified, so you will need to tell them yourself.
+          <p className="mt-3 text-xs text-emerald-600 dark:text-emerald-400">
+            Funder{" "}
+            {opportunity.funderUser.companyName || opportunity.funderUser.name || opportunity.funderUser.email}{" "}
+            is identity-verified, and is notified whenever an organisation is shortlisted.
           </p>
         )}
 

@@ -16,7 +16,9 @@ export const dynamic = "force-dynamic";
 
 const STATUS_BADGE: Record<string, string> = {
   OPEN: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+  SUBMITTED: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
   DRAFT: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+  REJECTED: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",
   CLOSED: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500",
 };
 
@@ -57,6 +59,8 @@ export default async function AdminOpportunitiesPage({
         funderName: true,
         status: true,
         createdAt: true,
+        amount: true,
+        funderUserId: true,
         _count: { select: { criteria: true } },
         jobs: {
           orderBy: { createdAt: "desc" },
@@ -115,8 +119,10 @@ export default async function AdminOpportunitiesPage({
             className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
           >
             <option value="">All statuses</option>
+            <option value="SUBMITTED">Submitted — awaiting review</option>
             <option value="DRAFT">Draft</option>
             <option value="OPEN">Open</option>
+            <option value="REJECTED">Rejected</option>
             <option value="CLOSED">Closed</option>
           </AutoSubmitSelect>
           <button
@@ -141,6 +147,7 @@ export default async function AdminOpportunitiesPage({
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Opportunity</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Amount</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Criteria</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Last run</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Result</th>
@@ -158,12 +165,24 @@ export default async function AdminOpportunitiesPage({
                       >
                         {o.title}
                       </Link>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">{o.funderName}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {o.funderName}
+                        {!o.funderUserId && (
+                          <span className="ml-1 text-amber-600 dark:text-amber-500">· unverified funder</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_BADGE[o.status] ?? ""}`}>
                         {o.status}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 tabular-nums">
+                      {o.amount === null ? (
+                        <span className="text-gray-400 dark:text-gray-600">—</span>
+                      ) : (
+                        `₹${Number(o.amount).toLocaleString("en-IN")}`
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 tabular-nums">
                       {o._count.criteria}
@@ -194,7 +213,7 @@ export default async function AdminOpportunitiesPage({
               })}
               {opportunities.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
                     No opportunities match this view.{" "}
                     <Link href="/admin/opportunities" className="text-emerald-600 hover:underline">
                       Clear filters

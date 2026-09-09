@@ -63,6 +63,7 @@ export type AdminAction =
   // Funding opportunities and deterministic matching.
   | "OPPORTUNITY_CREATED"
   | "OPPORTUNITY_OPENED"
+  | "OPPORTUNITY_REJECTED"
   | "OPPORTUNITY_CLOSED"
   | "MATCHING_JOB_STARTED"
   | "MATCHING_JOB_FAILED"

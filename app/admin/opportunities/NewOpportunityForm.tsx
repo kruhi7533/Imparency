@@ -37,6 +37,7 @@ export default function NewOpportunityForm({
   const [title, setTitle] = useState("");
   const [funderName, setFunderName] = useState("");
   const [funderUserId, setFunderUserId] = useState("");
+  const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [criteria, setCriteria] = useState<DraftCriterion[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +64,7 @@ export default function NewOpportunityForm({
           title,
           funderName,
           funderUserId: funderUserId || null,
+          amount: amount.trim() || null,
           description,
           criteria: criteria.map((c) => ({
             kind: c.kind,
@@ -82,6 +84,7 @@ export default function NewOpportunityForm({
       setTitle("");
       setFunderName("");
       setFunderUserId("");
+      setAmount("");
       setDescription("");
       setCriteria([]);
       router.refresh();
@@ -123,6 +126,13 @@ export default function NewOpportunityForm({
           value={funderName}
           onChange={(e) => setFunderName(e.target.value)}
           placeholder="Funder"
+          className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white"
+        />
+        <input
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          inputMode="decimal"
+          placeholder="Amount offered in ₹ (optional)"
           className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white"
         />
       </div>

@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { logAdminAction } from "@/lib/admin-log";
 import { RULES, isRuleKind } from "@/lib/matching/rules";
+import { checkFunderEligibility } from "@/lib/matching/funder";
 
 export const runtime = "nodejs";
 
@@ -46,17 +47,22 @@ export async function POST(request: Request) {
         : null;
 
     if (funderUserId) {
-      const funder = await prisma.user.findUnique({
-        where: { id: funderUserId },
-        select: { role: true, donorPersona: true },
-      });
-      const institutional = ["CSR_OFFICER", "FOUNDATION", "GOVERNMENT"];
-      if (!funder || funder.role !== "DONOR" || !institutional.includes(funder.donorPersona ?? "")) {
-        return NextResponse.json(
-          { error: "The funder account must be a donor with a CSR, foundation or government persona." },
-          { status: 400 }
-        );
+      const check = await checkFunderEligibility(funderUserId);
+      if (!check.ok) {
+        return NextResponse.json({ error: check.message }, { status: 400 });
       }
+    }
+
+    // Money, if it has been agreed yet. Parsed as a string into Decimal —
+    // never through a float, per lib/finance-utils.ts.
+    const rawAmount = body.amount;
+    let amount: string | null = null;
+    if (rawAmount !== undefined && rawAmount !== null && String(rawAmount).trim() !== "") {
+      const n = Number(rawAmount);
+      if (!Number.isFinite(n) || n <= 0) {
+        return NextResponse.json({ error: "Amount must be a positive number." }, { status: 400 });
+      }
+      amount = String(rawAmount).trim();
     }
 
     // Validate every criterion before writing any of them: a half-created
@@ -110,6 +116,7 @@ export async function POST(request: Request) {
         status: "DRAFT",
         createdById: adminId,
         funderUserId,
+        amount,
         criteria: { create: rows },
       },
       select: { id: true },
