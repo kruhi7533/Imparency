@@ -146,6 +146,10 @@ model User {
   initiativesSubmitted ReliefInitiative[]           @relation("InitiativesSubmitted")
   crisisDonations      CrisisDonation[]
   crisisDeliveries     CrisisNotificationDelivery[]
+
+  /// Opportunities this user is the funder behind. A funder is a DONOR with a
+  /// CSR/FOUNDATION/GOVERNMENT persona — there is no separate funder role.
+  fundedOpportunities FundingOpportunity[]
 }
 
 model PasswordResetToken {
@@ -233,6 +237,7 @@ model NGOProfile {
   extractedFields     ExtractedField[]
   agentCases          AgentCase[]
   fraudInvestigations FraudInvestigation[]
+  matchCandidates     MatchCandidate[]
 
   // Discover, the admin verification queue and every public listing filter on
   // verification state plus the two independent "shouldn't be visible" flags.
@@ -1662,4 +1667,200 @@ model FraudInvestigation {
   @@index([ngoId])
   @@index([status])
   @@index([alertId])
+}
+
+// ─── Funding opportunities and deterministic matching (Week 4) ───────────────
+//
+// An admin records a funder's RFP and the criteria it declares. A MatchingJob
+// runs a DETERMINISTIC engine (lib/matching/*) over the NGO pool and writes one
+// MatchCandidate per organisation, carrying the reason for every criterion it
+// evaluated. No model call is involved anywhere in this path.
+//
+// Two separations are load-bearing:
+//   1. Eligibility is a GATE, not a ranking. There is no score column, and
+//      adding one would reintroduce the unaccountable number that
+//      EntityRiskScore.signals exists to avoid.
+//   2. The machine's `verdict` and the human's `decision` are different columns
+//      with different authors. The runner writes only `verdict`.
+
+/// A funder's RFP, entered by an admin. Manual intake only — nothing here is
+/// extracted from a document.
+model FundingOpportunity {
+  id          String @id @default(uuid())
+  title       String
+  funderName  String
+  description String
+
+  /// "DRAFT" | "SUBMITTED" | "OPEN" | "REJECTED" | "CLOSED"
+  ///
+  ///   DRAFT      an admin is still writing it
+  ///   SUBMITTED  a donor proposed it and it is waiting on an admin decision
+  ///   OPEN       approved; the engine will match against it
+  ///   REJECTED   an admin declined it
+  ///   CLOSED     finished
+  ///
+  /// String + comment rather than an enum, matching RiskReview.status — which
+  /// is exactly why SUBMITTED and REJECTED cost a code change and no migration.
+  status String @default("DRAFT")
+
+  /// What the funder is putting up, in rupees. Nullable because an admin may
+  /// record an opportunity before the amount is settled, and because every
+  /// opportunity created before this column existed has no answer.
+  ///
+  /// Decimal, never Float — this is money, and lib/finance-utils.ts exists
+  /// because rounding it through a float is how amounts drift.
+  amount Decimal? @db.Decimal(12, 2)
+
+  /// Admin user id. A bare String with no relation, matching
+  /// Project.reviewedById — nothing ever joins from a User to the
+  /// opportunities they created.
+  createdById String
+
+  /// The funder's account, when they have one.
+  ///
+  /// A real relation rather than a bare id — unlike createdById — because
+  /// something reads it: notifying the funder when an organisation is
+  /// shortlisted needs their email and their notification inbox.
+  ///
+  /// Nullable, because most funders are offline today: `funderName` above is
+  /// still the display name and is filled in either way. A funder is just a
+  /// User with role DONOR and a CSR/FOUNDATION/GOVERNMENT persona — the model
+  /// has no funder ORGANISATION, which is the real gap here (an NGO gets
+  /// NGOProfile + NGOTeamMember; a funder gets a companyName string).
+  funderUserId String?
+  funderUser   User?   @relation(fields: [funderUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  criteria OpportunityCriterion[]
+  jobs     MatchingJob[]
+
+  /// The catalogue's only query shape: filter by status, newest first.
+  @@index([status, createdAt])
+  @@index([funderUserId])
+}
+
+/// One rule this opportunity applies.
+///
+/// Criteria are ROWS, not columns, and that is the load-bearing choice: the
+/// ABSENCE of a row is what "this criterion does not apply" means. Columns
+/// would make "not evaluated" a null, and one null-vs-false mistake would judge
+/// a domestic education grant on FCRA.
+model OpportunityCriterion {
+  id            String             @id @default(uuid())
+  opportunityId String
+  opportunity   FundingOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  /// Which rule to run — see RULE_KINDS in lib/matching/rules.ts. String rather
+  /// than an enum so a new criterion is one entry in RULES and nothing else.
+  /// An unrecognised kind evaluates to UNKNOWN; it is never silently skipped.
+  kind String
+
+  /// Scalar parameter ("5", "60"). Which of value/values a rule reads is
+  /// declared by its RuleDefinition.param, so neither is ambiguous.
+  value String?
+
+  /// Set parameter (["Education", "Child Welfare"]).
+  values String[] @default([])
+
+  /// false = evaluated and shown, but a FAIL does not reject. Lets an admin
+  /// express "preferred" without a weighting scheme.
+  required Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  /// One rule of a kind per opportunity. Two MIN_HEALTH_SCORE thresholds on one
+  /// RFP is not a thing an admin means to express.
+  @@unique([opportunityId, kind])
+  @@index([opportunityId])
+}
+
+/// One run of the eligibility engine over the NGO pool for one opportunity.
+model MatchingJob {
+  id            String             @id @default(uuid())
+  opportunityId String
+  opportunity   FundingOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  /// "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED". Every transition is a
+  /// compare-and-swap on this column, which is also what stops two runners
+  /// claiming the same job.
+  status String @default("QUEUED")
+
+  /// The criteria as they stood when this run started:
+  /// [{ kind, value, values, required }].
+  ///
+  /// Without this, editing the opportunity afterwards silently rewrites the
+  /// rules an old result APPEARS to have been judged against, and the stated
+  /// reason on a rejected organisation stops matching the criteria shown above
+  /// it. Same discipline as review-project snapshotting the AI score.
+  criteriaSnapshot Json @default("[]")
+
+  /// Admin user id; null when a future worker runs it, mirroring
+  /// AdminActionLog.adminId being nullable for platform-taken actions.
+  triggeredById String?
+
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  /// Denormalised so the job list does not aggregate candidates per row.
+  /// unknownCount is deliberately separate from ineligibleCount, for the reason
+  /// EntityRiskScore.unknownInputs is separate from score: five organisations
+  /// we could not evaluate are not five rejections.
+  evaluatedCount  Int @default(0)
+  eligibleCount   Int @default(0)
+  ineligibleCount Int @default(0)
+  unknownCount    Int @default(0)
+
+  /// Set only on FAILED. Message only, truncated — never a stack.
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  candidates MatchCandidate[]
+
+  @@index([opportunityId])
+  /// The "is a run already in flight?" guard, and the job-history table.
+  @@index([opportunityId, status])
+}
+
+/// One organisation's result inside one job — the engine's proposal, plus the
+/// admin's decision on it. Two different authors, two different columns.
+model MatchCandidate {
+  id    String      @id @default(uuid())
+  jobId String
+  job   MatchingJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  ngoId String
+  ngo   NGOProfile  @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+
+  /// "ELIGIBLE" | "INELIGIBLE" | "UNKNOWN".
+  /// UNKNOWN exists because "we could not evaluate this" must never render the
+  /// same as "we checked and it passed".
+  verdict String
+
+  /// [{ code, label, outcome, detail, required }] for EVERY criterion
+  /// evaluated, in rule order, INCLUDING the ones that passed. Persisted
+  /// verbatim rather than recomputed on read, so the reason a rejection was
+  /// issued survives a later edit to the opportunity.
+  reasons Json @default("[]")
+
+  /// The human gate. "PROPOSED" | "SHORTLISTED" | "DISMISSED".
+  /// The engine writes ONLY "PROPOSED". Nothing but the decision route moves
+  /// this, mirroring ExtractedField -> VALIDATED.
+  decision     String    @default("PROPOSED")
+  decidedById  String?
+  decidedAt    DateTime?
+  decisionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Idempotency at the database level rather than in application logic:
+  /// re-running a job upserts on this key, so it can never double-write.
+  @@unique([jobId, ngoId])
+  @@index([jobId])
+  @@index([ngoId])
+  /// The job detail page groups one job's rows by verdict.
+  @@index([jobId, verdict])
 }

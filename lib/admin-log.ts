@@ -60,6 +60,16 @@ export type AdminAction =
   | "AGENT_ACTION_APPROVED"
   | "AGENT_ACTION_REJECTED"
   | "AGENT_CASE_STARTED"
+  // Funding opportunities and deterministic matching.
+  | "OPPORTUNITY_CREATED"
+  | "OPPORTUNITY_OPENED"
+  | "OPPORTUNITY_REJECTED"
+  | "OPPORTUNITY_CLOSED"
+  | "OPPORTUNITY_REVISED"
+  | "MATCHING_JOB_STARTED"
+  | "MATCHING_JOB_FAILED"
+  | "CANDIDATE_SHORTLISTED"
+  | "CANDIDATE_DISMISSED"
   // Taken by the platform, not by a person — logged with adminId null. See the
   // comment on AdminActionLog.adminId for why these live in the same trail as
   // human actions rather than a separate one.
@@ -70,7 +80,7 @@ export interface AdminActionParams {
   /** Null for an action the platform took on its own. */
   adminId: string | null;
   action: AdminAction;
-  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING" | "CRISIS_EVENT" | "RELIEF_INITIATIVE" | "AGENT_CASE";
+  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING" | "CRISIS_EVENT" | "RELIEF_INITIATIVE" | "AGENT_CASE" | "OPPORTUNITY" | "MATCHING_JOB" | "MATCH_CANDIDATE";
   entityId: string;
   oldValue?: Record<string, unknown> | null;
   newValue?: Record<string, unknown> | null;

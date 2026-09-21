@@ -34,6 +34,9 @@ describe("admin hubs", () => {
   it("keeps a nested route inside its hub", () => {
     expect(hubForPath("/admin/crisis/abc-123")?.key).toBe("crisis");
     expect(hubForPath("/admin/donors/abc-123")?.key).toBe("people");
+    // A matching job lives several segments deep and still belongs to the hub
+    // its catalogue is registered in — the tab bar must not vanish there.
+    expect(hubForPath("/admin/opportunities/opp-1/jobs/job-1")?.key).toBe("delivery");
   });
 
   it("puts an NGO detail view under the catalogue that lists it", () => {

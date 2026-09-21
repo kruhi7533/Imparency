@@ -90,8 +90,13 @@ export async function POST(request: Request) {
         );
       }
 
-      const extractedCount = await prisma.extractedField.count({ where: { ngoId } });
-      if (extractedCount === 0) {
+      // NgoDocumentAnalysis, not ExtractedField: a total load failure (every
+      // upload unreadable) still writes 5 placeholder ExtractedField rows, but
+      // zero document analyses — that loop never runs on that path. Gating on
+      // ExtractedField count let a run that read nothing at all pass as
+      // "analysed" and only need a note to approve.
+      const analysedCount = await prisma.ngoDocumentAnalysis.count({ where: { ngoId } });
+      if (analysedCount === 0) {
         return NextResponse.json(
           {
             error:

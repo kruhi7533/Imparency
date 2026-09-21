@@ -76,6 +76,11 @@ export const ADMIN_HUBS: Hub[] = [
         hint: "Every campaign on the platform, searchable — active and completed ones live here too, not only what's still pending.",
       },
       { href: "/admin/proof-review", label: "Milestone proof", hint: "Evidence submitted against funded milestones." },
+      {
+        href: "/admin/opportunities",
+        label: "Opportunities",
+        hint: "Funder RFPs, the criteria each one declares, and the matching runs that propose organisations against them.",
+      },
     ],
   },
   {
