@@ -66,6 +66,14 @@ export type AdminAction =
   | "OPPORTUNITY_REJECTED"
   | "OPPORTUNITY_CLOSED"
   | "OPPORTUNITY_REVISED"
+  // Today inbox. A chase is a nudge the admin sent, not a resolution — the
+  // work stays owed by whoever owes it.
+  | "INBOX_ITEM_CHASED"
+  | "INBOX_CHASE_CLEARED"
+  // What a shortlisted organisation proposed, and what was decided about it.
+  | "PROPOSAL_REVIEW_STARTED"
+  | "PROPOSAL_APPROVED"
+  | "PROPOSAL_REJECTED"
   | "MATCHING_JOB_STARTED"
   | "MATCHING_JOB_FAILED"
   | "CANDIDATE_SHORTLISTED"
@@ -80,7 +88,7 @@ export interface AdminActionParams {
   /** Null for an action the platform took on its own. */
   adminId: string | null;
   action: AdminAction;
-  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING" | "CRISIS_EVENT" | "RELIEF_INITIATIVE" | "AGENT_CASE" | "OPPORTUNITY" | "MATCHING_JOB" | "MATCH_CANDIDATE";
+  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING" | "CRISIS_EVENT" | "RELIEF_INITIATIVE" | "AGENT_CASE" | "OPPORTUNITY" | "MATCHING_JOB" | "MATCH_CANDIDATE" | "PROPOSAL";
   entityId: string;
   oldValue?: Record<string, unknown> | null;
   newValue?: Record<string, unknown> | null;

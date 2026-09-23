@@ -22,6 +22,27 @@ export async function createFraudAlert(
   subType?: AlertSubType
 ): Promise<void> {
   try {
+    // Raising the same unresolved alert twice is never right: it is one problem
+    // a human has not dealt with yet, and a second row does not make it more
+    // true — it makes the queue unreadable. Verification triage re-runs on
+    // every re-verification and re-raised its whole finding set each time, so
+    // one NGO with three document defects accumulated three rows per run.
+    //
+    // The key includes DESCRIPTION deliberately. Call sites in lib/risk-agent
+    // dedupe on (type, entityId) alone, which is right for them because one
+    // type means one problem there. VERIFICATION_DEFECT is the opposite: an
+    // NGO can legitimately fail the name, registration and PAN checks at once,
+    // and those are three separate things to fix. Keying without description
+    // would hide two of them.
+    const duplicate = await prisma.fraudAlert.findFirst({
+      where: { type, entityId, description, resolved: false },
+      select: { id: true },
+    });
+    if (duplicate) {
+      // Not an error, and not worth a log line on every re-verification.
+      return;
+    }
+
     const created = await prisma.fraudAlert.create({
       data: {
         type,
