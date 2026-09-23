@@ -139,15 +139,16 @@ export interface InboxSources {
     description?: string | null;
   }[];
   /**
-   * NGO id -> organisation name, for the alerts that carry one.
+   * An alert's entityId -> the organisation it concerns.
    *
    * FraudAlert.entityType/entityId is polymorphic with no relation behind it,
-   * so the name cannot be joined in. It is also not reliably an NGO id even
-   * when entityType says "NGO" — some call sites pass a milestone id — so an
-   * id missing from this map means "could not resolve", and the card falls
-   * back to the queue rather than deep-linking somewhere that 404s.
+   * so this cannot be joined in. It carries the NGO's OWN id as well as its
+   * name because the two are often different records: an alert about a
+   * milestone stores a milestone id, and linking to `/admin/ngos/<milestoneId>`
+   * would 404. An entityId missing from this map means "could not resolve",
+   * and the card falls back to the queue rather than deep-linking nowhere.
    */
-  alertEntityNames?: Record<string, string>;
+  alertNgos?: Record<string, { ngoId: string; orgName: string }>;
   threadsNeedingReply: { id: string; subject: string; updatedAt: Date; subjectType: string }[];
   quietNgos: { id: string; orgName: string }[];
   overdueMilestones: {
@@ -241,7 +242,7 @@ export const MAX_DETAIL_LINES = 4;
  */
 function collapseAlertsByEntity(
   alerts: InboxSources["openAlerts"],
-  names: Record<string, string>,
+  ngos: Record<string, { ngoId: string; orgName: string }>,
   age: (d: Date) => number
 ): InboxItem[] {
   const byEntity = new Map<string, InboxSources["openAlerts"]>();
@@ -252,7 +253,8 @@ function collapseAlertsByEntity(
   }
 
   return Array.from(byEntity.entries()).map(([entityId, group]): InboxItem => {
-    const orgName = names[entityId];
+    const org = ngos[entityId];
+    const orgName = org?.orgName;
     const defect = (a: (typeof group)[number]) => a.description || a.type.replace(/_/g, " ");
 
     const worst = group.reduce((acc, a) =>
@@ -274,9 +276,10 @@ function collapseAlertsByEntity(
         : worst.severity === "MEDIUM"
           ? "medium"
           : "low") as Severity,
-      // Straight to the organisation this is about; the queue is the fallback
-      // when the id could not be resolved to one.
-      href: orgName ? `/admin/ngos/${entityId}` : "/admin/risk-compliance",
+      // Straight to the organisation this is about — using the NGO's own id,
+      // which is not the alert's entityId when the alert points at a milestone
+      // or a project. The queue is the fallback when nothing resolved.
+      href: org ? `/admin/ngos/${org.ngoId}` : "/admin/risk-compliance",
     };
 
     if (group.length === 1) {
@@ -422,7 +425,7 @@ export function buildInboxItems(s: InboxSources, now: number = Date.now()): Inbo
       severity: r.riskLevel === "CRITICAL" || r.riskLevel === "HIGH" ? "high" : "medium",
       href: "/admin/risk-compliance",
     })),
-    ...collapseAlertsByEntity(s.openAlerts, s.alertEntityNames ?? {}, age),
+    ...collapseAlertsByEntity(s.openAlerts, s.alertNgos ?? {}, age),
     ...s.threadsNeedingReply.map((t): InboxItem => ({
       id: `thread-${t.id}`,
       queue: "Inquiries & Appeals",

@@ -170,6 +170,27 @@ describe("runMatchingJob — claiming", () => {
   });
 });
 
+
+/**
+ * The COMPLETED write, found by what it does rather than by position.
+ *
+ * It used to be the last updateMany; superseding earlier runs now happens
+ * after it, and an index-based lookup would silently start asserting against
+ * the wrong write.
+ */
+function completionWrite() {
+  return db.matchingJob.updateMany.mock.calls
+    .map((c: any[]) => c[0])
+    .find((a: any) => a.data?.status === 'COMPLETED');
+}
+
+/** The write that retires earlier runs for the same opportunity. */
+function supersedeWrite() {
+  return db.matchingJob.updateMany.mock.calls
+    .map((c: any[]) => c[0])
+    .find((a: any) => a.data?.supersededAt instanceof Date);
+}
+
 describe("runMatchingJob — never stuck", () => {
   it("moves the job to FAILED, gated on RUNNING, when the run throws", async () => {
     db.nGOProfile.findMany.mockRejectedValue(new Error("connection lost"));
@@ -198,15 +219,57 @@ describe("runMatchingJob — never stuck", () => {
       ineligibleCount: 0,
       unknownCount: 1,
     });
-    const finish = db.matchingJob.updateMany.mock.calls.at(-1)[0];
-    expect(finish.data.status).toBe("COMPLETED");
+    expect(completionWrite().data.status).toBe("COMPLETED");
   });
 
   it("finishes by compare-and-swap on RUNNING", async () => {
     await runMatchingJob("job_1");
-    const finish = db.matchingJob.updateMany.mock.calls.at(-1)[0];
+    const finish = completionWrite();
     expect(finish.where).toEqual({ id: "job_1", status: "RUNNING" });
     expect(finish.data.status).toBe("COMPLETED");
+  });
+});
+
+describe("runMatchingJob — superseding earlier runs", () => {
+  it("retires every earlier run for the same opportunity", async () => {
+    // Re-matching after a criteria revision used to leave the old run's
+    // undecided candidates PROPOSED, so one opportunity appeared in the
+    // decision queue once per run.
+    await runMatchingJob("job_1");
+
+    const supersede = supersedeWrite();
+    expect(supersede).toBeDefined();
+    expect(supersede.where).toEqual({
+      opportunityId: "opp_1",
+      id: { not: "job_1" },
+      supersededAt: null,
+    });
+    expect(supersede.data.supersededAt).toBeInstanceOf(Date);
+  });
+
+  it("never supersedes the run that just completed", async () => {
+    await runMatchingJob("job_1");
+    expect(supersedeWrite().where.id).toEqual({ not: "job_1" });
+  });
+
+  it("leaves earlier runs standing when this one fails", async () => {
+    // A stale answer beats none: a failed re-run must not retire the results
+    // that are still the best available.
+    db.nGOProfile.findMany.mockRejectedValue(new Error("connection lost"));
+
+    await runMatchingJob("job_1");
+
+    expect(supersedeWrite()).toBeUndefined();
+  });
+
+  it("supersedes only after the job is marked COMPLETED", async () => {
+    await runMatchingJob("job_1");
+
+    const calls = db.matchingJob.updateMany.mock.calls.map((c: any[]) => c[0]);
+    const completedAt = calls.findIndex((a: any) => a.data?.status === "COMPLETED");
+    const supersededAt = calls.findIndex((a: any) => a.data?.supersededAt instanceof Date);
+    expect(completedAt).toBeGreaterThanOrEqual(0);
+    expect(supersededAt).toBeGreaterThan(completedAt);
   });
 });
 

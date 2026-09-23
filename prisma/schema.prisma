@@ -1943,6 +1943,19 @@ model MatchingJob {
   /// Set only on FAILED. Message only, truncated — never a stack.
   errorMessage String?
 
+  /// When a LATER run for the same opportunity completed and replaced this one.
+  ///
+  /// Re-matching (after an admin revises the criteria) creates a new job, and
+  /// the old job's still-undecided candidates were left PROPOSED — so one
+  /// opportunity appeared twice in the decision queue, once per run, with the
+  /// older row judged against criteria that no longer apply.
+  ///
+  /// Set on COMPLETION of the newer run, never on its start: if a re-run fails,
+  /// the previous results are still the best answer available and must stay.
+  /// The job and its candidates are kept — an admin can still open a superseded
+  /// run and see what it decided and why.
+  supersededAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

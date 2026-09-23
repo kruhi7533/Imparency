@@ -22,7 +22,11 @@ export async function checkGeminiScore(milestoneId: string, score: number): Prom
       await createFraudAlert(
         "EXTREMELY_LOW_PROOF_SCORE",
         milestone.id,
-        "NGO",
+        // MILESTONE, not NGO: entityId is a milestone id, and a type that
+        // disagrees with its own id forced every reader to guess. The
+        // investigator still picks this up — maybeInvestigate resolves any
+        // entity type back to the organisation behind it.
+        "MILESTONE",
         `Milestone "${milestone.title}" scored ${score}/100 on AI validation — evidence is insufficient or unclear.`,
         "HIGH",
         "FRAUD_ALERT"
@@ -274,7 +278,7 @@ export async function checkGeneralPlatformAlerts(): Promise<void> {
         await createFraudAlert(
           "DEADLINE_EXCEEDED",
           m.id,
-          "NGO",
+          "MILESTONE",
           `Milestone "${m.title}" deadline (${m.deadline.toLocaleDateString()}) passed 30+ days ago with no proof submitted.`,
           "MEDIUM",
           "DOCUMENT_ERROR"
@@ -300,7 +304,7 @@ export async function checkGeneralPlatformAlerts(): Promise<void> {
         await createFraudAlert(
           "INACTIVE_CAMPAIGN_FUNDS",
           p.id,
-          "NGO",
+          "PROJECT",
           `Campaign "${p.title}" has raised funds but zero milestone activity for 60+ days.`,
           "MEDIUM",
           "FRAUD_ALERT"

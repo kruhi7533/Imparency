@@ -151,6 +151,23 @@ export async function runMatchingJob(jobId: string): Promise<JobCounts | null> {
       data: { status: "COMPLETED", finishedAt: new Date(), ...counts },
     });
 
+    // This run is now the answer for this opportunity, so earlier runs stop
+    // being one. Their undecided candidates were otherwise left PROPOSED
+    // forever, putting the same opportunity in the decision queue once per run
+    // — with the older rows judged against criteria an admin has since
+    // revised.
+    //
+    // Deliberately after the COMPLETED write, not before: a run that fails
+    // leaves the previous results standing, because a stale answer beats none.
+    await prisma.matchingJob.updateMany({
+      where: {
+        opportunityId: job.opportunityId,
+        id: { not: jobId },
+        supersededAt: null,
+      },
+      data: { supersededAt: new Date() },
+    });
+
     return counts;
   } catch (err: any) {
     // A job must never be left stuck in RUNNING with nothing to explain it.

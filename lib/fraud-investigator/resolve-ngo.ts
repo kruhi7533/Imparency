@@ -3,17 +3,20 @@ import prisma from "@/lib/prisma";
 /**
  * Turns a FraudAlert's entityId into the NGOProfile id it actually concerns.
  *
- * Why this is needed: FraudAlert.entityType is not a reliable description of
- * what entityId points at. Several alerts in lib/risk-agent.ts declare
- * entityType "NGO" while storing a MILESTONE id (EXTREMELY_LOW_PROOF_SCORE,
- * DEADLINE_EXCEEDED) or a PROJECT id (INACTIVE_CAMPAIGN_FUNDS) — the type
- * describes whose problem it is, not what the id is. Passing those straight
- * into an ngoId column throws a foreign-key violation.
+ * Why this is needed: an alert's entityId is not always an NGO id.
+ * EXTREMELY_LOW_PROOF_SCORE and DEADLINE_EXCEEDED point at a MILESTONE,
+ * INACTIVE_CAMPAIGN_FUNDS at a PROJECT — correctly, since that is what each
+ * alert is about. They still concern the organisation behind that record, and
+ * passing the id straight into an ngoId column throws a foreign-key violation.
  *
- * Rather than migrate historical alert rows (destructive, and the alert list
- * itself is fine as-is), resolve at read time: try NGO, then the two indirect
- * shapes. Returns null when the id resolves to nothing, so callers can report
- * a clean error instead of a 500.
+ * Those three used to declare entityType "NGO" while storing the indirect id,
+ * which is now fixed at the source in lib/risk-agent.ts. This still resolves by
+ * trying all three shapes rather than trusting entityType, because HISTORICAL
+ * rows written before that fix keep the old mislabelled type, and migrating
+ * them would rewrite audit records to tidy a column.
+ *
+ * Returns null when the id resolves to nothing, so callers can report a clean
+ * error instead of a 500.
  */
 export async function resolveNgoId(entityId: string): Promise<string | null> {
   if (!entityId) return null;
