@@ -16,7 +16,7 @@ Answer architecture questions from that document plus a targeted re-read of the 
 - Several files bypass the shared `lib/prisma.ts` singleton with their own `new PrismaClient()` (loses the Neon retry wrapper): WhatsApp worker, drafts routes, pitch/lead route.
 - `Notification` rows are written and pushed via FCM but never surfaced in any UI (no notifications route/bell/list).
 - ~~`app/donor/dashboard/page.tsx` is a hardcoded stub~~ — fixed; it is now wired to real Prisma data.
-- `app/api/ngo/whatsapp-drafts/convert/route.ts` is dead code referencing a schema that no longer exists.
+- ~~`app/api/ngo/whatsapp-drafts/convert/route.ts` is dead code~~ — deleted; it was unreferenced by any UI, bypassed the `lib/prisma.ts` singleton, and updated a `milestoneId` without an ownership check. The live draft routes are `app/api/drafts/*`.
 - There **is** now a Vitest suite: `npm test` runs `tests/*.test.ts` (25 files / 264 tests as of 2026-08-31, config in `vitest.config.ts`, `@` alias resolved). Prisma is mocked per-test, so no database is needed. Add tests there rather than writing new `scripts/test-*.ts` harnesses.
 
 ## NGO verification: ONE pass, then triage
