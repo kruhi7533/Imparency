@@ -12,7 +12,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
   user: { findMany: vi.fn() },
-  fraudAlert: { create: vi.fn() },
+  fraudAlert: { create: vi.fn(), findFirst: vi.fn() },
 }));
 
 vi.mock("@/lib/prisma", () => ({ default: prismaMock }));
@@ -23,6 +23,8 @@ import { checkPANUsage } from "@/lib/fraud-alerts";
 beforeEach(() => {
   vi.clearAllMocks();
   prismaMock.fraudAlert.create.mockResolvedValue({ id: "alert-1" });
+  // No existing open alert — createFraudAlert now refuses to raise a duplicate.
+  prismaMock.fraudAlert.findFirst.mockResolvedValue(null);
 });
 
 describe("checkPANUsage", () => {
