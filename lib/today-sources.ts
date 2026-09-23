@@ -11,6 +11,58 @@ import type { InboxSources } from "@/lib/today-inbox";
  *
  * Takes the client rather than importing it so a test can pass a mock.
  */
+/**
+ * The organisation behind each alert, in three batched queries.
+ *
+ * FraudAlert.entityType/entityId is polymorphic with no relation to join
+ * through, and the id is frequently NOT an NGO id: an alert about a milestone
+ * stores a milestone id, one about a campaign stores a project id. Both still
+ * concern the organisation behind that record, which is the name an admin
+ * needs on the card and the page the card should open.
+ *
+ * Every id is tried against all three tables rather than trusting entityType,
+ * because rows written before lib/risk-agent.ts was corrected still carry a
+ * milestone id under entityType "NGO". Three queries regardless of how many
+ * alerts there are — the earlier version issued one lookup per alert.
+ */
+async function resolveAlertOrganisations(
+  prisma: any,
+  alerts: { entityId: string }[]
+): Promise<Record<string, { ngoId: string; orgName: string }>> {
+  const ids = Array.from(new Set(alerts.map((a) => a.entityId))).filter(Boolean);
+  if (ids.length === 0) return {};
+
+  const [ngos, milestones, projects] = await Promise.all([
+    prisma.nGOProfile.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, orgName: true },
+    }),
+    prisma.milestone.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, project: { select: { ngoId: true, ngo: { select: { orgName: true } } } } },
+    }),
+    prisma.project.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, ngoId: true, ngo: { select: { orgName: true } } },
+    }),
+  ]);
+
+  const resolved: Record<string, { ngoId: string; orgName: string }> = {};
+  for (const n of ngos as { id: string; orgName: string }[]) {
+    resolved[n.id] = { ngoId: n.id, orgName: n.orgName };
+  }
+  for (const m of milestones as {
+    id: string;
+    project: { ngoId: string; ngo: { orgName: string } };
+  }[]) {
+    resolved[m.id] = { ngoId: m.project.ngoId, orgName: m.project.ngo.orgName };
+  }
+  for (const p of projects as { id: string; ngoId: string; ngo: { orgName: string } }[]) {
+    resolved[p.id] = { ngoId: p.ngoId, orgName: p.ngo.orgName };
+  }
+  return resolved;
+}
+
 export async function loadInboxSources(prisma: any): Promise<InboxSources> {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const now = new Date();
@@ -140,7 +192,11 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
     // Match candidate decisions — the engine proposed these as PROPOSED, an
     // admin must SHORTLIST or DISMISS.
     prisma.matchCandidate.findMany({
-      where: { decision: "PROPOSED" },
+      // Only the current run for each opportunity. A re-match supersedes its
+      // predecessors (see MatchingJob.supersededAt), and their undecided
+      // candidates were judged against criteria that have since been revised —
+      // showing them put one opportunity in the queue once per run.
+      where: { decision: "PROPOSED", job: { supersededAt: null } },
       select: {
         id: true,
         jobId: true,
@@ -152,27 +208,7 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
     }),
   ]);
 
-  // FraudAlert.entityId is polymorphic with no relation to join through, so the
-  // organisation behind an alert takes one extra lookup. Ids that resolve to no
-  // NGO (some call sites store a milestone id under entityType "NGO") simply
-  // stay unnamed rather than producing a link that 404s.
-  const alertNgoIds = Array.from(
-    new Set(
-      openAlerts
-        .filter((a: { entityType: string }) => a.entityType === "NGO")
-        .map((a: { entityId: string }) => a.entityId)
-    )
-  );
-  const alertEntityNames: Record<string, string> = {};
-  if (alertNgoIds.length > 0) {
-    const named = await prisma.nGOProfile.findMany({
-      where: { id: { in: alertNgoIds } },
-      select: { id: true, orgName: true },
-    });
-    for (const n of named as { id: string; orgName: string }[]) {
-      alertEntityNames[n.id] = n.orgName;
-    }
-  }
+  const alertNgos = await resolveAlertOrganisations(prisma, openAlerts);
 
   return {
     pendingNgos,
@@ -188,6 +224,6 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
     overdueMilestones,
     submittedOpportunities,
     proposedCandidates,
-    alertEntityNames,
+    alertNgos,
   };
 }

@@ -229,7 +229,7 @@ describe("which column each queue lands in", () => {
             description: "PAN number in the documents does not match the form.",
           },
         ],
-        alertEntityNames: { ngo_7: "Tejamma" },
+        alertNgos: { ngo_7: { ngoId: "ngo_7", orgName: "Tejamma" } },
       }),
       NOW
     );
@@ -237,6 +237,31 @@ describe("which column each queue lands in", () => {
     expect(item.title).toBe("Tejamma");
     expect(item.subtitle).toContain("PAN number");
     expect(item.href).toBe("/admin/ngos/ngo_7");
+  });
+
+  it("links a milestone alert to the organisation, not to the milestone id", () => {
+    // EXTREMELY_LOW_PROOF_SCORE and DEADLINE_EXCEEDED store a MILESTONE id.
+    // Using it as an NGO id would build /admin/ngos/<milestoneId> — a 404.
+    const [item] = buildInboxItems(
+      sources({
+        openAlerts: [
+          {
+            id: "a",
+            type: "EXTREMELY_LOW_PROOF_SCORE",
+            severity: "HIGH",
+            createdAt: daysAgo(1),
+            entityType: "MILESTONE",
+            entityId: "milestone_3",
+            description: 'Milestone "Phase 2" scored 12/100.',
+          },
+        ],
+        alertNgos: { milestone_3: { ngoId: "ngo_9", orgName: "Tejamma" } },
+      }),
+      NOW
+    );
+
+    expect(item.title).toBe("Tejamma");
+    expect(item.href).toBe("/admin/ngos/ngo_9");
   });
 
   it("stays on the queue when the id is not an NGO after all", () => {
@@ -255,7 +280,7 @@ describe("which column each queue lands in", () => {
             description: "Scored 12/100.",
           },
         ],
-        alertEntityNames: {},
+        alertNgos: {},
       }),
       NOW
     );
@@ -295,7 +320,7 @@ describe("fraud alerts collapse per organisation", () => {
           alert("a2", "ngo_1", "HIGH", "Registration number does not match."),
           alert("a3", "ngo_1", "HIGH", "PAN number does not match."),
         ],
-        alertEntityNames: { ngo_1: "Tejamma" },
+        alertNgos: { ngo_1: { ngoId: "ngo_1", orgName: "Tejamma" } },
       }),
       NOW
     );
@@ -313,7 +338,7 @@ describe("fraud alerts collapse per organisation", () => {
           alert("a1", "ngo_1", "HIGH", "Organisation name does not match."),
           alert("a2", "ngo_1", "HIGH", "PAN number does not match."),
         ],
-        alertEntityNames: { ngo_1: "Tejamma" },
+        alertNgos: { ngo_1: { ngoId: "ngo_1", orgName: "Tejamma" } },
       }),
       NOW
     );
@@ -330,7 +355,7 @@ describe("fraud alerts collapse per organisation", () => {
         openAlerts: Array.from({ length: 7 }, (_, i) =>
           alert(`a${i}`, "ngo_1", "HIGH", `Defect ${i}`)
         ),
-        alertEntityNames: { ngo_1: "Tejamma" },
+        alertNgos: { ngo_1: { ngoId: "ngo_1", orgName: "Tejamma" } },
       }),
       NOW
     );
@@ -347,7 +372,7 @@ describe("fraud alerts collapse per organisation", () => {
           alert("a1", "ngo_1", "LOW", "Minor"),
           alert("a2", "ngo_1", "HIGH", "Serious"),
         ],
-        alertEntityNames: { ngo_1: "Tejamma" },
+        alertNgos: { ngo_1: { ngoId: "ngo_1", orgName: "Tejamma" } },
       }),
       NOW
     );
@@ -365,7 +390,7 @@ describe("fraud alerts collapse per organisation", () => {
           alert("a1", "ngo_1", "HIGH", "Recent", 1),
           alert("a2", "ngo_1", "HIGH", "Ancient", 30),
         ],
-        alertEntityNames: { ngo_1: "Tejamma" },
+        alertNgos: { ngo_1: { ngoId: "ngo_1", orgName: "Tejamma" } },
       }),
       NOW
     );
@@ -380,7 +405,7 @@ describe("fraud alerts collapse per organisation", () => {
           alert("a1", "ngo_1", "HIGH", "Defect"),
           alert("a2", "ngo_2", "HIGH", "Defect"),
         ],
-        alertEntityNames: { ngo_1: "Tejamma", ngo_2: "Kiran Welfare Society" },
+        alertNgos: { ngo_1: { ngoId: "ngo_1", orgName: "Tejamma" }, ngo_2: { ngoId: "ngo_2", orgName: "Kiran Welfare Society" } },
       }),
       NOW
     );
@@ -393,7 +418,7 @@ describe("fraud alerts collapse per organisation", () => {
     const [item] = buildInboxItems(
       sources({
         openAlerts: [alert("a1", "ngo_1", "HIGH", "PAN number does not match.")],
-        alertEntityNames: { ngo_1: "Tejamma" },
+        alertNgos: { ngo_1: { ngoId: "ngo_1", orgName: "Tejamma" } },
       }),
       NOW
     );

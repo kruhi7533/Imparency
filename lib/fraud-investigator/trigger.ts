@@ -13,10 +13,21 @@ import { BACKGROUND_WALL_CLOCK_MS, INVESTIGATOR_ENABLED } from "./config";
  * to call it from a new call site never actually runs. This one runs wherever
  * createFraudAlert already runs, today and for every future call site too.
  *
- * Deliberately narrow: only entityType NGO, only severity HIGH. Medium and low
- * alerts are exactly the pattern-matching noise the investigator's own system
- * prompt (rule 2) warns against chasing — they stay in the ordinary admin queue.
+ * Deliberately narrow: only severity HIGH, and only alerts that belong to an
+ * organisation. Medium and low alerts are exactly the pattern-matching noise
+ * the investigator's own system prompt (rule 2) warns against chasing — they
+ * stay in the ordinary admin queue.
+ *
+ * The types below are the ones that resolve to an organisation. MILESTONE and
+ * PROJECT are here because an alert about a milestone is still an alert about
+ * the organisation that submitted it — lib/risk-agent.ts used to declare those
+ * as "NGO" while storing a milestone id, and narrowing the gate to a literal
+ * "NGO" after that was fixed would have silently stopped investigating
+ * low-proof-score alerts. DONOR is deliberately absent: the investigator's
+ * tools only read organisation-side evidence.
  */
+const INVESTIGABLE_ENTITY_TYPES = ["NGO", "MILESTONE", "PROJECT"];
+
 export async function maybeInvestigate(
   entityType: string,
   entityId: string,
@@ -24,12 +35,12 @@ export async function maybeInvestigate(
   alertId: string
 ): Promise<void> {
   if (!INVESTIGATOR_ENABLED) return;
-  if (entityType !== "NGO" || severity !== "HIGH") return;
+  if (!INVESTIGABLE_ENTITY_TYPES.includes(entityType) || severity !== "HIGH") return;
 
   try {
-    // entityType "NGO" does not guarantee entityId IS an NGO id — several
-    // alerts in lib/risk-agent.ts store a milestone or project id under that
-    // type. Resolve before touching a column with an NGO foreign key.
+    // Resolve to the organisation before touching a column with an NGO foreign
+    // key. Needed both for the indirect types above and for historical rows
+    // that still carry a milestone id under entityType "NGO".
     const { resolveNgoId } = await import("./resolve-ngo");
     const ngoId = await resolveNgoId(entityId);
     if (!ngoId) return;
