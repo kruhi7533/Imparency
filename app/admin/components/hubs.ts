@@ -65,22 +65,45 @@ export const ADMIN_HUBS: Hub[] = [
     ],
   },
   {
-    key: "delivery",
-    label: "Delivery",
+    // Grants: the FUNDER-led funding model. An institutional funder opens an
+    // opportunity, matching shortlists organisations, a shortlisted one submits
+    // a proposal, and an admin approves or rejects it. This is a wholly separate
+    // track from Campaigns (the donor-led model) — the two share no data: a
+    // Proposal has no projectId and an approval creates no Project today. Kept
+    // as its own hub so the two funding models never blur. The tabs run along
+    // the path — Opportunities first, then the Proposals decision.
+    key: "grants",
+    label: "Grants",
+    href: "/admin/opportunities",
+    tabs: [
+      {
+        href: "/admin/opportunities",
+        label: "Opportunities",
+        hint: "Where a funding round starts: funder RFPs, the criteria each declares, and the matching runs that shortlist organisations against them.",
+      },
+      {
+        href: "/admin/proposals",
+        label: "Proposals",
+        hint: "The decision. What a shortlisted organisation proposes to do with the funding — approve or reject it here. Only an approved proposal becomes a funded project in Delivery.",
+      },
+    ],
+  },
+  {
+    // Campaigns: the DONOR-led funding model. Organisations run campaigns that
+    // raise money directly from donors and report milestone proof against it.
+    // This is Project -> Donation/Milestone, entirely separate from the Grants
+    // (funder-led) track above — different tables, different lifecycle.
+    key: "campaigns",
+    label: "Campaigns",
     href: "/admin/project-review",
     tabs: [
-      { href: "/admin/project-review", label: "Approvals", hint: "Campaigns awaiting approval before they can raise funds." },
+      { href: "/admin/project-review", label: "Campaign approvals", hint: "Campaigns awaiting approval before they can raise funds from donors." },
       {
         href: "/admin/projects",
         label: "All Projects",
         hint: "Every campaign on the platform, searchable — active and completed ones live here too, not only what's still pending.",
       },
       { href: "/admin/proof-review", label: "Milestone proof", hint: "Evidence submitted against funded milestones." },
-      {
-        href: "/admin/opportunities",
-        label: "Opportunities",
-        hint: "Funder RFPs, the criteria each one declares, and the matching runs that propose organisations against them.",
-      },
     ],
   },
   {
@@ -102,15 +125,6 @@ export const ADMIN_HUBS: Hub[] = [
       // risk-compliance, so giving it a tab put two entries in this hub that
       // land on the same page — the exact "one thing appearing as several"
       // problem the hubs were introduced to remove.
-    ],
-  },
-  {
-    key: "crisis",
-    label: "Crisis",
-    href: "/admin/crisis",
-    tabs: [
-      { href: "/admin/crisis", label: "Events", hint: "Crisis events awaiting verification before they go public." },
-      { href: "/admin/initiatives", label: "Relief initiatives", hint: "Organisation-submitted relief work under each crisis." },
     ],
   },
   {
@@ -137,6 +151,16 @@ export const ADMIN_HUBS: Hub[] = [
       { href: "/admin/dashboard", label: "Overview", hint: "Donations, verification counts, and platform totals." },
       { href: "/admin/trust-trends", label: "Trust trends", hint: "How verification and compliance are moving over time." },
       { href: "/admin/impact-health", label: "Impact health", hint: "Whether funded work is actually reporting outcomes." },
+      {
+        href: "/admin/sla",
+        label: "Response targets",
+        hint: "How long each queue is allowed to keep someone waiting, and what is currently past that.",
+      },
+      {
+        href: "/admin/audit",
+        label: "Audit trail",
+        hint: "Every recorded admin decision, across every entity — searchable by actor, action, entity type, and date.",
+      },
     ],
   },
 ];

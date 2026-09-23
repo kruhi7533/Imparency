@@ -32,11 +32,19 @@ describe("admin hubs", () => {
   });
 
   it("keeps a nested route inside its hub", () => {
-    expect(hubForPath("/admin/crisis/abc-123")?.key).toBe("crisis");
+    // Crisis was removed from the admin console entirely — it is not admin work.
+    // The routes still exist and function for the public/NGO relief flow, but the
+    // admin nav no longer claims them, so they belong to no hub.
+    expect(hubForPath("/admin/crisis/abc-123")).toBeNull();
+    expect(hubForPath("/admin/initiatives")).toBeNull();
     expect(hubForPath("/admin/donors/abc-123")?.key).toBe("people");
     // A matching job lives several segments deep and still belongs to the hub
     // its catalogue is registered in — the tab bar must not vanish there.
-    expect(hubForPath("/admin/opportunities/opp-1/jobs/job-1")?.key).toBe("delivery");
+    // Opportunities (and the proposals they produce) are the Grants hub now
+    // (funder-led model), split out from the donor-led Campaigns hub so the two
+    // funding models never share a home.
+    expect(hubForPath("/admin/opportunities/opp-1/jobs/job-1")?.key).toBe("grants");
+    expect(hubForPath("/admin/proposals/prop-1")?.key).toBe("grants");
   });
 
   it("puts an NGO detail view under the catalogue that lists it", () => {
