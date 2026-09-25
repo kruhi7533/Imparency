@@ -73,11 +73,22 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              {/* Admin navigation lives entirely in the Admin Console hub bar
-                  (app/admin/layout.tsx), so the global bar shows no admin links —
-                  only the logo and the user chip. This avoids a second, flat admin
-                  menu stacking on top of the hub nav. Home/Discover stay reachable
-                  via the logo. */}
+              {/* Admin gets ONE door into the console, not the old flat menu.
+                  The full navigation lives in the Admin Console hub bar
+                  (app/admin/layout.tsx); this single link is just the way in
+                  from the public site, so an admin who lands on the home page
+                  isn't stranded with only the donor/NGO CTAs. */}
+              {session?.user?.role === "ADMIN" && (
+                <Link
+                  href="/admin/today"
+                  className={`px-3.5 py-1.5 rounded-full border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200 transition ${
+                    pathname.startsWith("/admin") ? "bg-red-500/20 text-red-200" : ""
+                  }`}
+                >
+                  Admin Console →
+                </Link>
+              )}
+
               {session?.user?.role !== "ADMIN" && (
                 <>
                   <Link href="/" className={`hover:text-white transition ${pathname === "/" ? "text-white" : ""}`}>
@@ -192,6 +203,15 @@ export default function Navbar() {
                           <span className="bg-emerald-500/20 text-emerald-400 text-[9px] uppercase px-1.5 py-0.5 rounded-full font-bold leading-none">New</span>
                         </Link>
                       </>
+                    )}
+                    {session.user.role === "ADMIN" && (
+                      <Link
+                        href="/admin/today"
+                        onClick={() => setDropdownOpen(false)}
+                        className="block px-4 py-2 text-xs font-bold text-red-300 hover:text-red-200 hover:bg-gray-900 transition"
+                      >
+                        Admin Console
+                      </Link>
                     )}
                     <Link
                       href="/help"
