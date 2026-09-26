@@ -23,6 +23,18 @@
     {
       "path": "/api/cron/crisis-notify",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/risk-sweep",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/risk-scores",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/risk-dispatch",
+      "schedule": "0 7 * * *"
     }
   ]
 }

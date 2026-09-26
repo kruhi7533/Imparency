@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import crypto from "crypto";
+import { verifyRazorpaySignature } from "@/lib/razorpay-webhook";
 import { sendPaymentRetryEmail } from "@/lib/email";
 import { generateRetryToken, getRetryDelay } from "@/lib/retry-utils";
 import { evaluateReceiptEligibility, issueTaxReceipt, queueReceiptClaim } from "@/lib/tax-receipt";
+import { captureError } from "@/lib/observability";
 
 export async function POST(req: Request) {
   try {
@@ -16,12 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Configuration error" }, { status: 500 });
     }
 
-    const expectedSignature = crypto
-      .createHmac("sha256", secret)
-      .update(rawBody)
-      .digest("hex");
-
-    if (expectedSignature !== signature) {
+    if (!verifyRazorpaySignature(rawBody, signature, secret)) {
       console.warn("Invalid Razorpay webhook signature");
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
@@ -92,9 +88,14 @@ export async function POST(req: Request) {
               : null,
         };
       } catch (snapErr) {
-        // Never block payment confirmation on snapshot assembly — but log loudly,
+        // Never block payment confirmation on snapshot assembly — but capture it,
         // because a missing snapshot is permanently unreconstructable.
-        console.error(`[webhook] FAILED to build compliance snapshot for donation ${donation.id}:`, snapErr);
+        captureError(snapErr, {
+          scope: "donations/webhook",
+          operation: "build_compliance_snapshot",
+          entityType: "DONATION",
+          entityId: donation.id,
+        });
       }
 
       // Update database: status: SUCCESS, increment project.raisedAmount, increment user.totalDonated
@@ -154,6 +155,22 @@ export async function POST(req: Request) {
         await ensureImpactSubscription(donation.donorId, donation.projectId);
       } catch (subErr) {
         console.error("Failed to create impact subscription:", subErr);
+      }
+
+      // Donor-side fraud rules (lib/risk-agent.ts) — deterministic, not the
+      // NGO fraud-investigator agent. Never block payment confirmation on
+      // these; each is already try/caught internally, this is belt-and-braces.
+      try {
+        const { checkDonationRate, checkDonationStructuring, checkCsrBudgetOverrun } = await import(
+          "@/lib/risk-agent"
+        );
+        await Promise.all([
+          checkDonationRate(donation.donorId),
+          checkDonationStructuring(donation.donorId, updatedDonation.project.ngoId),
+          checkCsrBudgetOverrun(donation.donorId),
+        ]);
+      } catch (riskErr) {
+        console.error("[donations/webhook] donor risk checks failed:", riskErr);
       }
 
       // 80G receipt is only issued once the donor's PAN is verified. If it's not
@@ -284,8 +301,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (error) {
     const err = error as Error;
-    console.error("Error processing Razorpay webhook:", err);
-    // Wrap entire handler in try/catch and return 200 even on error (log the error server-side). Razorpay stops retrying on 200.
+    // Returning 200 stops Razorpay retrying, so anything that lands here is a
+    // payment we took and may never have recorded. There is no second chance
+    // and no automatic recovery — this is the most important error in the app.
+    captureError(
+      err,
+      { scope: "donations/webhook", operation: "process_webhook" },
+      "fatal"
+    );
     return NextResponse.json({ error: err.message, fallback: true }, { status: 200 });
   }
 }

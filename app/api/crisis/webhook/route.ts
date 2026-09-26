@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import crypto from "crypto";
+import { verifyRazorpaySignature } from "@/lib/razorpay-webhook";
 
 // Reuses the same RAZORPAY_WEBHOOK_SECRET as /api/donations/webhook — this
 // route needs its own webhook entry in the Razorpay dashboard pointing here,
@@ -16,8 +16,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Configuration error" }, { status: 500 });
     }
 
-    const expectedSignature = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
-    if (expectedSignature !== signature) {
+    if (!verifyRazorpaySignature(rawBody, signature, secret)) {
       console.warn("Invalid Razorpay webhook signature (crisis)");
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }

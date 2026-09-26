@@ -22,7 +22,7 @@ export interface FcraExtractionReport {
 
 /**
  * Extracts the key fields from an FCRA certificate so an admin can verify it
- * quickly. Mirrors lib/gemini/verify-ngo-docs.ts: graceful mock fallback when
+ * quickly. Graceful mock fallback when
  * GEMINI_API_KEY is absent, JSON-schema-constrained Gemini call otherwise.
  *
  * Note: this is an EXTRACTION + cross-check aid only — it never auto-approves.

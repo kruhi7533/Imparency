@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import prisma from "@/lib/prisma";
 import { TrendingUp, ShieldAlert, CalendarClock, Send, Info } from "lucide-react";
 
@@ -5,6 +6,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const WEEKS = 8;
+
+/**
+ * Cache tag for the trend series below. Deliberately NOT exported — a
+ * `page.tsx` may only export Next's reserved names. Same reasoning as
+ * DASHBOARD_METRICS_TAG in app/admin/dashboard/page.tsx; lift it into `lib/`
+ * if a mutation ever needs to invalidate it via `revalidateTag`.
+ */
+const TRUST_TRENDS_TAG = "admin-trust-trends";
 
 function startOfWeek(d: Date): Date {
   const date = new Date(d);
@@ -143,11 +152,59 @@ function Distribution({ buckets }: { buckets: { label: string; count: number; co
   );
 }
 
-export default async function TrustTrendsPage() {
-  const buckets = weekBuckets(WEEKS);
-  const rangeStart = buckets[0].start;
+/**
+ * Week boundaries as plain millisecond numbers, derived deterministically from
+ * a start timestamp — NOT from `new Date()`. Determinism matters because this
+ * runs inside the cached function below: recomputing "this week" in there
+ * would let a cached entry describe different weeks than the labels rendered
+ * beside it.
+ */
+function bucketBoundsFrom(startMs: number, weeks: number): { start: number; end: number }[] {
+  const bounds: { start: number; end: number }[] = [];
+  for (let i = 0; i < weeks; i++) {
+    const start = new Date(startMs);
+    start.setDate(start.getDate() + i * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    bounds.push({ start: start.getTime(), end: end.getTime() });
+  }
+  return bounds;
+}
 
-  const [alertsRaised, alertsResolved, milestonesWithDeadlineInRange, deliveries, verifiedNgos] = await Promise.all([
+/**
+ * The trend series, cached for five minutes.
+ *
+ * This page is a safe thing to cache, and most of the admin console is not.
+ * The rule (from app/admin/dashboard/page.tsx) is: cache anything an admin
+ * cannot make stale by an action taken on this page. Nothing here is an action
+ * queue — it is eight weeks of history, and no button on this page changes it.
+ * The verification, proof-review and risk queues stay deliberately uncached for
+ * exactly the opposite reason.
+ *
+ * What earns the cache is the query shape, not the wall-clock saving: all five
+ * of these fetch whole row sets in order to count them in JavaScript, and they
+ * are unbounded — every fraud alert, every impact delivery, every verified
+ * NGO's health score. They are cheap now and get linearly worse forever. This
+ * caps them at once per five minutes regardless of traffic.
+ *
+ * ONLY PLAIN NUMBERS CROSS THE CACHE BOUNDARY. That is deliberate: the raw
+ * rows carry `Date`s, and `healthScore` is a Prisma `Decimal` — a class
+ * instance that does not survive serialization (cache one and it comes back as
+ * `{s,e,d}`, on which `Number()` silently yields NaN). Doing the bucketing
+ * inside means the expensive JS work is cached too, and the payload is a
+ * handful of integer arrays instead of thousands of rows.
+ *
+ * `rangeStartMs` is an argument rather than a closure read so it forms part of
+ * the cache key: when the week rolls over, the key changes and the entry is
+ * refetched, instead of serving series misaligned against fresh labels.
+ */
+const getTrustTrendSeries = unstable_cache(
+  async (rangeStartMs: number, weeks: number) => {
+    const rangeStart = new Date(rangeStartMs);
+    const bounds = bucketBoundsFrom(rangeStartMs, weeks);
+
+    const [alertsRaised, alertsResolved, milestonesWithDeadlineInRange, deliveries, verifiedNgos] =
+      await Promise.all([
     prisma.fraudAlert.findMany({
       where: { createdAt: { gte: rangeStart } },
       select: { createdAt: true },
@@ -168,46 +225,95 @@ export default async function TrustTrendsPage() {
       where: { verificationStatus: "VERIFIED", isDeleted: false },
       select: { healthScore: true },
     }),
-  ]);
+      ]);
 
-  const bucketIndex = (date: Date) => buckets.findIndex((b) => date >= b.start && date < b.end);
+    const bucketIndex = (date: Date) => {
+      const t = date.getTime();
+      return bounds.findIndex((b) => t >= b.start && t < b.end);
+    };
 
-  const raisedSeries = new Array(WEEKS).fill(0);
-  for (const a of alertsRaised) {
-    const idx = bucketIndex(a.createdAt);
-    if (idx >= 0) raisedSeries[idx]++;
-  }
-  const resolvedSeries = new Array(WEEKS).fill(0);
-  for (const a of alertsResolved) {
-    if (!a.resolvedAt) continue;
-    const idx = bucketIndex(a.resolvedAt);
-    if (idx >= 0) resolvedSeries[idx]++;
-  }
+    const raisedSeries = new Array(weeks).fill(0);
+    for (const a of alertsRaised) {
+      const idx = bucketIndex(a.createdAt);
+      if (idx >= 0) raisedSeries[idx]++;
+    }
+    const resolvedSeries = new Array(weeks).fill(0);
+    for (const a of alertsResolved) {
+      if (!a.resolvedAt) continue;
+      const idx = bucketIndex(a.resolvedAt);
+      if (idx >= 0) resolvedSeries[idx]++;
+    }
 
-  const overdueSeries = new Array(WEEKS).fill(0);
-  const nowTime = Date.now();
-  for (const m of milestonesWithDeadlineInRange) {
-    if (m.deadline.getTime() >= nowTime) continue; // only count weeks where the deadline has actually passed
-    const idx = bucketIndex(m.deadline);
-    if (idx >= 0) overdueSeries[idx]++;
-  }
+    // `nowTime` is evaluated when the cache entry is BUILT, not when it is
+    // read, so "overdue" can lag by up to the revalidate window. Immaterial
+    // here: this is an eight-week trend chart, and a milestone crossing its
+    // deadline within a five-minute window does not change its shape. The
+    // live overdue count an admin acts on comes from the Today inbox and
+    // Impact Health, both of which stay uncached.
+    const overdueSeries = new Array(weeks).fill(0);
+    const nowTime = Date.now();
+    for (const m of milestonesWithDeadlineInRange) {
+      if (m.deadline.getTime() >= nowTime) continue; // only count weeks where the deadline has actually passed
+      const idx = bucketIndex(m.deadline);
+      if (idx >= 0) overdueSeries[idx]++;
+    }
 
-  const deliveryRateSeries = new Array(WEEKS).fill(100);
-  const readRateSeries = new Array(WEEKS).fill(0);
-  for (let i = 0; i < WEEKS; i++) {
-    const weekDeliveries = deliveries.filter((d) => bucketIndex(d.createdAt) === i);
-    const total = weekDeliveries.length;
-    const delivered = weekDeliveries.filter((d) => d.status === "SENT" || d.status === "READ").length;
-    const read = weekDeliveries.filter((d) => d.status === "READ").length;
-    deliveryRateSeries[i] = total > 0 ? Math.round((delivered / total) * 100) : 100;
-    readRateSeries[i] = delivered > 0 ? Math.round((read / delivered) * 100) : 0;
-  }
+    const deliveryRateSeries = new Array(weeks).fill(100);
+    const readRateSeries = new Array(weeks).fill(0);
+    for (let i = 0; i < weeks; i++) {
+      const weekDeliveries = deliveries.filter((d) => bucketIndex(d.createdAt) === i);
+      const total = weekDeliveries.length;
+      const delivered = weekDeliveries.filter((d) => d.status === "SENT" || d.status === "READ").length;
+      const read = weekDeliveries.filter((d) => d.status === "READ").length;
+      deliveryRateSeries[i] = total > 0 ? Math.round((delivered / total) * 100) : 100;
+      readRateSeries[i] = delivered > 0 ? Math.round((read / delivered) * 100) : 0;
+    }
+
+    // Counts only — `Number()` is applied to each Decimal HERE, on the
+    // database side of the cache boundary, so no Decimal instance is ever
+    // serialized. Labels and colours stay in the component; they are
+    // presentation, not data worth caching.
+    const healthCounts = {
+      strong: verifiedNgos.filter((n) => n.healthScore != null && Number(n.healthScore) >= 70).length,
+      developing: verifiedNgos.filter(
+        (n) => n.healthScore != null && Number(n.healthScore) >= 40 && Number(n.healthScore) < 70
+      ).length,
+      needsSupport: verifiedNgos.filter((n) => n.healthScore != null && Number(n.healthScore) < 40).length,
+      tooNew: verifiedNgos.filter((n) => n.healthScore == null).length,
+    };
+
+    return {
+      raisedSeries,
+      resolvedSeries,
+      overdueSeries,
+      deliveryRateSeries,
+      readRateSeries,
+      healthCounts,
+    };
+  },
+  ["admin-trust-trends"],
+  { revalidate: 300, tags: [TRUST_TRENDS_TAG] }
+);
+
+export default async function TrustTrendsPage() {
+  // Cheap, pure date maths — stays outside the cache so the rendered labels
+  // are always "now", and so the week boundary forms the cache key below.
+  const buckets = weekBuckets(WEEKS);
+
+  const {
+    raisedSeries,
+    resolvedSeries,
+    overdueSeries,
+    deliveryRateSeries,
+    readRateSeries,
+    healthCounts,
+  } = await getTrustTrendSeries(buckets[0].start.getTime(), WEEKS);
 
   const healthBuckets = [
-    { label: "Strong (70-100)", count: verifiedNgos.filter((n) => n.healthScore != null && Number(n.healthScore) >= 70).length, color: "bg-emerald-500" },
-    { label: "Developing (40-69)", count: verifiedNgos.filter((n) => n.healthScore != null && Number(n.healthScore) >= 40 && Number(n.healthScore) < 70).length, color: "bg-amber-500" },
-    { label: "Needs support (0-39)", count: verifiedNgos.filter((n) => n.healthScore != null && Number(n.healthScore) < 40).length, color: "bg-red-500" },
-    { label: "Too new to assess", count: verifiedNgos.filter((n) => n.healthScore == null).length, color: "bg-gray-400" },
+    { label: "Strong (70-100)", count: healthCounts.strong, color: "bg-emerald-500" },
+    { label: "Developing (40-69)", count: healthCounts.developing, color: "bg-amber-500" },
+    { label: "Needs support (0-39)", count: healthCounts.needsSupport, color: "bg-red-500" },
+    { label: "Too new to assess", count: healthCounts.tooNew, color: "bg-gray-400" },
   ];
 
   return (

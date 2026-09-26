@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { isBudgetViolation, getBudgetVerdict, parseValidationResult } from "@/lib/budget-rule";
+import { classifyProofLocation } from "@/lib/proof-location";
 
 interface Proof {
   id: string;
@@ -13,6 +14,9 @@ interface Proof {
   documentUrls: string[];
   aiValidationResult: string | null;
   aiValidationScore: number | null;
+  proofLatitude: number | null;
+  proofLongitude: number | null;
+  gpsSource: string | null;
   submittedAt: string;
   submittedBy: {
     name: string;
@@ -41,6 +45,8 @@ interface Milestone {
     raisedAmount: number;
     coverImage: string;
     location: string;
+    latitude: number | null;
+    longitude: number | null;
     ngo: {
       id: string;
       orgName: string;
@@ -196,7 +202,7 @@ export default function ProofReviewClient({
     if (!selectedMilestone || !actionType) return;
 
     if (actionType === "REJECT" && !rejectionReason.trim()) {
-      setError("Please provide a rejection reason so the NGO knows how to improve their proof.");
+      setError("Please provide a reason so the NGO knows how to improve their proof before resubmitting.");
       return;
     }
 
@@ -498,6 +504,39 @@ export default function ProofReviewClient({
                               </div>
                             </div>
 
+                            {/* GPS provenance — a distinct badge even when there
+                                is no location data at all, so absence never
+                                looks the same as "verified". Most phone cameras
+                                strip EXIF location by default, so NO_GPS_DATA is
+                                the common case, not a red flag on its own. */}
+                            {(() => {
+                              const location = classifyProofLocation(
+                                latestProof.proofLatitude != null && latestProof.proofLongitude != null
+                                  ? { latitude: latestProof.proofLatitude, longitude: latestProof.proofLongitude }
+                                  : null,
+                                milestone.project.latitude != null && milestone.project.longitude != null
+                                  ? { latitude: milestone.project.latitude, longitude: milestone.project.longitude }
+                                  : null
+                              );
+                              const style =
+                                location.status === "MISMATCH"
+                                  ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-100 dark:border-red-900/30"
+                                  : location.status === "MATCH"
+                                  ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30"
+                                  : "bg-gray-50 dark:bg-gray-800/40 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700";
+                              const label =
+                                location.status === "MISMATCH"
+                                  ? `⚠ Photo taken ~${Math.round(location.distanceKm ?? 0)}km from project site`
+                                  : location.status === "MATCH"
+                                  ? `📍 Location matches project site (~${Math.round(location.distanceKm ?? 0)}km)`
+                                  : "📍 No GPS data on this photo";
+                              return (
+                                <span className={`inline-flex text-[10px] font-bold px-2 py-1 rounded-lg border ${style}`}>
+                                  {label}
+                                </span>
+                              );
+                            })()}
+
                             {/* Reasoning */}
                             {aiDetails && (
                               <div className="text-xs text-gray-600 dark:text-gray-400 space-y-2">
@@ -641,7 +680,13 @@ export default function ProofReviewClient({
                           onClick={() => openModal(milestone, "REJECT")}
                           className="flex-1 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 text-red-600 dark:text-red-400 font-bold py-2 rounded-xl text-xs transition text-center"
                         >
-                          Reject Proof
+                          {/* Was "Reject Proof" — read as final/terminal. It isn't:
+                              the API resets the milestone to IN_PROGRESS, and the
+                              NGO can submit proof again. The internal actionType
+                              ("REJECT") and the audit-log action name ("REJECTED")
+                              are left as-is — those are an accurate record of what
+                              happened, not a button a person reads before clicking. */}
+                          Request Resubmission
                         </button>
                       </div>
                       <button
@@ -817,12 +862,12 @@ export default function ProofReviewClient({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800">
             <h3 className="text-lg font-extrabold text-gray-900 dark:text-white mb-2">
-              {actionType === "APPROVE" ? "Approve Milestone Proof" : "Reject Milestone Proof"}
+              {actionType === "APPROVE" ? "Approve Milestone Proof" : "Request Resubmission"}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
               {actionType === "APPROVE"
                 ? `Confirming completion approval for milestone "${selectedMilestone.title}". This will mark the milestone as completed, batch-generate impact narratives, and notify all campaign donors.`
-                : `Specify the rejection reason for milestone "${selectedMilestone.title}". This will reset the milestone to IN_PROGRESS so the NGO can resubmit proof.`}
+                : `Specify why this proof isn't ready for milestone "${selectedMilestone.title}". This resets the milestone to IN_PROGRESS so the NGO can submit proof again.`}
             </p>
 
             {error && (
@@ -835,7 +880,7 @@ export default function ProofReviewClient({
               {actionType === "REJECT" && (
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Rejection Reason *
+                    Reason for Resubmission *
                   </label>
                   <textarea
                     value={rejectionReason}
@@ -887,7 +932,7 @@ export default function ProofReviewClient({
                   }`}
                 >
                   {loading && <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>}
-                  {actionType === "APPROVE" ? "Confirm Approval" : "Confirm Rejection"}
+                  {actionType === "APPROVE" ? "Confirm Approval" : "Send Back for Resubmission"}
                 </button>
               </div>
             </form>

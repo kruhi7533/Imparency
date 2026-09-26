@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rate-limiter";
 
 export async function GET(
   request: Request,
   { params }: { params: { token: string } }
 ) {
+  // The only donation endpoint reachable without a session — the token in an
+  // emailed retry link is the sole credential, and a hit creates a fresh
+  // Razorpay order. Without a limit the token space is brute-forceable at
+  // whatever rate the network allows. A donor follows this link once.
+  const rl = await checkRateLimit(request, "donations/retry", 10, 60);
+  if (rl.isBlocked) return rl.response!;
+
   try {
     const { token } = params;
 

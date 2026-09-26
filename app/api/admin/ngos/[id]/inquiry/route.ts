@@ -3,8 +3,7 @@ import { verifySessionRole } from "@/lib/auth-guards";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
-import { sendAdminInquiryEmail } from "@/lib/email";
-import { logAdminAction } from "@/lib/admin-log";
+import { openNgoInquiryThread } from "@/lib/inquiry-thread";
 
 export const runtime = "nodejs";
 
@@ -45,54 +44,19 @@ export async function POST(
     const questionText = question.trim();
     const threadSubject = subject?.trim() || `Question for "${ngo.orgName}"`;
 
-    const thread = await prisma.reviewThread.create({
-      data: {
-        subjectType: "NGO",
-        subjectId: ngo.id,
-        participantUserId: ngo.user.id,
-        kind: "INQUIRY",
-        subject: threadSubject,
-        entityType: entityType || null,
-        entityId: entityId || null,
-        status: "OPEN",
-        createdById: adminId,
-        messages: {
-          create: {
-            authorId: adminId,
-            authorRole: "ADMIN",
-            body: questionText,
-          },
-        },
-      },
-    });
-
-    await prisma.notification.create({
-      data: {
-        userId: ngo.user.id,
-        type: "ADMIN_INQUIRY",
-        title: "Admin has a question for your organisation",
-        body: `${threadSubject}: ${questionText.slice(0, 180)}${questionText.length > 180 ? "…" : ""} — reply from your dashboard inquiries page.`,
-      },
-    });
-
-    await logAdminAction({
+    // Thread + notification + email live in one helper so the matching flow
+    // cannot drift into a second, subtly different version of "tell an NGO".
+    const threadId = await openNgoInquiryThread({
+      ngoId: ngo.id,
       adminId,
-      action: "NGO_INQUIRY_SENT",
-      entityType: "THREAD",
-      entityId: thread.id,
-      note: questionText,
-      metadata: { subjectType: "NGO", subjectId: ngo.id, entityType, entityId },
+      subject: threadSubject,
+      body: questionText,
+      entityType,
+      entityId,
       request,
     });
 
-    // Email is best-effort — the thread is the source of truth.
-    try {
-      await sendAdminInquiryEmail(ngo.user.email, ngo.orgName, threadSubject, questionText);
-    } catch (emailErr) {
-      console.error("ngo-inquiry email failed (thread still created):", emailErr);
-    }
-
-    return NextResponse.json({ success: true, threadId: thread.id });
+    return NextResponse.json({ success: true, threadId });
   } catch (err: any) {
     console.error("Error in ngo inquiry endpoint:", err);
     return NextResponse.json(

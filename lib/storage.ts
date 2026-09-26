@@ -20,18 +20,49 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+/** Where private uploads live. Deliberately NOT under `public/`. */
+export const PRIVATE_UPLOAD_ROOT = "private-uploads";
+
 /**
  * Uploads a file buffer to the configured storage provider (local, S3/R2, or Cloudinary).
- * Returns the public URL of the uploaded file.
+ * Returns the URL of the uploaded file.
+ *
+ * Pass `{ private: true }` for anything that must not be world-readable —
+ * NGO registration certificates, PAN/12A/80G, FCRA certificates, bank proofs.
+ * A private upload is written OUTSIDE `public/` and addressed through
+ * `/api/documents/...`, which checks the session before serving a byte.
+ *
+ * Without that flag, local uploads land in `public/uploads/` — and Next serves
+ * everything under `public/` as a static asset with no authentication at all.
+ * That is correct for project cover images and donor-facing proof photos, and
+ * completely wrong for a scanned PAN card.
  */
+export interface UploadOptions {
+  /** Store outside the public web root and serve only through an authorised route. */
+  private?: boolean;
+}
+
 export async function uploadFile(
   file: Buffer,
   originalName: string,
-  folder: string
+  folder: string,
+  options: UploadOptions = {}
 ): Promise<string> {
   const ext = path.extname(originalName) || ".bin";
   const filename = `${uuidv4()}${ext}`;
   const provider = (process.env.STORAGE_PROVIDER || "local").toLowerCase();
+
+  // Fail closed. Cloudinary and S3/R2 return world-readable URLs here; private
+  // delivery on those needs signed, expiring URLs, which is not built yet.
+  // Refusing is deliberate — silently storing a PAN card at a public URL
+  // because the provider changed is exactly the failure this flag exists to
+  // prevent, and an unguessable URL is not access control.
+  if (options.private && provider !== "local") {
+    throw new Error(
+      `Refusing to upload a private file: STORAGE_PROVIDER is "${provider}", which returns public URLs. ` +
+        `Private delivery needs signed URLs (not yet implemented). Use STORAGE_PROVIDER="local" or implement signing before storing sensitive documents.`
+    );
+  }
 
   if (provider === "cloudinary") {
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
@@ -89,8 +120,17 @@ export async function uploadFile(
     return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
   } else {
     // Default: Local Storage
+    if (options.private) {
+      // Outside public/ — unreachable by the static file server, so the only
+      // way in is /api/documents, which authorises first.
+      const uploadDir = path.join(process.cwd(), PRIVATE_UPLOAD_ROOT, folder);
+      await fs.mkdir(uploadDir, { recursive: true });
+      await fs.writeFile(path.join(uploadDir, filename), file);
+      return `/api/documents/${folder}/${filename}`;
+    }
+
     const uploadDir = path.join(process.cwd(), "public", "uploads", folder);
-    
+
     // Ensure upload directory exists
     await fs.mkdir(uploadDir, { recursive: true });
     
@@ -154,6 +194,19 @@ export async function deleteFile(fileUrl: string): Promise<void> {
     // Default: Local Storage
     // e.g. /uploads/folder/filename.jpg
     // Check if the URL is relative to public uploads
+    if (fileUrl.startsWith("/api/documents/")) {
+      const rel = fileUrl.slice("/api/documents/".length);
+      const filePath = path.join(process.cwd(), PRIVATE_UPLOAD_ROOT, rel);
+      try {
+        await fs.unlink(filePath);
+      } catch (err) {
+        if (err && typeof err === "object" && "code" in err && err.code !== "ENOENT") {
+          throw err;
+        }
+      }
+      return;
+    }
+
     if (fileUrl.startsWith("/uploads/")) {
       const filePath = path.join(process.cwd(), "public", fileUrl);
       try {
