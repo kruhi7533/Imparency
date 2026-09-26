@@ -4,6 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limiter";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { draftNudgeMessage } from "@/lib/gemini/draft-ngo-nudge";
+import { logAdminAction } from "@/lib/admin-log";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,7 @@ export async function POST(
 ) {
   const auth = await verifySessionRole(Role.ADMIN);
   if (!auth.authorized) return auth.response;
+  const adminId = auth.session.user.id;
 
   const rl = await checkRateLimit(request, "admin/ngo-nudge", 20, 60);
   if (rl.isBlocked) return rl.response!;
@@ -62,6 +64,20 @@ export async function POST(
       reason,
       activeProjectTitles: ngo.projects.map((p) => p.title),
       overdueMilestones,
+    });
+
+    // Drafting is not sending — this route never contacts the organisation, so
+    // the log says "drafted", not "nudged". Worth recording anyway: it is a paid
+    // call, and the drafts an admin generated are the context for whatever they
+    // eventually sent through ask-ngo.
+    await logAdminAction({
+      adminId,
+      action: "NGO_NUDGE_DRAFTED",
+      entityType: "NGO",
+      entityId: params.id,
+      note: `Drafted a ${reason === "QUIET" ? "quiet organisation" : "overdue milestone"} reminder`,
+      metadata: { reason, overdueMilestoneCount: overdueMilestones.length },
+      request,
     });
 
     return NextResponse.json({ draft });

@@ -17,8 +17,9 @@ Answer architecture questions from that document plus a targeted re-read of the 
 - `Notification` rows are written and pushed via FCM but never surfaced in any UI (no notifications route/bell/list).
 - ~~`app/donor/dashboard/page.tsx` is a hardcoded stub~~ — fixed; it is now wired to real Prisma data.
 - ~~`app/api/ngo/whatsapp-drafts/convert/route.ts` is dead code~~ — deleted; it was unreferenced by any UI, bypassed the `lib/prisma.ts` singleton, and updated a `milestoneId` without an ownership check. The live draft routes are `app/api/drafts/*`.
-- There **is** now a Vitest suite: `npm test` runs `tests/*.test.ts` (67 files / 726 tests as of 2026-09-26, config in `vitest.config.ts`, `@` alias resolved). Prisma is mocked per-test, so no database is needed. Add tests there rather than writing new `scripts/test-*.ts` harnesses.
-- CSR/RFP workflow (upload → admin validation → matching → NGO brief → selection → contract) is documented in `docs/ARCHITECTURE.md` §13.7. Requirement status changes go only through `lib/requirements/commit.ts`; CSR files live in private storage and are served only by `GET /api/requirements/[id]/file`. Donors can also create a requirement from the structured form on `/donor/requirements` (no document, starts in `DONOR_REVIEW`).
+- There **is** now a Vitest suite: `npm test` runs `tests/*.test.ts` (77 files / 905 tests as of 2026-09-26, config in `vitest.config.ts`, `@` alias resolved). Prisma is mocked per-test, so no database is needed. Add tests there rather than writing new `scripts/test-*.ts` harnesses.
+- CSR/RFP workflow (upload → admin validation → matching → NGO brief → selection → contract) is documented in `docs/ARCHITECTURE.md` §13.7. Requirement status changes go only through `lib/requirements/commit.ts`; CSR files live in private storage and are served only by `GET /api/requirements/[id]/file`.
+ Donors can also create a requirement from the structured form on `/donor/requirements` (no document, starts in `DONOR_REVIEW`).
 
 ## NGO verification: ONE pass, then triage
 Registration used to fire three overlapping AI passes over the same three PDFs — `verifyNGODocuments` (awaited, so it blocked the response), `runAndStoreNgoScreening`, and `runAndStoreNgoExtraction`. They disagreed about what the files were and only extraction's answer ever reached a human. All three are now one:
@@ -76,6 +77,7 @@ Four kinds of test are treated as mandatory, not optional:
 2. **Approval state machines** — no sensitive transition without its required human gate.
 3. **Idempotency/retry** — replaying a webhook or job does not double-apply.
 4. **AI output** — schema conformance, missing fields, hard rules, hallucination, on fixed fixtures.
+5. **Admin audit coverage** — every route under `app/api/admin` must call `logAdminAction` or be named in the `EXEMPT` list in `tests/admin-audit-coverage.test.ts` with a reason. The test fails the build either way, so adding a route means making that call deliberately. Audit payloads carry ids only; `tests/admin-audit-gaps.test.ts` asserts no `@` and no fixture names reach the log.
 
 Before opening a PR:
 

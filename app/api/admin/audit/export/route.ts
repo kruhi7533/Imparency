@@ -3,6 +3,7 @@ import { Role } from "@prisma/client";
 import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
 import { buildAuditWhere } from "@/lib/audit-filters";
+import { logAdminAction } from "@/lib/admin-log";
 
 export const runtime = "nodejs";
 
@@ -27,17 +28,18 @@ function cell(value: unknown): string {
 }
 
 export async function GET(req: Request) {
-  const { authorized, response } = await verifySessionRole(Role.ADMIN);
+  const { authorized, response, session } = await verifySessionRole(Role.ADMIN);
   if (!authorized) return response;
 
   const sp = new URL(req.url).searchParams;
-  const where = buildAuditWhere({
+  const filters = {
     action: sp.get("action") ?? undefined,
     entityType: sp.get("entityType") ?? undefined,
     actor: sp.get("actor") ?? undefined,
     from: sp.get("from") ?? undefined,
     to: sp.get("to") ?? undefined,
-  });
+  };
+  const where = buildAuditWhere(filters);
 
   // One row over the cap, so truncation is detectable without a second count.
   const logs = await prisma.adminActionLog.findMany({
@@ -69,6 +71,28 @@ export async function GET(req: Request) {
 
   const csv = [HEADER, ...rows].join("\n");
   const filename = `audit-trail-${new Date().toISOString().slice(0, 10)}.csv`;
+
+  // Taking a copy of the audit trail is itself an audited action. Recorded
+  // after the rows are known so the log states how much left and whether the
+  // cap bit — an export that was silently truncated must not read later as a
+  // complete one. The filters go in metadata, never the rows: the log must not
+  // become a second copy of the data it is describing.
+  const exportedRows = truncated ? MAX_ROWS : rows.length;
+  await logAdminAction({
+    adminId: session.user.id,
+    action: "AUDIT_TRAIL_EXPORTED",
+    entityType: "SYSTEM",
+    entityId: "audit-trail",
+    note: `Exported ${exportedRows} audit ${exportedRows === 1 ? "row" : "rows"} as CSV`,
+    metadata: {
+      rowCount: exportedRows,
+      truncated,
+      filters: Object.fromEntries(
+        Object.entries(filters).filter(([, value]) => value !== undefined)
+      ),
+    },
+    request: req,
+  });
 
   return new NextResponse(csv, {
     headers: {

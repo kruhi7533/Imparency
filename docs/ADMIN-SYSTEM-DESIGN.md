@@ -134,8 +134,31 @@ session. **Gap** = does not exist.
 | FR-8 | An admin sees every unresolved fraud alert and can resolve it with a reason | Built |
 | FR-9 | An admin can open, review and close a risk review | Built |
 | FR-10 | An admin can suspend an organisation, and suspension blocks funding paths | Built |
-| FR-11 | A suspended organisation can appeal, and an admin can lift a suspension | **Gap** |
+| FR-11 | A suspended organisation can appeal, and an admin can lift a suspension | Built — see note below |
 | FR-12 | Compliance flags with no validated evidence behind them are retracted automatically | Built |
+
+**FR-11 was recorded as a gap and is not one.** Re-checked against the code on
+2026-09-26, the appeal path exists end to end:
+
+- `app/ngo/dashboard/page.tsx` renders a suspended organisation its suspension
+  *reason* and a direct link to open an appeal — suspension blocks donations
+  (`create-order` returns `NGO_SUSPENDED`) and matching (the `NOT_SUSPENDED`
+  rule), but never the organisation's own login, so the appeal is reachable by
+  the party who needs it.
+- `POST /api/ngo/threads` opens a `ReviewThread` with `kind: APPEAL` and
+  `entityType: "SUSPENSION"`, created as `NGO_RESPONDED` so it needs admin
+  attention from the first moment rather than waiting to be noticed, with an
+  abuse guard at three open appeals.
+- Admins are notified (`notifyAdminsOfNgoThreadActivity`) and the thread lands in
+  `/admin/inquiries`.
+- `POST /api/admin/risk/review` lifts the suspension, and deliberately only when
+  nothing else is still open against that organisation.
+
+What the original entry probably meant is that there is no *dedicated*
+suspension-appeal queue in the console — appeals arrive in the shared inquiries
+inbox and are not visually distinguished from a routine question beyond an
+"Appeal" badge. That is a triage weakness, not a missing capability, and it is a
+much smaller thing than "a suspended organisation cannot appeal".
 
 ### Delivery
 
@@ -158,7 +181,7 @@ session. **Gap** = does not exist.
 
 | | Requirement | State |
 |---|---|---|
-| FR-20 | Every state-changing admin action is recorded with actor, entity, before and after | Built for 29 of 44 routes — **15 gaps**, listed in NFR-2 |
+| FR-20 | Every state-changing admin action is recorded with actor, entity, before and after | Built — 44 of 44 routes log or are exempt with a stated reason; enforced by a test (NFR-2) |
 | FR-21 | The audit trail is exportable for a regulator or an auditor | Built |
 | FR-22 | An admin can see what the AI recommended and whether the human overrode it | Built (`metadata.overrodeAi`) |
 | FR-23 | A second admin must approve the most consequential actions | **Gap** — see NFR-3 |
@@ -190,25 +213,55 @@ way — a new route without the guard is a security bug, not a style issue.
 ### NFR-2 — Auditability: every state change is recorded
 
 **Target:** 100% of state-changing admin routes write an `AdminActionLog` row.
-**Measured: 29 of 44 write one. 15 do not:**
+**Closed 2026-09-26.** All 44 routes now either write a log or are exempt with a
+stated reason, and `tests/admin-audit-coverage.test.ts` fails the build if a new
+one does neither.
 
-```
-audit/export            diagnostics             donors/[id]/risk-insight
-extract-ngo-fields      fcra-report/generate    fcra-report/[id]/export
-initiatives             initiatives/[id]        matching/candidates/[id]/notify
-ngos/[id]/inquiry       ngos/[id]/nudge         ngos/[id]/trust-insight
-screen-project          threads                 today/visit
-```
+The original count of 15 was two too high. It grepped route files rather than
+following the call graph: `ngos/[id]/inquiry` and
+`matching/candidates/[id]/notify` both log through `openNgoInquiryThread`
+(`NGO_INQUIRY_SENT`) and always did. The real gap was 13.
 
-Not all 15 are defects. `diagnostics` and `today/visit` are reads. But
-`initiatives` (create/update), `ngos/[id]/nudge` and `ngos/[id]/inquiry` (an
-admin contacting an organisation), `extract-ngo-fields` and `screen-project`
-(spending money on a model), and the two FCRA report routes (producing a
-compliance document) all change state or incur cost with no trace of who did it.
+Nine routes gained a log:
 
-**Also required and currently absent: exports must be logged.** `audit/export`
-and `fcra-report/[id]/export` move data out of the platform, and a data-export
-action that leaves no record is the one an auditor will ask about first.
+| Route | Action | Why it needed one |
+|---|---|---|
+| `audit/export` | `AUDIT_TRAIL_EXPORTED` | Moves the whole trail out; records filters, row count, truncation |
+| `fcra-report/generate` | `FCRA_REPORT_GENERATED` | Provenance of a compliance document |
+| `fcra-report/[id]/export` | `FCRA_REPORT_EXPORTED` | Carries org names and FCRA numbers out |
+| `initiatives/[id]` | `INITIATIVE_BANK_DETAILS_VIEWED` | The only place a bank account is decrypted |
+| `extract-ngo-fields` | `NGO_EXTRACTION_RUN` | Paid call; a re-run can reset human field decisions |
+| `screen-project` | `PROJECT_SCREENED` | Paid call; overwrites `aiScreeningScore` in place |
+| `ngos/[id]/trust-insight` | `NGO_TRUST_INSIGHT_RUN` | Paid call |
+| `donors/[id]/risk-insight` | `DONOR_RISK_INSIGHT_RUN` | Paid call |
+| `ngos/[id]/nudge` | `NGO_NUDGE_DRAFTED` | Paid call |
+
+Four are exempt, named in the test with their reasons: `diagnostics`,
+`initiatives` (list) and `threads` (list) are reads; `today/visit` writes only
+this admin's own "last looked at Today" marker, and logging every page view
+would bury real actions in noise.
+
+**Two corrections to the original entry, both found by reading the code:**
+
+- `initiatives` and `initiatives/[id]` are GET-only — there is no create or
+  update here, so "creating an initiative" was never the gap. The detail route
+  is far more interesting than that: it is the single place
+  `decryptBankAccountNumber` is called, and it was handing back a decrypted
+  account number with no record of who asked. It also returned a dead
+  `_viewedBy` field that nothing consumed — someone had intended this log and
+  never wrote it. Now removed, and replaced by the real thing.
+- `today/visit` is a write, not a read as first recorded. It stays exempt on
+  the argument above rather than by mistake.
+
+Three rules the implementation follows, and the tests enforce:
+
+1. **The log describes the export; it never becomes a second copy of it.** Row
+   counts and filters go in metadata; exported names and notes do not.
+2. **Nothing is logged for an action that did not happen.** A 404, a 403, or a
+   failed model call writes no row.
+3. **Ids only.** `tests/admin-audit-gaps.test.ts` serialises each payload and
+   asserts it contains no `@` and none of the names in the fixture — verified
+   by introducing a leak and watching it fail.
 
 ### NFR-3 — Separation of duties
 
@@ -240,9 +293,16 @@ actions that truly need it.
 **Target:** every route that costs money or sends a message is rate-limited.
 **Measured: 9 of 44 admin routes call `checkRateLimit`.**
 
-The AI routes are covered. `ngos/[id]/nudge`, `send-reminders` and
-`ask-ngo` — which send real messages to real organisations — should be, and a
-loop or a stuck retry there is visible to an outside party, not just to us.
+**This entry was wrong, and the gap is smaller than it claimed.** Of the three
+routes named, two are already limited: `ask-ngo` and `ngos/[id]/nudge` both call
+`checkRateLimit`. And `nudge` does not send anything at all — it drafts a
+message with the model and returns it for the admin to copy into `ask-ngo`, as
+its own header says. Every paid model route is covered.
+
+**The actual gap is one route: `send-reminders`.** It has no limit, and NFR-6
+already notes it as the one path that could double-send. That makes it a
+rate-limiting and an idempotency problem in the same place, which is the reason
+to fix it next rather than a reason to widen the item.
 
 ### NFR-5 — Privacy
 
@@ -330,11 +390,13 @@ stuck queues — FR-26.
 
 Ranked by risk removed per unit of work, not by size.
 
-**1. Close the audit gaps — NFR-2.** Roughly a day. Add `logAdminAction` to the
-routes that change state or spend money, and make both export routes log. Cheap,
-mechanical, and it is the difference between "we have an audit trail" and "we
-have an audit trail with holes in it we could not name". Add a test that fails
-when a state-changing admin route ships without one.
+**1. Close the audit gaps — NFR-2. Done, 2026-09-26.** Nine routes gained a
+log, two turned out never to have been gaps, and
+`tests/admin-audit-coverage.test.ts` now fails the build when a state-changing
+admin route ships without one — so the count in this document cannot silently
+rot again. It took about half a day. The unexpected find was the bank-detail
+disclosure in `initiatives/[id]`, which the original list had mischaracterised
+as a create/update.
 
 **2. Admin sub-roles — NFR-3.** The largest structural gap. A single
 undifferentiated ADMIN that can suspend organisations and export everything is
@@ -346,8 +408,10 @@ agreement, and it blocks sensible work in two portals. Either the funder-led
 track is read-only support for offline funders — say so in `hubs.ts` and freeze
 it — or it goes, with its routes, models and tests.
 
-**4. Rate-limit the outbound routes — NFR-4.** `nudge`, `send-reminders`,
-`ask-ngo`. Small, and the failure mode is visible to an outside organisation.
+**4. Rate-limit `send-reminders` — NFR-4.** One route, not three: `nudge` and
+`ask-ngo` are already limited, and `nudge` never sends. Worth pairing with the
+idempotency fix NFR-6 calls for on the same route, since a double-send is
+visible to an outside organisation.
 
 **5. Second factor for admin accounts — NFR-11.** Before any real organisation's
 data is in the system, not after.

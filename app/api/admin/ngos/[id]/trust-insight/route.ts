@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { checkRateLimit } from "@/lib/rate-limiter";
+import { logAdminAction } from "@/lib/admin-log";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { generateNgoTrustInsight } from "@/lib/gemini/ngo-trust-insight";
@@ -19,6 +20,7 @@ export async function POST(
 ) {
   const auth = await verifySessionRole(Role.ADMIN);
   if (!auth.authorized) return auth.response;
+  const adminId = auth.session.user.id;
 
   const rl = await checkRateLimit(_request, "admin/ngo-trust-insight", 20, 60);
   if (rl.isBlocked) return rl.response!;
@@ -78,6 +80,18 @@ export async function POST(
       completedMilestones,
       raisedAmount,
       verifiedMilestoneAmount,
+    });
+
+    // A read of the model's opinion, but a paid one an admin triggered by hand.
+    // The cost and the frequency are the audit question here — nothing about the
+    // organisation changes — so no old/new snapshot, just who asked and when.
+    await logAdminAction({
+      adminId,
+      action: "NGO_TRUST_INSIGHT_RUN",
+      entityType: "NGO",
+      entityId: params.id,
+      note: "Ran the trust insight summary",
+      request: _request,
     });
 
     return NextResponse.json({ insight });

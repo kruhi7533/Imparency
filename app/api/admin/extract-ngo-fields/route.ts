@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { runAndStoreNgoExtraction } from "@/lib/extraction-runner";
+import { logAdminAction } from "@/lib/admin-log";
 
 export const runtime = "nodejs";
 
@@ -17,7 +18,7 @@ export const runtime = "nodejs";
  * different value.
  */
 export async function POST(request: Request) {
-  const { authorized, response } = await verifySessionRole("ADMIN");
+  const { authorized, response, session } = await verifySessionRole("ADMIN");
   if (!authorized) return response;
 
   // Rate-limited: each run is a multi-document Gemini call.
@@ -40,6 +41,20 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    // Re-running extraction can reset a field an admin had already decided on
+    // (a changed value invalidates the old validation), so a re-run is not a
+    // free read — it can quietly undo human review. Logged with the field count
+    // so a run that wiped decisions is traceable to whoever triggered it.
+    await logAdminAction({
+      adminId: session.user.id,
+      action: "NGO_EXTRACTION_RUN",
+      entityType: "NGO",
+      entityId: ngoId,
+      note: "Ran document field extraction",
+      metadata: { fieldCount: Array.isArray(fields) ? fields.length : null },
+      request,
+    });
 
     return NextResponse.json({ fields });
   } catch (err: any) {
