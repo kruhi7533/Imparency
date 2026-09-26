@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs/promises";
 import path from "path";
@@ -219,6 +219,107 @@ export async function deleteFile(fileUrl: string): Promise<void> {
       }
     }
   }
+}
+
+// ─── Private document storage ────────────────────────────────────────────────
+// For confidential documents (CSR/RFP files). Unlike uploadFile(), nothing here
+// ever produces a URL: callers get an opaque storage key, and bytes are only
+// served through an authenticated route that checks ownership first.
+//
+//   local (default)  files under PRIVATE_STORAGE_DIR (default ./storage/private),
+//                    outside public/ so Next.js never serves them statically
+//   s3 / r2          objects in AWS_PRIVATE_BUCKET_NAME (falls back to
+//                    AWS_BUCKET_NAME) — that bucket must not allow public reads
+//
+// Provider: PRIVATE_STORAGE_PROVIDER, else STORAGE_PROVIDER when it is s3/r2,
+// else local. Cloudinary is never used for private files (its URLs are public).
+
+const PRIVATE_KEY_PATTERN = /^[a-z0-9-]+\/[0-9a-f-]{36}\.[a-z0-9]{1,8}$/;
+const PRIVATE_FOLDER_PATTERN = /^[a-z0-9-]+$/;
+const PRIVATE_EXT_PATTERN = /^\.[a-z0-9]{1,8}$/;
+
+function privateProvider(): "local" | "s3" | "r2" {
+  const explicit = process.env.PRIVATE_STORAGE_PROVIDER?.toLowerCase();
+  if (explicit === "local" || explicit === "s3" || explicit === "r2") return explicit;
+  const general = (process.env.STORAGE_PROVIDER || "local").toLowerCase();
+  return general === "s3" || general === "r2" ? general : "local";
+}
+
+function privateBucket(): string {
+  const bucket = process.env.AWS_PRIVATE_BUCKET_NAME || process.env.AWS_BUCKET_NAME;
+  if (!bucket) {
+    throw new Error("Private storage is S3/R2 but neither AWS_PRIVATE_BUCKET_NAME nor AWS_BUCKET_NAME is set.");
+  }
+  return bucket;
+}
+
+export function privateStorageRoot(): string {
+  const root = path.resolve(process.env.PRIVATE_STORAGE_DIR || path.join(process.cwd(), "storage", "private"));
+  const publicDir = path.resolve(process.cwd(), "public");
+  if (root === publicDir || root.startsWith(publicDir + path.sep)) {
+    throw new Error("PRIVATE_STORAGE_DIR must not be inside public/ — files there are publicly downloadable.");
+  }
+  return root;
+}
+
+/** Rejects anything that is not a key this module generated (blocks path traversal). */
+export function isValidPrivateKey(key: string): boolean {
+  return PRIVATE_KEY_PATTERN.test(key);
+}
+
+function localPathForKey(key: string): string {
+  if (!isValidPrivateKey(key)) throw new Error("Invalid private storage key.");
+  const root = privateStorageRoot();
+  const full = path.resolve(root, key);
+  if (!full.startsWith(root + path.sep)) throw new Error("Invalid private storage key.");
+  return full;
+}
+
+/**
+ * Stores a confidential file under a generated name and returns its storage key
+ * (e.g. "requirements/<uuid>.pdf"). The original filename is never used on disk.
+ */
+export async function uploadPrivateFile(file: Buffer, extension: string, folder: string): Promise<string> {
+  const ext = extension.toLowerCase();
+  if (!PRIVATE_FOLDER_PATTERN.test(folder) || !PRIVATE_EXT_PATTERN.test(ext)) {
+    throw new Error("Invalid folder or extension for private upload.");
+  }
+  const key = `${folder}/${uuidv4()}${ext}`;
+
+  if (privateProvider() === "local") {
+    const fullPath = localPathForKey(key);
+    await fs.mkdir(path.dirname(fullPath), { recursive: true });
+    await fs.writeFile(fullPath, file, { mode: 0o600 });
+    return key;
+  }
+
+  await s3Client.send(
+    new PutObjectCommand({ Bucket: privateBucket(), Key: key, Body: file, ContentType: getContentType(ext) })
+  );
+  return key;
+}
+
+export async function readPrivateFile(key: string): Promise<Buffer> {
+  if (privateProvider() === "local") {
+    return fs.readFile(localPathForKey(key));
+  }
+  if (!isValidPrivateKey(key)) throw new Error("Invalid private storage key.");
+  const result = await s3Client.send(new GetObjectCommand({ Bucket: privateBucket(), Key: key }));
+  if (!result.Body) throw new Error("Private file not found.");
+  return Buffer.from(await result.Body.transformToByteArray());
+}
+
+export async function deletePrivateFile(key: string): Promise<void> {
+  if (privateProvider() === "local") {
+    try {
+      await fs.unlink(localPathForKey(key));
+    } catch (err: any) {
+      if (err?.code !== "ENOENT") throw err;
+    }
+    return;
+  }
+  if (!isValidPrivateKey(key)) throw new Error("Invalid private storage key.");
+  await s3Client.send(new DeleteObjectCommand({ Bucket: privateBucket(), Key: key }));
 }
 
 /**

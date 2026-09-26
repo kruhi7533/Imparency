@@ -62,6 +62,11 @@ export const ADMIN_HUBS: Hub[] = [
         label: "FCRA",
         hint: "Foreign-contribution certificates: approve, reject, and track expiry.",
       },
+      {
+        href: "/admin/requirements",
+        label: "CSR requirements",
+        hint: "Donor-submitted CSR requirements (uploaded documents or the structured form). Validate them before donors can match NGO projects against them.",
+      },
     ],
   },
   {

@@ -54,6 +54,26 @@ export async function PUT(request: Request) {
       }
     }
 
+    // Validate GSTIN if corporate
+    const normalizedGstin = gstNumber ? gstNumber.trim().toUpperCase() : null;
+    if (isCorporate && normalizedGstin) {
+      if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(normalizedGstin)) {
+        return NextResponse.json(
+          { error: "Invalid GSTIN format. Expected 15 characters (e.g. 27AAAAA1111A1Z1)." },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate CSR-1 format if provided
+    const normalizedCsrReg = csrRegistrationNumber ? csrRegistrationNumber.trim().toUpperCase() : null;
+    if (normalizedCsrReg && !/^CSR[0-9]{8,12}$/i.test(normalizedCsrReg) && !/^[A-Z0-9]{8,16}$/.test(normalizedCsrReg)) {
+      return NextResponse.json(
+        { error: "Invalid CSR Registration Number format." },
+        { status: 400 }
+      );
+    }
+
     // ── PAN verification (risk-based / just-in-time) ───────────────────────────
     // A verified PAN is what gates 80G receipt issuance, so we verify it here on
     // save rather than at signup. Fields default to "clear PAN → UNVERIFIED".

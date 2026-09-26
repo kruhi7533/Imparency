@@ -45,6 +45,13 @@ export type AdminAction =
   | "PAN_MANUALLY_REJECTED"
   | "REMINDERS_SENT"
   | "SETTING_UPDATED"
+  | "REQUIREMENT_VALIDATED"
+  | "REQUIREMENT_REJECTED"
+  | "REQUIREMENT_CORRECTION_REQUESTED"
+  | "REQUIREMENT_EDITED"
+  | "REQUIREMENT_EXTRACTION_RERUN"
+  | "GAP_REPORT_APPROVED"
+  | "GAP_REPORT_REJECTED"
   | "CRISIS_EVENT_CREATED"
   | "CRISIS_EVENT_UPDATED"
   | "CRISIS_EVENT_VERIFIED"
@@ -92,7 +99,7 @@ export interface AdminActionParams {
   /** Null for an action the platform took on its own. */
   adminId: string | null;
   action: AdminAction;
-  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING" | "CRISIS_EVENT" | "RELIEF_INITIATIVE" | "AGENT_CASE" | "OPPORTUNITY" | "MATCHING_JOB" | "MATCH_CANDIDATE" | "PROPOSAL";
+  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING" | "REQUIREMENT" | "GAP_REPORT" | "CRISIS_EVENT" | "RELIEF_INITIATIVE" | "AGENT_CASE" | "OPPORTUNITY" | "MATCHING_JOB" | "MATCH_CANDIDATE" | "PROPOSAL";
   entityId: string;
   oldValue?: Record<string, unknown> | null;
   newValue?: Record<string, unknown> | null;

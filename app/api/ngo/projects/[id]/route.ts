@@ -168,7 +168,22 @@ export async function PATCH(
     const isResubmission = project.status === "DRAFT";
 
     // 7. DB Transaction: save modifications
-    await prisma.$transaction(async (tx) => {
+    const currentVersion = (project as any).version || 1;
+    await prisma.$transaction(async (tx: any) => {
+      // Archive previous version to ProjectRevision
+      await tx.projectRevision.create({
+        data: {
+          projectId: project.id,
+          version: currentVersion,
+          title: project.title,
+          description: project.description,
+          targetAmount: project.targetAmount,
+          milestonesData: project.milestones as any,
+          changeSummary: `Opportunity proposal update (v${currentVersion} → v${currentVersion + 1})`,
+          changedById: userId,
+        },
+      });
+
       // Update Project model
       await tx.project.update({
         where: { id: projectId },
@@ -184,6 +199,7 @@ export async function PATCH(
           longitude: longitude !== null && !isNaN(longitude) ? longitude : null,
           coverImage: coverImageUrl,
           targetAmount: !isLocked ? targetAmount : undefined,
+          version: currentVersion + 1,
           // A rejected project sits in DRAFT. Editing it is a resubmission, so
           // send it back into the admin approval queue and clear the old note.
           // The previous AI screening is now stale, so clear it too — the admin
@@ -191,7 +207,7 @@ export async function PATCH(
           ...(isResubmission
             ? { status: "PENDING_APPROVAL", reviewNote: null, aiScreeningScore: null, aiScreeningResult: null }
             : {}),
-        },
+        } as any,
       });
 
       // Update milestones if they were edited

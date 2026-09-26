@@ -9,6 +9,8 @@ interface AdminNavProps {
   unresolvedAlertsTotal: number;
   inquiriesNeedingResponse: number;
   fieldsNeedingReview?: number;
+  /** Donor CSR requirements submitted for admin validation. */
+  pendingRequirementCount?: number;
 }
 
 /**
@@ -17,13 +19,19 @@ interface AdminNavProps {
  * The pages themselves did not change — only how they are grouped and reached.
  * See ./hubs.ts for why, and AdminTabs for the second level.
  */
-export default function AdminNav({ pendingProjectCount, unresolvedAlertsTotal, inquiriesNeedingResponse, fieldsNeedingReview }: AdminNavProps) {
+export default function AdminNav({
+  pendingProjectCount,
+  unresolvedAlertsTotal,
+  inquiriesNeedingResponse,
+  fieldsNeedingReview,
+  pendingRequirementCount,
+}: AdminNavProps) {
   const pathname = usePathname();
 
   // Counts belong to a hub, not to a page inside it: the badge answers "which
   // hub needs me", and the tab bar inside answers "which part of it".
   const badgeFor: Record<string, number | undefined> = {
-    verification: fieldsNeedingReview,
+    verification: (fieldsNeedingReview ?? 0) + (pendingRequirementCount ?? 0),
     campaigns: pendingProjectCount,
     risk: unresolvedAlertsTotal,
     people: inquiriesNeedingResponse,

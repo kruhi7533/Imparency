@@ -15,9 +15,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   let pendingProjectCount = 0;
   let unresolvedAlertsTotal = 0;
   let inquiriesNeedingResponse = 0;
+  let pendingRequirementCount = 0;
   let fieldsNeedingReview = 0;
   try {
-    [pendingProjectCount, unresolvedAlertsTotal, inquiriesNeedingResponse, fieldsNeedingReview] = await Promise.all([
+    [pendingProjectCount, unresolvedAlertsTotal, inquiriesNeedingResponse, fieldsNeedingReview, pendingRequirementCount] = await Promise.all([
       prisma.project.count({ where: { status: "PENDING_APPROVAL", isDeleted: false } }),
       prisma.fraudAlert.count({ where: { resolved: false } }),
       // NGO has written back (reply or new appeal) and is waiting on the admin.
@@ -26,6 +27,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       prisma.extractedField.count({
         where: { status: "NEEDS_REVIEW", ngo: { verificationStatus: "PENDING", isDeleted: false } },
       }),
+      // Donor CSR requirements waiting on admin validation. The funder-led
+      // proposal queue is gone from the nav (it belongs to the donor now), but
+      // validating a requirement is still admin's gate.
+      prisma.sponsorRequirement.count({ where: { status: "PENDING_ADMIN_REVIEW" } }),
     ]);
   } catch (err) {
     // Nav badges are a nice-to-have — a schema/connection hiccup here must not
@@ -40,6 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         unresolvedAlertsTotal={unresolvedAlertsTotal}
         inquiriesNeedingResponse={inquiriesNeedingResponse}
         fieldsNeedingReview={fieldsNeedingReview}
+        pendingRequirementCount={pendingRequirementCount}
       />
       {/* Second level. Renders itself only inside a hub — it works out which one
           from the path, so pages do not each have to declare their own tabs. */}

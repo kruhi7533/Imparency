@@ -3,7 +3,10 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { rateLimit } from "@/lib/rate-limiter";
+import { rateLimit, isRateLimited, clearRateLimit } from "@/lib/rate-limiter";
+
+const LOGIN_MAX_FAILURES = 5;
+const LOGIN_WINDOW_SECONDS = 900;
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -23,8 +26,8 @@ export const authOptions: NextAuthOptions = {
 
         // NextAuth's authorize() doesn't receive a real Fetch Request, just a
         // plain headers object — extract the client IP directly and use the
-        // lower-level rateLimit() rather than checkRateLimit() (which expects
-        // a Request instance). 5 attempts / 15 minutes per IP.
+        // lower-level limiter helpers rather than checkRateLimit() (which
+        // expects a Request instance).
         const headers = (req?.headers ?? {}) as Record<string, string | string[] | undefined>;
         const forwardedFor = headers["x-forwarded-for"];
         const ip =
@@ -32,10 +35,16 @@ export const authOptions: NextAuthOptions = {
           (headers["x-real-ip"] as string) ||
           "unknown";
 
-        const { success } = await rateLimit(ip, "auth/login", 5, 900);
-        if (!success) {
+        // 5 *failed* attempts / 15 minutes per IP+email. Keyed on the email too so
+        // one person's typos can't lock out everyone behind the same IP (in local
+        // dev every browser is "::1"); successful sign-ins don't count and clear
+        // the bucket. The "|email" suffix is relied on by the reset-password route.
+        const limitKey = `${ip}|${credentials.email.trim().toLowerCase()}`;
+        if (await isRateLimited(limitKey, "auth/login", LOGIN_MAX_FAILURES, LOGIN_WINDOW_SECONDS)) {
           throw new Error("Too many login attempts. Please try again in a few minutes.");
         }
+        const recordFailure = () =>
+          rateLimit(limitKey, "auth/login", LOGIN_MAX_FAILURES, LOGIN_WINDOW_SECONDS);
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
@@ -46,6 +55,7 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user || !user.passwordHash) {
+          await recordFailure();
           throw new Error("No user found with this email");
         }
 
@@ -55,8 +65,11 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!isPasswordValid) {
+          await recordFailure();
           throw new Error("Invalid password");
         }
+
+        await clearRateLimit(limitKey, "auth/login");
 
         return {
           id: user.id,
