@@ -22,6 +22,106 @@ else and can start immediately. SPEC-4 depends on SPEC-3.
 | [SPEC-5](#spec-5--the-admin-shortlist-review) | A-1 | M | — |
 | [SPEC-6](#spec-6--the-terminal-approval) | D-3 | S | SPEC-3 |
 | [SPEC-7](#spec-7--the-small-ones) | A-2, A-3, N-2, N-3, X-2, X-4 | S each | — |
+| [SPEC-8](#spec-8--give-a-project-enough-data-to-be-ranked-on) | X-3 | M | — |
+
+---
+
+# Who does what
+
+## Where each portal actually stands
+
+This is not a guess. It is what happened when the eleven-step test was run
+against the merged branch on 26 September.
+
+**Admin is the strongest of the three.** Every admin step in the run worked
+first time: verifying an NGO, verifying a donor organisation, and validating a
+CSR requirement. Every one of those actions left a row in
+`RequirementAuditLog`, so there is a trail of who did what and when. The
+navigation is coherent — one Verification hub holding Approvals, Documents,
+FCRA and CSR requirements. What is wrong with the admin console is not missing
+code; it is two decisions nobody has made yet (see SPEC-5 and the two-engine
+question in SPEC-7).
+
+**The donor portal has the most built, but it is hollow in two places.** It is
+by far the biggest new surface: uploading an RFP, reading it with OCR and
+Gemini, showing every extracted field with its confidence and where the value
+came from, version history, and a ranked shortlist that explains its own scores.
+It is genuinely good. But two things are missing, and they are the two that turn
+a form into a workflow: nothing checks that the company is verified before it
+starts (so admin's verification decision changes nothing), and the donor has no
+way to send a proposal back for a change. Without that second one there is no
+back-and-forth, which is the whole point of Week 5.
+
+**The NGO portal is the weakest, and it is weak in two different ways.**
+
+The first is obvious: an NGO can see an opportunity it was invited to and send
+one proposal. That is all. It cannot revise, it cannot see what it sent last
+time, and it cannot say "not interested" in a way the system records.
+
+The second is easy to miss and matters more. The NGO portal is starving the
+matching engine. In the live run the shortlist scored **82%, but on only 70%
+coverage** — meaning nearly a third of the scoring criteria had no data to work
+with. Geography, track record, beneficiary numbers and reporting cadence all
+came back "insufficient data", because `Project` has no duration, no beneficiary
+count and no structured KPIs, and `stateName` is empty on every project in the
+database. The donor portal is showing off a ranking that is running on four of
+nine criteria. Fixing that is NGO-side work (SPEC-8) and it is the single most
+valuable thing on the NGO list.
+
+## Intern 3 — donor portal
+
+| # | Work | Spec | Size |
+|---|---|---|---|
+| 1 | Stop an unverified organisation from creating a requirement or running matching | SPEC-1 | S |
+| 2 | Add "Request changes" — a button, a required note, and the status write behind it | SPEC-3, donor half | M |
+| 3 | Change the ending: the approval wording, and record which version was approved | SPEC-6 | S |
+| 4 | Show the NGO's earlier proposal versions in the responses panel | SPEC-4, UI half | S |
+
+**Start with number 1.** It is about an hour of work and it is the change that
+makes the admin's verification decision mean something. Everything else on this
+list can wait behind it.
+
+## Intern 2 — NGO portal
+
+| # | Work | Spec | Size |
+|---|---|---|---|
+| 1 | Add duration, beneficiary group and structured KPIs to a project, and fill in the state | SPEC-8 | M |
+| 2 | Keep the old version when a proposal is resubmitted | SPEC-4 | M |
+| 3 | The revision screen: show the donor's note, prefill the last answers, "Submit revision" | SPEC-3, NGO half | M |
+| 4 | Let an NGO decline an invitation, and record it | SPEC-7, N-3 | S |
+
+**Start with number 1**, even though it is not one of the eleven steps. Every
+"insufficient data" in the shortlist traces back to it, and it is the difference
+between a ranking that looks convincing in a demo and one that is actually
+measuring something.
+
+## Intern 1 — admin console, and the platform underneath it
+
+| # | Work | Spec | Size |
+|---|---|---|---|
+| 1 | Make the shortlist review real — approve/reject it, and block invitations until it is approved | SPEC-5 | M |
+| 2 | Explain the NGOs that are dropped before eligibility even runs | SPEC-2 | M |
+| 3 | Decide whether the old funder-led engine stays or goes, then do it | SPEC-7, A-2 | S–L |
+| 4 | Put `prisma migrate deploy` back in `predev`; clear the leftover schema drift | SPEC-7, A-3 and X-4 | S |
+| 5 | Seed the demo NGOs so anyone can reproduce the run from the repo | SPEC-7, N-2 | S |
+
+Numbers 2 is platform code rather than an admin screen, but it belongs here:
+it decides what lands in the admin queues and in the donor's exclusion list, and
+it is the fix that makes step 6 of the demo showable at all.
+
+## Two things to agree before anyone starts
+
+**SPEC-3 spans two people.** The donor builds the "request changes" action and
+the NGO builds the revision screen, but they share one migration — the
+`CHANGES_REQUESTED` status and the note columns. Land that migration on its own
+branch first, merge it, and only then build the two halves. Two migrations
+fighting over the same enum is a bad afternoon.
+
+**If the demo date is fixed, this is the critical path:** SPEC-1 (step 4 starts
+meaning something) → SPEC-2 (step 6 becomes showable) → SPEC-3 and SPEC-4
+(steps 9 and 10, the only steps that do not exist at all) → SPEC-6 (the final
+screen). SPEC-5 and the two-engine decision can land after the demo; none of the
+eleven steps depends on them.
 
 ---
 
@@ -528,6 +628,114 @@ by admin (and say so in `hubs.ts`), or delete it — routes, models, admin pages
 `lib/matching/*`, and the tests that cover them. Do not leave it undecided; two
 systems with one purpose drift, and the next person will not know which to
 extend.
+
+---
+
+## SPEC-8 — give a project enough data to be ranked on
+
+**Closes X-3.** This is the one item on the list that is not a bug and not a
+missing button. It is the reason the shortlist is thinner than it looks.
+
+In the live run the top match scored **82% on 70% coverage**. Four of the nine
+comparison rows came back with a question mark: geography, track record,
+beneficiaries and reporting cadence. The engine was honest about it — it shows
+the coverage figure right next to the score, and it never scores a criterion it
+has no data for — but a demo audience reads "82%" and not "four of the nine
+things we said we compare were blank".
+
+The cause is that `Project` was designed for the donor-led campaign model, where
+what matters is a title, a target amount and a cover image. Matching asks
+different questions, and the answers are not stored anywhere.
+
+### What is missing, and what the engine wants it for
+
+| Field | Used by | Today |
+|---|---|---|
+| `durationMonths` | the duration dimension (10% weight) | guessed from the furthest milestone deadline — a project with no milestones has none |
+| `expectedBeneficiaries` | the beneficiaries row | not stored at all |
+| `primaryKPIs` (`String[]`) | the outcome-KPI dimension (15%) | scraped by keyword out of `expected_outcome`, `problem_statement` and milestone text |
+| `reportingCadence` | the reporting row | not stored at all |
+| `stateName` | geography (20%) | the column exists and is **null on every project in the database** |
+
+The KPI one is worth dwelling on. `matchingEngine.ts` currently decides whether a
+donor's KPI is covered by looking for keyword overlap in free prose. In the run
+that produced this: *"1 of 2 KPIs appear in the project's outcomes … not found:
+Attendance rate."* That is a reasonable fallback and a poor primary source. An
+NGO that tracks attendance but phrased it differently is marked down for
+vocabulary.
+
+### Schema
+
+```prisma
+model Project {
+  // … existing fields …
+
+  /// How long the programme runs. Distinct from the milestone deadlines, which
+  /// are a delivery schedule and may not cover the whole programme.
+  durationMonths        Int?
+  /// People the project expects to reach. Compared against the donor's own
+  /// expected number, so an order-of-magnitude mismatch is visible.
+  expectedBeneficiaries Int?
+  /// What this project measures, as discrete strings rather than prose, so
+  /// matching compares stated KPIs instead of guessing from keywords.
+  primaryKPIs           String[]  @default([])
+  /// One of REPORTING_CADENCES in lib/requirements/form-options.ts.
+  reportingCadence      String?
+}
+```
+
+Migration: `npm run db:migrate --name add_project_matching_fields`. All nullable
+with safe defaults — no backfill, and no existing project breaks.
+
+### Engine
+
+In `loadCandidates()` (`gapAnalysisService.ts:30`), prefer the stored values and
+fall back to what exists today:
+
+- `durationMonths: p.durationMonths ?? <milestone-derived>` — keep the fallback,
+  do not delete it.
+- `primaryKPIs: p.primaryKPIs` fed to the KPI comparison as exact strings first;
+  the existing keyword scrape stays as a second pass for projects that have not
+  filled them in.
+- `expectedBeneficiaries` and `reportingCadence` become two new comparison rows.
+  **Leave the existing weights alone** — add them as unscored rows for now, the
+  way beneficiaries and reporting cadence already render. Reweighting is a
+  separate decision and should not ride along with a schema change.
+
+### UI
+
+`app/ngo/projects/new` and `app/ngo/projects/[id]/edit/EditProjectClient.tsx`:
+four new inputs. Duration and beneficiaries are numbers; reporting cadence is a
+select fed from `REPORTING_CADENCES` in `lib/requirements/form-options.ts` so the
+NGO and the donor are choosing from the same list; KPIs are a repeatable text
+row, same interaction as the milestone list already on that form.
+
+**None of them are required.** A project created before this existed is not
+broken, and an NGO that does not know its beneficiary count yet must still be
+able to save. Show a quiet prompt instead — "projects that fill this in match
+more accurately" — next to the fields that are empty.
+
+### Backfill `stateName`
+
+Every project in the database has a null `stateName`, which is why geography
+never scores. `app/api/ngo/projects/[id]/geo-enrich/route.ts` already derives
+location data; run it over existing projects, or have the edit form ask
+directly. Either way this is a data task as much as a code one, and it is worth
+doing before any demo — geography is 20% of the score and currently contributes
+nothing.
+
+### Tests — extend `tests/matching-engine.test.ts`
+
+1. A project with stored `primaryKPIs` matching the requirement's scores MATCH on the KPI dimension without relying on prose.
+2. A project with no stored KPIs still falls back to the keyword scrape (no regression).
+3. `durationMonths` stored takes precedence over the milestone-derived value.
+4. A project with all five fields populated reports coverage of 100%, against the 70% the same project reports today.
+
+### Acceptance
+
+Re-run the matching from `WEEK5-GAPS.md` against a project with the new fields
+filled in: coverage rises from 70% to 100%, and the explanation no longer says
+"insufficient data" for geography, beneficiaries or reporting cadence.
 
 ---
 
