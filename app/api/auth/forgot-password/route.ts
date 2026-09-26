@@ -11,6 +11,16 @@ const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 const GENERIC_MESSAGE =
   "If an account exists for this email, we've sent password reset instructions.";
 
+// In development the dev server often isn't on NEXTAUTH_URL's port (next dev
+// falls back to 3001 when 3000 is taken), which produced dead reset links, so
+// use the origin the request actually came in on. In production, trust only the
+// configured URL: building links from the Host header allows reset-link poisoning.
+function resetBaseUrl(request: Request): string {
+  const origin = new URL(request.url).origin;
+  if (process.env.NODE_ENV !== "production") return origin;
+  return process.env.NEXTAUTH_URL || origin;
+}
+
 export async function POST(request: Request) {
   const rl = await checkRateLimit(request, "auth/forgot-password", 5, 900);
   if (rl.isBlocked) return rl.response!;
@@ -38,8 +48,15 @@ export async function POST(request: Request) {
         },
       });
 
-      const resetUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/reset-password?token=${token}`;
-      await sendPasswordResetEmail(user.email, user.name, resetUrl);
+      const resetUrl = `${resetBaseUrl(request)}/reset-password?token=${token}`;
+      const sent = await sendPasswordResetEmail(user.email, user.name, resetUrl);
+      if (!sent?.success) {
+        console.error("Forgot Password: reset email failed to send:", sent?.error);
+        return NextResponse.json(
+          { error: "We couldn't send the reset email right now. Please try again in a few minutes." },
+          { status: 503 }
+        );
+      }
     }
 
     return NextResponse.json({ success: true, message: GENERIC_MESSAGE });

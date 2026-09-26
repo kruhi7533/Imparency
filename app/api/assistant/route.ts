@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
 
     const genAI = new GoogleGenAI({ apiKey });
     const result = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: history.map((m) => ({
         role: m.role === "assistant" ? "model" : "user",
         parts: [{ text: m.content }],

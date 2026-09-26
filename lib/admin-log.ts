@@ -45,6 +45,13 @@ export type AdminAction =
   | "PAN_MANUALLY_REJECTED"
   | "REMINDERS_SENT"
   | "SETTING_UPDATED"
+  | "REQUIREMENT_VALIDATED"
+  | "REQUIREMENT_REJECTED"
+  | "REQUIREMENT_CORRECTION_REQUESTED"
+  | "REQUIREMENT_EDITED"
+  | "REQUIREMENT_EXTRACTION_RERUN"
+  | "GAP_REPORT_APPROVED"
+  | "GAP_REPORT_REJECTED"
   | "CRISIS_EVENT_CREATED"
   | "CRISIS_EVENT_UPDATED"
   | "CRISIS_EVENT_VERIFIED"
@@ -82,6 +89,25 @@ export type AdminAction =
   // the person holding the account rather than the company behind the money.
   | "CSR_ORG_VERIFIED"
   | "CSR_ORG_REJECTED"
+  // Reads and runs that leave no other trace. None of these change a verdict,
+  // which is exactly why they were missed: the audit trail has to answer "who
+  // took a copy" and "who spent the money", not only "who decided".
+  //
+  // An export is the action an auditor asks about first — it moves data out of
+  // the platform, and until now did so silently.
+  | "AUDIT_TRAIL_EXPORTED"
+  | "FCRA_REPORT_GENERATED"
+  | "FCRA_REPORT_EXPORTED"
+  // Bank details are decrypted in exactly one place (admin/initiatives/[id]).
+  // A decryption is a disclosure, so it is logged like one.
+  | "INITIATIVE_BANK_DETAILS_VIEWED"
+  // Model runs. Each is a paid multi-document call an admin triggered by hand;
+  // the log is the only record of who spent it and how often.
+  | "NGO_EXTRACTION_RUN"
+  | "PROJECT_SCREENED"
+  | "NGO_TRUST_INSIGHT_RUN"
+  | "DONOR_RISK_INSIGHT_RUN"
+  | "NGO_NUDGE_DRAFTED"
   // Taken by the platform, not by a person — logged with adminId null. See the
   // comment on AdminActionLog.adminId for why these live in the same trail as
   // human actions rather than a separate one.
@@ -92,7 +118,7 @@ export interface AdminActionParams {
   /** Null for an action the platform took on its own. */
   adminId: string | null;
   action: AdminAction;
-  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING" | "CRISIS_EVENT" | "RELIEF_INITIATIVE" | "AGENT_CASE" | "OPPORTUNITY" | "MATCHING_JOB" | "MATCH_CANDIDATE" | "PROPOSAL";
+  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "FCRA_REPORT" | "THREAD" | "SYSTEM" | "SETTING" | "REQUIREMENT" | "GAP_REPORT" | "CRISIS_EVENT" | "RELIEF_INITIATIVE" | "AGENT_CASE" | "OPPORTUNITY" | "MATCHING_JOB" | "MATCH_CANDIDATE" | "PROPOSAL";
   entityId: string;
   oldValue?: Record<string, unknown> | null;
   newValue?: Record<string, unknown> | null;

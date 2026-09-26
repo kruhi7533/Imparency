@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition, useState } from "react";
-import { addTeamMember, removeTeamMember } from "./actions";
+import { addTeamMember, removeTeamMember, updateMemberRole } from "./actions";
 import { Shield, Trash2, UserPlus, AlertCircle } from "lucide-react";
 
 export default function TeamSettingsClient({ teamMembers, currentUserRole }: { teamMembers: any[], currentUserRole: string }) {
@@ -10,6 +10,19 @@ export default function TeamSettingsClient({ teamMembers, currentUserRole }: { t
   const [success, setSuccess] = useState("");
 
   const canManage = currentUserRole === "OWNER" || currentUserRole === "ADMIN";
+
+  const handleRoleChange = (userId: string, newRole: string) => {
+    setError("");
+    setSuccess("");
+    startTransition(async () => {
+      const result = await updateMemberRole(userId, newRole);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setSuccess("Member role updated successfully!");
+      }
+    });
+  };
 
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -107,7 +120,7 @@ export default function TeamSettingsClient({ teamMembers, currentUserRole }: { t
             </button>
           </form>
           <p className="text-xs text-gray-500 mt-3">
-            Note: The user must already have an ImpactBridge account with this email address.
+            Note: If the user doesn't have an account yet, a secure 7-day invitation link will be emailed to them.
           </p>
         </div>
       )}
@@ -124,46 +137,63 @@ export default function TeamSettingsClient({ teamMembers, currentUserRole }: { t
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {teamMembers.map((member) => (
-                <tr key={member.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold flex items-center justify-center text-xs">
-                        {member.user.name.charAt(0).toUpperCase()}
+              {teamMembers.map((member) => {
+                const canEditThisMember = canManage && (member.role !== "OWNER" || currentUserRole === "OWNER");
+                return (
+                  <tr key={member.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold flex items-center justify-center text-xs">
+                          {member.user.name ? member.user.name.charAt(0).toUpperCase() : "U"}
+                        </div>
+                        <div>
+                          <div className="font-bold text-gray-900 dark:text-white">{member.user.name || "Anonymous"}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{member.user.email}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-bold text-gray-900 dark:text-white">{member.user.name}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{member.user.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${
-                      member.role === 'OWNER' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' :
-                      member.role === 'ADMIN' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
-                      member.role === 'FINANCE' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' :
-                      'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                    }`}>
-                      {member.role.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
-                    {new Date(member.createdAt).toLocaleDateString("en-IN")}
-                  </td>
-                  {canManage && (
-                    <td className="px-6 py-4 text-right">
-                      <button 
-                        onClick={() => handleRemove(member.user.id)}
-                        disabled={isPending || (member.role === 'OWNER' && currentUserRole !== 'OWNER')}
-                        className="text-gray-400 hover:text-red-500 transition disabled:opacity-20 disabled:hover:text-gray-400 p-2"
-                        title="Remove Member"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </td>
-                  )}
-                </tr>
-              ))}
+                    <td className="px-6 py-4">
+                      {canEditThisMember && member.role !== "OWNER" ? (
+                        <select
+                          value={member.role}
+                          disabled={isPending}
+                          onChange={(e) => handleRoleChange(member.user.id, e.target.value)}
+                          className="text-xs font-bold bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                        >
+                          <option value="FIELD_STAFF">Field Staff</option>
+                          <option value="FINANCE">Finance</option>
+                          <option value="ADMIN">Admin</option>
+                          {currentUserRole === "OWNER" && <option value="OWNER">Owner</option>}
+                        </select>
+                      ) : (
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${
+                          member.role === 'OWNER' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' :
+                          member.role === 'ADMIN' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
+                          member.role === 'FINANCE' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' :
+                          'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                        }`}>
+                          {member.role.replace('_', ' ')}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
+                      {new Date(member.createdAt).toLocaleDateString("en-IN")}
+                    </td>
+                    {canManage && (
+                      <td className="px-6 py-4 text-right">
+                        <button 
+                          onClick={() => handleRemove(member.user.id)}
+                          disabled={isPending || (member.role === 'OWNER' && currentUserRole !== 'OWNER')}
+                          className="text-gray-400 hover:text-red-500 transition disabled:opacity-20 disabled:hover:text-gray-400 p-2"
+                          title="Remove Member"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -70,6 +70,9 @@ export default function Navbar() {
               <Link href="/ngo/inquiries" className={`hover:text-white transition ${pathname === "/ngo/inquiries" ? "text-white" : ""}`}>
                 Inquiries
               </Link>
+              <Link href="/ngo/opportunities" className={`hover:text-white transition ${pathname?.startsWith("/ngo/opportunities") ? "text-white" : ""}`}>
+                CSR Opportunities
+              </Link>
             </>
           ) : (
             <>

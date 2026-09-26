@@ -595,3 +595,38 @@ For every group: validation → auth → business logic → DB writes → extern
 ### 13.6 Long-Running Core Modules (high historical edit frequency, not just recent)
 
 Per `git log --author=kruhi7533 --name-only`, these files have been touched across the most commits historically and represent the platform's oldest, most load-bearing logic — treat changes here with extra caution even though they predate the "recent" cluster above: `prisma/schema.prisma` (12 touches — the entire domain model), `app/ngo/dashboard/page.tsx`/`DashboardClient.tsx` (10 combined), `app/api/ngo/register/route.ts` (5), `app/api/donations/webhook/route.ts` (5), `app/api/ngo/submit-proof/route.ts` (4), `app/api/ngo/projects/route.ts` (4), `app/projects/[id]/page.tsx` (4), `lib/auth-guards.ts`/`lib/auth.ts` (5 combined), `app/admin/dashboard/page.tsx`/`AdminClient.tsx` (5 combined). These are already covered in full depth in §3, §5, §7, §8, §9 above — no separate write-up needed, but expect them to be the files most other features depend on transitively (confirmed in §2's dependency map).
+
+### 13.7 CSR / RFP Governance Workflow (2026-09-15)
+
+Donor CSR/RFP upload → private storage → AI extraction → donor correction → **admin validation** → matching → ranked shortlist → sanitized NGO brief → NGO response → donor/admin selection → existing contract workflow.
+
+**Lifecycle** — `SponsorRequirement.status` (`RequirementStatus` enum): `UPLOADED → PROCESSING → AI_EXTRACTED → DONOR_REVIEW → PENDING_ADMIN_REVIEW → VALIDATED → MATCHING → SHORTLISTED → NGO_RESPONSE → SELECTED → CONTRACTED`, plus `NEEDS_CORRECTION`, `REJECTED`, `FAILED`. Legal transitions *and who may make them* live only in `lib/requirements/status.ts` (`assertTransition`). `extractionStatus` and `rawDocumentUrl` are **deprecated** (kept for other branches on the shared DB) — never read or write them.
+
+**Two entry points** (2026-09-26) — `/donor/requirements` shows, in order: a template banner (`public/templates/csr-requirement-template.docx`, generated once; its section headings/labels mirror the form), the structured form (`components/requirements/RequirementForm.tsx`), then the document upload. The **form** posts JSON to `POST /api/requirements` → `createRequirementFromForm` (`lib/requirements/workflow.ts`): no document, no AI — the row is inserted directly at `DONOR_REVIEW` (a creation, not a transition), `fileName` holds the donor's title, `extractedByAgent = FORM_ENTRY_AGENT` ("DONOR_FORM") marks it (exposed as `isFormEntry` on the DTO/list item — don't infer it from a missing `storageKey`), fields carry source `DONOR_ENTERED` (1.0 when filled, 0 when null), and summary/sector/state are required. Audit action `REQUIREMENT_CREATED_FROM_FORM`. From there it follows the normal submit → admin validation → matching path; the Document tab, raw-text panel and admin re-run button are hidden for form entries. Form option lists (sectors, states, cadences, common NGO documents whose wording `facts.ts` detects for 80G/12A/FCRA) live in `lib/requirements/form-options.ts`.
+
+**Single write path** — `lib/requirements/commit.ts` `commitRequirementChange(tx, current, change)`: validates the transition, snapshots the previous fields into `RequirementRevision` (labelled with how *that* version was made — `versionNote/versionAuthorRole` on the requirement describe the current version), bumps `version`, writes guarded by `{version, status}` (concurrent change → 409), and appends a `RequirementAuditLog` row, all in one transaction. Admin decisions are also mirrored to `AdminActionLog` (`lib/admin-log.ts`, new `REQUIREMENT_*` / `GAP_REPORT_*` actions). Transaction type: use `Tx` from `commit.ts` — `lib/prisma` is a retry-*extended* client, so `Prisma.TransactionClient` does not type-check against it.
+
+**Key files**
+| Concern | File |
+|---|---|
+| Authorization (owner or ADMIN; NGOs never) | `lib/requirements/access.ts` |
+| Field provenance (`AI_EXTRACTED` / `DONOR_CORRECTED` / `ADMIN_VERIFIED`, `aiConfidence`) | `lib/requirements/provenance.ts` |
+| Workflow actions (edit, submit, approve, reject, correction, re-run, invite, select) | `lib/requirements/workflow.ts` |
+| Extraction pipeline (OCR → Gemini, contact PII redacted before the LLM) | `lib/requirements/extraction.ts`, `src/agents/requirements-agent/services/llm/llm.service.ts` |
+| Private storage (`uploadPrivateFile`/`readPrivateFile`, key-pattern guard, never under `public/`) | `lib/storage.ts` (bottom section) |
+| Authenticated file serving | `app/api/requirements/[id]/file/route.ts` |
+| Upload type check (extension + magic bytes) | `lib/requirements/file-types.ts` |
+| Matching engine (deterministic, per candidate) | `src/agents/gap-diagnoser/matchingEngine.ts` |
+| Matching run + candidate loading | `src/agents/gap-diagnoser/services/gapAnalysisService.ts` |
+| NGO brief (allowlist) + opportunities/interest | `lib/requirements/sanitize.ts`, `lib/requirements/opportunities.ts` |
+| Server→client DTOs (never include `storageKey`) | `lib/requirements/dto.ts` |
+| Contract link (requirement must be `SELECTED` for this donor/NGO/project → `CONTRACTED`) | `lib/contract-service.ts` `createContract` |
+
+**Matching** — hard rules first (FCRA when the requirement explicitly mentions it, using the live expiry-derived status; 80G/12A when listed; required state), then weighted soft dimensions (Sector 25, Geography 20, Budget 20, Outcome KPIs 15, Duration 10, Track record 10). Each result is `MATCH / PARTIAL / MISMATCH / INSUFFICIENT_DATA / NOT_APPLICABLE`; only compared dimensions are scored (no placeholder points) and `coverage` reports how much weight had data. Beneficiaries and reporting cadence are shown but never scored — `Project` has no fields for them yet. Each run = one `GapReport` + one `RequirementMatch` per candidate; explanations/recommendations are templated from the structured values (no LLM — the old OpenAI narrative step was removed).
+
+**Visibility** — donor: own requirements only (`/donor/requirements`, `/donor/requirements/[id]`). Admin: queue + review (`/admin/requirements`, `/admin/requirements/[id]`), audit trail, analysis approve/reject. NGO: only opportunities where one of its eligible projects was explicitly *invited* (`/ngo/opportunities`), as an `OpportunityBrief` — no document, raw text, summary, special constraints, contact details, confidence or audit data.
+
+**Gotchas**
+- The Neon dev DB is shared with other branches (crisis/relief tables not in this schema). `prisma migrate diff` against it proposes dropping them, and `prisma migrate dev` fails at the shadow DB on `20260905120000_reconcile_sponsor_requirement_drift`. Hand-write additive migrations and apply with `prisma migrate deploy`.
+- On Windows, `prisma generate` fails with `EPERM` while `next dev` holds the query-engine DLL — stop the dev server, generate, restart.
+- Legacy CSR files were moved from `public/uploads/requirements/` to `storage/private/requirements/` (gitignored); the migration backfilled `storageKey`.

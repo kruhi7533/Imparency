@@ -52,6 +52,7 @@ export default function NGOProfileClient({
   const [activeTab, setActiveTab] = useState<"active" | "completed" | "story" | "about">("active");
   const [isFollowed, setIsFollowed] = useState(initialIsFollowed);
   const [followersCount, setFollowersCount] = useState(initialFollowersCount);
+  const [followPending, setFollowPending] = useState(false);
   
   // Health score count-up animation state
   const targetHealth = ngo.healthScore !== null && ngo.healthScore !== undefined ? Number(ngo.healthScore) : null;
@@ -86,20 +87,25 @@ export default function NGOProfileClient({
       return;
     }
 
+    if (followPending) return;
+    setFollowPending(true);
     try {
       const response = await fetch(`/api/ngo/${ngo.id}/follow`, {
         method: "POST",
       });
 
+      const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error("Failed to follow NGO");
+        throw new Error(result.error || "Failed to follow NGO");
       }
 
-      const result = await response.json();
       setIsFollowed(result.followed);
       setFollowersCount((prev) => (result.followed ? prev + 1 : prev - 1));
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert(err.message || "Failed to follow NGO");
+    } finally {
+      setFollowPending(false);
     }
   };
 
@@ -175,7 +181,8 @@ export default function NGOProfileClient({
           <div>
             <button
               onClick={handleFollowToggle}
-              className={`w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-bold shadow-md transition ${
+              disabled={followPending}
+              className={`w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-bold shadow-md transition disabled:opacity-60 ${
                 isFollowed
                   ? "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                   : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/10"
@@ -241,8 +248,8 @@ export default function NGOProfileClient({
                             <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{project.description}</p>
                             <div className="pt-2">
                               <div className="flex justify-between text-[10px] font-bold text-gray-500 mb-1">
-                                <span>Raised: ₹{Number(project.raisedAmount).toLocaleString()}</span>
-                                <span>Target: ₹{Number(project.targetAmount).toLocaleString()}</span>
+                                <span>Raised: ₹{Number(project.raisedAmount).toLocaleString("en-IN")}</span>
+                                <span>Target: ₹{Number(project.targetAmount).toLocaleString("en-IN")}</span>
                               </div>
                               <div className="w-full bg-gray-100 dark:bg-gray-800 h-1.5 rounded-full overflow-hidden">
                                 <div
@@ -291,7 +298,7 @@ export default function NGOProfileClient({
                               <h4 className="text-base font-extrabold text-gray-900 dark:text-white line-clamp-1">{project.title}</h4>
                               <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{project.description}</p>
                               <div className="pt-2 text-xs font-semibold text-emerald-600">
-                                ✓ ₹{Number(project.targetAmount).toLocaleString()} raised and deployed successfully.
+                                ✓ ₹{Number(project.targetAmount).toLocaleString("en-IN")} raised and deployed successfully.
                               </div>
                             </div>
                           </div>
@@ -412,7 +419,7 @@ export default function NGOProfileClient({
                   <span className="text-[10px] text-gray-400">Followers</span>
                 </div>
                 <div className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl">
-                  <span className="block text-lg font-black text-gray-900 dark:text-white">₹{totalRaised.toLocaleString()}</span>
+                  <span className="block text-lg font-black text-gray-900 dark:text-white">₹{totalRaised.toLocaleString("en-IN")}</span>
                   <span className="text-[10px] text-gray-400">Total Raised</span>
                 </div>
                 <div className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl col-span-2">

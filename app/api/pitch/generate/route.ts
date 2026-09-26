@@ -26,7 +26,7 @@ function getFilePath(projectId?: string | null, audience?: string | null) {
 async function rewriteDescription(description: string, audience: string) {
   if (!process.env.GEMINI_API_KEY) return description;
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
     const audienceFocus = audience === 'foreign' 
       ? 'Global/Foreign Donors (focus on strict compliance, FCRA, and large-scale global impact)' 
       : 'Indian Donors (focus on local community impact, 80G tax benefits, and grassroot changes)';

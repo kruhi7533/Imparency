@@ -17,7 +17,9 @@ Answer architecture questions from that document plus a targeted re-read of the 
 - `Notification` rows are written and pushed via FCM but never surfaced in any UI (no notifications route/bell/list).
 - ~~`app/donor/dashboard/page.tsx` is a hardcoded stub~~ — fixed; it is now wired to real Prisma data.
 - ~~`app/api/ngo/whatsapp-drafts/convert/route.ts` is dead code~~ — deleted; it was unreferenced by any UI, bypassed the `lib/prisma.ts` singleton, and updated a `milestoneId` without an ownership check. The live draft routes are `app/api/drafts/*`.
-- There **is** now a Vitest suite: `npm test` runs `tests/*.test.ts` (25 files / 264 tests as of 2026-08-31, config in `vitest.config.ts`, `@` alias resolved). Prisma is mocked per-test, so no database is needed. Add tests there rather than writing new `scripts/test-*.ts` harnesses.
+- There **is** now a Vitest suite: `npm test` runs `tests/*.test.ts` (77 files / 905 tests as of 2026-09-26, config in `vitest.config.ts`, `@` alias resolved). Prisma is mocked per-test, so no database is needed. Add tests there rather than writing new `scripts/test-*.ts` harnesses.
+- CSR/RFP workflow (upload → admin validation → matching → NGO brief → selection → contract) is documented in `docs/ARCHITECTURE.md` §13.7. Requirement status changes go only through `lib/requirements/commit.ts`; CSR files live in private storage and are served only by `GET /api/requirements/[id]/file`.
+ Donors can also create a requirement from the structured form on `/donor/requirements` (no document, starts in `DONOR_REVIEW`).
 
 ## NGO verification: ONE pass, then triage
 Registration used to fire three overlapping AI passes over the same three PDFs — `verifyNGODocuments` (awaited, so it blocked the response), `runAndStoreNgoScreening`, and `runAndStoreNgoExtraction`. They disagreed about what the files were and only extraction's answer ever reached a human. All three are now one:
@@ -39,7 +41,7 @@ Rules worth not breaking:
 - `predev` and `build` both run `prisma migrate deploy`, so schema ships with the deploy instead of depending on someone running a command.
 - `npm run db:status` shows drift. `db:sync` is an alias for `migrate deploy` (several admin pages print it in their empty states).
 - History: the dev database was originally built entirely with `db push` and had no `_prisma_migrations` table, so `migrate deploy` would have failed against it. It was brought in sync and baselined on 2026-07-25 (all three migrations marked applied). Reintroducing `db push` would recreate that drift — don't.
-
+- **The Neon dev DB is shared with other branches** and contains tables this schema doesn't know (e.g. crisis/relief). `prisma migrate diff` against it proposes *dropping* them, and `prisma migrate dev` currently fails at the shadow database on `20260905120000_reconcile_sponsor_requirement_drift`. Write additive migrations by hand (see `20260915100000_csr_governance_workflow`) and apply with `npx prisma migrate deploy`.
 
 ## Tenancy and RBAC
 The tenant is `NGOProfile`. `NGOTeamMember` + `TeamRole` (OWNER / ADMIN / FINANCE / FIELD_STAFF) give an org sub-users; `Role` (DONOR / NGO / ADMIN) is the platform-level role.
@@ -75,6 +77,7 @@ Four kinds of test are treated as mandatory, not optional:
 2. **Approval state machines** — no sensitive transition without its required human gate.
 3. **Idempotency/retry** — replaying a webhook or job does not double-apply.
 4. **AI output** — schema conformance, missing fields, hard rules, hallucination, on fixed fixtures.
+5. **Admin audit coverage** — every route under `app/api/admin` must call `logAdminAction` or be named in the `EXEMPT` list in `tests/admin-audit-coverage.test.ts` with a reason. The test fails the build either way, so adding a route means making that call deliberately. Audit payloads carry ids only; `tests/admin-audit-gaps.test.ts` asserts no `@` and no fixture names reach the log.
 
 Before opening a PR:
 
