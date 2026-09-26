@@ -65,34 +65,11 @@ export const ADMIN_HUBS: Hub[] = [
     ],
   },
   {
-    // Grants: the FUNDER-led funding model. An institutional funder opens an
-    // opportunity, matching shortlists organisations, a shortlisted one submits
-    // a proposal, and an admin approves or rejects it. This is a wholly separate
-    // track from Campaigns (the donor-led model) — the two share no data: a
-    // Proposal has no projectId and an approval creates no Project today. Kept
-    // as its own hub so the two funding models never blur. The tabs run along
-    // the path — Opportunities first, then the Proposals decision.
-    key: "grants",
-    label: "Grants",
-    href: "/admin/opportunities",
-    tabs: [
-      {
-        href: "/admin/opportunities",
-        label: "Opportunities",
-        hint: "Where a funding round starts: funder RFPs, the criteria each declares, and the matching runs that shortlist organisations against them.",
-      },
-      {
-        href: "/admin/proposals",
-        label: "Proposals",
-        hint: "The decision. What a shortlisted organisation proposes to do with the funding — approve or reject it here. Only an approved proposal becomes a funded project in Delivery.",
-      },
-    ],
-  },
-  {
     // Campaigns: the DONOR-led funding model. Organisations run campaigns that
     // raise money directly from donors and report milestone proof against it.
-    // This is Project -> Donation/Milestone, entirely separate from the Grants
-    // (funder-led) track above — different tables, different lifecycle.
+    // This is Project -> Donation/Milestone. The funder-led track (opportunities,
+    // matching, proposals) is no longer an admin surface — it moves to the CSR and
+    // NGO panels; see docs/WEEK5-FLOW.md. Its routes still exist and still work.
     key: "campaigns",
     label: "Campaigns",
     href: "/admin/project-review",
