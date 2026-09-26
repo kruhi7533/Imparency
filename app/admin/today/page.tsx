@@ -15,10 +15,8 @@ import {
   BellOff,
   CalendarClock,
   MessageCircleQuestion,
-  HandCoins,
-  GitPullRequestArrow,
   CheckCircle2,
-  FileText,
+  Building2,
 } from "lucide-react";
 import {
   buildInboxItems,
@@ -48,18 +46,16 @@ export const dynamic = "force-dynamic";
 /** Icons live here, not in lib/today-inbox.ts, so that module stays React-free. */
 const ICONS: Record<IconKey, React.ElementType> = {
   ngo: ShieldCheck,
-  opportunity: HandCoins,
   project: FolderKanban,
   completed: CheckCircle2,
-  proposal: FileText,
   proof: ImageIcon,
   fcra: FileWarning,
-  candidate: GitPullRequestArrow,
   risk: ShieldAlert,
   alert: AlertTriangle,
   thread: MessageCircleQuestion,
   quiet: BellOff,
   overdue: CalendarClock,
+  donor: Building2,
 };
 
 /** One row, identical in the main area and the sidebar. */
@@ -157,8 +153,9 @@ const SEVERITY_STYLE: Record<Severity, { label: string; classes: string }> = {
 /**
  * Unified admin inbox — a read-only aggregation over queues that already
  * exist elsewhere (NGO verification, project/proof/FCRA review, fraud alerts,
- * risk reviews, quiet NGOs, overdue milestones, inquiry threads, opportunity
- * approvals, matching decisions).
+ * risk reviews, quiet NGOs, overdue milestones, inquiry threads, CSR
+ * verification). The funder-led track (opportunities, matching, proposals) is
+ * no longer admin work — see docs/WEEK5-FLOW.md.
  *
  * Items are grouped into three fixed categories (Approvals, Decisions,
  * Blocked / SLA — see `Category` above) so the page reads as an Action Center

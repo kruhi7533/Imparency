@@ -43,18 +43,16 @@ export const CATEGORY_HINT: Record<Category, string> = {
  */
 export type IconKey =
   | "ngo"
-  | "opportunity"
   | "project"
   | "completed"
-  | "proposal"
   | "proof"
   | "fcra"
-  | "candidate"
   | "risk"
   | "alert"
   | "thread"
   | "quiet"
-  | "overdue";
+  | "overdue"
+  | "donor";
 
 export interface InboxItem {
   id: string;
@@ -88,7 +86,6 @@ export function daysSince(date: Date, now: number = Date.now()): number {
 /** The already-fetched rows the page hands over, named rather than positional. */
 export interface InboxSources {
   pendingNgos: { id: string; orgName: string; createdAt: Date }[];
-  submittedOpportunities: { id: string; title: string; funderName: string; createdAt: Date }[];
   pendingProjects: { id: string; title: string; createdAt: Date; ngo: { orgName: string } }[];
   /**
    * Projects that reached COMPLETED and still want an admin to close them out.
@@ -97,16 +94,6 @@ export interface InboxSources {
    * without a window every project ever finished would sit here forever.
    */
   completedProjects: { id: string; title: string; updatedAt: Date; ngo: { orgName: string } }[];
-  /** Proposals a shortlisted organisation has submitted and nobody has decided. */
-  openProposals: {
-    id: string;
-    title: string;
-    status: string;
-    submittedAt: Date | null;
-    createdAt: Date;
-    ngo: { orgName: string };
-    opportunity: { title: string };
-  }[];
   pendingProofs: {
     id: string;
     title: string;
@@ -114,14 +101,6 @@ export interface InboxSources {
     project: { title: string; ngo: { orgName: string } };
   }[];
   pendingFcra: { id: string; updatedAt: Date; ngo: { id: string; orgName: string } }[];
-  proposedCandidates: {
-    id: string;
-    jobId: string;
-    verdict: string;
-    createdAt: Date;
-    ngo: { orgName: string };
-    job: { opportunityId: string; opportunity: { title: string } };
-  }[];
   openRiskReviews: {
     id: string;
     riskLevel: string;
@@ -149,6 +128,39 @@ export interface InboxSources {
    * and the card falls back to the queue rather than deep-linking nowhere.
    */
   alertNgos?: Record<string, { ngoId: string; orgName: string }>;
+  /**
+   * Donor ORGANISATIONS waiting on a verification decision.
+   *
+   * The donor side of the queue that `pendingNgos` covers for organisations.
+   * Without this an admin had no way to learn a company was waiting other than
+   * opening /admin/donors and filtering for it.
+   */
+  pendingOrgs: {
+    id: string;
+    displayName: string;
+    donorPersona: string | null;
+    orgSubmittedAt: Date | null;
+    createdAt: Date;
+  }[];
+  /**
+   * Money that arrived from an institutional donor straight into a project,
+   * without passing through an opportunity, a proposal or an approval.
+   *
+   * This is a SIGNAL, not a queue: there is nothing for the admin to decide,
+   * because the payment already completed. It exists because a CSR funding a
+   * project directly is the single largest movement of money on the platform
+   * and, before this, nothing anywhere told anyone it had happened.
+   */
+  institutionalDonations: {
+    id: string;
+    amount: number;
+    createdAt: Date;
+    donorId: string;
+    donorName: string;
+    donorPersona: string | null;
+    orgVerificationStatus: string;
+    projectTitle: string;
+  }[];
   threadsNeedingReply: { id: string; subject: string; updatedAt: Date; subjectType: string }[];
   quietNgos: { id: string; orgName: string }[];
   overdueMilestones: {
@@ -157,71 +169,6 @@ export interface InboxSources {
     deadline: Date;
     project: { title: string; ngo: { orgName: string } };
   }[];
-}
-
-/**
- * One row per matching job, not per candidate.
- *
- * Every candidate in a job links to the same page, and that page is where they
- * are decided together — so a job with eight undecided candidates was eight
- * rows pointing at one destination. A single candidate keeps the richer form,
- * naming the organisation, because there is nothing to summarise.
- *
- * The row carries the age of the OLDEST candidate: a job is as overdue as the
- * longest-waiting decision in it, not its most recent one.
- */
-function collapseCandidatesByJob(
-  candidates: InboxSources["proposedCandidates"],
-  age: (d: Date) => number
-): InboxItem[] {
-  const byJob = new Map<string, InboxSources["proposedCandidates"]>();
-  for (const c of candidates) {
-    const group = byJob.get(c.jobId);
-    if (group) group.push(c);
-    else byJob.set(c.jobId, [c]);
-  }
-
-  return Array.from(byJob.values()).map((group): InboxItem => {
-    const [first] = group;
-    const oldest = Math.max(...group.map((c) => age(c.createdAt)));
-    // The job is as old as its longest-waiting candidate, so it stops counting
-    // as new once ANY candidate in it has been seen.
-    const oldestAt = new Date(Math.min(...group.map((c) => c.createdAt.getTime())));
-    const common = {
-      queue: "Matching decisions",
-      category: "Waiting on you" as Category,
-      iconKey: "candidate" as IconKey,
-      occurredAt: oldestAt,
-      age: oldest,
-      severity: (oldest > 5 ? "medium" : "low") as Severity,
-      href: `/admin/opportunities/${first.job.opportunityId}/jobs/${first.jobId}`,
-    };
-
-    if (group.length === 1) {
-      return {
-        ...common,
-        id: `candidate-${first.id}`,
-        title: first.ngo.orgName,
-        subtitle: `${first.job.opportunity.title} · engine says ${first.verdict.toLowerCase()} — waiting ${oldest}d`,
-      };
-    }
-
-    const ordered = [...group].sort((a, b) => a.ngo.orgName.localeCompare(b.ngo.orgName));
-    const details = ordered
-      .slice(0, MAX_DETAIL_LINES)
-      .map((c) => `${c.ngo.orgName} — engine says ${c.verdict.toLowerCase()}`);
-    if (ordered.length > MAX_DETAIL_LINES) {
-      details.push(`+${ordered.length - MAX_DETAIL_LINES} more`);
-    }
-
-    return {
-      ...common,
-      id: `job-${first.jobId}`,
-      title: first.job.opportunity.title,
-      subtitle: `${group.length} candidates awaiting a decision — oldest waiting ${oldest}d`,
-      details,
-    };
-  });
 }
 
 const ALERT_SEVERITY_RANK: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
@@ -316,6 +263,20 @@ function collapseAlertsByEntity(
   });
 }
 
+/** "CSR", "Foundation", "Government" — never the raw enum, which leaks schema. */
+function personaLabel(persona: string | null): string {
+  switch (persona) {
+    case "CSR_OFFICER":
+      return "CSR";
+    case "FOUNDATION":
+      return "Foundation";
+    case "GOVERNMENT":
+      return "Government";
+    default:
+      return "Corporate";
+  }
+}
+
 export function buildInboxItems(s: InboxSources, now: number = Date.now()): InboxItem[] {
   const age = (d: Date) => daysSince(d, now);
 
@@ -332,18 +293,25 @@ export function buildInboxItems(s: InboxSources, now: number = Date.now()): Inbo
       severity: age(n.createdAt) > 5 ? "high" : "medium",
       href: "/admin/dashboard",
     })),
-    ...s.submittedOpportunities.map((o): InboxItem => ({
-      id: `opportunity-${o.id}`,
-      queue: "Opportunity approvals",
-      category: "Waiting on you",
-      iconKey: "opportunity",
-      title: o.title,
-      subtitle: `${o.funderName} — submitted, awaiting review ${age(o.createdAt)}d`,
-      occurredAt: o.createdAt,
-      age: age(o.createdAt),
-      severity: age(o.createdAt) > 3 ? "medium" : "low",
-      href: `/admin/opportunities/${o.id}`,
-    })),
+    // Donor organisations waiting on a decision. Same shape and same severity
+    // curve as pendingNgos above — a company waiting a week for verification is
+    // the same kind of problem as an NGO waiting a week, and was previously
+    // invisible here while the NGO one was not.
+    ...s.pendingOrgs.map((d): InboxItem => {
+      const since = d.orgSubmittedAt ?? d.createdAt;
+      return {
+        id: `donor-org-${d.id}`,
+        queue: "CSR Verification",
+        category: "Waiting on you",
+        iconKey: "donor",
+        title: d.displayName,
+        subtitle: `${personaLabel(d.donorPersona)} awaiting verification — waiting ${age(since)}d`,
+        occurredAt: since,
+        age: age(since),
+        severity: age(since) > 5 ? "high" : "medium",
+        href: `/admin/donors/${d.id}`,
+      };
+    }),
     ...s.pendingProjects.map((p): InboxItem => ({
       id: `project-${p.id}`,
       queue: "Project Review",
@@ -368,26 +336,6 @@ export function buildInboxItems(s: InboxSources, now: number = Date.now()): Inbo
       severity: age(p.updatedAt) > 7 ? "medium" : "low",
       href: "/admin/project-review",
     })),
-    ...s.openProposals.map((p): InboxItem => {
-      // A proposal already taken up reads differently from one nobody has
-      // touched: the second is a queue, the first is somebody's open task.
-      const at = p.submittedAt ?? p.createdAt;
-      const underReview = p.status === "UNDER_REVIEW";
-      return {
-        id: `proposal-${p.id}`,
-        queue: "Proposal Review",
-        category: "Waiting on you",
-        iconKey: "proposal",
-        title: p.title,
-        subtitle: `${p.ngo.orgName} · ${p.opportunity.title} — ${
-          underReview ? "under review" : "awaiting review"
-        } ${age(at)}d`,
-        occurredAt: at,
-        age: age(at),
-        severity: age(at) > 5 ? "high" : age(at) > 2 ? "medium" : "low",
-        href: `/admin/proposals/${p.id}`,
-      };
-    }),
     ...s.pendingProofs.map((m): InboxItem => ({
       id: `proof-${m.id}`,
       queue: "Proof Review",
@@ -412,7 +360,6 @@ export function buildInboxItems(s: InboxSources, now: number = Date.now()): Inbo
       severity: age(c.updatedAt) > 5 ? "medium" : "low",
       href: "/admin/fcra-review",
     })),
-    ...collapseCandidatesByJob(s.proposedCandidates, age),
     ...s.openRiskReviews.map((r): InboxItem => ({
       id: `risk-${r.id}`,
       queue: "Risk Review",
@@ -426,6 +373,24 @@ export function buildInboxItems(s: InboxSources, now: number = Date.now()): Inbo
       href: "/admin/risk-compliance",
     })),
     ...collapseAlertsByEntity(s.openAlerts, s.alertNgos ?? {}, age),
+    // Institutional money that arrived without an opportunity behind it.
+    // HIGH when the organisation behind it was never verified, because that is
+    // a company the platform has taken money for and never checked.
+    ...s.institutionalDonations.map((d): InboxItem => ({
+      id: `inst-donation-${d.id}`,
+      queue: "Corporate giving",
+      category: "Signals",
+      iconKey: "donor",
+      title: `${d.donorName} gave ₹${d.amount.toLocaleString("en-IN")}`,
+      subtitle:
+        d.orgVerificationStatus === "VERIFIED"
+          ? `${personaLabel(d.donorPersona)} → ${d.projectTitle} — direct, no opportunity behind it`
+          : `${personaLabel(d.donorPersona)} → ${d.projectTitle} — organisation is ${d.orgVerificationStatus.toLowerCase().replace(/_/g, " ")}`,
+      occurredAt: d.createdAt,
+      age: age(d.createdAt),
+      severity: d.orgVerificationStatus === "VERIFIED" ? "low" : "high",
+      href: `/admin/donors/${d.donorId}`,
+    })),
     ...s.threadsNeedingReply.map((t): InboxItem => ({
       id: `thread-${t.id}`,
       queue: "Inquiries & Appeals",
