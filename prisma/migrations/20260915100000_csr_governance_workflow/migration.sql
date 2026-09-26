@@ -37,14 +37,50 @@ ALTER TABLE "RequirementRevision"
 ADD COLUMN "changedByRole" TEXT,
 ADD COLUMN "status" TEXT;
 
+-- GapReport and ReviewStatus reached the schema through `prisma db push` and
+-- no migration ever created them, so this file's ALTER could only ever run on
+-- the one database that was pushed to. Created here, guarded, before it is
+-- altered — the same shape as 20260905120000, and the reason CLAUDE.md says a
+-- new model needs BOTH the schema edit and a migration.
+DO $$ BEGIN
+    CREATE TYPE "ReviewStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS "GapReport" (
+    "id" TEXT NOT NULL,
+    "sponsorRequirementId" TEXT NOT NULL,
+    "overallCompatibility" INTEGER NOT NULL,
+    "gapReport" JSONB NOT NULL,
+    "recommendations" JSONB NOT NULL,
+    "reviewedBy" TEXT,
+    "reviewStatus" "ReviewStatus" NOT NULL DEFAULT 'PENDING',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "GapReport_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX IF NOT EXISTS "GapReport_sponsorRequirementId_idx" ON "GapReport"("sponsorRequirementId");
+CREATE INDEX IF NOT EXISTS "GapReport_reviewedBy_idx" ON "GapReport"("reviewedBy");
+
+DO $$ BEGIN
+    ALTER TABLE "GapReport" ADD CONSTRAINT "GapReport_sponsorRequirementId_fkey"
+        FOREIGN KEY ("sponsorRequirementId") REFERENCES "SponsorRequirement"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "GapReport" ADD CONSTRAINT "GapReport_reviewedBy_fkey"
+        FOREIGN KEY ("reviewedBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 -- AlterTable
 ALTER TABLE "GapReport"
-ADD COLUMN "algorithmVersion" TEXT,
-ADD COLUMN "candidateCount" INTEGER NOT NULL DEFAULT 0,
-ADD COLUMN "eligibleCount" INTEGER NOT NULL DEFAULT 0,
-ADD COLUMN "reviewNote" TEXT,
-ADD COLUMN "reviewedAt" TIMESTAMP(3),
-ADD COLUMN "triggeredById" TEXT;
+ADD COLUMN IF NOT EXISTS "algorithmVersion" TEXT,
+ADD COLUMN IF NOT EXISTS "candidateCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS "eligibleCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS "reviewNote" TEXT,
+ADD COLUMN IF NOT EXISTS "reviewedAt" TIMESTAMP(3),
+ADD COLUMN IF NOT EXISTS "triggeredById" TEXT;
 
 -- CreateTable
 CREATE TABLE "RequirementAuditLog" (

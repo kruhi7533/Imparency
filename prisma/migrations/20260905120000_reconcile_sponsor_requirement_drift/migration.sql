@@ -42,8 +42,15 @@ ALTER TABLE "SponsorRequirement"
 
 -- Carry legacy rows over to the current column names, then stop requiring the
 -- legacy columns Prisma no longer writes.
-UPDATE "SponsorRequirement" SET "sponsorId" = "donorId"
-    WHERE "sponsorId" IS NULL AND "donorId" IS NOT NULL;
+-- Guarded like the ALTER COLUMN statements below: on a database built from the
+-- migrations rather than from `db push`, "donorId" never existed, and a bare
+-- UPDATE naming it aborts the whole migration (42703). The DO block resolves
+-- the column at run time, so the carry-over is a no-op where there is nothing
+-- to carry over.
+DO $$ BEGIN
+    UPDATE "SponsorRequirement" SET "sponsorId" = "donorId"
+        WHERE "sponsorId" IS NULL AND "donorId" IS NOT NULL;
+EXCEPTION WHEN undefined_column THEN NULL; END $$;
 
 DO $$ BEGIN
     ALTER TABLE "SponsorRequirement" ALTER COLUMN "title" DROP NOT NULL;
