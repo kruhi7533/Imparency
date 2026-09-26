@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { Document, Page, Text, View, StyleSheet, pdf } from "@react-pdf/renderer";
 import { getIndianFinancialYear } from "@/lib/finance-utils";
+import { checkRateLimit } from "@/lib/rate-limiter";
 
 export const runtime = "nodejs";
 
@@ -261,6 +262,12 @@ export async function GET(request: Request) {
   if (!auth.authorized) {
     return auth.response;
   }
+
+  // Each call renders a PDF and aggregates a financial year of donations, so
+  // it is by far the most expensive read in this folder. Nobody downloads a
+  // utilization certificate more than a handful of times in a minute.
+  const rl = await checkRateLimit(request, "donations/csr-certificate", 5, 60);
+  if (rl.isBlocked) return rl.response!;
 
   const userId = auth.session.user.id;
 

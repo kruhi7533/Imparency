@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
-import { Role } from "@prisma/client";
+import { Role, FCRAStatus } from "@prisma/client";
 import { deriveFcraStatus, logComplianceEvent } from "@/lib/ngo-compliance";
 import {
   sendFcraApprovalEmail,
@@ -57,11 +57,26 @@ export async function POST(request: Request) {
     const complianceId = ngo.compliance.id;
     const previousFcraStatus = ngo.compliance.fcraStatus;
 
+    // State guard: only a submission actually awaiting a decision can be acted
+    // on — mirrors the guard in verify-ngo/review-proof. Without this, this
+    // route accepted an action against any fcraStatus (including re-approving
+    // an already-ACTIVE or already-REJECTED record).
+    const REVIEWABLE_STATUSES: FCRAStatus[] = [FCRAStatus.PENDING, FCRAStatus.REUPLOAD_REQUESTED];
+    if (!REVIEWABLE_STATUSES.includes(previousFcraStatus)) {
+      return NextResponse.json(
+        { error: `FCRA submission is not awaiting review (current status: ${previousFcraStatus}).` },
+        { status: 409 }
+      );
+    }
+
     if (action === "APPROVE") {
       const expiry = new Date(expiryDate);
       const status = deriveFcraStatus(expiry) ?? "ACTIVE";
-      await prisma.nGOCompliance.update({
-        where: { id: complianceId },
+      // Conditioned on the status still being reviewable — closes the race
+      // window between the findUnique above and this write (two admins acting
+      // on the same submission at once must not both succeed).
+      const { count } = await prisma.nGOCompliance.updateMany({
+        where: { id: complianceId, fcraStatus: { in: REVIEWABLE_STATUSES } },
         data: {
           fcraStatus: status,
           fcraNumber: fcraNumber ?? undefined,
@@ -75,6 +90,12 @@ export async function POST(request: Request) {
           verifiedById: adminId,
         },
       });
+      if (count === 0) {
+        return NextResponse.json(
+          { error: "FCRA submission was just decided by another admin action. Refresh and check its current status." },
+          { status: 409 }
+        );
+      }
       await logComplianceEvent(
         complianceId,
         "FCRA_APPROVED",
@@ -95,16 +116,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, fcraStatus: status });
     }
 
-    // REJECT / REUPLOAD
+    // REJECT / REUPLOAD — same race guard as APPROVE above.
     const newStatus = action === "REJECT" ? "REJECTED" : "REUPLOAD_REQUESTED";
-    await prisma.nGOCompliance.update({
-      where: { id: complianceId },
+    const { count: rejectCount } = await prisma.nGOCompliance.updateMany({
+      where: { id: complianceId, fcraStatus: { in: REVIEWABLE_STATUSES } },
       data: {
         fcraStatus: newStatus,
         fcraAdminNote: adminNote.trim(),
         verifiedById: adminId,
       },
     });
+    if (rejectCount === 0) {
+      return NextResponse.json(
+        { error: "FCRA submission was just decided by another admin action. Refresh and check its current status." },
+        { status: 409 }
+      );
+    }
     await logComplianceEvent(
       complianceId,
       action === "REJECT" ? "FCRA_REJECTED" : "FCRA_REUPLOAD_REQUESTED",

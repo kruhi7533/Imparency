@@ -5,6 +5,7 @@ import { uploadFile } from "@/lib/storage";
 import { validateMilestoneProof } from "@/lib/gemini/validate-proof";
 import { Role } from "@prisma/client";
 import { recalculateNGOHealthScore } from "@/lib/ngo-health";
+import { extractGpsFromImage, classifyProofLocation } from "@/lib/proof-location";
 
 export const runtime = "nodejs";
 
@@ -100,6 +101,13 @@ export async function POST(request: Request) {
       }
     }
 
+    // GPS provenance — read from the first uploaded image's EXIF data, if
+    // present. Best-effort: a metadata-extraction failure must never block a
+    // submission, which is why extractGpsFromImage itself never throws (see
+    // lib/proof-location.ts) and this is not wrapped further here.
+    const firstImage = fileBuffers.find((f) => f.mimeType.startsWith("image/"));
+    const proofCoordinates = firstImage ? await extractGpsFromImage(firstImage.buffer) : null;
+
     // Invoke Gemini AI Validation
     const validationResult = await validateMilestoneProof(
       {
@@ -131,6 +139,9 @@ export async function POST(request: Request) {
         theoryOfChangeReasoning: validationResult.tocReasoning,
         theoryOfChangeStrengths: validationResult.tocStrengths || [],
         theoryOfChangeGaps: validationResult.tocGaps || [],
+        proofLatitude: proofCoordinates?.latitude ?? null,
+        proofLongitude: proofCoordinates?.longitude ?? null,
+        gpsSource: proofCoordinates ? "EXIF" : null,
       },
     });
 
@@ -140,6 +151,35 @@ export async function POST(request: Request) {
       await checkGeminiScore(milestone.id, validationResult.score);
     } catch (fraudErr) {
       console.error("Failed to run Gemini score risk check:", fraudErr);
+    }
+
+    // GPS mismatch check — informational NO_GPS_DATA is not alert-worthy (most
+    // phones strip location metadata; flagging every such submission would
+    // flood the queue the same way flagging every NGO with no 12A/80G would).
+    // Only an actual MISMATCH — a photo taken far from the project's
+    // registered site — raises a HIGH alert for a human to look at.
+    try {
+      const locationResult = classifyProofLocation(
+        proofCoordinates,
+        milestone.project.latitude != null && milestone.project.longitude != null
+          ? { latitude: milestone.project.latitude, longitude: milestone.project.longitude }
+          : null
+      );
+      if (locationResult.status === "MISMATCH") {
+        const { createFraudAlert } = await import("@/lib/fraud-alerts");
+        await createFraudAlert(
+          "PROOF_LOCATION_MISMATCH",
+          milestone.id,
+          "NGO",
+          `Milestone "${milestone.title}" proof photo was taken ~${Math.round(
+            locationResult.distanceKm ?? 0
+          )}km from the project's registered site.`,
+          "HIGH",
+          "FRAUD_ALERT"
+        );
+      }
+    } catch (locationErr) {
+      console.error("Failed to run proof location check:", locationErr);
     }
 
     // Always queue for admin review — milestones never auto-complete regardless of AI score.

@@ -277,7 +277,7 @@ describe("DonorOrg / Opportunity Contracts Subsystem", () => {
       });
 
       expect(contractCompleted).toBe(true);
-      expect(result.status).toBe("COMPLETED");
+      expect(result?.status).toBe("COMPLETED");
     });
   });
 

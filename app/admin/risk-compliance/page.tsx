@@ -1,35 +1,23 @@
 import prisma from "@/lib/prisma";
-import { checkGeneralPlatformAlerts } from "@/lib/risk-agent";
+import SchemaOutOfSync from "@/app/admin/components/SchemaOutOfSync";
 import { getAllComplianceSummaries } from "@/lib/compliance-agent";
 import RiskComplianceClient from "./RiskComplianceClient";
+import { buildInvestigationStatusByAlertId } from "@/lib/risk-compliance-view";
 
 export const runtime = "nodejs";
 
-function SchemaOutOfSync({ detail }: { detail?: string }) {
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-6">
-      <div className="max-w-lg w-full bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/40 rounded-2xl shadow-sm p-8">
-        <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">Database schema is out of sync</h1>
-        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-          A table or column this page needs doesn&apos;t exist in the connected database yet.
-          Your branch&apos;s Prisma schema is ahead of the database.
-        </p>
-        <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Run this, then reload:</p>
-        <pre className="mt-2 rounded-lg bg-gray-900 text-emerald-300 text-sm px-4 py-3 font-mono">npm run db:sync</pre>
-        {detail ? (
-          <p className="mt-4 text-xs text-gray-400 font-mono break-all">Missing: {detail}</p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-export default async function RiskCompliancePage() {
-  // Refresh platform alerts on load
-  try { await checkGeneralPlatformAlerts(); } catch (err) {
-    console.error("[risk-compliance] platform alert refresh failed:", err);
-  }
-
+export default async function RiskCompliancePage({
+  searchParams,
+}: {
+  searchParams: { case?: string };
+}) {
+  // The platform alert sweep (deadline-exceeded milestones, inactive funded
+  // campaigns) used to run here, awaited before this page fetched anything.
+  // Measured at 466ms against 158ms for the page's own data — three quarters
+  // of the wait was maintenance work. It now runs on a schedule instead:
+  // `app/api/cron/risk-sweep`. Alerts it raises appear on the next sweep
+  // rather than the next page load; its thresholds are 30 and 60 days, so
+  // that delay changes nothing operationally.
   let data;
   try {
     data = await Promise.all([
@@ -41,17 +29,25 @@ export default async function RiskCompliancePage() {
         orderBy: { createdAt: "desc" },
       }),
       getAllComplianceSummaries(),
+      // Investigations are shown whatever their outcome, including FAILED and
+      // ones that filed nothing — a queue that only lists hits gives no way to
+      // judge how often the investigator is right.
+      prisma.fraudInvestigation.findMany({
+        include: { ngo: { select: { orgName: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 25,
+      }),
     ]);
   } catch (err: any) {
     // P2021 = table missing, P2022 = column missing: the database schema is
     // behind this branch's prisma schema. Show an actionable message instead of
     // a blank 500 that takes down the whole admin console.
     if (err?.code === "P2021" || err?.code === "P2022") {
-      return <SchemaOutOfSync detail={err?.meta?.table || err?.meta?.column || err?.message} />;
+      return <SchemaOutOfSync title="Risk & Compliance failed to load" detail={err?.meta?.table || err?.meta?.column || err?.message} />;
     }
     throw err;
   }
-  const [allUnresolved, resolvedAlerts, riskReviews, complianceSummaries] = data;
+  const [allUnresolved, resolvedAlerts, riskReviews, complianceSummaries, investigations] = data;
 
   const severityRank: Record<string, number> = { HIGH: 1, MEDIUM: 2, LOW: 3 };
   const sorted = [...allUnresolved].sort(
@@ -59,6 +55,16 @@ export default async function RiskCompliancePage() {
   );
 
   const serialize = (a: typeof allUnresolved[0]) => ({ ...a, createdAt: a.createdAt.toISOString() });
+
+  // Per-alert investigation status, so an admin scanning the alert list can
+  // see "AI already looked at this" without opening the separate
+  // Investigations tab or clicking Investigate themselves — logic lives in
+  // lib/risk-compliance-view.ts so it is covered by tests/risk-compliance-view.test.ts
+  // rather than only observed through this rendered page.
+  const investigationStatusByAlertId = buildInvestigationStatusByAlertId(
+    investigations as any[],
+    riskReviews as any[]
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
@@ -81,6 +87,13 @@ export default async function RiskCompliancePage() {
             findings: r.findings,
           }))}
           complianceSummaries={complianceSummaries}
+          initialInvestigations={investigations.map((i: any) => ({
+            ...i,
+            trace: Array.isArray(i.trace) ? i.trace : [],
+            createdAt: i.createdAt.toISOString(),
+          }))}
+          investigationStatusByAlertId={investigationStatusByAlertId}
+          initialHighlightReviewId={searchParams.case ?? null}
         />
       </main>
     </div>

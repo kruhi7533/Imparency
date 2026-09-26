@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import PanActions from "./PanActions";
 import RiskInsight from "./RiskInsight";
+import PersonaEditor from "./PersonaEditor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,7 +78,10 @@ export default async function DonorDetailPage({ params }: { params: { id: string
       at: a.createdAt,
       kind: "ADMIN" as const,
       label: a.action.replace(/_/g, " "),
-      detail: `by ${a.admin.name || a.admin.email}${a.note ? ` — "${a.note}"` : ""}`,
+      // A null admin means the platform did this, not a person — see
+      // AdminActionLog.adminId. Say so plainly rather than rendering "unknown",
+      // which reads like missing data instead of an automated decision.
+      detail: `by ${a.admin ? a.admin.name || a.admin.email : "the platform (automated)"}${a.note ? ` — "${a.note}"` : ""}`,
     })),
     ...alerts.map((al) => ({
       at: al.createdAt,
@@ -104,6 +108,10 @@ export default async function DonorDetailPage({ params }: { params: { id: string
     donor.panNumber &&
     (donor.panStatus === "PROVIDER_ERROR" ||
       donor.panStatus === "FAILED" ||
+      // A PAN that was simply never attempted also needs a manual path —
+      // this used to fall through to nothing, so a donor with no automated
+      // check on record could never be verified from this page at all.
+      donor.panStatus === "UNVERIFIED" ||
       donor.panVerifiedVia === "MOCK" ||
       donor.panNameMatch === false);
 
@@ -136,7 +144,10 @@ export default async function DonorDetailPage({ params }: { params: { id: string
           {/* Identity */}
           <Section title="Identity">
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Persona" value={donor.donorPersona ?? "—"} />
+              <div>
+                <Field label="Persona" value={donor.donorPersona ?? "—"} />
+                <PersonaEditor donorId={donor.id} current={donor.donorPersona} />
+              </div>
               <Field label="Tier" value={donor.donorTier} />
               <Field label="Corporate" value={donor.isCorporate ? donor.companyName || "Yes" : "No"} />
               <Field label="City" value={donor.city} />
@@ -187,6 +198,7 @@ export default async function DonorDetailPage({ params }: { params: { id: string
                   {donor.panVerifiedVia === "MOCK" && " (verified in MOCK mode — no real provider check ran)"}
                   {donor.panNameMatch === false && " (provider name does not match profile name)"}
                   {donor.panStatus === "PROVIDER_ERROR" && " (verification provider was unavailable)"}
+                  {donor.panStatus === "UNVERIFIED" && " (no automated check has run yet)"}
                 </p>
                 <PanActions donorId={donor.id} />
               </div>

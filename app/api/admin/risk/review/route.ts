@@ -56,8 +56,30 @@ async function handleRiskReview(req: NextRequest, session: { user: { id: string 
     return NextResponse.json({ error: "Risk review not found" }, { status: 404 });
   }
 
+  // State guard + race protection, claimed atomically before any side effect
+  // runs. Without this, a review that's already CLEARED/SUSPENDED/ESCALATED
+  // could be acted on again — e.g. re-suspending an NGO that a later review
+  // already reinstated — and two admins racing on the same OPEN review could
+  // both suspend, both email the NGO, and both write an audit log entry.
+  const newStatus = action === "CLEAR" ? "CLEARED" : action === "SUSPEND" ? "SUSPENDED" : "ESCALATED";
   const adminId = session.user.id;
   const note = reviewNote.trim();
+  const claim = await prisma.riskReview.updateMany({
+    where: { id: reviewId, status: "OPEN" },
+    data: {
+      status: newStatus,
+      reviewedBy: adminId,
+      reviewNote: note,
+      resolvedAt: ["CLEAR", "SUSPEND"].includes(action) ? new Date() : null,
+    },
+  });
+  if (claim.count === 0) {
+    return NextResponse.json(
+      { error: `This risk review was already decided (current status: ${review.status}). Refresh and check its current status.` },
+      { status: 409 }
+    );
+  }
+
   const ngo = review.ngo;
   const wasSuspended = ngo.isSuspended;
 
@@ -161,16 +183,8 @@ async function handleRiskReview(req: NextRequest, session: { user: { id: string 
     });
 
     if (wasSuspended && !safeToReinstate) {
-      // Clear the review below, but tell the admin why the NGO stays suspended.
-      await prisma.riskReview.update({
-        where: { id: reviewId },
-        data: {
-          status: "CLEARED",
-          reviewedBy: adminId,
-          reviewNote: note,
-          resolvedAt: new Date(),
-        },
-      });
+      // The review itself is already CLEARED via the atomic claim above —
+      // just tell the admin why the NGO stays suspended anyway.
       return NextResponse.json({
         ok: true,
         status: "CLEARED",
@@ -179,9 +193,10 @@ async function handleRiskReview(req: NextRequest, session: { user: { id: string 
       });
     }
   } else {
-    // ESCALATE — must be visible, not a silent note. The review stays OPEN
-    // (it still needs a final CLEAR/SUSPEND decision) but is marked escalated
-    // and the supervisor inbox (ADMIN_EMAIL) is notified.
+    // ESCALATE — must be visible, not a silent note. The review is marked
+    // ESCALATED (still surfaced by the admin queue's status filter, alongside
+    // OPEN/REVIEWED) rather than closed, since it still needs a final
+    // CLEAR/SUSPEND decision — the supervisor inbox (ADMIN_EMAIL) is notified.
     await logAdminAction({
       adminId,
       action: "RISK_REVIEW_ESCALATED",
@@ -193,15 +208,5 @@ async function handleRiskReview(req: NextRequest, session: { user: { id: string 
     });
   }
 
-  const updated = await prisma.riskReview.update({
-    where: { id: reviewId },
-    data: {
-      status: action === "CLEAR" ? "CLEARED" : action === "SUSPEND" ? "SUSPENDED" : "ESCALATED",
-      reviewedBy: adminId,
-      reviewNote: note,
-      resolvedAt: ["CLEAR", "SUSPEND"].includes(action) ? new Date() : null,
-    },
-  });
-
-  return NextResponse.json({ ok: true, status: updated.status });
+  return NextResponse.json({ ok: true, status: newStatus });
 }

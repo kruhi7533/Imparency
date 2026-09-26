@@ -23,7 +23,7 @@ const monoFont = IBM_Plex_Mono({
 
 import { Providers } from "./providers";
 import Navbar from "./components/Navbar";
-import AssistantWidget from "./components/AssistantWidget";
+import AssistantWidgetLoader from "./components/AssistantWidgetLoader";
 
 export const metadata: Metadata = {
   title: "ImpactBridge - Trust-First NGO Donations",
@@ -43,7 +43,7 @@ export default function RootLayout({
         <Providers>
           <Navbar />
           {children}
-          <AssistantWidget />
+          <AssistantWidgetLoader />
         </Providers>
       </body>
     </html>

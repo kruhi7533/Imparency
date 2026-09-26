@@ -5,6 +5,7 @@ import {
   sendAdminUnresolvedFraudAlertsReminder,
   sendNGODocumentReminderEmail,
   sendNGOOverdueMilestoneReminder,
+  sendReverificationOverdueEmail,
 } from "@/lib/email";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "inkvuex@gmail.com";
@@ -179,7 +180,50 @@ export async function remindOverdueMilestones() {
   return { sent: true, count: overdue.length, ngos: emailsSent };
 }
 
-// Run all five checks in sequence
+// Run all six checks in sequence
+/**
+ * Re-verification cases whose 14-day window has passed.
+ *
+ * This is the whole enforcement mechanism, and it is deliberately just a louder
+ * email. The platform does not suspend, delist, or reject an organisation on a
+ * timer — an overdue case means a HUMAN is late, and the answer to that is to
+ * tell the human again, not to punish the NGO for it.
+ *
+ * `reverificationEscalatedAt` stops this becoming a nightly repeat of the same
+ * message, which is how a real alert turns into one people filter out.
+ */
+export async function remindAdminOverdueReverifications() {
+  const now = new Date();
+
+  const overdue = await prisma.nGOProfile.findMany({
+    where: {
+      reverificationRequiredAt: { not: null },
+      reverificationDueAt: { lt: now },
+      reverificationEscalatedAt: null,
+      isDeleted: false,
+    },
+    select: { id: true, orgName: true, reverificationReason: true, reverificationDueAt: true },
+  });
+
+  if (overdue.length === 0) return { sent: false, count: 0 };
+
+  await sendReverificationOverdueEmail(
+    ADMIN_EMAIL,
+    overdue.map((n) => ({
+      orgName: n.orgName,
+      reason: n.reverificationReason ?? "Evidence behind the approval has failed.",
+      daysOverdue: n.reverificationDueAt ? daysSince(n.reverificationDueAt) : 0,
+    }))
+  );
+
+  await prisma.nGOProfile.updateMany({
+    where: { id: { in: overdue.map((n) => n.id) } },
+    data: { reverificationEscalatedAt: now },
+  });
+
+  return { sent: true, count: overdue.length };
+}
+
 export async function runAllAdminReminders() {
   const results = await Promise.allSettled([
     remindAdminPendingNGOs(),
@@ -187,6 +231,7 @@ export async function runAllAdminReminders() {
     remindAdminUnresolvedFraudAlerts(),
     remindNGODocumentErrors(),
     remindOverdueMilestones(),
+    remindAdminOverdueReverifications(),
   ]);
 
   return {
@@ -195,5 +240,6 @@ export async function runAllAdminReminders() {
     fraudAlerts: results[2].status === "fulfilled" ? results[2].value : { error: String(results[2].reason) },
     documentErrors: results[3].status === "fulfilled" ? results[3].value : { error: String(results[3].reason) },
     overdueMilestones: results[4].status === "fulfilled" ? results[4].value : { error: String(results[4].reason) },
+    overdueReverifications: results[5].status === "fulfilled" ? results[5].value : { error: String(results[5].reason) },
   };
 }

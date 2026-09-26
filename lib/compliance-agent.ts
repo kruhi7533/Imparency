@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { computeCompliance, deriveFcraStatus, hasVerifiedImpactProof } from "@/lib/ngo-compliance";
+import { findUnbackedFlags, getComplianceEvidence } from "@/lib/compliance-evidence";
 
 export interface NGOComplianceSummary {
   ngoId: string;
@@ -20,6 +21,24 @@ export interface NGOComplianceSummary {
   registrationVerified: boolean;
   a12Verified: boolean;
   eightyGVerified: boolean;
+
+  /**
+   * False when the NGO has no NGOCompliance row at all.
+   *
+   * Without this, "we have never assessed this organisation" and "we assessed
+   * it and nothing is verified" both render as a row of dashes — the same
+   * absence-reads-as-answer mistake the UNKNOWN risk band exists to prevent.
+   */
+  hasComplianceRecord: boolean;
+  /**
+   * Flags that are set but have no validated field behind them: claims the
+   * platform is making publicly and cannot support. Legacy rows from when
+   * approval set flags unconditionally. The nightly sweep revokes these, so a
+   * non-empty list here means the sweep has not run since they appeared.
+   */
+  unbackedFlags: string[];
+  /** False when nothing has ever been extracted from this NGO's documents. */
+  hasExtraction: boolean;
 }
 
 /**
@@ -41,6 +60,8 @@ export async function getAllComplianceSummaries(): Promise<NGOComplianceSummary[
   for (const p of profiles) {
     const hasImpact = await hasVerifiedImpactProof(p.id);
     const result = computeCompliance(p.compliance, hasImpact);
+    const unbackedFlags = await findUnbackedFlags(p.id);
+    const evidence = await getComplianceEvidence(p.id);
 
     // Derive live FCRA status from expiry date
     const liveStatus =
@@ -64,6 +85,9 @@ export async function getAllComplianceSummaries(): Promise<NGOComplianceSummary[
       registrationVerified: p.compliance?.registrationVerified ?? false,
       a12Verified: p.compliance?.a12Verified ?? false,
       eightyGVerified: p.compliance?.eightyGVerified ?? false,
+      hasComplianceRecord: p.compliance !== null,
+      unbackedFlags,
+      hasExtraction: !evidence.noExtraction,
     });
   }
 

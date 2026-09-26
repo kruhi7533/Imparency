@@ -10,17 +10,20 @@ interface ScreeningChecklistEntry {
   note?: string;
 }
 
-interface NgoScreening {
-  summary: string;
-  extractedFields: any;
-  // Prisma returns these Json columns as JsonValue; treated loosely at render time.
-  documentChecklist: any;
-  consistencyOk: boolean;
-  flags: any;
-  recommendation: string; // LOOKS_CLEAR | NEEDS_REVIEW | LOOKS_PROBLEMATIC
+interface ExtractedFieldRow {
+  fieldKey: string;
+  extractedValue: string | null;
+  submittedValue: string | null;
+  matchesSubmitted: boolean | null;
   confidence: number;
-  status: string; // PENDING | READY | FAILED
-  updatedAt: Date;
+  status: string;
+  flags: { severity: string; issue: string }[];
+}
+
+interface OpenRiskReview {
+  id: string;
+  riskLevel: string;
+  findings: { fieldKey: string | null; severity: string; issue: string }[];
 }
 
 interface NGO {
@@ -34,8 +37,28 @@ interface NGO {
   foundedYear: number;
   documents: string[];
   createdAt: Date;
-  ai_verification_report?: any;
-  screening?: NgoScreening | null;
+  extractedFields: ExtractedFieldRow[];
+  openRiskReview: OpenRiskReview | null;
+  /**
+   * Non-null when this organisation is already VERIFIED but the document
+   * evidence behind that approval has since failed. It is live, listed, and
+   * raising money right now — which is why these sort to the top of the queue.
+   */
+  /**
+   * Front-gate flags, computed in lib/verification-queue.ts so the button and
+   * the API cannot disagree about what is approvable. The server refuses these
+   * cases regardless; showing an Approve button that will be rejected just
+   * moves the refusal to after the click.
+   */
+  hasDocuments?: boolean;
+  hasExtraction?: boolean;
+  hasIdentityContradiction?: boolean;
+  reverificationRequiredAt?: string | null;
+  reverificationReason?: string | null;
+  reverificationDueAt?: string | null;
+  verificationStatus?: string;
+  /** What the automated check verified — shown before an admin approves. */
+  assurances: string[];
   user: {
     email: string;
   };
@@ -43,6 +66,19 @@ interface NGO {
 
 interface AdminClientProps {
   initialPendingNGOs: NGO[];
+}
+
+/**
+ * One document-analysis pass produces the evidence rows; lib/verification-triage.ts
+ * decides whether the profile is clean or belongs in Risk & Compliance. This is
+ * the only verdict the console shows — there is no separate screening summary or
+ * AI pre-check panel any more, because those were two more passes over the same
+ * PDFs whose answers nobody acted on.
+ */
+function verdictOf(ngo: NGO): "SAFE" | "RISK" | "NOT_ANALYSED" {
+  if (ngo.openRiskReview) return "RISK";
+  if (!ngo.extractedFields || ngo.extractedFields.length === 0) return "NOT_ANALYSED";
+  return "SAFE";
 }
 
 export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
@@ -65,7 +101,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
   const [reminderResult, setReminderResult] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
-  const [filterRec, setFilterRec] = useState<"ALL" | "LOOKS_CLEAR" | "NEEDS_REVIEW" | "LOOKS_PROBLEMATIC">("ALL");
+  const [filterRec, setFilterRec] = useState<"ALL" | "SAFE" | "RISK" | "NOT_ANALYSED">("ALL");
 
   const filteredNgos = ngos.filter((ngo) => {
     const q = search.toLowerCase();
@@ -76,8 +112,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
       ngo.registrationNumber.toLowerCase().includes(q) ||
       ngo.panNumber.toLowerCase().includes(q);
 
-    const rec = ngo.ai_verification_report?.recommendation ?? ngo.screening?.recommendation ?? null;
-    const matchesFilter = filterRec === "ALL" || rec === filterRec;
+    const matchesFilter = filterRec === "ALL" || verdictOf(ngo) === filterRec;
 
     return matchesSearch && matchesFilter;
   });
@@ -103,33 +138,24 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
     }
   };
 
-  // Pre-screening state (surfacing only — never changes NGO status).
-  const [screenings, setScreenings] = useState<Record<string, NgoScreening>>(() => {
-    const init: Record<string, NgoScreening> = {};
-    initialPendingNGOs.forEach((n) => {
-      if (n.screening) init[n.id] = n.screening;
-    });
-    return init;
-  });
-  const [screeningLoadingId, setScreeningLoadingId] = useState<string | null>(null);
+  // Re-running analysis only produces evidence — it never changes NGO status.
+  const [analysisLoadingId, setAnalysisLoadingId] = useState<string | null>(null);
 
-  const runScreening = async (ngoId: string) => {
-    setScreeningLoadingId(ngoId);
+  const rerunAnalysis = async (ngoId: string) => {
+    setAnalysisLoadingId(ngoId);
     try {
-      const res = await fetch("/api/admin/screen-ngo", {
+      const res = await fetch("/api/admin/extract-ngo-fields", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ngoId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Screening failed");
-      if (data.screening) {
-        setScreenings((prev) => ({ ...prev, [ngoId]: data.screening }));
-      }
+      if (!res.ok) throw new Error(data.error || "Analysis failed");
+      router.refresh();
     } catch (err) {
-      console.error("Run screening error:", err);
+      console.error("Re-run analysis error:", err);
     } finally {
-      setScreeningLoadingId(null);
+      setAnalysisLoadingId(null);
     }
   };
 
@@ -191,313 +217,166 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
     }
   };
 
-  const renderScreeningPanel = (ngo: NGO) => {
-    const screening = screenings[ngo.id] || ngo.screening || null;
-    const isBusy = screeningLoadingId === ngo.id;
+  const FIELD_LABELS: Record<string, string> = {
+    orgName: "Organisation name",
+    registrationNumber: "Registration number",
+    panNumber: "PAN number",
+    a12Number: "12A number",
+    eightyGNumber: "80G number",
+  };
 
-    const honestNote = (
-      <p className="text-[10px] text-gray-500 dark:text-gray-400 italic mt-2">
-        Mechanical checks only — does not confirm documents are genuine. Admin judgment required.
-      </p>
+  const renderVerificationPanel = (ngo: NGO) => {
+    const verdict = verdictOf(ngo);
+    const isBusy = analysisLoadingId === ngo.id;
+
+    const rerunButton = (
+      <button
+        onClick={() => rerunAnalysis(ngo.id)}
+        disabled={isBusy}
+        className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 disabled:opacity-50 text-gray-600 dark:text-gray-300 text-xs font-bold py-1.5 px-3 rounded-lg transition flex items-center gap-1.5 shrink-0"
+      >
+        {isBusy && <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500"></div>}
+        {isBusy ? "Analysing…" : "Re-run analysis"}
+      </button>
     );
 
-    // No record yet, or in progress → show "in progress" + Run screening.
-    if (!screening || screening.status === "PENDING") {
+    // Never analysed. Critically this must NOT read as "clean" — an NGO with no
+    // evidence rows is the state the whole evidence chain exists to prevent.
+    if (verdict === "NOT_ANALYSED") {
       return (
-        <div className="border border-indigo-200/60 dark:border-indigo-900/40 rounded-2xl p-5 bg-indigo-50/40 dark:bg-indigo-950/10 space-y-3">
+        <div className="border border-red-200 dark:border-red-900/50 rounded-2xl p-5 bg-red-50/40 dark:bg-red-950/10 space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <h4 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-1.5">
-              🔎 Pre-Screening Summary
-            </h4>
-            <button
-              onClick={() => runScreening(ngo.id)}
-              disabled={isBusy}
-              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition flex items-center gap-1.5"
-            >
-              {isBusy && <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>}
-              {screening?.status === "PENDING" ? "Pre-screening in progress…" : "Run screening"}
-            </button>
+            <h4 className="text-sm font-black text-red-700 dark:text-red-400">Not analysed</h4>
+            {rerunButton}
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">
-            {screening?.status === "PENDING"
-              ? "The agent is reading the submitted documents. Click to refresh once it finishes."
-              : "No pre-screening summary yet. Run it to get an organized overview before deciding."}
+          <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold">
+            No document evidence exists for this organisation. Approving now would set compliance
+            flags with nothing behind them.
           </p>
-          {honestNote}
         </div>
       );
     }
 
-    // READY or FAILED → render the full summary.
-    const rec = screening.recommendation;
-    let recBadgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/50";
-    let recLabel = "Needs Review";
-    if (rec === "LOOKS_CLEAR") {
-      recBadgeClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/50";
-      recLabel = "Looks Clear";
-    } else if (rec === "LOOKS_PROBLEMATIC") {
-      recBadgeClass = "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400 border border-red-200/50 dark:border-red-900/50";
-      recLabel = "Looks Problematic";
-    }
-
-    const confidencePct = Math.round((screening.confidence || 0) * 100);
-    const checklist = screening.documentChecklist || {};
-    const checklistLabels: Record<string, string> = {
-      registrationCertificate: "Registration Certificate",
-      panCard: "PAN Card",
-      taxExemption80G: "80G Tax Exemption",
-    };
+    const risk = ngo.openRiskReview;
 
     return (
-      <div className="border border-indigo-200/60 dark:border-indigo-900/40 rounded-2xl p-5 bg-indigo-50/40 dark:bg-indigo-950/10 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-indigo-100 dark:border-indigo-900/30 pb-3">
-          <h4 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-1.5">
-            🔎 Pre-Screening Summary
-            {screening.status === "FAILED" && (
-              <span className="text-[10px] font-bold text-red-500 ml-1">(failed)</span>
+      <div
+        className={`border rounded-2xl p-5 space-y-4 ${
+          risk
+            ? "border-red-200 dark:border-red-900/50 bg-red-50/40 dark:bg-red-950/10"
+            : "border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/10"
+        }`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h4 className="text-sm font-black text-gray-900 dark:text-white">
+              {risk ? "Sent to Risk & Compliance" : "Documents read cleanly"}
+            </h4>
+            <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold mt-0.5">
+              {risk
+                ? `${risk.findings?.length ?? 0} issue(s) found · ${risk.riskLevel} risk`
+                : "Every identity field matches the registration form."}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {risk && (
+              <a
+                href="/admin/risk-compliance"
+                className="text-xs font-bold text-red-600 hover:underline"
+              >
+                Open in Risk &amp; Compliance →
+              </a>
             )}
-          </h4>
-          <div className="flex items-center gap-3">
-            <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${recBadgeClass}`}>
-              {recLabel} · {confidencePct}%
+            {rerunButton}
+          </div>
+        </div>
+
+        {/* Why this looks safe. An admin approving on a machine verdict is
+            entitled to see what was actually checked — a bare "clean" asks them
+            to rubber-stamp something they cannot inspect. */}
+        {!risk && ngo.assurances?.length > 0 && (
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+              What was checked
             </span>
-            <button
-              onClick={() => runScreening(ngo.id)}
-              disabled={isBusy}
-              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 disabled:opacity-50 text-gray-600 dark:text-gray-300 text-xs font-bold py-1.5 px-3 rounded-lg transition flex items-center gap-1.5"
-            >
-              {isBusy && <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500"></div>}
-              Refresh
-            </button>
-          </div>
-        </div>
-
-        {/* One-line summary */}
-        <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
-          {screening.summary}
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Document checklist */}
-          <div className="bg-white/60 dark:bg-gray-950/20 p-3.5 rounded-xl border border-gray-100 dark:border-gray-850">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Document Checklist</span>
-            <div className="space-y-2">
-              {Object.keys(checklistLabels).map((key) => {
-                const entry = checklist[key];
-                const ok = entry?.present && entry?.readable;
-                return (
-                  <div key={key} className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-gray-600 dark:text-gray-300">{checklistLabels[key]}</span>
-                    <span className={ok ? "text-emerald-600 font-extrabold" : "text-red-500 font-extrabold"}>
-                      {entry?.present ? (entry?.readable ? "✓ Present & readable" : "⚠ Present, unreadable") : "✗ Missing"}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Consistency + extracted */}
-          <div className="bg-white/60 dark:bg-gray-950/20 p-3.5 rounded-xl border border-gray-100 dark:border-gray-850 text-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Name Consistency</span>
-              <span className={screening.consistencyOk ? "text-emerald-600 font-extrabold" : "text-amber-600 font-extrabold"}>
-                {screening.consistencyOk ? "✓ Consistent" : "⚠ Discrepancy"}
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] text-gray-400 font-semibold block">Extracted Name</span>
-              <span className="font-bold text-gray-900 dark:text-white">{screening.extractedFields?.name || "N/A"}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <span className="text-[10px] text-gray-400 font-semibold block">Extracted PAN</span>
-                <span className="font-bold text-gray-900 dark:text-white">{screening.extractedFields?.pan || "N/A"}</span>
+            {ngo.assurances.map((a, i) => (
+              <div key={i} className="flex items-start gap-2 text-xs">
+                <span className="text-emerald-600 font-black shrink-0">✓</span>
+                <span className="text-gray-700 dark:text-gray-300 font-semibold">{a}</span>
               </div>
-              <div>
-                <span className="text-[10px] text-gray-400 font-semibold block">Extracted Reg No</span>
-                <span className="font-bold text-gray-900 dark:text-white">{screening.extractedFields?.registrationNo || "N/A"}</span>
-              </div>
-            </div>
+            ))}
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 italic pt-1">
+              These are mechanical checks on what the documents say. They do not confirm the
+              documents are genuine — that judgment is yours.
+            </p>
           </div>
-        </div>
+        )}
 
-        {/* Flags */}
-        {screening.flags && screening.flags.length > 0 && (
+        {risk && risk.findings?.length > 0 && (
           <div className="space-y-1.5">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Flags</span>
-            {screening.flags.map((flag: { severity: string; issue: string }, fIdx: number) => {
-              let badgeClass = "bg-gray-100 text-gray-600";
-              if (flag.severity === "HIGH") badgeClass = "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400";
-              else if (flag.severity === "MEDIUM") badgeClass = "bg-amber-100 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400";
+            {risk.findings.map((f, i) => {
+              const badge =
+                f.severity === "HIGH"
+                  ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                  : f.severity === "MEDIUM"
+                  ? "bg-amber-100 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400"
+                  : "bg-gray-100 text-gray-600";
               return (
-                <div key={fIdx} className="flex items-start gap-2 text-xs bg-white/50 dark:bg-gray-950/10 p-2 rounded-lg border border-gray-100 dark:border-gray-850">
-                  <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0 ${badgeClass}`}>{flag.severity}</span>
-                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{flag.issue}</span>
+                <div
+                  key={i}
+                  className="flex items-start gap-2 text-xs bg-white/60 dark:bg-gray-950/20 p-2 rounded-lg border border-gray-100 dark:border-gray-850"
+                >
+                  <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0 ${badge}`}>
+                    {f.severity}
+                  </span>
+                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{f.issue}</span>
                 </div>
               );
             })}
           </div>
         )}
 
-        {honestNote}
-      </div>
-    );
-  };
-
-  const renderAiPreCheckPanel = (ngo: NGO) => {
-    const report = ngo.ai_verification_report;
-
-    if (!report) {
-      return (
-        <div className="border border-gray-250 dark:border-gray-800 rounded-xl p-4 bg-gray-50/50 dark:bg-gray-900/30 text-gray-500 text-xs font-semibold flex items-center gap-2">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          AI pre-check unavailable — please review documents manually
-        </div>
-      );
-    }
-
-    // Recommendation badge mapping
-    let recBadgeClass = "bg-gray-100 text-gray-700 dark:bg-gray-850 dark:text-gray-300";
-    let recLabel = "Review Required";
-    if (report.recommendation === "APPROVE") {
-      recBadgeClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/50";
-      recLabel = "Looks Good";
-    } else if (report.recommendation === "REVIEW_CAREFULLY") {
-      recBadgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/50";
-      recLabel = "Review Carefully";
-    } else if (report.recommendation === "LIKELY_FRAUD") {
-      recBadgeClass = "bg-red-100 text-red-850 dark:bg-red-950/30 dark:text-red-400 border border-red-200/50 dark:border-red-900/50";
-      recLabel = "Possible Fraud";
-    }
-
-    // Consistency score bar mapping
-    const score = report.consistency_score ?? 0;
-    let scoreBarColor = "bg-red-500";
-    if (score >= 80) scoreBarColor = "bg-emerald-500";
-    else if (score >= 50) scoreBarColor = "bg-amber-500";
-
-    // Helper checkmarks/cross logic for extracted fields vs form input
-    const orgNameMatches = report.extracted_data?.org_name?.trim().toLowerCase() === ngo.orgName.trim().toLowerCase();
-    const regMatches = report.extracted_data?.registration_number?.trim().toLowerCase() === ngo.registrationNumber.trim().toLowerCase();
-    const panMatches = report.extracted_data?.pan_number?.trim().toLowerCase() === ngo.panNumber.trim().toLowerCase();
-
-    return (
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-inner space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-850 pb-4">
-          <h4 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-1.5">
-            🤖 AI Pre-Check Verification Report
-          </h4>
-          <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${recBadgeClass}`}>
-            {recLabel}
+        <div className="bg-white/60 dark:bg-gray-950/20 p-3.5 rounded-xl border border-gray-100 dark:border-gray-850">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">
+            Evidence read from the documents
           </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left: Score & Field Matching Checklist */}
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">
-                <span>Consistency Score</span>
-                <span>{score}%</span>
-              </div>
-              <div className="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-500 ${scoreBarColor}`} style={{ width: `${score}%` }}></div>
-              </div>
-            </div>
-
-            <div className="space-y-2.5 bg-gray-50/50 dark:bg-gray-950/20 p-3.5 rounded-xl border border-gray-100 dark:border-gray-850">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Form Matching Verification</span>
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-gray-600 dark:text-gray-300">Org Name Match</span>
-                <span className={orgNameMatches ? "text-emerald-600 font-extrabold flex items-center gap-0.5" : "text-red-500 font-extrabold flex items-center gap-0.5"}>
-                  {orgNameMatches ? "✓ Match" : "✗ Mismatch"}
+          <div className="space-y-1.5">
+            {ngo.extractedFields.map((f) => (
+              <div key={f.fieldKey} className="flex items-center justify-between gap-3 text-xs">
+                <span className="font-semibold text-gray-600 dark:text-gray-300 shrink-0">
+                  {FIELD_LABELS[f.fieldKey] ?? f.fieldKey}
+                </span>
+                <span className="font-bold text-gray-900 dark:text-white truncate">
+                  {f.extractedValue ?? "— not found —"}
+                </span>
+                <span
+                  className={`text-[10px] font-extrabold shrink-0 ${
+                    f.status === "VALIDATED"
+                      ? "text-emerald-600"
+                      : f.status === "REJECTED"
+                      ? "text-red-500"
+                      : f.status === "EXTRACTED"
+                      ? "text-gray-500"
+                      : "text-amber-600"
+                  }`}
+                >
+                  {Math.round((f.confidence || 0) * 100)}% · {f.status}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-gray-600 dark:text-gray-300">Reg Number Match</span>
-                <span className={regMatches ? "text-emerald-600 font-extrabold flex items-center gap-0.5" : "text-red-500 font-extrabold flex items-center gap-0.5"}>
-                  {regMatches ? "✓ Match" : "✗ Mismatch"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-gray-600 dark:text-gray-300">PAN Number Match</span>
-                <span className={panMatches ? "text-emerald-600 font-extrabold flex items-center gap-0.5" : "text-red-500 font-extrabold flex items-center gap-0.5"}>
-                  {panMatches ? "✓ Match" : "✗ Mismatch"}
-                </span>
-              </div>
-            </div>
+            ))}
           </div>
-
-          {/* Right: Extracted Document Details */}
-          <div className="space-y-3 bg-gray-50/50 dark:bg-gray-955/20 p-3.5 rounded-xl border border-gray-100 dark:border-gray-850 text-xs">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Extracted Metadata</span>
-            <div>
-              <span className="text-[10px] text-gray-405 font-semibold block">Extracted Org Name</span>
-              <span className="font-bold text-gray-900 dark:text-white">{report.extracted_data?.org_name || "N/A"}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <span className="text-[10px] text-gray-405 font-semibold block">Extracted Reg No</span>
-                <span className="font-bold text-gray-900 dark:text-white">{report.extracted_data?.registration_number || "N/A"}</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-gray-405 font-semibold block">Extracted PAN</span>
-                <span className="font-bold text-gray-900 dark:text-white">{report.extracted_data?.pan_number || "N/A"}</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <span className="text-[10px] text-gray-455 font-semibold block">80G Cert Number</span>
-                <span className="font-bold text-gray-900 dark:text-white">{report.extracted_data?.ngo_8og_number || "N/A"}</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-gray-455 font-semibold block">Validity / Dates</span>
-                <span className="font-bold text-gray-900 dark:text-white">{report.extracted_data?.validity_notes || "N/A"}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Summary Text Box */}
-        <div className="bg-emerald-50/30 dark:bg-emerald-950/10 border-l-4 border-emerald-500 rounded p-4">
-          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block mb-1">AI Audit Summary</span>
-          <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
-            {report.summary}
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 italic mt-2">
+            Values read by a model, held to code-level format and cross-checks. Validate each one in
+            Document Review — only a validated field earns its compliance flag.
           </p>
         </div>
-
-        {/* Audit Flags */}
-        {report.flags && report.flags.length > 0 && (
-          <div className="space-y-2">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Security & Validation Flags</span>
-            <div className="space-y-1.5">
-              {report.flags.map((flag: any, fIdx: number) => {
-                let badgeClass = "bg-gray-100 text-gray-600";
-                if (flag.severity === "HIGH") badgeClass = "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200/30";
-                else if (flag.severity === "MEDIUM") badgeClass = "bg-amber-100 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-200/30";
-
-                return (
-                  <div key={fIdx} className="flex items-start gap-2 text-xs bg-gray-50/30 dark:bg-gray-950/10 p-2.5 rounded-lg border border-gray-100 dark:border-gray-850">
-                    <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0 ${badgeClass}`}>
-                      {flag.severity}
-                    </span>
-                    <span className="text-gray-700 dark:text-gray-300 font-semibold">{flag.issue}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
     );
   };
 
   const isVerifySubmitDisabled = loading || (
     actionType === "APPROVE" &&
-    selectedNgo?.ai_verification_report?.recommendation === "LIKELY_FRAUD" &&
+    selectedNgo?.openRiskReview?.riskLevel === "HIGH" &&
     (!overrideConfirmed || !adminNote.trim())
   );
 
@@ -546,13 +425,13 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
           )}
         </div>
         <div className="flex gap-2">
-          {(["ALL", "LOOKS_CLEAR", "NEEDS_REVIEW", "LOOKS_PROBLEMATIC"] as const).map((val) => {
-            const labels: Record<string, string> = { ALL: "All", LOOKS_CLEAR: "Clear", NEEDS_REVIEW: "Needs Review", LOOKS_PROBLEMATIC: "Problematic" };
+          {(["ALL", "SAFE", "RISK", "NOT_ANALYSED"] as const).map((val) => {
+            const labels: Record<string, string> = { ALL: "All", SAFE: "Clean", RISK: "At risk", NOT_ANALYSED: "Not analysed" };
             const colors: Record<string, string> = {
               ALL: filterRec === "ALL" ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
-              LOOKS_CLEAR: filterRec === "LOOKS_CLEAR" ? "bg-emerald-600 text-white" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
-              NEEDS_REVIEW: filterRec === "NEEDS_REVIEW" ? "bg-amber-500 text-white" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
-              LOOKS_PROBLEMATIC: filterRec === "LOOKS_PROBLEMATIC" ? "bg-red-600 text-white" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
+              SAFE: filterRec === "SAFE" ? "bg-emerald-600 text-white" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
+              RISK: filterRec === "RISK" ? "bg-red-600 text-white" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
+              NOT_ANALYSED: filterRec === "NOT_ANALYSED" ? "bg-amber-500 text-white" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
             };
             return (
               <button key={val} onClick={() => setFilterRec(val)} className={`px-3 py-2 text-xs font-bold rounded-xl transition ${colors[val]}`}>
@@ -612,6 +491,86 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                         </a>
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{ngo.user.email}</div>
                         <div className="text-xs text-gray-400 mt-0.5">Founded: {ngo.foundedYear}</div>
+                        {/* The verdict belongs HERE, next to the name — not
+                            hidden behind the expand button. An admin decides
+                            from this row, so anything that should change the
+                            decision has to be visible before they reach the
+                            Approve button. */}
+                        {(ngo.hasDocuments === false || ngo.hasExtraction === false || ngo.hasIdentityContradiction) && (
+                          <div className="mt-2 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-3 py-2">
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-white">
+                              CANNOT APPROVE YET
+                            </span>
+                            <p className="mt-1 text-xs text-amber-900 dark:text-amber-300">
+                              {ngo.hasDocuments === false
+                                ? "No documents have been uploaded. There is nothing to verify — ask the organisation to submit them."
+                                : ngo.hasExtraction === false
+                                  ? "The documents have never been analysed, so there is no evidence to approve on. Run extraction from Document Review."
+                                  : "The documents contradict the registration form about who this organisation is. This is not something a note can settle — correct or validate the field in Document Review, or reject."}
+                            </p>
+                          </div>
+                        )}
+
+                        {ngo.reverificationRequiredAt && (
+                          <div className="mt-2 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 px-3 py-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-600 text-white">
+                                RE-DECISION NEEDED
+                              </span>
+                              <span className="text-[11px] font-bold text-red-700 dark:text-red-400">
+                                Approved earlier — evidence has since failed
+                              </span>
+                              {ngo.reverificationDueAt && (
+                                <span
+                                  className={`text-[11px] font-bold ${
+                                    new Date(ngo.reverificationDueAt) < new Date()
+                                      ? "text-red-700 dark:text-red-400"
+                                      : "text-gray-500 dark:text-gray-400"
+                                  }`}
+                                >
+                                  {new Date(ngo.reverificationDueAt) < new Date()
+                                    ? "OVERDUE"
+                                    : `due ${new Date(ngo.reverificationDueAt).toLocaleDateString("en-IN", {
+                                        day: "numeric",
+                                        month: "short",
+                                      })}`}
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1 text-xs text-red-800 dark:text-red-300">{ngo.reverificationReason}</p>
+                            <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-500">
+                              It has not been suspended and its profile is still live — nothing happens to it until you
+                              decide.
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="mt-1.5">
+                          {(() => {
+                            const verdict = verdictOf(ngo);
+                            if (verdict === "RISK") {
+                              const level = ngo.openRiskReview?.riskLevel ?? "";
+                              const count = ngo.openRiskReview?.findings?.length ?? 0;
+                              return (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200/60 dark:border-red-900/60">
+                                  ⚠ AT RISK · {level} · {count} finding{count === 1 ? "" : "s"}
+                                </span>
+                              );
+                            }
+                            if (verdict === "NOT_ANALYSED") {
+                              return (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/60">
+                                  NOT ANALYSED · no evidence
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/60">
+                                ✓ DOCUMENTS CLEAN
+                              </span>
+                            );
+                          })()}
+                        </div>
                         <div className="flex flex-wrap gap-1 mt-2">
                           {ngo.causeCategories.map((c) => (
                             <span key={c} className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 rounded">
@@ -654,14 +613,41 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                           onClick={() => setExpandedNgoId(expandedNgoId === ngo.id ? null : ngo.id)}
                           className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold py-1.5 px-3 rounded-lg text-xs transition"
                         >
-                          {expandedNgoId === ngo.id ? "Hide AI Check" : "AI Pre-Check"}
+                          {expandedNgoId === ngo.id ? "Hide evidence" : "Evidence"}
                         </button>
-                        <button
-                          onClick={() => openModal(ngo, "APPROVE")}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition"
-                        >
-                          Approve
-                        </button>
+                        {(() => {
+                          // Why approval is unavailable, in the order a person
+                          // would fix them: get documents, read them, resolve
+                          // the contradiction.
+                          const blocker =
+                            ngo.hasDocuments === false
+                              ? "No documents uploaded — nothing to verify."
+                              : ngo.hasExtraction === false
+                                ? "Documents have never been analysed. Run extraction in Document Review first."
+                                : ngo.hasIdentityContradiction
+                                  ? "The documents contradict the form about who this organisation is. Resolve it in Document Review, or reject."
+                                  : null;
+
+                          if (blocker) {
+                            return (
+                              <span
+                                title={blocker}
+                                className="bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 font-bold py-1.5 px-3 rounded-lg text-xs cursor-not-allowed border border-gray-200 dark:border-gray-700"
+                              >
+                                Approve blocked
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <button
+                              onClick={() => openModal(ngo, "APPROVE")}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition"
+                            >
+                              Approve
+                            </button>
+                          );
+                        })()}
                         <button
                           onClick={() => openModal(ngo, "REJECT")}
                           className="bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:bg-red-100 font-bold py-1.5 px-3 rounded-lg text-xs transition"
@@ -673,8 +659,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                     {expandedNgoId === ngo.id && (
                       <tr>
                         <td colSpan={4} className="bg-gray-50/30 dark:bg-gray-950/10 px-8 py-5 border-b border-gray-200 dark:border-gray-800 space-y-5">
-                          {renderScreeningPanel(ngo)}
-                          {renderAiPreCheckPanel(ngo)}
+                          {renderVerificationPanel(ngo)}
                         </td>
                       </tr>
                     )}
@@ -708,10 +693,10 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
             <form onSubmit={handleVerify} className="space-y-4">
               
               {/* AI Override warning callout & checkbox */}
-              {actionType === "APPROVE" && selectedNgo.ai_verification_report?.recommendation === "LIKELY_FRAUD" && (
+              {actionType === "APPROVE" && selectedNgo.openRiskReview?.riskLevel === "HIGH" && (
                 <div className="p-4 bg-red-50 dark:bg-red-950/30 border-l-4 border-red-500 rounded text-xs text-red-800 dark:text-red-300 space-y-2">
                   <p className="font-extrabold flex items-center gap-1.5 text-red-750 dark:text-red-400">
-                    ⚠️ AI LIKELY_FRAUD Override Warning
+                    ⚠️ Overriding a HIGH risk finding
                   </p>
                   <p className="font-semibold text-gray-700 dark:text-gray-300">
                     The AI flagged this NGO as possible fraud. Are you sure you want to approve? Please justify in your note.
@@ -737,11 +722,11 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                   value={adminNote}
                   onChange={(e) => setAdminNote(e.target.value)}
                   rows={4}
-                  required={actionType === "REJECT" || (actionType === "APPROVE" && selectedNgo.ai_verification_report?.recommendation === "LIKELY_FRAUD")}
+                  required={actionType === "REJECT" || (actionType === "APPROVE" && selectedNgo.openRiskReview?.riskLevel === "HIGH")}
                   placeholder={
                     actionType === "REJECT"
                       ? "Specify why documents were rejected..."
-                      : selectedNgo.ai_verification_report?.recommendation === "LIKELY_FRAUD"
+                      : selectedNgo.openRiskReview?.riskLevel === "HIGH"
                       ? "Specify mandatory justification note for AI override..."
                       : "Add verification notes..."
                   }

@@ -156,17 +156,19 @@ app/ngo/projects/new/page.tsx
       validate title/description/target/location/coverImage(≤2MB)/milestones
       assert sum(milestone.targetAmount) === project.targetAmount  (±0.01)
       uploadFile(coverImage)
-      prisma.$transaction: Project.create (status: "ACTIVE" — auto-published) + Milestone.createMany
-  → sendProjectPublishedEmail(ngoOwnerEmail)
-  → triggerFollowedNGONewProject(ngoId, projectId)  [lib/notification-triggers.ts]
-      prisma.nGOFollower.findMany({ngoId}) → for each follower:
-        sendPushNotification() → Notification row + FCM push
-        sendNewProjectAlertEmail()
+      prisma.$transaction: Project.create (status: "PENDING_APPROVAL" — awaits admin review, no longer auto-published) + Milestone.createMany
+  → app/api/admin/review-project/route.ts: admin APPROVE moves it to "ACTIVE" (race-safe conditional updateMany), then:
+      sendProjectPublishedEmail(ngoOwnerEmail)
+      triggerFollowedNGONewProject(ngoId, projectId)  [lib/notification-triggers.ts]
+        prisma.nGOFollower.findMany({ngoId}) → for each follower:
+          sendPushNotification() → Notification row + FCM push
+          sendNewProjectAlertEmail()
+    REJECT returns it to "DRAFT" with reviewNote + sendProjectRejectedEmail
 ```
 
 ### Donation
 ```
-app/components/DonateModal.tsx  [NOTE: request shape mismatch — see §12]
+app/components/DonateModal.tsx
   → POST app/api/donations/create-order/route.ts
       verifySessionRole("DONOR"); amount >= 100; project.status === "ACTIVE"; NGO not suspended
       checkFcraGate(donor, ngoCompliance)  [lib/fcra-gate.ts] — blocks non-domestic donors if FCRA not ACTIVE
@@ -260,8 +262,10 @@ Any trigger event (new project, milestone completed, donation confirmed, ...)
       → sendPushNotification(userId, title, body, data?)  [lib/notification.ts]
           prisma.notification.create({type, title, body, read:false})   ← always written
           attempt FCM send via user.fcmToken → falls back to console "MOCK PUSH" log if unconfigured/invalid
-  → DEAD END: no app/api/notifications route, no frontend code reads prisma.notification.findMany
-    or renders a bell/list. Notifications are persisted + pushed but never surfaced in-app. (see §12)
+  → surfaced via GET app/api/user/notifications/route.ts (session-scoped) → Notifications bell (navbar) and
+    app/donor/impact/page.tsx (donor Impact Feed, shown alongside the ImpactReport timeline). Live-verified:
+    read/unread state and `RECEIPT_PENDING_PAN`/`NGO_SUSPENDED`/`NGO_REINSTATED`/etc. notification types all
+    render correctly end-to-end. (This closes what was previously a dead end — see §12 history.)
 ```
 
 ---
@@ -366,7 +370,7 @@ For every group: validation → auth → business logic → DB writes → extern
 | `Donation` | A single payment | belongs to `User` (donor) + `Project`; 1:1 `TaxReceipt`; 1:N `ImpactReport` | create-order, retry, webhook | donor donations/portfolio, project page, CRM, CSR cert, admin dashboard |
 | `ImpactReport` | AI-generated narrative sent to a donor after milestone completion | belongs to `Donation`, `Milestone`, `User` | notification-triggers (milestone completed) | re-engage API, webhook (checks existence for delayed trigger) |
 | `NGOFollower` | Donor "follow" relationship | composite key (donorId, ngoId) | `[id]/follow` route | NGO public profile, notification-triggers, user-follows API |
-| `Notification` | In-app notification record (**never surfaced in UI** — §12) | belongs to `User` | `lib/notification.ts` only | *(no reads outside test scripts)* |
+| `Notification` | In-app notification record | belongs to `User` | `lib/notification.ts` only | Notifications bell + `app/donor/impact/page.tsx` (Impact Feed), via `GET /api/user/notifications` |
 | `TaxReceipt` | 80G receipt metadata + PDF URL | 1:1 `Donation` | webhook | donor donations/portfolio pages |
 | `RateLimitLog` | Generic per-identifier request counter | none | `lib/rate-limiter.ts` | only used by `verify-phase1` route — **not wired into donation/auth/AI routes** |
 | `NgoScreening` | AI pre-screening summary at registration | belongs conceptually to `NGOProfile` (ngoId) | `screening-runner.ts` (upsert only) | admin dashboard (pending NGO list includes `screening` relation) |
@@ -436,7 +440,7 @@ For every group: validation → auth → business logic → DB writes → extern
 | **Add an API route** | New `app/api/<path>/route.ts`; guard with `verifySessionRole()` (`lib/auth-guards.ts`) or manual `getServerSession(authOptions)`; import `prisma` from `@/lib/prisma` (never `new PrismaClient()` — you lose the retry wrapper). |
 | **Add a page** | New `app/<role>/<name>/page.tsx` (server: session check + Prisma fetch) + co-located `<Name>Client.tsx` (client: interactivity). If donor-scoped, it auto-inherits the sidebar via `app/donor/layout.tsx`; NGO/admin pages don't have an equivalent shared layout shell today. |
 | **Add a database field** | Edit `prisma/schema.prisma` → `npm run db:migrate` (`prisma migrate dev`) to generate a migration in `prisma/migrations/` and apply it. **This repo now uses Prisma Migrate — do not use `prisma db push`**, which applies schema without recording history and reintroduces drift. The database was baselined on 2026-07-25 (all three migrations marked applied), and `predev`/`build` run `prisma migrate deploy`. A new model needs **both** the schema edit and a committed migration, or its table will never exist in another environment. Then update every route/page that does an explicit `select`/serialization for that model (Decimal/Date fields need manual `Number()`/`.toISOString()` at each call site — no shared serializer). |
-| **Modify the payment flow** | `app/api/donations/create-order/route.ts` (order creation + FCRA gate), `webhook/route.ts` (the ledger + receipt + retry logic), `lib/retry-utils.ts`, `lib/receipt-generator.tsx`. Also check `app/components/DonateModal.tsx` for the frontend contract — it's currently already out of sync with `create-order` (see §12), so don't assume they match. |
+| **Modify the payment flow** | `app/api/donations/create-order/route.ts` (order creation + FCRA gate), `webhook/route.ts` (the ledger + receipt + retry logic), `lib/retry-utils.ts`, `lib/receipt-generator.tsx`. Also check `app/components/DonateModal.tsx` for the frontend contract — the response shape now matches (`keyId`/`razorpayOrderId`/`donorName`/`donorEmail`, live-verified via a full mock-checkout donation), but the *request* side still has a gap: the modal sends `panNumber`/`billingAddress` that `create-order` accepts and silently ignores (see §12). |
 | **Modify NGO verification** | `app/api/admin/verify-ngo/route.ts` (org-level KYC) is separate from `app/api/admin/review-fcra/route.ts` (FCRA-specific) — decide which queue you're changing. Compliance-score weighting lives in `lib/ngo-compliance.ts`'s `COMPLIANCE_WEIGHTS`. |
 | **Add an AI feature** | New file in `lib/gemini/`, using `@google/genai` (the current SDK — don't add a third SDK usage) and `GEMINI_API_KEY`. Follow the existing pattern: mock-result fallback when the key is unset, schema-constrained JSON output, and a deterministic code-side guard if the output gates a workflow transition (see `enforceHonestLimit`/`checkGeminiScore` for precedent). |
 | **Add a notification** | Add a new trigger function in `lib/notification-triggers.ts` calling `sendPushNotification()` (`lib/notification.ts`). Remember: nothing in the frontend currently reads `Notification` rows — if you need the user to actually see it, you'll need to build the missing read-side UI too (see §12). |
@@ -460,10 +464,10 @@ For every group: validation → auth → business logic → DB writes → extern
 
 ## 12. Common Mistakes
 
-1. **Assuming `DonateModal.tsx` and `create-order/route.ts` agree on the request/response shape.** They don't — the modal sends `panNumber`/`billingAddress` and expects `keyId`/`razorpayOrderId`/`donorName`/`donorEmail`; the route accepts/returns neither. Verify both sides whenever touching the donate flow.
+1. **Assuming `DonateModal.tsx` and `create-order/route.ts` fully agree on the request/response shape.** The response side is fixed (the route now returns `keyId`/`razorpayOrderId`/`donorName`/`donorEmail`, live-verified via a real mock-checkout donation completing end-to-end). The request side still has a gap: the modal sends `panNumber`/`billingAddress` which the route accepts into its body but never reads — those donor-declared fields are silently dropped, not persisted anywhere. Don't assume filling in the PAN/billing step actually does anything server-side yet.
 2. **Trusting `lib/rate-limiter.ts` is protecting anything.** It's fully built but only wired into `verify-phase1` — donation, auth, and AI-cost-incurring routes have no rate limiting today, despite the infrastructure existing.
 3. **Bypassing `lib/prisma.ts`.** Several files (`lib/whatsapp/worker.ts`, all `app/api/drafts/*`, `app/api/whatsapp/route.ts`, `app/api/pitch/lead/route.ts`) instantiate their own `new PrismaClient()` — they silently lose the Neon cold-start retry wrapper. Always import the shared singleton unless you have a specific reason not to (and if you find one, document it).
-4. **Expecting `Notification` rows to be visible anywhere in the UI.** They're written correctly (`lib/notification.ts`) and pushed via FCM, but there's no `/api/notifications` route or bell/list component — `read`/unread state is written but never read back.
+4. ~~Expecting `Notification` rows to be visible anywhere in the UI~~ — fixed. `GET /api/user/notifications` now exists and is read by the navbar bell and the donor Impact Feed; live-verified end-to-end (milestone-completed push, receipt-pending-PAN nudge).
 5. **Assuming `app/donor/dashboard/page.tsx` reflects real data.** It's currently hardcoded (₹0, 0 donations, "Standard" tier) with a `TODO B5` marker — don't build on top of it assuming it queries Prisma; it doesn't yet.
 6. **Calling `app/api/ngo/whatsapp-drafts/convert/route.ts`.** It references a `prisma.whatsAppDraft` model that doesn't exist in the current schema — dead code from before the `DraftProof`/`FieldWorker` refactor. The live conversion path is `PATCH /api/drafts/[id]`.
 7. **Mixing up the two Gemini env vars.** Most of the app reads `GEMINI_API_KEY` (`@google/genai`). `lib/whatsapp/worker.ts` reads `GOOGLE_GENERATIVE_AI_API_KEY` (`@google/generative-ai`, legacy SDK) — setting only the documented `.env.example` variable leaves WhatsApp AI enrichment silently degraded/mock-mode.
@@ -471,7 +475,7 @@ For every group: validation → auth → business logic → DB writes → extern
 9. **Assuming `lib/risk-agent.ts`'s `checkDonationRate` or `lib/fraud-alerts.ts`'s `checkPANUsage` are active.** Both exist and are exported, but grep shows no live caller in `app/` — only stale `.gsd/phases/5/2-SUMMARY.md` prose claims they're wired up. Verify before relying on them firing.
 10. **Forgetting the DONOR→effective-NGO role quirk.** A `User` whose stored `Role` is `DONOR` will get `role:"NGO"` at login if they're an `NGOTeamMember` of some NGO (`lib/auth.ts` `authorize`/`jwt` callbacks) — don't gate NGO-only logic on `User.role` in the database directly; always go through the session/JWT-derived role.
 11. **Expecting `NGOTeamMember` creation and `TeamInvite.accepted` update to be transactional.** In `app/api/auth/signup/route.ts`'s auto-accept block, they're two separate calls wrapped in one try/catch, not a `$transaction` — a failure between them can leave an accepted-but-membership-less state.
-12. **Assuming there's automated test coverage.** There isn't (no Jest/Vitest/Playwright configured) — the `scripts/test-*.ts` files are manually-run integration harnesses, not CI-gated tests. Manually verify behavior after changes.
+12. ~~Assuming there's no automated test coverage~~ — there is now: `npm test` runs the Vitest suite (`tests/*.test.ts`, Prisma mocked per-test, no DB needed). As of this writing it covers `review-proof`, `verify-ngo`, `review-fcra`, and `risk/review` (133 tests) — most other admin routes and all of `donations/*` are still untested. Add new tests there rather than a new `scripts/test-*.ts` harness.
 
 ---
 

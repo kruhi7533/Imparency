@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { captureError } from "@/lib/observability";
 
 /**
  * Admin action audit trail (Phase 1 — admin accountability).
@@ -25,6 +26,8 @@ export type AdminAction =
   | "NGO_REJECTED"
   | "NGO_SUSPENDED"
   | "NGO_FLAGGED_FOR_RISK"
+  | "NGO_FIELD_VALIDATED"
+  | "NGO_FIELD_REJECTED"
   | "PROJECT_APPROVED"
   | "PROJECT_REJECTED"
   | "PROOF_APPROVED"
@@ -48,12 +51,51 @@ export type AdminAction =
   | "REQUIREMENT_EDITED"
   | "REQUIREMENT_EXTRACTION_RERUN"
   | "GAP_REPORT_APPROVED"
-  | "GAP_REPORT_REJECTED";
+  | "GAP_REPORT_REJECTED"
+  | "CRISIS_EVENT_CREATED"
+  | "CRISIS_EVENT_UPDATED"
+  | "CRISIS_EVENT_VERIFIED"
+  | "CRISIS_EVENT_REJECTED"
+  | "CRISIS_EVENT_FEATURED"
+  | "CRISIS_EVENT_UNFEATURED"
+  | "CRISIS_EVENT_ARCHIVED"
+  | "INITIATIVE_VERIFIED"
+  | "INITIATIVE_REJECTED"
+  // Verification caseworker. APPROVED carries `overrodeAgent` in metadata — the
+  // mirror of `overrodeAi` on field validation, and the metric that decides
+  // whether the agent ever earns a wider leash.
+  | "AGENT_ACTION_APPROVED"
+  | "AGENT_ACTION_REJECTED"
+  | "AGENT_CASE_STARTED"
+  // Funding opportunities and deterministic matching.
+  | "OPPORTUNITY_CREATED"
+  | "OPPORTUNITY_OPENED"
+  | "OPPORTUNITY_REJECTED"
+  | "OPPORTUNITY_CLOSED"
+  | "OPPORTUNITY_REVISED"
+  // Today inbox. A chase is a nudge the admin sent, not a resolution — the
+  // work stays owed by whoever owes it.
+  | "INBOX_ITEM_CHASED"
+  | "INBOX_CHASE_CLEARED"
+  // What a shortlisted organisation proposed, and what was decided about it.
+  | "PROPOSAL_REVIEW_STARTED"
+  | "PROPOSAL_APPROVED"
+  | "PROPOSAL_REJECTED"
+  | "MATCHING_JOB_STARTED"
+  | "MATCHING_JOB_FAILED"
+  | "CANDIDATE_SHORTLISTED"
+  | "CANDIDATE_DISMISSED"
+  // Taken by the platform, not by a person — logged with adminId null. See the
+  // comment on AdminActionLog.adminId for why these live in the same trail as
+  // human actions rather than a separate one.
+  | "NGO_REVERIFICATION_REQUIRED"
+  | "NGO_REVERIFICATION_CLEARED";
 
 export interface AdminActionParams {
-  adminId: string;
+  /** Null for an action the platform took on its own. */
+  adminId: string | null;
   action: AdminAction;
-  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING" | "REQUIREMENT" | "GAP_REPORT";
+  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING" | "REQUIREMENT" | "GAP_REPORT" | "CRISIS_EVENT" | "RELIEF_INITIATIVE" | "AGENT_CASE" | "OPPORTUNITY" | "MATCHING_JOB" | "MATCH_CANDIDATE" | "PROPOSAL";
   entityId: string;
   oldValue?: Record<string, unknown> | null;
   newValue?: Record<string, unknown> | null;
@@ -96,6 +138,20 @@ export async function logAdminAction(params: AdminActionParams): Promise<void> {
       },
     });
   } catch (err) {
-    console.error(`[admin-log] FAILED to record admin action ${params.action} on ${params.entityType} ${params.entityId}:`, err);
+    // The action itself already succeeded; only its audit record is missing.
+    // That's an accountability hole an auditor would care about, so it must be
+    // visible rather than sitting in an ephemeral log line.
+    captureError(
+      err,
+      {
+        scope: "lib/admin-log",
+        operation: "record_admin_action",
+        entityType: params.entityType,
+        entityId: params.entityId,
+        userId: params.adminId ?? undefined,
+        extra: { adminAction: params.action },
+      },
+      "fatal"
+    );
   }
 }
