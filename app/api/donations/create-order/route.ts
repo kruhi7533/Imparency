@@ -5,6 +5,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { checkFcraGate } from "@/lib/fcra-gate";
 import { checkRateLimit } from "@/lib/rate-limiter";
+import { isFunderPersona } from "@/lib/csr-verification";
+import { resolvePaymentMode } from "@/lib/payment-mode";
 
 export async function POST(request: Request) {
   try {
@@ -82,13 +84,51 @@ export async function POST(request: Request) {
     // Only applies to donors who have declared a non-domestic category.
     const freshUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { donorCategory: true, nriSourceDeclaration: true },
+      select: {
+        donorCategory: true,
+        nriSourceDeclaration: true,
+        donorPersona: true,
+        orgVerificationStatus: true,
+      },
     });
 
     if (!freshUser) {
       return NextResponse.json(
         { error: "Stale session", message: "Your session has expired or your user account no longer exists. Please sign out and sign in again." },
         { status: 401 }
+      );
+    }
+
+    // ── Institutional donor gate ───────────────────────────────────────────
+    //
+    // Scoped deliberately to CSR, foundation and government accounts. An
+    // individual giving ₹500 has no organisation to verify and must not be
+    // stopped by this — widening it to every donor would break ordinary giving
+    // to fix a problem ordinary giving does not have.
+    //
+    // For an institution it is the same question the funder path already asks
+    // (lib/matching/funder.ts): the platform should not take money on behalf
+    // of a company nobody has checked, and this route was the way around that
+    // check. Being named behind an opportunity was gated while simply paying
+    // was not, which is the wrong way round — the payment is the part that
+    // moves money.
+    if (isFunderPersona(freshUser.donorPersona) && freshUser.orgVerificationStatus !== "VERIFIED") {
+      return NextResponse.json(
+        {
+          // `error` carries the human sentence, not the code: DonateModal
+          // renders `data.error` directly (see its catch block), so a code here
+          // would put "ORG_NOT_VERIFIED" in front of the donor. The code moves
+          // to `reason` for callers that want to branch on it.
+          error:
+            freshUser.orgVerificationStatus === "PENDING"
+              ? "Your organisation's details are with our team for verification. You will be able to give as soon as that is complete."
+              : freshUser.orgVerificationStatus === "REJECTED"
+                ? "Your organisation's details could not be verified. Please contact us before giving."
+                : "Before giving as an organisation, add your legal name and registration details to your profile so our team can verify them.",
+          reason: "ORG_NOT_VERIFIED",
+          orgVerificationStatus: freshUser.orgVerificationStatus,
+        },
+        { status: 403 }
       );
     }
 
@@ -107,12 +147,16 @@ export async function POST(request: Request) {
     if (!fcraGate.allowed) {
       return NextResponse.json(
         {
-          error: fcraGate.reason,
-          message:
+          // The sentence, not the code. DonateModal renders `data.error`
+          // straight into the UI, so this used to put the literal string
+          // "FCRA_REQUIRED" in front of a donor. The code moves to `reason`,
+          // matching the organisation gate above.
+          error:
             fcraGate.reason === "FCRA_REQUIRED"
               ? "This NGO is not registered to accept foreign contributions. " +
                 "FCRA registration must be ACTIVE before international donors can contribute."
               : "Please complete your donor category declaration before donating.",
+          reason: fcraGate.reason,
           fcraStatus: fcraGate.reason === "FCRA_REQUIRED" ? fcraGate.fcraStatus : undefined,
         },
         { status: 403 }
@@ -120,9 +164,18 @@ export async function POST(request: Request) {
     }
     // ──────────────────────────────────────────────────────────────────────────
 
-    const isMock = !process.env.RAZORPAY_KEY_ID || 
-                   process.env.RAZORPAY_KEY_ID.includes("xxxxxxxxxxxx") || 
-                   process.env.RAZORPAY_KEY_ID === "";
+    // Mock mode writes the donation as SUCCESS and issues a tax receipt, so
+    // "no credentials" must never be enough to reach it in production. See
+    // lib/payment-mode.ts for why this is not an inline env check.
+    const payment = resolvePaymentMode();
+    if (payment.mode === "MISCONFIGURED") {
+      console.error(`[donations/create-order] ${payment.reason}`);
+      return NextResponse.json(
+        { error: "Payments are temporarily unavailable. Please try again shortly." },
+        { status: 503 }
+      );
+    }
+    const isMock = payment.mode === "MOCK";
 
     if (isMock) {
       console.log(`[MOCK CHECKOUT] Initiating mock donation order for project ${projectId} amount ${amount}`);

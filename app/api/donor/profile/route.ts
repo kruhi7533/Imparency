@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { DonorPersona } from "@prisma/client";
+import { decideOrgStatus, isFunderPersona, normalizeCin, type OrgStatus } from "@/lib/csr-verification";
 
 export async function PUT(request: Request) {
   try {
@@ -25,6 +26,7 @@ export async function PUT(request: Request) {
       panNumber,
       isCorporate,
       companyName,
+      cin,
       gstNumber,
       donorPersona,
       hniAdvisorName,
@@ -118,6 +120,57 @@ export async function PUT(request: Request) {
       };
     }
 
+    // ── Donor organisation verification ───────────────────────────────────
+    // A donor can put their company details in and take them back out, but they
+    // can never approve themselves: decideOrgStatus refuses to return VERIFIED
+    // from any other state. All this save does is decide whether the profile is
+    // complete enough to be worth an admin's time, and retire an approval whose
+    // identity has since changed.
+    // Only touch the CIN when the caller actually sent the key.
+    //
+    // Every other field on this route is nulled when absent, which is fine for
+    // a field the form always renders. The CIN is different: it gates money
+    // movement, and any client that had not been updated to send it would
+    // silently wipe it — dropping a verified company out of the queue, or
+    // retiring its approval outright, on an unrelated profile save. That is
+    // exactly what happened before the field existed on the form.
+    const cinProvided = Object.prototype.hasOwnProperty.call(body, "cin");
+    const normalizedCin = normalizeCin(cin);
+    // `companyName` doubles as the legal name of ANY funding body — a company,
+    // a trust or a department. It used to be nulled unless `isCorporate`, which
+    // left a foundation with nowhere to record its own name and so no way to
+    // ever pass the organisation gate.
+    const institutional = isFunderPersona(verifiedPersona);
+    const trimmedCompanyName =
+      (isCorporate || institutional) && companyName ? companyName.trim() : null;
+    const trimmedTrustRegId = trustRegistrationId ? trustRegistrationId.trim() : null;
+    const priorOrg = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        companyName: true,
+        cin: true,
+        trustRegistrationId: true,
+        orgVerificationStatus: true,
+      },
+    });
+    const orgDecision = decideOrgStatus(
+      (priorOrg?.orgVerificationStatus ?? "NOT_SUBMITTED") as OrgStatus,
+      {
+        orgName: priorOrg?.companyName ?? null,
+        cin: priorOrg?.cin ?? null,
+        trustRegistrationId: priorOrg?.trustRegistrationId ?? null,
+      },
+      {
+        donorPersona: verifiedPersona,
+        orgName: trimmedCompanyName,
+        cin: isCorporate ? (cinProvided ? normalizedCin : (priorOrg?.cin ?? null)) : null,
+        csrBudget: csrBudget != null && csrBudget !== "" ? Number(csrBudget) : null,
+        trustRegistrationId: trimmedTrustRegId,
+        trustAnnualBudget:
+          trustAnnualBudget != null && trustAnnualBudget !== "" ? Number(trustAnnualBudget) : null,
+      }
+    );
+
     // Update user profile in database
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
@@ -128,8 +181,18 @@ export async function PUT(request: Request) {
         billingAddress: billingAddress ? billingAddress.trim() : null,
         panNumber: normalizedPan,
         isCorporate: !!isCorporate,
-        companyName: isCorporate && companyName ? companyName.trim() : null,
+        companyName: trimmedCompanyName,
+        ...(cinProvided || !isCorporate ? { cin: isCorporate ? normalizedCin : null } : {}),
         gstNumber: isCorporate && gstNumber ? gstNumber.trim() : null,
+        orgVerificationStatus: orgDecision.status,
+        ...(orgDecision.submitted ? { orgSubmittedAt: new Date() } : {}),
+        // A retired approval must not leave its approval timestamp behind —
+        // that pairing would read as "verified on this date" in every view.
+        // Only cleared when an approval was actually retired: a rejection keeps
+        // its decider, because "who said no" outlives the donor's next edit.
+        ...(orgDecision.reopened || orgDecision.status === "NOT_SUBMITTED"
+          ? { orgVerifiedAt: null, orgVerifiedById: null }
+          : {}),
         ...(panData ?? {}),
         donorPersona: verifiedPersona,
         hniAdvisorName: hniAdvisorName ? hniAdvisorName.trim() : null,
@@ -142,6 +205,25 @@ export async function PUT(request: Request) {
         trustAnnualBudget: trustAnnualBudget != null && trustAnnualBudget !== "" ? Number(trustAnnualBudget) : null,
       },
     });
+
+    // Append-only organisation lifecycle events (Donor 360 timeline). Only the
+    // two transitions worth a timeline entry — an ordinary save that leaves the
+    // status where it was says nothing and should not add a row.
+    if (orgDecision.submitted || orgDecision.reopened) {
+      try {
+        const { logDonorEvent } = await import("@/lib/donor-events");
+        await logDonorEvent({
+          donorId: session.user.id,
+          eventType: orgDecision.reopened ? "CSR_ORG_REOPENED" : "CSR_ORG_SUBMITTED",
+          oldValue: { orgVerificationStatus: priorOrg?.orgVerificationStatus ?? "NOT_SUBMITTED" },
+          newValue: { orgVerificationStatus: orgDecision.status },
+          initiatedBy: session.user.id,
+          source: "USER",
+        });
+      } catch (evtErr) {
+        console.error("Failed to log donor organisation event:", evtErr);
+      }
+    }
 
     // Append-only PAN lifecycle events (Donor 360 timeline)
     if (panData) {

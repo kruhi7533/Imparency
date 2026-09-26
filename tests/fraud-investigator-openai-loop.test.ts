@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /**
  * End-to-end proof that the OpenAI-compatible path (Groq / OpenRouter / any
@@ -53,6 +53,37 @@ beforeEach(() => {
     subType: null,
     createdAt: new Date(),
   });
+});
+
+/**
+ * Put the INVESTIGATOR_* environment back the way it was found.
+ *
+ * `vitest.config.ts` sets `fileParallelism: false`, so every test file shares
+ * one process and one `process.env`. This file sets six variables in
+ * beforeEach and used to clean up none of them, so every file running after it
+ * inherited an enabled investigator pointed at a fake provider — including the
+ * files that set nothing and reasonably expect the defaults.
+ * `fraud-investigator-providers.test.ts` already deletes the one variable it
+ * sets; this matches that.
+ *
+ * NOTE: this is hygiene, not a proven fix for the intermittent failures seen
+ * in this file on 2026-09-26. Those could not be reproduced afterwards (three
+ * consecutive clean full-suite runs) and both occurrences were on a loaded
+ * machine, so timing pressure remains the likelier explanation.
+ */
+const INVESTIGATOR_ENV_KEYS = [
+  "INVESTIGATOR_ENABLED",
+  "INVESTIGATOR_PROVIDER",
+  "INVESTIGATOR_BASE_URL",
+  "INVESTIGATOR_API_KEY",
+  "INVESTIGATOR_MODEL",
+  "INVESTIGATOR_RPM",
+  "INVESTIGATOR_STEP_BUDGET",
+] as const;
+
+afterEach(() => {
+  for (const key of INVESTIGATOR_ENV_KEYS) delete process.env[key];
+  vi.unstubAllGlobals();
 });
 
 function openAIResponse(message: any, usage = { prompt_tokens: 100, completion_tokens: 20 }): any {
