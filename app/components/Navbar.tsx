@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { ShieldCheck, MessageCircleQuestion, Users, HeartPulse, ListChecks, TrendingUp } from "lucide-react";
+import { ShieldCheck, MessageCircleQuestion, Users, HeartPulse, ListChecks, TrendingUp, FileCheck } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 
 export default function Navbar() {
@@ -68,6 +68,9 @@ export default function Navbar() {
               <Link href="/ngo/projects/new" className={`hover:text-white transition ${pathname === "/ngo/projects/new" ? "text-white" : ""}`}>
                 Launch Project
               </Link>
+              <Link href="/ngo/match-inbox" className={`hover:text-white transition ${pathname === "/ngo/match-inbox" ? "text-white" : ""}`}>
+                Match Inbox
+              </Link>
               <Link href="/ngo/inquiries" className={`hover:text-white transition ${pathname === "/ngo/inquiries" ? "text-white" : ""}`}>
                 Inquiries
               </Link>
@@ -106,6 +109,7 @@ export default function Navbar() {
                   {[
                     { href: "/admin/today", label: "Today", icon: ListChecks, match: (p: string) => p === "/admin/today" },
                     { href: "/admin/dashboard", label: "Verifications", icon: ShieldCheck, match: (p: string) => p === "/admin/dashboard" },
+                    { href: "/admin/gap-reports", label: "Gap Analysis", icon: FileCheck, match: (p: string) => p.startsWith("/admin/gap-reports") },
                     { href: "/admin/inquiries", label: "Inquiries", icon: MessageCircleQuestion, match: (p: string) => p === "/admin/inquiries" },
                     { href: "/admin/donors", label: "Donors", icon: Users, match: (p: string) => p.startsWith("/admin/donors") },
                     { href: "/admin/impact-health", label: "Impact Health", icon: HeartPulse, match: (p: string) => p === "/admin/impact-health" },

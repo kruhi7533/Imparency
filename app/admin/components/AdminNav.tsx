@@ -38,6 +38,7 @@ export default function AdminNav({ pendingProjectCount, unresolvedAlertsTotal, p
         { href: "/admin/fcra-review", label: "FCRA Review" },
         { href: "/admin/crisis", label: "Crisis Relief", badge: pendingCrisisCount },
         { href: "/admin/initiatives", label: "Relief Initiatives" },
+        { href: "/admin/gap-reports", label: "Gap Analysis" },
       ],
     },
     {

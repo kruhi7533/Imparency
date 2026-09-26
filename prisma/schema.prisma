@@ -9,6 +9,1139 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model User {
+  id                      String                       @id @default(uuid())
+  email                   String                       @unique
+  passwordHash            String
+  role                    Role                         @default(DONOR)
+  name                    String                       @default("Anonymous")
+  avatar                  String?
+  googleId                String?                      @unique
+  panNumber               String?
+  phone                   String?
+  city                    String?
+  billingAddress          String?
+  totalDonated            Decimal                      @default(0.00) @db.Decimal(10, 2)
+  fcmToken                String?
+  companyName             String?
+  isCorporate             Boolean                      @default(false)
+  gstNumber               String?
+  donorCategory           DonorCategory?
+  donorCategoryDeclaredAt DateTime?
+  donorDeclarationVersion String?
+  nriSourceDeclaration    String?
+  donorPersona            DonorPersona?
+  personaSetAt            DateTime?
+  panStatus               PanVerificationStatus        @default(UNVERIFIED)
+  panVerifiedAt           DateTime?
+  panVerifiedVia          PanVerifiedVia?
+  panRegisteredName       String?
+  panNameMatch            Boolean?
+  hniAdvisorName          String?
+  hniAdvisorEmail         String?
+  hniAnnualBudget         Decimal?                     @db.Decimal(12, 2)
+  csrRegistrationNumber   String?
+  csrBudget               Decimal?                     @db.Decimal(12, 2)
+  trustRegistrationId     String?
+  trust12a80gRegNo        String?
+  trustAnnualBudget       Decimal?                     @db.Decimal(12, 2)
+  donorTier               DonorTier                    @default(STANDARD)
+  reEngagementPath        ReEngagementPath?
+  volunteerInterest       Boolean                      @default(false)
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
+  crisisAlertsOptOut      Boolean                      @default(false)
+  adminActionLogs         AdminActionLog[]             @relation("AdminActionLogs")
+  consentLogs             ConsentLog[]
+  Contract                Contract[]
+  crisisDonations         CrisisDonation[]
+  crisisEventsCreated     CrisisEvent[]                @relation("CrisisEventsCreated")
+  crisisDeliveries        CrisisNotificationDelivery[]
+  donations               Donation[]
+  donorInquiries          DonorInquiry[]
+  GapReport               GapReport[]
+  impactReports           ImpactReport[]
+  milestoneProofs         MilestoneProof[]
+  adminReviews            MilestoneReview[]            @relation("AdminReviews")
+  followers               NGOFollower[]
+  ngoProfile              NGOProfile?
+  teamMemberships         NGOTeamMember[]
+  notifications           Notification[]
+  passwordResetTokens     PasswordResetToken[]
+  adminProjectReviews     ProjectReview[]              @relation("AdminProjectReviews")
+  ProjectRevision         ProjectRevision[]
+  reEngagementEvents      ReEngagementEvent[]
+  initiativesSubmitted    ReliefInitiative[]           @relation("InitiativesSubmitted")
+  RequirementRevision     RequirementRevision[]
+  SponsorRequirement      SponsorRequirement[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model NGOProfile {
+  id                        String                @id @default(uuid())
+  userId                    String                @unique
+  orgName                   String
+  registrationNumber        String                @unique
+  panNumber                 String                @unique
+  address                   String
+  causeCategories           String[]
+  verificationStatus        VerificationStatus    @default(PENDING)
+  healthScore               Decimal?              @db.Decimal(5, 2)
+  healthScoreBreakdown      Json?
+  ai_verification_report    Json?
+  isSuspended               Boolean               @default(false)
+  suspensionReason          String?
+  suspendedAt               DateTime?
+  documents                 String[]
+  description               String
+  website                   String?
+  foundedYear               Int
+  adminNote                 String?
+  isDeleted                 Boolean               @default(false)
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+  logo_url                  String?
+  cover_image_url           String?
+  joinCode                  String?               @unique
+  dataProcessingConsent     Boolean               @default(false)
+  dataProcessingConsentDate DateTime?
+  consentVersion            String?
+  consentIpAddress          String?
+  consentRevoked            Boolean               @default(false)
+  consentRevokedAt          DateTime?
+  Contract                  Contract[]
+  crisisParticipants        CrisisParticipant[]
+  crisisUpdates             CrisisUpdate[]
+  donorInquiries            DonorInquiry[]
+  draftProofs               DraftProof[]
+  fieldWorkers              FieldWorker[]
+  compliance                NGOCompliance?
+  followers                 NGOFollower[]
+  user                      User                  @relation(fields: [userId], references: [id])
+  teamMembers               NGOTeamMember[]
+  screening                 NgoScreening?
+  OpportunityResponse       OpportunityResponse[]
+  projects                  Project[]
+  proposals                 Proposal[]
+  RequirementMatch          RequirementMatch[]
+  riskReviews               RiskReview[]
+  teamInvites               TeamInvite[]
+}
+
+model NGOTeamMember {
+  id        String     @id @default(uuid())
+  userId    String
+  ngoId     String
+  role      TeamRole   @default(FIELD_STAFF)
+  createdAt DateTime   @default(now())
+  ngo       NGOProfile @relation(fields: [ngoId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@unique([userId, ngoId])
+}
+
+model NGOCompliance {
+  id                     String               @id @default(uuid())
+  ngoId                  String               @unique
+  panVerified            Boolean              @default(false)
+  panVerifiedAt          DateTime?
+  registrationVerified   Boolean              @default(false)
+  registrationVerifiedAt DateTime?
+  a12Verified            Boolean              @default(false)
+  a12VerifiedAt          DateTime?
+  a12DocumentUrl         String?
+  eightyGVerified        Boolean              @default(false)
+  eightyGVerifiedAt      DateTime?
+  fcraNumber             String?
+  fcraStatus             FCRAStatus           @default(NONE)
+  fcraAuthority          String?              @default("Ministry of Home Affairs")
+  fcraRegisteredSince    Int?
+  fcraIssueDate          DateTime?
+  fcraExpiryDate         DateTime?
+  fcraCertificateUrl     String?
+  fcraExtractedData      Json?
+  fcraAdminNote          String?
+  fcraVerifiedAt         DateTime?
+  verifiedById           String?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  auditLogs              ComplianceAuditLog[]
+  ngo                    NGOProfile           @relation(fields: [ngoId], references: [id])
+}
+
+model ComplianceAuditLog {
+  id           String        @id @default(uuid())
+  complianceId String
+  event        String
+  detail       String?
+  actorId      String?
+  createdAt    DateTime      @default(now())
+  compliance   NGOCompliance @relation(fields: [complianceId], references: [id])
+
+  @@index([complianceId])
+}
+
+model Project {
+  id                      String                @id @default(uuid())
+  ngoId                   String
+  title                   String
+  description             String
+  causeCategory           String
+  targetAmount            Decimal               @db.Decimal(10, 2)
+  raisedAmount            Decimal               @default(0.00) @db.Decimal(10, 2)
+  status                  ProjectStatus         @default(DRAFT)
+  coverImage              String
+  location                String
+  latitude                Float?
+  longitude               Float?
+  districtName            String?               @map("district_name")
+  stateName               String?               @map("state_name")
+  geoIntelligence         Json?                 @map("geo_intelligence")
+  geoFetchedAt            DateTime?             @map("geo_fetched_at")
+  problem_statement       String?
+  expected_outcome        String?
+  tocAnalysis             Json?                 @map("toc_analysis")
+  isDeleted               Boolean               @default(false)
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  reviewNote              String?
+  reviewedAt              DateTime?
+  reviewedById            String?
+  aiScreeningScore        Int?
+  aiScreeningResult       String?
+  crisisEventId           String?
+  isCrisisGeneralFund     Boolean               @default(false)
+  version                 Int                   @default(1)
+  Contract                Contract[]
+  crisisDonationsAsTarget CrisisDonation[]
+  donations               Donation[]
+  milestones              Milestone[]
+  OpportunityResponse     OpportunityResponse[]
+  crisisEvent             CrisisEvent?          @relation(fields: [crisisEventId], references: [id])
+  ngo                     NGOProfile            @relation(fields: [ngoId], references: [id])
+  projectReviews          ProjectReview[]
+  ProjectRevision         ProjectRevision[]
+  RequirementMatch        RequirementMatch[]
+}
+
+model ProjectReview {
+  id         String   @id @default(uuid())
+  projectId  String
+  adminId    String
+  action     String
+  note       String?
+  reviewedAt DateTime @default(now())
+  admin      User     @relation("AdminProjectReviews", fields: [adminId], references: [id])
+  project    Project  @relation(fields: [projectId], references: [id])
+}
+
+model Milestone {
+  id            String            @id @default(uuid())
+  projectId     String
+  title         String
+  description   String
+  targetAmount  Decimal           @db.Decimal(10, 2)
+  deadline      DateTime
+  status        MilestoneStatus   @default(PENDING)
+  sequenceOrder Int
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  impactReports ImpactReport[]
+  project       Project           @relation(fields: [projectId], references: [id])
+  proofs        MilestoneProof[]
+  reviews       MilestoneReview[]
+}
+
+model MilestoneProof {
+  id                           String    @id @default(uuid())
+  milestoneId                  String
+  submittedById                String
+  description                  String
+  mediaUrls                    String[]
+  documentUrls                 String[]
+  aiValidationResult           String?
+  aiValidationScore            Int?
+  theoryOfChangeAlignmentScore Int?
+  theoryOfChangeReasoning      String?
+  theoryOfChangeStrengths      String[]
+  theoryOfChangeGaps           String[]
+  submittedAt                  DateTime  @default(now())
+  milestone                    Milestone @relation(fields: [milestoneId], references: [id])
+  submittedBy                  User      @relation(fields: [submittedById], references: [id])
+}
+
+model MilestoneReview {
+  id          String    @id @default(uuid())
+  milestoneId String
+  proofId     String?
+  adminId     String
+  action      String
+  note        String?
+  aiScore     Int?
+  reviewedAt  DateTime  @default(now())
+  admin       User      @relation("AdminReviews", fields: [adminId], references: [id])
+  milestone   Milestone @relation(fields: [milestoneId], references: [id])
+}
+
+model Donation {
+  id                  String         @id @default(uuid())
+  donorId             String
+  projectId           String
+  amount              Decimal        @db.Decimal(10, 2)
+  razorpayOrderId     String
+  razorpayPaymentId   String?
+  status              DonationStatus @default(PENDING)
+  receiptUrl          String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  milestoneIds        String[]       @default([])
+  retryCount          Int            @default(0)
+  lastFailedAt        DateTime?
+  retryToken          String?        @unique
+  retryTokenExpiresAt DateTime?
+  complianceSnapshot  Json?
+  donor               User           @relation(fields: [donorId], references: [id])
+  project             Project        @relation(fields: [projectId], references: [id])
+  impactReports       ImpactReport[]
+  taxReceipt          TaxReceipt?
+}
+
+model ImpactReport {
+  id                   String    @id @default(uuid())
+  donationId           String
+  milestoneId          String
+  donorId              String
+  aiGeneratedNarrative String
+  sdgTags              String[]
+  irisMetrics          String[]
+  sentAt               DateTime  @default(now())
+  readAt               DateTime?
+  donation             Donation  @relation(fields: [donationId], references: [id])
+  donor                User      @relation(fields: [donorId], references: [id])
+  milestone            Milestone @relation(fields: [milestoneId], references: [id])
+}
+
+model NGOFollower {
+  donorId    String
+  ngoId      String
+  followedAt DateTime   @default(now())
+  donor      User       @relation(fields: [donorId], references: [id])
+  ngo        NGOProfile @relation(fields: [ngoId], references: [id])
+
+  @@id([donorId, ngoId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model TaxReceipt {
+  id            String   @id @default(uuid())
+  donationId    String   @unique
+  receiptNumber String   @unique
+  financialYear String
+  pdfUrl        String
+  issuedAt      DateTime @default(now())
+  donation      Donation @relation(fields: [donationId], references: [id])
+}
+
+model RateLimitLog {
+  id           String   @id @default(uuid())
+  identifier   String
+  route        String
+  requestCount Int      @default(1)
+  windowStart  DateTime @default(now())
+
+  @@index([identifier, route])
+  @@index([windowStart])
+}
+
+model NgoScreening {
+  id                String     @id @default(uuid())
+  ngoId             String     @unique
+  summary           String
+  extractedFields   Json
+  documentChecklist Json
+  consistencyOk     Boolean
+  flags             Json
+  recommendation    String
+  confidence        Float
+  status            String     @default("PENDING")
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  ngo               NGOProfile @relation(fields: [ngoId], references: [id])
+}
+
+model FraudAlert {
+  id             String        @id @default(uuid())
+  type           String
+  entityId       String
+  entityType     String
+  description    String
+  severity       String
+  alertCategory  AlertCategory @default(FRAUD_ALERT)
+  subType        AlertSubType?
+  resolved       Boolean       @default(false)
+  resolutionNote String?
+  resolvedById   String?
+  resolvedAt     DateTime?
+  createdAt      DateTime      @default(now())
+}
+
+model RiskReview {
+  id         String     @id @default(uuid())
+  ngoId      String
+  alertIds   String[]
+  riskScore  Float?
+  riskLevel  String
+  findings   Json?
+  status     String     @default("OPEN")
+  reviewedBy String?
+  reviewNote String?
+  createdAt  DateTime   @default(now())
+  resolvedAt DateTime?
+  ngo        NGOProfile @relation(fields: [ngoId], references: [id])
+}
+
+model FcraQuarterlyReport {
+  id                String   @id @default(uuid())
+  quarter           String   @unique
+  generatedAt       DateTime @default(now())
+  totalNgos         Int
+  activeCount       Int
+  expiringSoonCount Int
+  expiredCount      Int
+  rejectedCount     Int
+  pendingCount      Int
+  ngoBreakdown      Json
+  generatedById     String?
+}
+
+model ConsentLog {
+  id            String         @id @default(cuid())
+  userId        String
+  purpose       ConsentPurpose
+  policyVersion String         @default("1.0")
+  consentedAt   DateTime       @default(now())
+  ipAddress     String?
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ReEngagementEvent {
+  id           String           @id @default(uuid())
+  donorId      String
+  reportId     String
+  path         ReEngagementPath
+  emailSentAt  DateTime         @default(now())
+  ctaClickedAt DateTime?
+  dismissed    Boolean          @default(false)
+  donor        User             @relation(fields: [donorId], references: [id])
+
+  @@index([donorId])
+}
+
+model ConsentAudit {
+  id        String   @id @default(cuid())
+  ngoId     String
+  action    String
+  version   String
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model FieldWorker {
+  id               String       @id @default(uuid())
+  ngoId            String
+  name             String
+  phone            String       @unique
+  isActive         Boolean      @default(true)
+  isPending        Boolean      @default(false)
+  reliabilityScore Int          @default(100)
+  totalSubmissions Int          @default(0)
+  approvedCount    Int          @default(0)
+  rejectedCount    Int          @default(0)
+  createdAt        DateTime     @default(now())
+  draftProofs      DraftProof[]
+  ngo              NGOProfile   @relation(fields: [ngoId], references: [id])
+}
+
+model DraftProof {
+  id                   String           @id @default(uuid())
+  ngoId                String
+  fieldWorkerId        String?
+  fingerprint          String?          @unique
+  predictedProjectId   String?
+  predictedMilestoneId String?
+  predictionConfidence Float?
+  senderPhone          String
+  rawMessage           String
+  aiSummary            String?
+  riskLevel            String?
+  riskReason           String?
+  workerStatus         String?          @default("PENDING")
+  rawGpsLat            Float?
+  rawGpsLng            Float?
+  photoCount           Int?             @default(0)
+  mediaUrls            String[]
+  persistentPhotoUrls  String[]
+  imageHashes          String[]
+  status               DraftProofStatus @default(PENDING_REVIEW)
+  createdAt            DateTime         @default(now())
+  fieldWorker          FieldWorker?     @relation(fields: [fieldWorkerId], references: [id])
+  ngo                  NGOProfile       @relation(fields: [ngoId], references: [id])
+}
+
+model PitchLead {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  organization String?
+  createdAt    DateTime @default(now())
+  downloaded   Boolean  @default(false)
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AdminActionLog {
+  id            String   @id @default(uuid())
+  adminId       String
+  action        String
+  entityType    String
+  entityId      String
+  oldValue      Json?
+  newValue      Json?
+  note          String?
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  schemaVersion Int      @default(1)
+  createdAt     DateTime @default(now())
+  admin         User     @relation("AdminActionLogs", fields: [adminId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([adminId])
+  @@index([createdAt])
+}
+
+model DonorEvent {
+  id            String   @id @default(uuid())
+  donorId       String
+  eventType     String
+  oldValue      Json?
+  newValue      Json?
+  initiatedBy   String?
+  source        String
+  schemaVersion Int      @default(1)
+  createdAt     DateTime @default(now())
+
+  @@index([donorId])
+  @@index([eventType])
+}
+
+model ReceiptEvent {
+  id        String   @id @default(uuid())
+  receiptId String
+  event     String
+  actorId   String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([receiptId])
+}
+
+model ReviewThread {
+  id                String          @id @default(uuid())
+  subjectType       String
+  subjectId         String
+  participantUserId String
+  kind              ThreadKind      @default(INQUIRY)
+  subject           String
+  entityType        String?
+  entityId          String?
+  status            ThreadStatus    @default(OPEN)
+  createdById       String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  messages          ReviewMessage[]
+
+  @@index([subjectType, subjectId])
+  @@index([status])
+}
+
+model ReviewMessage {
+  id         String       @id @default(uuid())
+  threadId   String
+  authorId   String
+  authorRole String
+  body       String
+  createdAt  DateTime     @default(now())
+  thread     ReviewThread @relation(fields: [threadId], references: [id])
+
+  @@index([threadId])
+}
+
+model ProjectImpactEvent {
+  id          String           @id @default(uuid())
+  projectId   String
+  milestoneId String?
+  type        ImpactEventType
+  title       String
+  body        String
+  payload     Json?
+  createdAt   DateTime         @default(now())
+  deliveries  ImpactDelivery[]
+
+  @@index([projectId])
+  @@index([createdAt])
+}
+
+model ImpactSubscription {
+  id        String   @id @default(uuid())
+  donorId   String
+  projectId String
+  channels  String[] @default(["IN_APP", "EMAIL"])
+  frequency String   @default("INSTANT")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([donorId, projectId])
+  @@index([projectId])
+}
+
+model ImpactDelivery {
+  id        String               @id @default(uuid())
+  eventId   String
+  donorId   String
+  channel   ImpactChannel
+  status    ImpactDeliveryStatus @default(PENDING)
+  attempts  Int                  @default(0)
+  lastError String?
+  sentAt    DateTime?
+  readAt    DateTime?
+  createdAt DateTime             @default(now())
+  event     ProjectImpactEvent   @relation(fields: [eventId], references: [id])
+
+  @@unique([eventId, donorId, channel])
+  @@index([status, attempts])
+  @@index([donorId])
+}
+
+model TeamInvite {
+  id        String     @id @default(cuid())
+  email     String
+  role      TeamRole   @default(FIELD_STAFF)
+  ngoId     String
+  token     String     @unique @default(cuid())
+  accepted  Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  expiresAt DateTime
+  ngo       NGOProfile @relation(fields: [ngoId], references: [id])
+
+  @@unique([email, ngoId])
+}
+
+model DonorInquiry {
+  id        String                @id @default(uuid())
+  ngoId     String
+  donorId   String
+  subject   String                @default("General Inquiry")
+  status    String                @default("OPEN")
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  donor     User                  @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  ngo       NGOProfile            @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  messages  DonorInquiryMessage[]
+
+  @@unique([ngoId, donorId])
+  @@index([ngoId])
+  @@index([donorId])
+}
+
+model DonorInquiryMessage {
+  id         String       @id @default(uuid())
+  threadId   String
+  senderId   String
+  senderRole String
+  body       String
+  createdAt  DateTime     @default(now())
+  thread     DonorInquiry @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+}
+
+model CrisisEvent {
+  id                 String                       @id @default(uuid())
+  title              String
+  slug               String                       @unique
+  disasterType       DisasterType
+  description        String
+  affectedLocation   String
+  country            String                       @default("India")
+  stateName          String?
+  city               String?
+  latitude           Float?
+  longitude          Float?
+  severity           CrisisSeverity               @default(MODERATE)
+  coverImage         String
+  galleryImages      String[]
+  status             CrisisStatus                 @default(UPCOMING)
+  verificationStatus VerificationStatus           @default(PENDING)
+  verifiedById       String?
+  verifiedAt         DateTime?
+  isFeatured         Boolean                      @default(false)
+  isArchived         Boolean                      @default(false)
+  startDate          DateTime
+  expectedEndDate    DateTime?
+  closedAt           DateTime?
+  createdById        String
+  totalRaised        Decimal                      @default(0.00) @db.Decimal(12, 2)
+  totalDonors        Int                          @default(0)
+  totalCampaigns     Int                          @default(0)
+  totalNgos          Int                          @default(0)
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  donations          CrisisDonation[]
+  createdBy          User                         @relation("CrisisEventsCreated", fields: [createdById], references: [id])
+  deliveries         CrisisNotificationDelivery[]
+  participants       CrisisParticipant[]
+  updates            CrisisUpdate[]
+  campaigns          Project[]
+  initiatives        ReliefInitiative[]
+
+  @@index([status])
+  @@index([verificationStatus])
+  @@index([disasterType])
+  @@index([isFeatured])
+  @@index([country, stateName, city])
+}
+
+model CrisisParticipant {
+  id            String      @id @default(uuid())
+  crisisEventId String
+  ngoId         String
+  joinedAt      DateTime    @default(now())
+  crisisEvent   CrisisEvent @relation(fields: [crisisEventId], references: [id], onDelete: Cascade)
+  ngo           NGOProfile  @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+
+  @@unique([crisisEventId, ngoId])
+  @@index([ngoId])
+}
+
+model ReliefInitiative {
+  id                   String           @id @default(uuid())
+  crisisEventId        String?
+  submittedById        String
+  organizerName        String
+  organizerType        String
+  description          String
+  location             String
+  latitude             Float?
+  longitude            Float?
+  requiredFunds        Decimal          @db.Decimal(12, 2)
+  raisedAmount         Decimal          @default(0.00) @db.Decimal(12, 2)
+  totalDonors          Int              @default(0)
+  bankAccountName      String
+  bankAccountNumberEnc String
+  bankIfsc             String
+  bankProofUrl         String
+  images               String[]
+  documents            String[]
+  status               InitiativeStatus @default(SUBMITTED)
+  reviewNote           String?
+  reviewedById         String?
+  reviewedAt           DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  donations            CrisisDonation[]
+  updates              CrisisUpdate[]
+  crisisEvent          CrisisEvent?     @relation(fields: [crisisEventId], references: [id])
+  submittedBy          User             @relation("InitiativesSubmitted", fields: [submittedById], references: [id])
+
+  @@index([status])
+  @@index([crisisEventId])
+}
+
+model CrisisDonation {
+  id                 String               @id @default(uuid())
+  donorId            String
+  crisisEventId      String
+  targetType         CrisisDonationTarget
+  campaignProjectId  String?
+  initiativeId       String?
+  amount             Decimal              @db.Decimal(10, 2)
+  razorpayOrderId    String
+  razorpayPaymentId  String?
+  status             DonationStatus       @default(PENDING)
+  receiptUrl         String?
+  complianceSnapshot Json?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  campaignProject    Project?             @relation(fields: [campaignProjectId], references: [id])
+  crisisEvent        CrisisEvent          @relation(fields: [crisisEventId], references: [id])
+  donor              User                 @relation(fields: [donorId], references: [id])
+  initiative         ReliefInitiative?    @relation(fields: [initiativeId], references: [id])
+
+  @@index([crisisEventId])
+  @@index([donorId])
+  @@index([campaignProjectId])
+  @@index([initiativeId])
+  @@index([razorpayOrderId])
+}
+
+model CrisisUpdate {
+  id                   String            @id @default(uuid())
+  crisisEventId        String
+  postedById           String
+  postedByNgoId        String?
+  initiativeId         String?
+  type                 CrisisUpdateType
+  title                String
+  body                 String
+  mediaUrls            String[]
+  documentUrls         String[]
+  fundsUtilized        Decimal?          @db.Decimal(12, 2)
+  beneficiariesReached Int?
+  createdAt            DateTime          @default(now())
+  crisisEvent          CrisisEvent       @relation(fields: [crisisEventId], references: [id], onDelete: Cascade)
+  initiative           ReliefInitiative? @relation(fields: [initiativeId], references: [id])
+  postedByNgo          NGOProfile?       @relation(fields: [postedByNgoId], references: [id])
+
+  @@index([crisisEventId, createdAt])
+}
+
+model CrisisNotificationDelivery {
+  id            String               @id @default(uuid())
+  crisisEventId String
+  donorId       String
+  channel       ImpactChannel
+  status        ImpactDeliveryStatus @default(PENDING)
+  attempts      Int                  @default(0)
+  lastError     String?
+  sentAt        DateTime?
+  createdAt     DateTime             @default(now())
+  crisisEvent   CrisisEvent          @relation(fields: [crisisEventId], references: [id], onDelete: Cascade)
+  donor         User                 @relation(fields: [donorId], references: [id])
+
+  @@unique([crisisEventId, donorId, channel])
+  @@index([status, attempts])
+  @@index([donorId])
+}
+
+model GapReport {
+  id                   String             @id
+  sponsorRequirementId String
+  overallCompatibility Int
+  gapReport            Json
+  recommendations      Json
+  reviewedBy           String?
+  reviewStatus         ReviewStatus       @default(PENDING)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime
+  ngoId                String?
+  algorithmVersion     String?
+  candidateCount       Int                @default(0)
+  eligibleCount        Int                @default(0)
+  reviewNote           String?
+  reviewedAt           DateTime?
+  triggeredById        String?
+  User                 User?              @relation(fields: [reviewedBy], references: [id])
+  SponsorRequirement   SponsorRequirement @relation(fields: [sponsorRequirementId], references: [id], onDelete: Cascade)
+  RequirementMatch     RequirementMatch[]
+
+  @@index([ngoId])
+  @@index([sponsorRequirementId])
+  @@index([reviewedBy])
+}
+
+model SponsorRequirement {
+  id                  String                @id
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  donorId             String?
+  extractedData       Json                  @default("{}")
+  title               String                @default("")
+  confidenceScores    Json                  @default("{}")
+  extractedByAgent    String                @default("RequirementsAnalystAgent")
+  extractedFields     Json                  @default("{}")
+  extractionStatus    String                @default("UPLOADED")
+  fileHash            String                @default("")
+  fileName            String                @default("")
+  fileSize            Int                   @default(0)
+  mimeType            String                @default("")
+  modelVersion        String                @default("gpt-4o")
+  rawDocumentUrl      String                @default("")
+  rawText             String                @default("")
+  reviewNote          String?
+  reviewedAt          DateTime?
+  reviewedById        String?
+  selectedAt          DateTime?
+  selectedNgoId       String?
+  selectedProjectId   String?
+  sponsorId           String?
+  status              RequirementStatus     @default(UPLOADED)
+  storageKey          String?
+  submittedAt         DateTime?
+  validatedAt         DateTime?
+  version             Int                   @default(1)
+  versionAuthorId     String?
+  versionAuthorRole   String?
+  versionNote         String?
+  Contract            Contract[]
+  GapReport           GapReport[]
+  OpportunityResponse OpportunityResponse[]
+  proposals           Proposal[]
+  RequirementAuditLog RequirementAuditLog[]
+  RequirementMatch    RequirementMatch[]
+  RequirementRevision RequirementRevision[]
+  User                User?                 @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+
+  @@index([fileHash])
+  @@index([sponsorId])
+  @@index([status])
+}
+
+model Proposal {
+  id                   String             @id @default(uuid())
+  sponsorRequirementId String
+  ngoId                String
+  activities           String
+  budget               Float
+  milestones           Json
+  version              Int                @default(1)
+  status               ProposalStatus     @default(DRAFT)
+  feedback             String?
+  history              Json               @default("[]")
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  ngo                  NGOProfile         @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  sponsorRequirement   SponsorRequirement @relation(fields: [sponsorRequirementId], references: [id], onDelete: Cascade)
+
+  @@index([sponsorRequirementId])
+  @@index([ngoId])
+}
+
+model AgentExecution {
+  id               String   @id
+  agentName        String
+  action           String
+  entityId         String?
+  status           String
+  promptHash       String
+  model            String
+  latencyMs        Int
+  promptTokens     Int
+  completionTokens Int
+  totalTokens      Int
+  errorMessage     String?
+  createdAt        DateTime @default(now())
+
+  @@index([agentName])
+  @@index([entityId])
+}
+
+model Contract {
+  id                     String              @id
+  contractNumber         String              @unique
+  title                  String
+  description            String?
+  donorId                String
+  ngoId                  String
+  projectId              String
+  requirementId          String?
+  status                 ContractStatus      @default(DRAFT)
+  totalGrantAmount       Decimal             @db.Decimal(12, 2)
+  currency               String              @default("INR")
+  startDate              DateTime?
+  endDate                DateTime?
+  governingLaw           String              @default("Laws of India")
+  csrScheduleViiCategory String?
+  reportingCadence       String              @default("QUARTERLY")
+  termsAndConditions     String
+  donorSignedAt          DateTime?
+  donorSignedByName      String?
+  donorSignerTitle       String?
+  donorSignerIp          String?
+  ngoSignedAt            DateTime?
+  ngoSignedByName        String?
+  ngoSignerTitle         String?
+  ngoSignerIp            String?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime
+  User                   User                @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  NGOProfile             NGOProfile          @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  Project                Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  SponsorRequirement     SponsorRequirement? @relation(fields: [requirementId], references: [id])
+  ContractAuditLog       ContractAuditLog[]
+  ContractMilestone      ContractMilestone[]
+
+  @@index([donorId])
+  @@index([ngoId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model ContractAuditLog {
+  id         String   @id
+  contractId String
+  action     String
+  actorId    String
+  actorRole  String
+  detail     String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  Contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([actorId])
+  @@index([contractId])
+}
+
+model ContractMilestone {
+  id                 String                  @id
+  contractId         String
+  projectMilestoneId String?
+  title              String
+  description        String
+  allocatedAmount    Decimal                 @db.Decimal(10, 2)
+  status             ContractMilestoneStatus @default(PENDING)
+  deliverables       String[]
+  dueDate            DateTime?
+  completedAt        DateTime?
+  orderIndex         Int                     @default(0)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime
+  Contract           Contract                @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+}
+
+model OpportunityResponse {
+  id                     String                    @id
+  requirementId          String
+  ngoId                  String
+  projectId              String
+  respondedById          String
+  status                 OpportunityResponseStatus @default(INTERESTED)
+  proposedBudget         Decimal?                  @db.Decimal(14, 2)
+  proposedDurationMonths Int?
+  implementationPlan     String?
+  milestones             Json?
+  expectedOutcomes       String?
+  complianceNotes        String?
+  submittedAt            DateTime                  @default(now())
+  updatedAt              DateTime
+  reviewedAt             DateTime?
+  reviewedById           String?
+  NGOProfile             NGOProfile                @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  Project                Project                   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  SponsorRequirement     SponsorRequirement        @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@unique([requirementId, ngoId])
+  @@index([ngoId])
+}
+
+model ProjectRevision {
+  id             String   @id
+  projectId      String
+  version        Int
+  title          String
+  description    String
+  targetAmount   Decimal  @db.Decimal(10, 2)
+  milestonesData Json?
+  changeSummary  String?
+  changedById    String?
+  createdAt      DateTime @default(now())
+  User           User?    @relation(fields: [changedById], references: [id])
+  Project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, version])
+}
+
+model RequirementAuditLog {
+  id                 String             @id
+  requirementId      String
+  action             String
+  actorId            String?
+  actorRole          String
+  fromStatus         String?
+  toStatus           String?
+  detail             String?
+  metadata           Json?
+  createdAt          DateTime           @default(now())
+  SponsorRequirement SponsorRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@index([actorId])
+  @@index([requirementId])
+}
+
+model RequirementMatch {
+  id                 String             @id
+  requirementId      String
+  gapReportId        String
+  projectId          String
+  ngoId              String
+  eligible           Boolean
+  rank               Int?
+  score              Int?
+  coverage           Int
+  hardEligibility    Json
+  dimensionScores    Json
+  gaps               Json
+  explanation        String
+  invitedAt          DateTime?
+  invitedById        String?
+  createdAt          DateTime           @default(now())
+  GapReport          GapReport          @relation(fields: [gapReportId], references: [id], onDelete: Cascade)
+  NGOProfile         NGOProfile         @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  Project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  SponsorRequirement SponsorRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@unique([gapReportId, projectId])
+  @@index([ngoId])
+  @@index([requirementId])
+}
+
+model RequirementRevision {
+  id                   String             @id
+  sponsorRequirementId String
+  version              Int
+  extractedFields      Json
+  changeSummary        String?
+  changedById          String?
+  changedByRole        String?
+  status               String?
+  createdAt            DateTime           @default(now())
+  User                 User?              @relation(fields: [changedById], references: [id])
+  SponsorRequirement   SponsorRequirement @relation(fields: [sponsorRequirementId], references: [id], onDelete: Cascade)
+
+  @@index([sponsorRequirementId])
+  @@index([sponsorRequirementId, version])
+}
+
 enum Role {
   DONOR
   NGO
@@ -53,19 +1186,19 @@ enum DonationStatus {
 }
 
 enum DonorCategory {
-  INDIAN_IN_INDIA // domestic donor — no FCRA constraint
-  INDIAN_ABROAD // NRI/OCI — treated as foreign source unless NRI-eligible account used
-  FOREIGN_NATIONAL // always foreign source — hard FCRA gate
+  INDIAN_IN_INDIA
+  INDIAN_ABROAD
+  FOREIGN_NATIONAL
 }
 
 enum FCRAStatus {
-  NONE // never submitted
-  PENDING // submitted, awaiting admin review
-  ACTIVE // approved, expiry > 90 days away
-  EXPIRING_SOON // approved, expiry within 90 days
-  EXPIRED // approved but past expiry
-  REJECTED // admin rejected
-  REUPLOAD_REQUESTED // admin asked the NGO to re-upload
+  NONE
+  PENDING
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+  REJECTED
+  REUPLOAD_REQUESTED
 }
 
 enum TeamRole {
@@ -73,417 +1206,6 @@ enum TeamRole {
   ADMIN
   FINANCE
   FIELD_STAFF
-}
-
-model User {
-  id                      String                @id @default(uuid())
-  email                   String                @unique
-  passwordHash            String
-  role                    Role                  @default(DONOR)
-  name                    String                @default("Anonymous")
-  avatar                  String?
-  googleId                String?               @unique
-  panNumber               String?
-  phone                   String?
-  city                    String?
-  billingAddress          String?
-  totalDonated            Decimal               @default(0.00) @db.Decimal(10, 2)
-  fcmToken                String?
-  companyName             String?
-  isCorporate             Boolean               @default(false)
-  gstNumber               String?
-  donorCategory           DonorCategory?
-  donorCategoryDeclaredAt DateTime?
-  donorDeclarationVersion String? // tracks policy version for future consent re-prompts
-  nriSourceDeclaration    String? // "ELIGIBLE_NRI_SOURCE" | "FOREIGN_SOURCE" | "NOT_SURE"
-  donorPersona            DonorPersona?
-  personaSetAt            DateTime?
-  // Donor PAN verification (risk-based / just-in-time — gates 80G receipt issuance)
-  panStatus               PanVerificationStatus @default(UNVERIFIED)
-  panVerifiedAt           DateTime?
-  panVerifiedVia          PanVerifiedVia?
-  panRegisteredName       String? // name returned by the PAN provider (mismatch display / audit)
-  panNameMatch            Boolean? // did registeredName match donor.name? null = no name returned
-
-  // HNI specific fields
-  hniAdvisorName  String?
-  hniAdvisorEmail String?
-  hniAnnualBudget Decimal? @db.Decimal(12, 2)
-
-  // CSR specific fields
-  csrRegistrationNumber String?
-  csrBudget             Decimal? @db.Decimal(12, 2)
-
-  // Foundation specific fields
-  trustRegistrationId String?
-  trust12a80gRegNo    String?
-  trustAnnualBudget   Decimal? @db.Decimal(12, 2)
-
-  donorTier         DonorTier         @default(STANDARD)
-  reEngagementPath  ReEngagementPath?
-  volunteerInterest Boolean           @default(false)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-
-  ngoProfile          NGOProfile?
-  donations           Donation[]
-  notifications       Notification[]
-  impactReports       ImpactReport[]
-  followers           NGOFollower[]
-  milestoneProofs     MilestoneProof[]
-  adminReviews        MilestoneReview[]   @relation("AdminReviews")
-  adminProjectReviews ProjectReview[]     @relation("AdminProjectReviews")
-  consentLogs         ConsentLog[]
-  reEngagementEvents  ReEngagementEvent[]
-  teamMemberships     NGOTeamMember[]
-  adminActionLogs     AdminActionLog[]    @relation("AdminActionLogs")
-  passwordResetTokens PasswordResetToken[]
-  donorInquiries      DonorInquiry[]
-
-  // Emergency Crisis Relief
-  crisisAlertsOptOut  Boolean            @default(false)
-  crisisEventsCreated CrisisEvent[]      @relation("CrisisEventsCreated")
-  initiativesSubmitted ReliefInitiative[] @relation("InitiativesSubmitted")
-  crisisDonations     CrisisDonation[]
-  crisisDeliveries    CrisisNotificationDelivery[]
-}
-
-model PasswordResetToken {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  token     String   @unique
-  expiresAt DateTime
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-}
-
-model NGOProfile {
-  id                     String             @id @default(uuid())
-  userId                 String             @unique
-  user                   User               @relation(fields: [userId], references: [id])
-  orgName                String
-  registrationNumber     String             @unique
-  panNumber              String             @unique
-  address                String
-  causeCategories        String[]
-  verificationStatus     VerificationStatus @default(PENDING)
-  healthScore            Decimal?           @db.Decimal(5, 2)
-  healthScoreBreakdown   Json?
-  ai_verification_report Json?
-  isSuspended            Boolean            @default(false)
-  suspensionReason       String?
-  suspendedAt            DateTime?
-  documents              String[]
-  description            String
-  website                String?
-  foundedYear            Int
-  adminNote              String?
-  isDeleted              Boolean            @default(false)
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
-  logo_url               String?
-  cover_image_url        String?
-  joinCode               String?            @unique // Used for field worker self-registration via WhatsApp
-
-  // Consent Tracking
-  dataProcessingConsent     Boolean   @default(false)
-  dataProcessingConsentDate DateTime?
-  consentVersion            String?
-  consentIpAddress          String?
-  consentRevoked            Boolean   @default(false)
-  consentRevokedAt          DateTime?
-
-  projects     Project[]
-  followers    NGOFollower[]
-  screening    NgoScreening?
-  compliance   NGOCompliance?
-  riskReviews  RiskReview[]
-  fieldWorkers FieldWorker[]
-  draftProofs  DraftProof[]
-  teamMembers  NGOTeamMember[]
-  teamInvites  TeamInvite[]
-  donorInquiries DonorInquiry[]
-  crisisParticipants CrisisParticipant[]
-  crisisUpdates      CrisisUpdate[]
-}
-
-model NGOTeamMember {
-  id        String     @id @default(uuid())
-  userId    String
-  user      User       @relation(fields: [userId], references: [id])
-  ngoId     String
-  ngo       NGOProfile @relation(fields: [ngoId], references: [id])
-  role      TeamRole   @default(FIELD_STAFF)
-  createdAt DateTime   @default(now())
-
-  @@unique([userId, ngoId])
-}
-
-model NGOCompliance {
-  id    String     @id @default(uuid())
-  ngoId String     @unique
-  ngo   NGOProfile @relation(fields: [ngoId], references: [id])
-
-  // Per-document verified flags + per-document timestamps
-  panVerified            Boolean   @default(false)
-  panVerifiedAt          DateTime?
-  registrationVerified   Boolean   @default(false)
-  registrationVerifiedAt DateTime?
-  a12Verified            Boolean   @default(false)
-  a12VerifiedAt          DateTime?
-  a12DocumentUrl         String?
-  eightyGVerified        Boolean   @default(false)
-  eightyGVerifiedAt      DateTime?
-
-  // FCRA-specific lifecycle
-  fcraNumber          String?
-  fcraStatus          FCRAStatus @default(NONE)
-  fcraAuthority       String?    @default("Ministry of Home Affairs")
-  fcraRegisteredSince Int? // year
-  fcraIssueDate       DateTime?
-  fcraExpiryDate      DateTime?
-  fcraCertificateUrl  String?
-  fcraExtractedData   Json? // raw Gemini extraction
-  fcraAdminNote       String?
-  fcraVerifiedAt      DateTime?
-
-  // NOTE: compliance score & breakdown are derived on read — never stored here.
-
-  verifiedById String? // admin user id (last action)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  auditLogs ComplianceAuditLog[]
-}
-
-model ComplianceAuditLog {
-  id           String        @id @default(uuid())
-  complianceId String
-  compliance   NGOCompliance @relation(fields: [complianceId], references: [id])
-  event        String // e.g. "FCRA_UPLOADED", "FCRA_APPROVED", "FCRA_EXPIRED", "PAN_VERIFIED", "80G_VERIFIED"
-  detail       String? // human-readable line for the timeline
-  actorId      String? // admin user id, or null for system/cron events
-  createdAt    DateTime      @default(now())
-
-  @@index([complianceId])
-}
-
-model Project {
-  id            String        @id @default(uuid())
-  ngoId         String
-  ngo           NGOProfile    @relation(fields: [ngoId], references: [id])
-  title         String
-  description   String
-  causeCategory String
-  targetAmount  Decimal       @db.Decimal(10, 2)
-  raisedAmount  Decimal       @default(0.00) @db.Decimal(10, 2)
-  status        ProjectStatus @default(DRAFT)
-  coverImage    String
-  location      String
-
-  // Geo Intelligence
-  latitude        Float?
-  longitude       Float?
-  districtName    String?   @map("district_name")
-  stateName       String?   @map("state_name")
-  geoIntelligence Json?     @map("geo_intelligence")
-  geoFetchedAt    DateTime? @map("geo_fetched_at")
-
-  problem_statement String?
-  expected_outcome  String?
-  tocAnalysis       Json?    @map("toc_analysis")
-  isDeleted         Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  // Admin approval gate
-  reviewNote   String?
-  reviewedAt   DateTime?
-  reviewedById String?
-
-  // AI pre-screening (advisory signal surfaced to admin in the review queue)
-  aiScreeningScore  Int?
-  aiScreeningResult String? // JSON: { score, recommendation, reasoning, flags }
-
-  // Emergency Crisis Relief — nullable, zero impact on non-crisis projects
-  crisisEventId       String?
-  crisisEvent         CrisisEvent? @relation(fields: [crisisEventId], references: [id])
-  isCrisisGeneralFund Boolean      @default(false)
-
-  milestones             Milestone[]
-  donations              Donation[]
-  projectReviews         ProjectReview[]
-  crisisDonationsAsTarget CrisisDonation[]
-}
-
-model ProjectReview {
-  id         String   @id @default(uuid())
-  projectId  String
-  project    Project  @relation(fields: [projectId], references: [id])
-  adminId    String
-  admin      User     @relation("AdminProjectReviews", fields: [adminId], references: [id])
-  action     String // "APPROVED" | "REJECTED"
-  note       String?
-  reviewedAt DateTime @default(now())
-}
-
-model Milestone {
-  id            String          @id @default(uuid())
-  projectId     String
-  project       Project         @relation(fields: [projectId], references: [id])
-  title         String
-  description   String
-  targetAmount  Decimal         @db.Decimal(10, 2)
-  deadline      DateTime
-  status        MilestoneStatus @default(PENDING)
-  sequenceOrder Int
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-
-  proofs        MilestoneProof[]
-  impactReports ImpactReport[]
-  reviews       MilestoneReview[]
-}
-
-model MilestoneProof {
-  id                 String    @id @default(uuid())
-  milestoneId        String
-  milestone          Milestone @relation(fields: [milestoneId], references: [id])
-  submittedById      String
-  submittedBy        User      @relation(fields: [submittedById], references: [id])
-  description        String
-  mediaUrls          String[]
-  documentUrls       String[]
-  aiValidationResult String?
-  aiValidationScore  Int?
-
-  // Theory of Change Alignment
-  theoryOfChangeAlignmentScore Int?
-  theoryOfChangeReasoning      String?
-  theoryOfChangeStrengths      String[]
-  theoryOfChangeGaps           String[]
-
-  submittedAt DateTime @default(now())
-}
-
-model MilestoneReview {
-  id          String    @id @default(uuid())
-  milestoneId String
-  milestone   Milestone @relation(fields: [milestoneId], references: [id])
-  proofId     String?
-  adminId     String
-  admin       User      @relation("AdminReviews", fields: [adminId], references: [id])
-  action      String // "APPROVED" | "REJECTED"
-  note        String?
-  aiScore     Int?
-  reviewedAt  DateTime  @default(now())
-}
-
-model Donation {
-  id                  String         @id @default(uuid())
-  donorId             String
-  donor               User           @relation(fields: [donorId], references: [id])
-  projectId           String
-  project             Project        @relation(fields: [projectId], references: [id])
-  amount              Decimal        @db.Decimal(10, 2)
-  razorpayOrderId     String
-  razorpayPaymentId   String?
-  status              DonationStatus @default(PENDING)
-  receiptUrl          String?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  milestoneIds        String[]       @default([])
-  retryCount          Int            @default(0)
-  lastFailedAt        DateTime?
-  retryToken          String?        @unique
-  retryTokenExpiresAt DateTime?
-
-  // INVARIANT: point-in-time compliance snapshot captured when the payment is
-  // confirmed (webhook). IMMUTABLE — never modified afterwards, not even by
-  // admins; corrections are recorded as new audit events, never as mutations.
-  // Shape: { version, capturedAt, panStatus, panVerifiedVia, donorCategory,
-  //          nriSourceDeclaration, ngoFcraStatus, ngoComplianceScore, ngoHealthScore }
-  complianceSnapshot Json?
-
-  impactReports ImpactReport[]
-  taxReceipt    TaxReceipt?
-}
-
-model ImpactReport {
-  id                   String    @id @default(uuid())
-  donationId           String
-  donation             Donation  @relation(fields: [donationId], references: [id])
-  milestoneId          String
-  milestone            Milestone @relation(fields: [milestoneId], references: [id])
-  donorId              String
-  donor                User      @relation(fields: [donorId], references: [id])
-  aiGeneratedNarrative String
-  sdgTags              String[]
-  irisMetrics          String[]
-  sentAt               DateTime  @default(now())
-  readAt               DateTime?
-}
-
-model NGOFollower {
-  donorId    String
-  donor      User       @relation(fields: [donorId], references: [id])
-  ngoId      String
-  ngo        NGOProfile @relation(fields: [ngoId], references: [id])
-  followedAt DateTime   @default(now())
-
-  @@id([donorId, ngoId])
-}
-
-model Notification {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  type      String
-  title     String
-  body      String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-}
-
-model TaxReceipt {
-  id            String   @id @default(uuid())
-  donationId    String   @unique
-  donation      Donation @relation(fields: [donationId], references: [id])
-  receiptNumber String   @unique
-  financialYear String
-  pdfUrl        String
-  issuedAt      DateTime @default(now())
-}
-
-model RateLimitLog {
-  id           String   @id @default(uuid())
-  identifier   String
-  route        String
-  requestCount Int      @default(1)
-  windowStart  DateTime @default(now())
-
-  @@index([identifier, route])
-  @@index([windowStart])
-}
-
-
-model NgoScreening {
-  id                String     @id @default(uuid())
-  ngoId             String     @unique
-  ngo               NGOProfile @relation(fields: [ngoId], references: [id])
-  summary           String
-  extractedFields   Json
-  documentChecklist Json
-  consistencyOk     Boolean
-  flags             Json
-  recommendation    String // LOOKS_CLEAR | NEEDS_REVIEW | LOOKS_PROBLEMATIC
-  confidence        Float
-  status            String     @default("PENDING") // PENDING | READY | FAILED
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
 }
 
 enum AlertCategory {
@@ -503,65 +1225,6 @@ enum AlertSubType {
   TAMPERED_DOCUMENT
 }
 
-model FraudAlert {
-  id             String        @id @default(uuid())
-  type           String
-  entityId       String
-  entityType     String
-  description    String
-  severity       String // "LOW", "MEDIUM", "HIGH"
-  alertCategory  AlertCategory @default(FRAUD_ALERT)
-  subType        AlertSubType?
-  resolved       Boolean       @default(false)
-  resolutionNote String?
-  resolvedById   String? // admin user id — every resolution must be attributable
-  resolvedAt     DateTime?
-  createdAt      DateTime      @default(now())
-}
-
-model RiskReview {
-  id         String     @id @default(uuid())
-  ngoId      String
-  ngo        NGOProfile @relation(fields: [ngoId], references: [id])
-  alertIds   String[] // linked FraudAlert ids
-  riskScore  Float?
-  riskLevel  String // "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
-  findings   Json?
-  status     String     @default("OPEN") // "OPEN" | "REVIEWED" | "CLEARED" | "SUSPENDED"
-  reviewedBy String?
-  reviewNote String?
-  createdAt  DateTime   @default(now())
-  resolvedAt DateTime?
-}
-
-model FcraQuarterlyReport {
-  id                String   @id @default(uuid())
-  quarter           String // "Q1-2026", "Q2-2026", etc.
-  generatedAt       DateTime @default(now())
-  totalNgos         Int
-  activeCount       Int
-  expiringSoonCount Int
-  expiredCount      Int
-  rejectedCount     Int
-  pendingCount      Int
-  ngoBreakdown      Json // [{ ngoId, orgName, fcraNumber, status, expiryDate }]
-  generatedById     String? // null = cron-generated
-
-  @@unique([quarter])
-}
-
-model ConsentLog {
-  id            String         @id @default(cuid())
-  userId        String
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  purpose       ConsentPurpose
-  policyVersion String         @default("1.0")
-  consentedAt   DateTime       @default(now())
-  ipAddress     String?
-
-  @@index([userId])
-}
-
 enum ConsentPurpose {
   ACCOUNT_CREATION
   DONATION_DATA_SHARING
@@ -576,12 +1239,12 @@ enum DonorTier {
 enum PanVerificationStatus {
   UNVERIFIED
   VERIFIED
-  FAILED // provider ran and rejected the PAN
-  PROVIDER_ERROR // provider unavailable / failed open — retryable
+  FAILED
+  PROVIDER_ERROR
 }
 
 enum PanVerifiedVia {
-  MOCK // no SUREPASS_API_TOKEN configured (dev)
+  MOCK
   SUREPASS
   MANUAL_ADMIN
 }
@@ -593,160 +1256,15 @@ enum ReEngagementPath {
   VOLUNTEER_ADVISOR
 }
 
-model ReEngagementEvent {
-  id           String           @id @default(uuid())
-  donorId      String
-  donor        User             @relation(fields: [donorId], references: [id])
-  reportId     String // ImpactReport that triggered this
-  path         ReEngagementPath
-  emailSentAt  DateTime         @default(now())
-  ctaClickedAt DateTime?
-  dismissed    Boolean          @default(false)
-
-  @@index([donorId])
-}
-
-model ConsentAudit {
-  id        String   @id @default(cuid())
-  ngoId     String
-  action    String
-  version   String
-  ipAddress String?
-  createdAt DateTime @default(now())
-}
-
-model FieldWorker {
-  id               String     @id @default(uuid())
-  ngoId            String
-  ngo              NGOProfile @relation(fields: [ngoId], references: [id])
-  name             String
-  phone            String     @unique
-  isActive         Boolean    @default(true)
-  isPending        Boolean    @default(false) // true = waiting for join code reply
-  reliabilityScore Int        @default(100)
-  totalSubmissions Int        @default(0)
-  approvedCount    Int        @default(0)
-  rejectedCount    Int        @default(0)
-  createdAt        DateTime   @default(now())
-
-  draftProofs DraftProof[]
-}
-
-model DraftProof {
-  id            String       @id @default(uuid())
-  ngoId         String
-  ngo           NGOProfile   @relation(fields: [ngoId], references: [id])
-  fieldWorkerId String?
-  fieldWorker   FieldWorker? @relation(fields: [fieldWorkerId], references: [id])
-
-  fingerprint String? @unique
-
-  predictedProjectId   String?
-  predictedMilestoneId String?
-  predictionConfidence Float?
-
-  senderPhone  String
-  rawMessage   String
-  aiSummary    String?
-  riskLevel    String?
-  riskReason   String?
-  workerStatus String? @default("PENDING") // "PENDING" | "ENRICHING" | "ENRICHED" | "ENRICHMENT_FAILED"
-  rawGpsLat    Float?
-  rawGpsLng    Float?
-  photoCount   Int?    @default(0)
-
-  mediaUrls           String[]
-  persistentPhotoUrls String[]
-  imageHashes         String[]
-
-  status    DraftProofStatus @default(PENDING_REVIEW)
-  createdAt DateTime         @default(now())
-}
-
 enum DraftProofStatus {
   PENDING_REVIEW
   APPROVED
   REJECTED
 }
 
-model PitchLead {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  organization String?
-  createdAt    DateTime @default(now())
-  downloaded   Boolean  @default(false)
-}
-
-// Platform-wide key/value settings (admin-managed toggles). Kept generic so new
-// switches are a row, not a migration. Values are stored as strings; typed
-// accessors live in lib/app-settings.ts.
-model AppSetting {
-  key       String   @id
-  value     String
-  updatedAt DateTime @updatedAt
-}
-
-// ─── Admin accountability (Phase 1) ─────────────────────────────────────────
-
-// Every sensitive admin mutation writes one row here. oldValue/newValue hold
-// JSON snapshots of ONLY the fields the action changed — never full entity
-// dumps (PII retention). metadata carries the AI-vs-human decision snapshot.
-model AdminActionLog {
-  id            String   @id @default(uuid())
-  adminId       String
-  admin         User     @relation("AdminActionLogs", fields: [adminId], references: [id])
-  action        String // e.g. "NGO_APPROVED", "PROJECT_REJECTED", "ALERT_RESOLVED", "NGO_SUSPENDED"
-  entityType    String // "NGO" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA"
-  entityId      String
-  oldValue      Json?
-  newValue      Json?
-  note          String?
-  metadata      Json? // { ai: { recommendation, score, confidence }, overrodeAi, disagreementReason, ... }
-  ipAddress     String?
-  userAgent     String?
-  schemaVersion Int      @default(1) // payload shape version for future replay/migration
-  createdAt     DateTime @default(now())
-
-  @@index([entityType, entityId])
-  @@index([adminId])
-  @@index([createdAt])
-}
-
-// Append-only donor lifecycle events (category declarations, PAN changes, …).
-// Powers the Donor 360 timeline. `source` answers "who initiated this" when
-// reconstructing history: the donor, an admin, the system, or a webhook.
-model DonorEvent {
-  id            String   @id @default(uuid())
-  donorId       String
-  eventType     String // e.g. "CATEGORY_DECLARED", "PAN_SUBMITTED", "PAN_VERIFIED", "PAN_CLEARED"
-  oldValue      Json?
-  newValue      Json?
-  initiatedBy   String? // user id (donor or admin); null for system
-  source        String // "USER" | "ADMIN" | "SYSTEM" | "WEBHOOK"
-  schemaVersion Int      @default(1)
-  createdAt     DateTime @default(now())
-
-  @@index([donorId])
-  @@index([eventType])
-}
-
-// Append-only 80G receipt lifecycle. Receipts are legally sensitive documents —
-// every generation, claim, and download must be reconstructable.
-model ReceiptEvent {
-  id        String   @id @default(uuid())
-  receiptId String
-  event     String // "GENERATED" | "CLAIMED" | "DOWNLOADED" | "REGENERATED" | "CANCELLED"
-  actorId   String? // user who triggered it; null for system/webhook
-  metadata  Json? // e.g. { trigger: "WEBHOOK" | "CLAIM" | "ADMIN" }
-  createdAt DateTime @default(now())
-
-  @@index([receiptId])
-}
-
 enum ThreadKind {
-  INQUIRY // admin asks the NGO for clarification (replaces one-way ask-ngo email)
-  APPEAL // NGO contests a rejection/suspension decision
+  INQUIRY
+  APPEAL
 }
 
 enum ThreadStatus {
@@ -754,47 +1272,6 @@ enum ThreadStatus {
   NGO_RESPONDED
   RESOLVED
 }
-
-// A ReviewThread is "something under review" — the conversation is one facet.
-// subjectType/subjectId generalize it across NGOs, donors, and (later) projects
-// so PAN reviews, FCRA questions, and appeals all share one primitive.
-model ReviewThread {
-  id                String       @id @default(uuid())
-  subjectType       String // "NGO" | "DONOR" (later: "PROJECT")
-  subjectId         String // NGOProfile.id or User.id depending on subjectType
-  participantUserId String // the non-admin user who is notified of replies
-  kind              ThreadKind   @default(INQUIRY)
-  subject           String
-  entityType        String? // "MILESTONE" | "PROJECT" | "NGO_VERIFICATION" | "FCRA" | "SUSPENSION" | "PAN" | "RISK_REVIEW"
-  entityId          String?
-  status            ThreadStatus @default(OPEN)
-  createdById       String // user id of whoever opened the thread (admin or subject user)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-
-  messages ReviewMessage[]
-
-  @@index([subjectType, subjectId])
-  @@index([status])
-}
-
-model ReviewMessage {
-  id         String       @id @default(uuid())
-  threadId   String
-  thread     ReviewThread @relation(fields: [threadId], references: [id])
-  authorId   String
-  authorRole String // "ADMIN" | "NGO"
-  body       String
-  createdAt  DateTime     @default(now())
-
-  @@index([threadId])
-}
-
-// ─── Impact delivery pipeline (Phase 2A follow-on) ──────────────────────────
-// Event → subscriptions → outbox. Events are append-only facts; deliveries are
-// the outbox rows a cron drains with retries, so "did donor X receive impact Y"
-// is a DB query, never a hope. Unique(eventId, donorId, channel) makes fan-out
-// and redelivery idempotent.
 
 enum ImpactEventType {
   PROOF_SUBMITTED
@@ -811,109 +1288,9 @@ enum ImpactChannel {
 enum ImpactDeliveryStatus {
   PENDING
   SENT
-  FAILED // retries exhausted — visible to admin, never silently dropped
+  FAILED
   READ
 }
-
-model ProjectImpactEvent {
-  id          String          @id @default(uuid())
-  projectId   String
-  milestoneId String?
-  type        ImpactEventType
-  title       String
-  body        String
-  payload     Json? // media urls, aiScore, verifiedBy, …
-  createdAt   DateTime        @default(now())
-
-  deliveries ImpactDelivery[]
-
-  @@index([projectId])
-  @@index([createdAt])
-}
-
-model ImpactSubscription {
-  id        String   @id @default(uuid())
-  donorId   String
-  projectId String
-  channels  String[] @default(["IN_APP", "EMAIL"])
-  frequency String   @default("INSTANT") // INSTANT | DAILY_DIGEST | WEEKLY_DIGEST
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  @@unique([donorId, projectId])
-  @@index([projectId])
-}
-
-model ImpactDelivery {
-  id        String               @id @default(uuid())
-  eventId   String
-  event     ProjectImpactEvent   @relation(fields: [eventId], references: [id])
-  donorId   String
-  channel   ImpactChannel
-  status    ImpactDeliveryStatus @default(PENDING)
-  attempts  Int                  @default(0)
-  lastError String?
-  sentAt    DateTime?
-  readAt    DateTime?
-  createdAt DateTime             @default(now())
-
-  @@unique([eventId, donorId, channel])
-  @@index([status, attempts])
-  @@index([donorId])
-}
-
-model TeamInvite {
-  id        String     @id @default(cuid())
-  email     String
-  role      TeamRole   @default(FIELD_STAFF)
-  ngoId     String
-  ngo       NGOProfile @relation(fields: [ngoId], references: [id])
-  token     String     @unique @default(cuid())
-  accepted  Boolean    @default(false)
-  createdAt DateTime   @default(now())
-  expiresAt DateTime
-
-  @@unique([email, ngoId])
-}
-
-// ─── Donor-NGO Inquiry Chat System ──────────────────────────────────────────
-
-model DonorInquiry {
-  id        String                @id @default(uuid())
-  ngoId     String
-  ngo       NGOProfile            @relation(fields: [ngoId], references: [id], onDelete: Cascade)
-  donorId   String
-  donor     User                  @relation(fields: [donorId], references: [id], onDelete: Cascade)
-  subject   String                @default("General Inquiry")
-  status    String                @default("OPEN") // "OPEN" | "RESPONDED" | "RESOLVED"
-  createdAt DateTime              @default(now())
-  updatedAt DateTime              @updatedAt
-  messages  DonorInquiryMessage[]
-
-  @@unique([ngoId, donorId]) // Consolidate into a single thread per donor-NGO pair
-  @@index([ngoId])
-  @@index([donorId])
-}
-
-model DonorInquiryMessage {
-  id         String       @id @default(uuid())
-  threadId   String
-  thread     DonorInquiry @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  senderId   String
-  senderRole String       // "DONOR" | "NGO"
-  body       String
-  createdAt  DateTime     @default(now())
-
-  @@index([threadId])
-}
-
-// ─── Emergency Crisis Relief Campaign System ────────────────────────────────
-// Additive-only: no existing model's required fields or constraints change.
-// Crisis campaigns ARE Project rows (tagged via Project.crisisEventId) so they
-// inherit milestones, proof review, and AI screening for free. Direct-to-crisis
-// and initiative donations get their own CrisisDonation table rather than
-// relaxing Donation.projectId (NOT NULL, live production data) — see the
-// architecture spec for the full reasoning.
 
 enum DisasterType {
   FLOOD
@@ -963,183 +1340,62 @@ enum CrisisUpdateType {
   TEXT
 }
 
-model CrisisEvent {
-  id                 String              @id @default(uuid())
-  title              String
-  slug               String              @unique
-  disasterType       DisasterType
-  description        String
-  affectedLocation   String
-  country            String              @default("India")
-  stateName          String?
-  city               String?
-  latitude           Float?
-  longitude          Float?
-  severity           CrisisSeverity      @default(MODERATE)
-  coverImage         String
-  galleryImages      String[]
-  status             CrisisStatus        @default(UPCOMING)
-  verificationStatus VerificationStatus  @default(PENDING)
-  verifiedById       String?
-  verifiedAt         DateTime?
-  isFeatured         Boolean             @default(false)
-  isArchived         Boolean             @default(false)
-  startDate          DateTime
-  expectedEndDate    DateTime?
-  closedAt           DateTime?
-
-  createdById String
-  createdBy   User   @relation("CrisisEventsCreated", fields: [createdById], references: [id])
-
-  // Running aggregates — updated transactionally on each donation/join/campaign,
-  // never derived at read time.
-  totalRaised    Decimal @default(0.00) @db.Decimal(12, 2)
-  totalDonors    Int     @default(0)
-  totalCampaigns Int     @default(0)
-  totalNgos      Int     @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  campaigns    Project[]
-  participants CrisisParticipant[]
-  initiatives  ReliefInitiative[]
-  donations    CrisisDonation[]
-  updates      CrisisUpdate[]
-  deliveries   CrisisNotificationDelivery[]
-
-  @@index([status])
-  @@index([verificationStatus])
-  @@index([disasterType])
-  @@index([isFeatured])
-  @@index([country, stateName, city])
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REVISION_REQUESTED
+  REJECTED
 }
 
-model CrisisParticipant {
-  id            String      @id @default(uuid())
-  crisisEventId String
-  crisisEvent   CrisisEvent @relation(fields: [crisisEventId], references: [id], onDelete: Cascade)
-  ngoId         String
-  ngo           NGOProfile  @relation(fields: [ngoId], references: [id], onDelete: Cascade)
-  joinedAt      DateTime    @default(now())
-
-  @@unique([crisisEventId, ngoId])
-  @@index([ngoId])
+enum ProposalStatus {
+  DRAFT
+  SUBMITTED
+  CHANGE_REQUESTED
+  APPROVED
+  REJECTED
 }
 
-model ReliefInitiative {
-  id            String       @id @default(uuid())
-  crisisEventId String?
-  crisisEvent   CrisisEvent? @relation(fields: [crisisEventId], references: [id])
-
-  submittedById String
-  submittedBy   User   @relation("InitiativesSubmitted", fields: [submittedById], references: [id])
-
-  organizerName String // "Organization/Person"
-  organizerType String // "INDIVIDUAL" | "INFORMAL_GROUP"
-  description   String
-  location      String
-  latitude      Float?
-  longitude     Float?
-  requiredFunds Decimal @db.Decimal(12, 2)
-  raisedAmount  Decimal @default(0.00) @db.Decimal(12, 2)
-  totalDonors   Int     @default(0)
-
-  // Bank details — application-layer AES-256-GCM encrypted before write (lib/crisis/bank-encryption.ts)
-  bankAccountName      String
-  bankAccountNumberEnc String
-  bankIfsc             String
-  bankProofUrl         String // cancelled cheque / passbook photo
-
-  images    String[]
-  documents String[] // ID proof, any registration doc if available
-
-  status       InitiativeStatus @default(SUBMITTED)
-  reviewNote   String?
-  reviewedById String?
-  reviewedAt   DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  donations CrisisDonation[]
-  updates   CrisisUpdate[]
-
-  @@index([status])
-  @@index([crisisEventId])
+enum ContractMilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  PROOF_SUBMITTED
+  VERIFIED
+  DISBURSED
+  WITHHELD
 }
 
-model CrisisDonation {
-  id      String @id @default(uuid())
-  donorId String
-  donor   User   @relation(fields: [donorId], references: [id])
-
-  crisisEventId String
-  crisisEvent   CrisisEvent          @relation(fields: [crisisEventId], references: [id])
-  targetType    CrisisDonationTarget
-
-  campaignProjectId String?
-  campaignProject   Project? @relation(fields: [campaignProjectId], references: [id])
-  initiativeId      String?
-  initiative        ReliefInitiative? @relation(fields: [initiativeId], references: [id])
-
-  amount             Decimal        @db.Decimal(10, 2)
-  razorpayOrderId    String
-  razorpayPaymentId  String?
-  status             DonationStatus @default(PENDING)
-  receiptUrl         String?
-  complianceSnapshot Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([crisisEventId])
-  @@index([donorId])
-  @@index([campaignProjectId])
-  @@index([initiativeId])
-  @@index([razorpayOrderId])
+enum ContractStatus {
+  DRAFT
+  PROPOSED
+  UNDER_REVIEW
+  ACTIVE
+  COMPLETED
+  TERMINATED
+  REJECTED
 }
 
-model CrisisUpdate {
-  id            String      @id @default(uuid())
-  crisisEventId String
-  crisisEvent   CrisisEvent @relation(fields: [crisisEventId], references: [id], onDelete: Cascade)
-
-  postedById    String // NGOTeamMember user id, or initiative submitter id
-  postedByNgoId String?
-  postedByNgo   NGOProfile? @relation(fields: [postedByNgoId], references: [id])
-  initiativeId  String?
-  initiative    ReliefInitiative? @relation(fields: [initiativeId], references: [id])
-
-  type                 CrisisUpdateType
-  title                String
-  body                 String
-  mediaUrls            String[]
-  documentUrls         String[] // expense reports, receipts
-  fundsUtilized        Decimal? @db.Decimal(12, 2)
-  beneficiariesReached Int?
-
-  createdAt DateTime @default(now())
-
-  @@index([crisisEventId, createdAt])
+enum OpportunityResponseStatus {
+  INTERESTED
+  PROPOSAL_SUBMITTED
+  UNDER_REVIEW
+  SHORTLISTED
+  REJECTED
+  SELECTED
 }
 
-// Notification outbox — same shape as the proven ImpactDelivery pattern, reusing
-// its ImpactChannel/ImpactDeliveryStatus enums for identical dedup/retry semantics.
-model CrisisNotificationDelivery {
-  id            String               @id @default(uuid())
-  crisisEventId String
-  crisisEvent   CrisisEvent          @relation(fields: [crisisEventId], references: [id], onDelete: Cascade)
-  donorId       String
-  donor         User                 @relation(fields: [donorId], references: [id])
-  channel       ImpactChannel
-  status        ImpactDeliveryStatus @default(PENDING)
-  attempts      Int                  @default(0)
-  lastError     String?
-  sentAt        DateTime?
-  createdAt     DateTime             @default(now())
-
-  @@unique([crisisEventId, donorId, channel])
-  @@index([status, attempts])
-  @@index([donorId])
+enum RequirementStatus {
+  UPLOADED
+  PROCESSING
+  AI_EXTRACTED
+  DONOR_REVIEW
+  PENDING_ADMIN_REVIEW
+  NEEDS_CORRECTION
+  VALIDATED
+  MATCHING
+  SHORTLISTED
+  NGO_RESPONSE
+  SELECTED
+  CONTRACTED
+  REJECTED
+  FAILED
 }
