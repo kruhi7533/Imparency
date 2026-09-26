@@ -139,6 +139,11 @@ model User {
   adminActionLogs     AdminActionLog[]    @relation("AdminActionLogs")
   passwordResetTokens PasswordResetToken[]
   donorInquiries      DonorInquiry[]
+  sponsorRequirements SponsorRequirement[]
+  requirementRevisions RequirementRevision[]
+  projectRevisions    ProjectRevision[]
+  reviewedGapReports  GapReport[]
+  contracts           Contract[]
 }
 
 model PasswordResetToken {
@@ -199,6 +204,9 @@ model NGOProfile {
   teamMembers  NGOTeamMember[]
   teamInvites  TeamInvite[]
   donorInquiries DonorInquiry[]
+  contracts    Contract[]
+  requirementMatches   RequirementMatch[]
+  opportunityResponses OpportunityResponse[]
 }
 
 model NGOTeamMember {
@@ -299,9 +307,34 @@ model Project {
   aiScreeningScore  Int?
   aiScreeningResult String? // JSON: { score, recommendation, reasoning, flags }
 
+  // Versioning
+  version        Int               @default(1)
+  revisions      ProjectRevision[]
+
   milestones     Milestone[]
   donations      Donation[]
   projectReviews ProjectReview[]
+  contracts      Contract[]
+  requirementMatches   RequirementMatch[]
+  opportunityResponses OpportunityResponse[]
+}
+
+model ProjectRevision {
+  id             String   @id @default(uuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version        Int
+  title          String
+  description    String
+  targetAmount   Decimal  @db.Decimal(10, 2)
+  milestonesData Json?
+  changeSummary  String?
+  changedById    String?
+  changedBy      User?    @relation(fields: [changedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+
+  @@index([projectId])
+  @@index([projectId, version])
 }
 
 model ProjectReview {
@@ -891,3 +924,328 @@ model DonorInquiryMessage {
 
   @@index([threadId])
 }
+
+// CSR requirement lifecycle. Legal transitions are enforced in code by
+// lib/requirements/status.ts — never set this column directly from a route.
+enum RequirementStatus {
+  UPLOADED
+  PROCESSING
+  AI_EXTRACTED
+  DONOR_REVIEW
+  PENDING_ADMIN_REVIEW
+  NEEDS_CORRECTION
+  VALIDATED
+  MATCHING
+  SHORTLISTED
+  NGO_RESPONSE
+  SELECTED
+  CONTRACTED
+  REJECTED
+  FAILED
+}
+
+enum OpportunityResponseStatus {
+  INTERESTED
+  PROPOSAL_SUBMITTED
+  UNDER_REVIEW
+  SHORTLISTED
+  REJECTED
+  SELECTED
+}
+
+model SponsorRequirement {
+  id               String   @id @default(uuid())
+  sponsorId        String?
+  sponsor          User?    @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+  // DEPRECATED — held a public /uploads URL. Superseded by storageKey (private
+  // storage, served only via GET /api/requirements/[id]/file). Retained so
+  // existing rows and other branches keep working; drop in a follow-up migration.
+  rawDocumentUrl   String   @default("")
+  fileName         String   @default("")
+  fileHash         String   @default("")
+  // Private storage key (e.g. "requirements/<uuid>.pdf"). Never sent to clients.
+  storageKey       String?
+  mimeType         String   @default("")
+  fileSize         Int      @default(0)
+  rawText          String   @default("")
+  // Per field: { value, confidence, source: AI_EXTRACTED | DONOR_CORRECTED | ADMIN_VERIFIED, aiConfidence? }
+  extractedFields  Json     @default("{}")
+  confidenceScores Json     @default("{}")
+  // DEPRECATED — free-text pre-workflow status. Superseded by `status`.
+  extractionStatus String   @default("UPLOADED")
+  status           RequirementStatus @default(UPLOADED)
+  extractedByAgent String   @default("RequirementsAnalystAgent")
+  modelVersion     String   @default("gpt-4o")
+  version          Int      @default(1)
+  // Describes how the *current* version came to be; copied onto the revision
+  // snapshot when the next version is created.
+  versionNote      String?
+  versionAuthorId  String?
+  versionAuthorRole String?
+
+  // Governance
+  submittedAt      DateTime?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  validatedAt      DateTime?
+  reviewNote       String? // admin note for NEEDS_CORRECTION / REJECTED (shown to the donor)
+
+  // Selection (one award per requirement)
+  selectedProjectId String?
+  selectedNgoId     String?
+  selectedAt        DateTime?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  gapReports       GapReport[]
+  contracts        Contract[]
+  revisions        RequirementRevision[]
+  auditLogs        RequirementAuditLog[]
+  matches          RequirementMatch[]
+  responses        OpportunityResponse[]
+
+  @@index([sponsorId])
+  @@index([fileHash])
+  @@index([status])
+}
+
+model RequirementRevision {
+  id                   String             @id @default(uuid())
+  sponsorRequirementId String
+  sponsorRequirement   SponsorRequirement @relation(fields: [sponsorRequirementId], references: [id], onDelete: Cascade)
+  version              Int
+  extractedFields      Json
+  changeSummary        String?
+  changedById          String?
+  changedBy            User?              @relation(fields: [changedById], references: [id], onDelete: SetNull)
+  changedByRole        String?
+  status               String? // requirement status when this version was current
+  createdAt            DateTime           @default(now())
+
+  @@index([sponsorRequirementId])
+  @@index([sponsorRequirementId, version])
+}
+
+// Append-only CSR requirement timeline (mirrors ContractAuditLog). Admin
+// decisions are additionally written to AdminActionLog for admin accountability.
+model RequirementAuditLog {
+  id            String             @id @default(uuid())
+  requirementId String
+  requirement   SponsorRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  action        String // e.g. "CSR_UPLOADED", "REQUIREMENT_VALIDATED", "NGO_SELECTED"
+  actorId       String? // null for system events
+  actorRole     String // "DONOR" | "NGO" | "ADMIN" | "SYSTEM"
+  fromStatus    String?
+  toStatus      String?
+  detail        String?
+  metadata      Json? // e.g. { changedFields: [...] }
+  createdAt     DateTime           @default(now())
+
+  @@index([requirementId])
+  @@index([actorId])
+}
+
+// One row per candidate project evaluated in a matching run (GapReport).
+model RequirementMatch {
+  id              String             @id @default(uuid())
+  requirementId   String
+  requirement     SponsorRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  gapReportId     String
+  gapReport       GapReport          @relation(fields: [gapReportId], references: [id], onDelete: Cascade)
+  projectId       String
+  project         Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ngoId           String
+  ngo             NGOProfile         @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  eligible        Boolean
+  rank            Int? // null when hard-ineligible
+  score           Int? // 0-100 over scored dimensions only; null when ineligible
+  coverage        Int // % of scoring weight that had data on both sides
+  hardEligibility Json // [{ rule, passed, explanation }]
+  dimensionScores Json // [{ dimension, requirementValue, projectValue, result, weight, explanation }]
+  gaps            Json // [{ dimension, severity, description, recommendation }]
+  explanation     String
+  invitedAt       DateTime? // brief shared with this NGO
+  invitedById     String?
+  createdAt       DateTime           @default(now())
+
+  @@unique([gapReportId, projectId])
+  @@index([requirementId])
+  @@index([ngoId])
+}
+
+// An NGO's response to a CSR opportunity brief.
+model OpportunityResponse {
+  id                     String                    @id @default(uuid())
+  requirementId          String
+  requirement            SponsorRequirement        @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  ngoId                  String
+  ngo                    NGOProfile                @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  projectId              String
+  project                Project                   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  respondedById          String
+  status                 OpportunityResponseStatus @default(INTERESTED)
+  proposedBudget         Decimal?                  @db.Decimal(14, 2)
+  proposedDurationMonths Int?
+  implementationPlan     String?
+  milestones             Json? // [{ title, amount, durationMonths? }]
+  expectedOutcomes       String?
+  complianceNotes        String?
+  submittedAt            DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
+  reviewedAt             DateTime?
+  reviewedById           String?
+
+  @@unique([requirementId, ngoId])
+  @@index([ngoId])
+}
+
+model AgentExecution {
+  id                 String   @id @default(uuid())
+  agentName          String
+  action             String
+  entityId           String?
+  status             String   // "SUCCESS" | "FAILED"
+  promptHash         String
+  model              String
+  latencyMs          Int
+  promptTokens       Int
+  completionTokens   Int
+  totalTokens        Int
+  errorMessage       String?
+  createdAt          DateTime @default(now())
+
+  @@index([agentName])
+  @@index([entityId])
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// One matching run for a requirement. overallCompatibility = best eligible
+// candidate score (0 when none). Per-candidate results live in RequirementMatch.
+model GapReport {
+  id                    String   @id @default(uuid())
+  sponsorRequirementId  String
+  sponsorRequirement    SponsorRequirement @relation(fields: [sponsorRequirementId], references: [id], onDelete: Cascade)
+  overallCompatibility  Int
+  gapReport             Json
+  recommendations       Json
+  reviewedBy            String?
+  reviewer              User?    @relation(fields: [reviewedBy], references: [id])
+  reviewStatus          ReviewStatus @default(PENDING)
+  reviewedAt            DateTime?
+  reviewNote            String?
+  algorithmVersion      String?
+  candidateCount        Int      @default(0)
+  eligibleCount         Int      @default(0)
+  triggeredById         String?
+  matches               RequirementMatch[]
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([sponsorRequirementId])
+  @@index([reviewedBy])
+}
+
+enum ContractStatus {
+  DRAFT
+  PROPOSED
+  UNDER_REVIEW
+  ACTIVE
+  COMPLETED
+  TERMINATED
+  REJECTED
+}
+
+enum ContractMilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  PROOF_SUBMITTED
+  VERIFIED
+  DISBURSED
+  WITHHELD
+}
+
+model Contract {
+  id                      String                  @id @default(uuid())
+  contractNumber          String                  @unique
+  title                   String
+  description             String?
+  donorId                 String
+  donor                   User                    @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  ngoId                   String
+  ngo                     NGOProfile              @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  projectId               String
+  project                 Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requirementId           String?
+  sponsorRequirement      SponsorRequirement?     @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  status                  ContractStatus          @default(DRAFT)
+  totalGrantAmount        Decimal                 @db.Decimal(12, 2)
+  currency                String                  @default("INR")
+  startDate               DateTime?
+  endDate                 DateTime?
+  governingLaw            String                  @default("Laws of India")
+  csrScheduleViiCategory  String?
+  reportingCadence        String                  @default("QUARTERLY")
+  termsAndConditions      String
+  
+  // Dual-Party E-Signature Tracking
+  donorSignedAt           DateTime?
+  donorSignedByName       String?
+  donorSignerTitle        String?
+  donorSignerIp           String?
+  
+  ngoSignedAt             DateTime?
+  ngoSignedByName         String?
+  ngoSignerTitle          String?
+  ngoSignerIp             String?
+
+  milestones              ContractMilestone[]
+  auditLogs               ContractAuditLog[]
+
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+
+  @@index([donorId])
+  @@index([ngoId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model ContractMilestone {
+  id                 String                  @id @default(uuid())
+  contractId         String
+  contract           Contract                @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  projectMilestoneId String?
+  title              String
+  description        String
+  allocatedAmount    Decimal                 @db.Decimal(10, 2)
+  status             ContractMilestoneStatus @default(PENDING)
+  deliverables       String[]
+  dueDate            DateTime?
+  completedAt        DateTime?
+  orderIndex         Int                     @default(0)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@index([contractId])
+}
+
+model ContractAuditLog {
+  id         String   @id @default(uuid())
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  action     String
+  actorId    String
+  actorRole  String
+  detail     String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([contractId])
+  @@index([actorId])
+}
+

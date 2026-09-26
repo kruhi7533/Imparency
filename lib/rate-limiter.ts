@@ -80,6 +80,29 @@ export async function rateLimit(
 }
 
 /**
+ * Read-only check: is this identifier already at its limit for the window?
+ * Unlike rateLimit(), this does not count a hit — pair it with rateLimit() to
+ * count only the attempts you care about (e.g. failed logins).
+ */
+export async function isRateLimited(
+  identifier: string,
+  route: string,
+  maxRequests: number,
+  windowSeconds: number
+): Promise<boolean> {
+  const windowThreshold = new Date(Date.now() - windowSeconds * 1000);
+  const activeLog = await prisma.rateLimitLog.findFirst({
+    where: { identifier, route, windowStart: { gte: windowThreshold } },
+  });
+  return !!activeLog && activeLog.requestCount >= maxRequests;
+}
+
+/** Drop every bucket for this identifier and route (e.g. after a successful login). */
+export async function clearRateLimit(identifier: string, route: string): Promise<void> {
+  await prisma.rateLimitLog.deleteMany({ where: { identifier, route } });
+}
+
+/**
  * Standard request rate-limiter wrapper for API Routes.
  * Extracts client IP and returns a 429 response if limit is exceeded.
  */

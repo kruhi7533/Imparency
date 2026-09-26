@@ -14,12 +14,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   let pendingProjectCount = 0;
   let unresolvedAlertsTotal = 0;
   let inquiriesNeedingResponse = 0;
+  let pendingRequirementCount = 0;
   try {
-    [pendingProjectCount, unresolvedAlertsTotal, inquiriesNeedingResponse] = await Promise.all([
+    [pendingProjectCount, unresolvedAlertsTotal, inquiriesNeedingResponse, pendingRequirementCount] = await Promise.all([
       prisma.project.count({ where: { status: "PENDING_APPROVAL", isDeleted: false } }),
       prisma.fraudAlert.count({ where: { resolved: false } }),
       // NGO has written back (reply or new appeal) and is waiting on the admin.
       prisma.reviewThread.count({ where: { status: "NGO_RESPONDED" } }),
+      prisma.sponsorRequirement.count({ where: { status: "PENDING_ADMIN_REVIEW" } }),
     ]);
   } catch (err) {
     // Nav badges are a nice-to-have — a schema/connection hiccup here must not
@@ -33,6 +35,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         pendingProjectCount={pendingProjectCount}
         unresolvedAlertsTotal={unresolvedAlertsTotal}
         inquiriesNeedingResponse={inquiriesNeedingResponse}
+        pendingRequirementCount={pendingRequirementCount}
       />
       {children}
     </div>

@@ -41,12 +41,19 @@ export type AdminAction =
   | "PAN_MANUALLY_VERIFIED"
   | "PAN_MANUALLY_REJECTED"
   | "REMINDERS_SENT"
-  | "SETTING_UPDATED";
+  | "SETTING_UPDATED"
+  | "REQUIREMENT_VALIDATED"
+  | "REQUIREMENT_REJECTED"
+  | "REQUIREMENT_CORRECTION_REQUESTED"
+  | "REQUIREMENT_EDITED"
+  | "REQUIREMENT_EXTRACTION_RERUN"
+  | "GAP_REPORT_APPROVED"
+  | "GAP_REPORT_REJECTED";
 
 export interface AdminActionParams {
   adminId: string;
   action: AdminAction;
-  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING";
+  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "THREAD" | "SYSTEM" | "SETTING" | "REQUIREMENT" | "GAP_REPORT";
   entityId: string;
   oldValue?: Record<string, unknown> | null;
   newValue?: Record<string, unknown> | null;

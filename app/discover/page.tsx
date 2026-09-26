@@ -517,6 +517,13 @@ export default function DiscoverPage() {
                             {/* Subtle banner gradient overlay */}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                             
+                            {/* Verified Trust Badge */}
+                            <div className="absolute top-3 left-3 z-10">
+                              <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 backdrop-blur-sm border border-emerald-500/30 flex items-center gap-1 shadow-sm">
+                                <span>✓</span> Verified NGO
+                              </span>
+                            </div>
+
                             {/* Health Score Overlay Badge */}
                             <div className="absolute top-3 right-3 z-10">
                               {ngo.healthScore !== null && ngo.healthScore !== undefined ? (

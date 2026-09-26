@@ -171,3 +171,65 @@ export async function removeTeamMember(userId: string) {
   revalidatePath("/ngo/settings/team");
   return { success: true };
 }
+
+export async function updateMemberRole(userId: string, newRole: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.ngoProfileId) {
+    return { error: "Not authorized" };
+  }
+
+  const currentMembership = await prisma.nGOTeamMember.findUnique({
+    where: {
+      userId_ngoId: {
+        userId: session.user.id,
+        ngoId: session.user.ngoProfileId,
+      },
+    },
+  });
+
+  if (!currentMembership || (currentMembership.role !== "OWNER" && currentMembership.role !== "ADMIN")) {
+    return { error: "You do not have permission to update team member roles." };
+  }
+
+  const validRoles = ["OWNER", "ADMIN", "FINANCE", "FIELD_STAFF"];
+  if (!validRoles.includes(newRole)) {
+    return { error: "Invalid role specified." };
+  }
+
+  const targetMembership = await prisma.nGOTeamMember.findUnique({
+    where: {
+      userId_ngoId: {
+        userId,
+        ngoId: session.user.ngoProfileId,
+      },
+    },
+  });
+
+  if (!targetMembership) {
+    return { error: "Team member not found." };
+  }
+
+  if (targetMembership.role === "OWNER" && currentMembership.role !== "OWNER") {
+    return { error: "Only an Owner can modify an Owner's role." };
+  }
+
+  if (newRole === "OWNER" && currentMembership.role !== "OWNER") {
+    return { error: "Only an Owner can promote a member to Owner." };
+  }
+
+  await prisma.nGOTeamMember.update({
+    where: {
+      userId_ngoId: {
+        userId,
+        ngoId: session.user.ngoProfileId,
+      },
+    },
+    data: {
+      role: newRole as any,
+    },
+  });
+
+  revalidatePath("/ngo/settings/team");
+  return { success: true };
+}
+
