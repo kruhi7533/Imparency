@@ -17,6 +17,7 @@
     "seed": "npx tsx scripts/seed-demo.ts",
     "seed-inquiry": "npx tsx scripts/seed-inquiry-notification.ts",
     "seed:matching": "npx tsx scripts/seed-matching-demo.ts",
+    "seed:csr": "npx tsx scripts/seed-csr-donor.ts",
     "eval:fraud-investigator": "npx tsx scripts/eval/run-eval.ts",
     "generate:pitch": "node scripts/generate-pitch.js",
     "generate:pitch:watch": "nodemon --watch lib/ --ext ts,js --exec 'node scripts/generate-pitch.js'"

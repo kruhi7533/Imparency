@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /**
  * Regression: clicking "Investigate" on an EXTREMELY_LOW_PROOF_SCORE alert
@@ -54,6 +54,36 @@ describe("resolveNgoId", () => {
 });
 
 describe("investigate() guard", () => {
+  /**
+   * This block needs the investigator ENABLED, because a disabled one short-
+   * circuits before it ever reaches the NGO guard under test.
+   *
+   * It used to set nothing and pass anyway — inheriting an enabled
+   * investigator from fraud-investigator-openai-loop.test.ts, which sets these
+   * in beforeEach and (until now) never cleaned them up. With
+   * `fileParallelism: false` every file shares one process.env, so this test
+   * was quietly depending on another file having run first, in the right
+   * order. Setting its own environment makes it independent of that.
+   */
+  beforeEach(() => {
+    process.env.INVESTIGATOR_ENABLED = "true";
+    process.env.INVESTIGATOR_PROVIDER = "custom";
+    process.env.INVESTIGATOR_BASE_URL = "https://fake-provider.test/v1";
+    process.env.INVESTIGATOR_API_KEY = "test-key";
+    process.env.INVESTIGATOR_MODEL = "test-model";
+  });
+  afterEach(() => {
+    for (const k of [
+      "INVESTIGATOR_ENABLED",
+      "INVESTIGATOR_PROVIDER",
+      "INVESTIGATOR_BASE_URL",
+      "INVESTIGATOR_API_KEY",
+      "INVESTIGATOR_MODEL",
+    ]) {
+      delete process.env[k];
+    }
+  });
+
   it("refuses a non-existent NGO id instead of throwing a foreign-key error", async () => {
     vi.resetModules();
     const guardPrisma = {

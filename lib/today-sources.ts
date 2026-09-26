@@ -83,7 +83,6 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
     pendingNgos,
     pendingProjects,
     completedProjects,
-    openProposals,
     pendingProofs,
     pendingFcra,
     openAlerts,
@@ -91,8 +90,8 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
     threadsNeedingReply,
     quietNgos,
     overdueMilestones,
-    submittedOpportunities,
-    proposedCandidates,
+    pendingOrgRows,
+    institutionalDonationRows,
   ] = await Promise.all([
     prisma.nGOProfile.findMany({
       where: { verificationStatus: "PENDING" },
@@ -108,20 +107,6 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
     prisma.project.findMany({
       where: { status: "COMPLETED", isDeleted: false, updatedAt: { gte: thirtyDaysAgo } },
       select: { id: true, title: true, updatedAt: true, ngo: { select: { orgName: true } } },
-    }),
-    // Proposals waiting on a human — the step between shortlisting and a
-    // funded project.
-    prisma.proposal.findMany({
-      where: { status: { in: ["SUBMITTED", "UNDER_REVIEW"] } },
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        submittedAt: true,
-        createdAt: true,
-        ngo: { select: { orgName: true } },
-        opportunity: { select: { title: true } },
-      },
     }),
     prisma.milestone.findMany({
       where: { status: "PROOF_SUBMITTED" },
@@ -183,28 +168,41 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
         project: { select: { title: true, ngo: { select: { orgName: true } } } },
       },
     }),
-    // Opportunity approvals — a donor proposed this, an admin must APPROVE or
-    // REJECT before it can go OPEN.
-    prisma.fundingOpportunity.findMany({
-      where: { status: "SUBMITTED" },
-      select: { id: true, title: true, funderName: true, createdAt: true },
-    }),
-    // Match candidate decisions — the engine proposed these as PROPOSED, an
-    // admin must SHORTLIST or DISMISS.
-    prisma.matchCandidate.findMany({
-      // Only the current run for each opportunity. A re-match supersedes its
-      // predecessors (see MatchingJob.supersededAt), and their undecided
-      // candidates were judged against criteria that have since been revised —
-      // showing them put one opportunity in the queue once per run.
-      where: { decision: "PROPOSED", job: { supersededAt: null } },
+    // Donor organisations waiting on a verification decision.
+    prisma.user.findMany({
+      where: { role: "DONOR", orgVerificationStatus: "PENDING" },
       select: {
         id: true,
-        jobId: true,
-        verdict: true,
+        name: true,
+        companyName: true,
+        donorPersona: true,
+        orgSubmittedAt: true,
         createdAt: true,
-        ngo: { select: { orgName: true } },
-        job: { select: { opportunityId: true, opportunity: { select: { title: true } } } },
       },
+    }),
+    // Money from an institutional donor that went straight into a project.
+    //
+    // Windowed to 30 days for the same reason completedProjects is: without a
+    // window every corporate donation ever made would sit in Signals forever.
+    // This is a "what happened lately" feed, not a queue.
+    prisma.donation.findMany({
+      where: {
+        status: "SUCCESS",
+        createdAt: { gte: thirtyDaysAgo },
+        donor: { donorPersona: { in: ["CSR_OFFICER", "FOUNDATION", "GOVERNMENT"] } },
+      },
+      select: {
+        id: true,
+        amount: true,
+        createdAt: true,
+        donorId: true,
+        donor: {
+          select: { name: true, companyName: true, donorPersona: true, orgVerificationStatus: true },
+        },
+        project: { select: { title: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
     }),
   ]);
 
@@ -214,7 +212,6 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
     pendingNgos,
     pendingProjects,
     completedProjects,
-    openProposals,
     pendingProofs,
     pendingFcra,
     openAlerts,
@@ -222,8 +219,26 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
     threadsNeedingReply,
     quietNgos,
     overdueMilestones,
-    submittedOpportunities,
-    proposedCandidates,
     alertNgos,
+    pendingOrgs: (pendingOrgRows as any[]).map((d) => ({
+      id: d.id,
+      // The legal name is what an admin recognises; the account holder's name
+      // is a fallback for a profile that has not filled one in yet.
+      displayName: d.companyName || d.name,
+      donorPersona: d.donorPersona,
+      orgSubmittedAt: d.orgSubmittedAt,
+      createdAt: d.createdAt,
+    })),
+    institutionalDonations: (institutionalDonationRows as any[]).map((d) => ({
+      id: d.id,
+      // Decimal -> number at the call site, per the repo convention.
+      amount: Number(d.amount),
+      createdAt: d.createdAt,
+      donorId: d.donorId,
+      donorName: d.donor.companyName || d.donor.name,
+      donorPersona: d.donor.donorPersona,
+      orgVerificationStatus: d.donor.orgVerificationStatus,
+      projectTitle: d.project.title,
+    })),
   };
 }

@@ -114,6 +114,21 @@ model User {
   csrRegistrationNumber String?
   csrBudget             Decimal? @db.Decimal(12, 2)
 
+  // ── Donor organisation verification ────────────────────────────────────
+  // Corporate Identity Number — the one value that identifies an Indian
+  // company uniquely. Fixed 21-character shape, so a typo is caught by a
+  // regex rather than by a human squinting at it (lib/csr-verification.ts).
+  cin                   String?
+  orgVerificationStatus OrgVerificationStatus @default(NOT_SUBMITTED)
+  /// When the profile first became complete enough to review. Distinct from
+  /// createdAt: a company can hold an account for months before filing this.
+  orgSubmittedAt        DateTime?
+  orgVerifiedAt         DateTime?
+  orgVerifiedById       String? // admin user id (last decision)
+  /// The reviewer's words, kept verbatim. On a rejection this is what the
+  /// donor is told, so it has to survive a later edit to the profile.
+  orgVerificationNote   String?
+
   // Foundation specific fields
   trustRegistrationId String?
   trust12a80gRegNo    String?
@@ -156,6 +171,10 @@ model User {
 
   /// Proposals this admin took off the review queue.
   proposalsReviewing Proposal[] @relation("ProposalReviewer")
+
+  /// The CSR verification queue, and the "what is waiting on me" count —
+  /// same reason Proposal carries @@index([status]).
+  @@index([orgVerificationStatus])
 }
 
 model PasswordResetToken {
@@ -1032,6 +1051,23 @@ enum PanVerifiedVia {
   MOCK // no SUREPASS_API_TOKEN configured (dev)
   SUREPASS
   MANUAL_ADMIN
+}
+
+/// Verification of the donor ORGANISATION, as distinct from the person holding
+/// the account. `panStatus` answers "is this human's tax id real"; this answers
+/// "is the company behind the money real", which is a different question and
+/// the one an NGO is implicitly trusting when it receives a shortlist email.
+///
+/// NOT_SUBMITTED is the default and carries real weight: most donors are
+/// individuals who must never appear in this queue. Reusing VerificationStatus
+/// would have defaulted every one of them to PENDING and opened the queue with
+/// thousands of rows that do not belong in it — the same "absence reads as
+/// something" trap the NGO verification rules already guard against.
+enum OrgVerificationStatus {
+  NOT_SUBMITTED // individual donor, or a corporate profile still incomplete
+  PENDING // complete enough to review, waiting on a human
+  VERIFIED // an admin approved it, on the record
+  REJECTED // an admin refused it, with a reason
 }
 
 enum ReEngagementPath {

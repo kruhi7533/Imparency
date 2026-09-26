@@ -4,6 +4,7 @@ import Razorpay from "razorpay";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limiter";
+import { resolvePaymentMode } from "@/lib/payment-mode";
 
 const TARGET_TYPES = ["CRISIS_DIRECT", "NGO_CAMPAIGN", "INITIATIVE"];
 
@@ -53,12 +54,18 @@ export async function POST(request: Request, { params }: { params: { id: string 
       }
     }
 
-    // Same local-dev mock fallback convention as /api/donations/create-order —
-    // lets the flow be tested end-to-end without real Razorpay credentials.
-    const isMock =
-      !process.env.RAZORPAY_KEY_ID ||
-      process.env.RAZORPAY_KEY_ID.includes("xxxxxxxxxxxx") ||
-      process.env.RAZORPAY_KEY_ID === "";
+    // Same decision as /api/donations/create-order, and deliberately the same
+    // shared helper: this branch records the donation as SUCCESS, so "no
+    // credentials configured" must not be a way into it in production.
+    const payment = resolvePaymentMode();
+    if (payment.mode === "MISCONFIGURED") {
+      console.error(`[crisis/donate] ${payment.reason}`);
+      return NextResponse.json(
+        { error: "Payments are temporarily unavailable. Please try again shortly." },
+        { status: 503 }
+      );
+    }
+    const isMock = payment.mode === "MOCK";
 
     if (isMock) {
       const mockOrderId = `order_mock_crisis_${Date.now()}`;

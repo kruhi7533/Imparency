@@ -78,6 +78,10 @@ export type AdminAction =
   | "MATCHING_JOB_FAILED"
   | "CANDIDATE_SHORTLISTED"
   | "CANDIDATE_DISMISSED"
+  // Verification of the donor ORGANISATION — distinct from PAN, which checks
+  // the person holding the account rather than the company behind the money.
+  | "CSR_ORG_VERIFIED"
+  | "CSR_ORG_REJECTED"
   // Taken by the platform, not by a person — logged with adminId null. See the
   // comment on AdminActionLog.adminId for why these live in the same trail as
   // human actions rather than a separate one.
