@@ -48,6 +48,9 @@ next-env.d.ts
 /storage/
 sample-ngo-docs/
 scripts/
+# one-off dev scripts. Committing these is how a DROP TYPE ... CASCADE and a
+# schema-rewriting regex ended up in the repo; keep them local.
+scratch/
 
 # Generated presentations
 public/downloads/*.pptx
