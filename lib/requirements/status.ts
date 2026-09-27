@@ -81,7 +81,7 @@ export const STATUS_LABELS: Record<RequirementStatus, string> = {
   MATCHING: "Matching",
   SHORTLISTED: "Shortlisted",
   NGO_RESPONSE: "NGO responses",
-  SELECTED: "NGO selected",
+  SELECTED: "Proposal approved — ready for contracting",
   CONTRACTED: "Contracted",
   REJECTED: "Rejected",
   FAILED: "Processing failed",

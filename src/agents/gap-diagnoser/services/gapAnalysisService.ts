@@ -4,7 +4,7 @@ import { commitRequirementChange } from "@/lib/requirements/commit";
 import { recordRequirementEvent } from "@/lib/requirements/audit";
 import { ERRORS, RequirementWorkflowError } from "@/lib/requirements/errors";
 import { normalizeFields } from "@/lib/requirements/provenance";
-import { loadRequirementForActor, workflowRole, type Actor } from "@/lib/requirements/access";
+import { loadRequirementForActor, requireVerifiedFunder, workflowRole, type Actor } from "@/lib/requirements/access";
 import {
   ALGORITHM_VERSION,
   rankCandidates,
@@ -84,6 +84,10 @@ export async function loadCandidates(): Promise<CandidateProject[]> {
 export async function runMatching(requirementId: string, actor: Actor) {
   const req = await loadRequirementForActor(requirementId, actor);
   const role = workflowRole(req, actor);
+  // The gate follows the requirement's OWNER, not the caller: an admin re-running
+  // matching for an offline funder is not blocked by their own lack of a donor
+  // persona, but an unverified owner still is (WEEK5 SPEC-1).
+  await requireVerifiedFunder(req.sponsorId);
 
   if (req.status === "SHORTLISTED") {
     const invited = await prisma.requirementMatch.count({ where: { requirementId, invitedAt: { not: null } } });

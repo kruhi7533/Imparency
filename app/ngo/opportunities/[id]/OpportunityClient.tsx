@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { NgoOpportunity } from "@/lib/requirements/opportunities";
 import { formatBudgetRange, requirementApi } from "@/components/requirements/api";
+import { NGO_EDITABLE_RESPONSE, NGO_RESPONSE_STATUS_LABELS } from "@/lib/requirements/response-status";
 
 interface MilestoneRow {
   title: string;
@@ -24,7 +25,11 @@ function Fact({ label, value }: { label: string; value: React.ReactNode }) {
 export default function OpportunityClient({ opportunity }: { opportunity: NgoOpportunity }) {
   const router = useRouter();
   const { brief, open, invitedProjects, response } = opportunity;
-  const editable = open && (!response || ["INTERESTED", "PROPOSAL_SUBMITTED"].includes(response.status));
+  const editable = open && (!response || (NGO_EDITABLE_RESPONSE as string[]).includes(response.status));
+  const changesRequested = response?.status === "CHANGES_REQUESTED";
+  // A resubmission of a full proposal becomes the next version; V1 is kept.
+  const hasProposal = !!response && response.status !== "INTERESTED";
+  const nextVersion = hasProposal ? response!.version + 1 : 1;
 
   const [projectId, setProjectId] = useState(response?.projectId ?? invitedProjects[0]?.id ?? "");
   const [budget, setBudget] = useState(response?.proposedBudget?.toString() ?? "");
@@ -61,7 +66,15 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
             .map((m) => ({ title: m.title, amount: m.amount || null, durationMonths: m.durationMonths || null })),
         }),
       });
-      setNotice(budget && plan ? "Proposal submitted." : "Interest recorded. Add a budget and implementation plan to submit a full proposal.");
+      setNotice(
+        changesRequested
+          ? `Revision submitted as V${nextVersion}. The sponsor has been notified.`
+          : budget && plan
+          ? hasProposal
+            ? `Proposal updated — saved as V${nextVersion}.`
+            : "Proposal submitted."
+          : "Interest recorded. Add a budget and implementation plan to submit a full proposal."
+      );
       router.refresh();
     } catch (err: any) {
       setError(err.message);
@@ -116,18 +129,50 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
           <p className="text-[11px] text-gray-500">Your invited project(s): {invitedProjects.map((p) => p.title).join(", ")}</p>
         </div>
 
-        {response && (
+        {response && response.status === "SELECTED" && (
+          <div className="border border-emerald-500/40 bg-emerald-500/10 rounded-2xl px-5 py-4">
+            <p className="text-base font-extrabold text-emerald-300">Proposal Approved — Ready for Contracting</p>
+            <p className="text-sm text-emerald-100/80 mt-1">
+              The sponsor approved your proposal V{response.version}. The grant contract comes next — you will see it under Contracts.
+            </p>
+          </div>
+        )}
+        {response && response.status !== "SELECTED" && (
           <p className="text-sm text-gray-300 border border-gray-800 rounded-2xl px-5 py-3">
-            Your response: <span className="font-bold text-white">{response.status.replace(/_/g, " ").toLowerCase()}</span> · submitted{" "}
+            Your response:{" "}
+            <span className="font-bold text-white">
+              {NGO_RESPONSE_STATUS_LABELS[response.status as keyof typeof NGO_RESPONSE_STATUS_LABELS] ?? response.status}
+            </span>
+            {hasProposal && <span className="text-gray-500"> · V{response.version}</span>} · submitted{" "}
             {new Date(response.submittedAt).toLocaleDateString("en-IN")}
           </p>
+        )}
+        {changesRequested && (
+          <div className="border border-amber-500/40 bg-amber-500/10 rounded-2xl px-5 py-4 space-y-2">
+            <p className="text-sm font-extrabold text-amber-200">
+              The sponsor asked for changes{response!.revisionRounds > 1 ? ` (revision round ${response!.revisionRounds})` : ""}
+            </p>
+            <p className="text-sm text-amber-50 whitespace-pre-wrap">{response!.changeRequestNote}</p>
+            <p className="text-xs text-amber-200/70">
+              Your previous answers are filled in below. Update them and submit the revision — V{response!.version} is kept for the record.
+            </p>
+          </div>
         )}
         {notice && <p className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-4 py-2">{notice}</p>}
         {error && <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-4 py-2">{error}</p>}
 
         {editable && (
           <form id="respond" onSubmit={submit} className="border border-gray-800 bg-gray-900/40 rounded-2xl p-6 space-y-4">
-            <h2 className="text-lg font-bold text-white">{response ? "Update your response" : "Express interest / submit a proposal"}</h2>
+            <h2 className="text-lg font-bold text-white">
+              {changesRequested
+                ? `Revise your proposal (V${nextVersion})`
+                : response
+                ? "Update your response"
+                : "Express interest / submit a proposal"}
+            </h2>
+            {hasProposal && !changesRequested && (
+              <p className="text-xs text-gray-500">Saving changes creates V{nextVersion}; the sponsor can still see every earlier version.</p>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label className="md:col-span-3 text-xs text-gray-400">
                 Project
@@ -203,10 +248,44 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
 
             <div className="flex justify-end">
               <button type="submit" disabled={busy || !projectId} className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-sm font-bold disabled:opacity-50">
-                {busy ? "Submitting…" : response ? "Update response" : "Submit"}
+                {busy ? "Submitting…" : changesRequested ? "Submit revision" : response ? "Update response" : "Submit"}
               </button>
             </div>
           </form>
+        )}
+
+        {response && response.revisions.length > 0 && (
+          <details className="border border-gray-800 bg-gray-900/40 rounded-2xl p-5 text-sm text-gray-300">
+            <summary className="cursor-pointer font-bold text-white">Previous versions ({response.revisions.length})</summary>
+            <ol className="mt-4 space-y-4">
+              {response.revisions.map((v) => (
+                <li key={v.version} className="border-l-2 border-gray-700 pl-3 space-y-1">
+                  <p className="font-bold text-gray-100">
+                    V{v.version} <span className="font-normal text-gray-500">· submitted {new Date(v.submittedAt).toLocaleDateString("en-IN")}</span>
+                  </p>
+                  {v.supersededBecause && (
+                    <p className="text-xs text-amber-300/90">
+                      Sponsor&apos;s change request: <span className="whitespace-pre-wrap">{v.supersededBecause}</span>
+                    </p>
+                  )}
+                  <p className="text-xs">
+                    Budget {v.proposedBudget === null ? "—" : `₹${v.proposedBudget.toLocaleString("en-IN")}`} ·{" "}
+                    {v.proposedDurationMonths ? `${v.proposedDurationMonths} months` : "duration not given"}
+                  </p>
+                  {v.implementationPlan && <p className="text-xs text-gray-400 whitespace-pre-wrap">{v.implementationPlan}</p>}
+                  {Array.isArray(v.milestones) && v.milestones.length > 0 && (
+                    <ul className="text-xs text-gray-400">
+                      {(v.milestones as any[]).map((m, i) => (
+                        <li key={i}>
+                          {i + 1}. {m.title} {m.amount ? `— ₹${Number(m.amount).toLocaleString("en-IN")}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </details>
         )}
       </div>
     </div>

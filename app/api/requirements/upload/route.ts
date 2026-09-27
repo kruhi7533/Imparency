@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma';
 import { uploadPrivateFile, deletePrivateFile } from '@/lib/storage';
 import { SponsorRequirementRepository } from '@/src/agents/requirements-agent/repositories/requirement.repository';
 import { LlmUnavailableError } from '@/src/agents/requirements-agent/services/llm/llm.service';
-import { getActor } from '@/lib/requirements/access';
+import { getActor, requireVerifiedFunder } from '@/lib/requirements/access';
 import { recordRequirementEvent, recordRequirementEventBestEffort } from '@/lib/requirements/audit';
 import { runExtraction } from '@/lib/requirements/extraction';
 import { serializeRequirement } from '@/lib/requirements/dto';
@@ -46,6 +46,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Your session is invalid. Please log out and log in again.' }, { status: 401 });
   }
   const sponsorId = user.id;
+
+  // Funder gate (WEEK5 SPEC-1): an unverified organisation cannot start a
+  // requirement. Checked before the file is read or written to storage.
+  try {
+    await requireVerifiedFunder(sponsorId);
+  } catch (err) {
+    if (err instanceof RequirementWorkflowError) {
+      return NextResponse.json({ error: err.message, code: 'FUNDER_NOT_VERIFIED' }, { status: err.status });
+    }
+    throw err;
+  }
 
   let formData: FormData;
   try {

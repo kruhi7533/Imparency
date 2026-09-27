@@ -52,7 +52,39 @@ function ActionLink({ href, children, external = false }: { href: string; childr
   );
 }
 
-export default function RequirementsWorkspaceClient({ items }: { items: RequirementListItem[] }) {
+/** Why this donor cannot start a requirement yet (SPEC-1), and what fixes it. */
+function FunderGateNotice({ gate }: { gate: { reason: string; message: string } }) {
+  const title =
+    gate.reason === "NOT_INSTITUTIONAL"
+      ? "CSR requirements are for organisations"
+      : gate.reason === "ORG_NOT_VERIFIED" && gate.message.includes("waiting")
+      ? "Your organisation is waiting for verification"
+      : "Verify your organisation to post a CSR requirement";
+  return (
+    <div className="mt-6 border border-amber-500/40 bg-amber-500/10 rounded-2xl p-5">
+      <p className="text-sm font-bold text-amber-200">{title}</p>
+      <p className="text-xs text-amber-100/80 mt-1 max-w-3xl">{gate.message}</p>
+      <p className="text-xs text-amber-100/80 mt-2 max-w-3xl">
+        NGOs are only ever approached on behalf of a verified funder, so creating a requirement and running matching unlock once
+        your organisation is verified. Requirements you already have can still be edited and submitted.
+      </p>
+      <a
+        href="/donor/profile"
+        className="inline-block mt-3 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold"
+      >
+        Go to organisation profile
+      </a>
+    </div>
+  );
+}
+
+export default function RequirementsWorkspaceClient({
+  items,
+  gate = null,
+}: {
+  items: RequirementListItem[];
+  gate?: { reason: string; message: string } | null;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState("all");
@@ -129,61 +161,67 @@ export default function RequirementsWorkspaceClient({ items }: { items: Requirem
         </details>
       </div>
 
-      <section className="mt-6">
-        <h2 className="text-lg font-bold text-white mb-3">Fill in the requirement form</h2>
-        <RequirementForm />
-      </section>
+      {gate ? (
+        <FunderGateNotice gate={gate} />
+      ) : (
+        <>
+        <section className="mt-6">
+          <h2 className="text-lg font-bold text-white mb-3">Fill in the requirement form</h2>
+          <RequirementForm />
+        </section>
 
-      <div className="flex items-center gap-4 my-8" role="separator">
-        <div className="flex-1 h-px bg-gray-800" />
-        <span className="text-xs font-bold uppercase tracking-wider text-gray-500">or upload a document</span>
-        <div className="flex-1 h-px bg-gray-800" />
-      </div>
+        <div className="flex items-center gap-4 my-8" role="separator">
+          <div className="flex-1 h-px bg-gray-800" />
+          <span className="text-xs font-bold uppercase tracking-wider text-gray-500">or upload a document</span>
+          <div className="flex-1 h-px bg-gray-800" />
+        </div>
 
-      <div
-        onDragEnter={(e) => { e.preventDefault(); setDragActive(true); }}
-        onDragOver={(e) => e.preventDefault()}
-        onDragLeave={() => setDragActive(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragActive(false);
-          if (e.dataTransfer.files?.[0]) upload(e.dataTransfer.files[0]);
-        }}
-        className={`border-2 border-dashed rounded-2xl p-8 text-center transition ${
-          dragActive ? "border-emerald-500 bg-emerald-500/5" : "border-gray-800 bg-gray-900/30"
-        }`}
-      >
-        {uploading ? (
-          <div className="space-y-2">
-            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-emerald-400 mx-auto" />
-            <p className="text-sm text-gray-200">Processing “{uploading}”…</p>
-            <p className="text-xs text-gray-500">Reading the document and extracting requirements. This can take up to a minute.</p>
-          </div>
-        ) : (
-          <>
-            <p className="text-sm text-gray-200">Drag & drop a CSR document here, or</p>
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              className="mt-3 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-sm font-bold transition"
-            >
-              Choose file
-            </button>
-            <p className="text-[11px] text-gray-500 mt-3">PDF, DOCX, PNG, JPG, WEBP · max 10MB · stored privately, never shared with NGOs</p>
-            <p className="text-xs text-gray-400 mt-2">
-              Please follow the standard format — <TemplateLink />
-            </p>
-            <input
-              ref={inputRef}
-              type="file"
-              className="hidden"
-              accept=".pdf,.docx,.png,.jpg,.jpeg,.webp"
-              onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
-            />
-          </>
-        )}
-      </div>
-      {error && <p className="mt-3 text-sm text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-4 py-2">{error}</p>}
+        <div
+          onDragEnter={(e) => { e.preventDefault(); setDragActive(true); }}
+          onDragOver={(e) => e.preventDefault()}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragActive(false);
+            if (e.dataTransfer.files?.[0]) upload(e.dataTransfer.files[0]);
+          }}
+          className={`border-2 border-dashed rounded-2xl p-8 text-center transition ${
+            dragActive ? "border-emerald-500 bg-emerald-500/5" : "border-gray-800 bg-gray-900/30"
+          }`}
+        >
+          {uploading ? (
+            <div className="space-y-2">
+              <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-emerald-400 mx-auto" />
+              <p className="text-sm text-gray-200">Processing “{uploading}”…</p>
+              <p className="text-xs text-gray-500">Reading the document and extracting requirements. This can take up to a minute.</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-gray-200">Drag & drop a CSR document here, or</p>
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="mt-3 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-sm font-bold transition"
+              >
+                Choose file
+              </button>
+              <p className="text-[11px] text-gray-500 mt-3">PDF, DOCX, PNG, JPG, WEBP · max 10MB · stored privately, never shared with NGOs</p>
+              <p className="text-xs text-gray-400 mt-2">
+                Please follow the standard format — <TemplateLink />
+              </p>
+              <input
+                ref={inputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.docx,.png,.jpg,.jpeg,.webp"
+                onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+              />
+            </>
+          )}
+        </div>
+        {error && <p className="mt-3 text-sm text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-4 py-2">{error}</p>}
+        </>
+      )}
 
       <h2 id="my-requirements" className="text-lg font-bold text-white mt-12 scroll-mt-6">Your requirements</h2>
       <div className="mt-3 flex flex-wrap gap-2">

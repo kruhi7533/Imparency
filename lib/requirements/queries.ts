@@ -1,8 +1,9 @@
 import prisma from "@/lib/prisma";
 import type { RequirementStatus } from "@prisma/client";
 import { averageConfidence, normalizeFields, FORM_ENTRY_AGENT } from "./provenance";
-import { ERRORS } from "./errors";
-import type { Actor } from "./access";
+import { ERRORS, RequirementWorkflowError } from "./errors";
+import { loadRequirementForActor, resolveNgoMembership, type Actor } from "./access";
+import { serializeRevision } from "./dto";
 
 export interface RequirementListItem {
   id: string;
@@ -87,6 +88,7 @@ export async function listResponses(requirementId: string) {
     include: {
       ngo: { select: { id: true, orgName: true, logo_url: true, healthScore: true } },
       project: { select: { id: true, title: true, targetAmount: true } },
+      revisions: { orderBy: { version: "desc" } },
     },
   });
   return rows.map((r) => ({
@@ -101,7 +103,41 @@ export async function listResponses(requirementId: string) {
     complianceNotes: r.complianceNotes,
     milestones: (r.milestones as any) ?? null,
     submittedAt: r.submittedAt.toISOString(),
+    version: r.version,
+    revisionRounds: r.revisionRounds,
+    changeRequestNote: r.changeRequestNote,
+    changeRequestedAt: r.changeRequestedAt ? r.changeRequestedAt.toISOString() : null,
+    /** Superseded versions, newest first (SPEC-4). */
+    revisions: r.revisions.map(serializeRevision),
   }));
+}
+
+/**
+ * Superseded versions of one NGO proposal, newest first. Visible to the
+ * requirement's owner, an admin, or the NGO that wrote the proposal — no one
+ * else (another NGO gets 403, never a hint that the response exists).
+ */
+export async function listResponseRevisions(requirementId: string, responseId: string, actor: Actor) {
+  const response = await prisma.opportunityResponse.findUnique({
+    where: { id: responseId },
+    select: { id: true, requirementId: true, ngoId: true },
+  });
+  if (actor.role === "NGO") {
+    const membership = await resolveNgoMembership(actor.id);
+    if (!membership || !response || response.requirementId !== requirementId || response.ngoId !== membership.ngoId) {
+      throw ERRORS.forbidden();
+    }
+  } else {
+    await loadRequirementForActor(requirementId, actor);
+    if (!response || response.requirementId !== requirementId) {
+      throw new RequirementWorkflowError("Proposal not found for this requirement.", 404);
+    }
+  }
+  const rows = await prisma.opportunityResponseRevision.findMany({
+    where: { responseId },
+    orderBy: { version: "desc" },
+  });
+  return rows.map(serializeRevision);
 }
 
 export type ResponseItem = Awaited<ReturnType<typeof listResponses>>[number];

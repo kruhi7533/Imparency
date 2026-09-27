@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NGO_RESPONSE_STATUS_LABELS } from "@/lib/requirements/response-status";
 import { redirect } from "next/navigation";
 import { getActor } from "@/lib/requirements/access";
 import { listOpportunitiesForNgo, type NgoOpportunity } from "@/lib/requirements/opportunities";
@@ -75,7 +76,7 @@ export default async function NgoOpportunitiesPage() {
                   </div>
                   <div>
                     <dt className="text-gray-500">Your response</dt>
-                    <dd className="text-gray-100">{response ? response.status.replace(/_/g, " ").toLowerCase() : "Not yet responded"}</dd>
+                    <dd className="text-gray-100">{response ? NGO_RESPONSE_STATUS_LABELS[response.status as keyof typeof NGO_RESPONSE_STATUS_LABELS] ?? response.status : "Not yet responded"}</dd>
                   </div>
                 </dl>
                 <div className="flex gap-2">

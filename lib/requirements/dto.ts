@@ -42,6 +42,8 @@ export interface RequirementDTO {
   selectedProjectId: string | null;
   selectedNgoId: string | null;
   selectedAt: string | null;
+  /** The proposal version the donor approved (SPEC-6). */
+  selectedResponseVersion: number | null;
   createdAt: string;
   updatedAt: string;
   rawText?: string;
@@ -73,6 +75,7 @@ export function serializeRequirement(req: any, opts: { includeRawText?: boolean 
     selectedProjectId: req.selectedProjectId ?? null,
     selectedNgoId: req.selectedNgoId ?? null,
     selectedAt: iso(req.selectedAt),
+    selectedResponseVersion: req.selectedResponseVersion ?? null,
     createdAt: iso(req.createdAt)!,
     updatedAt: iso(req.updatedAt)!,
   };
@@ -98,6 +101,37 @@ export function serializeRequirement(req: any, opts: { includeRawText?: boolean 
     }));
   }
   return dto;
+}
+
+/** A superseded version of an NGO's proposal (SPEC-4). Budgets as numbers. */
+export interface ResponseRevisionItem {
+  version: number;
+  status: string;
+  proposedBudget: number | null;
+  proposedDurationMonths: number | null;
+  implementationPlan: string | null;
+  expectedOutcomes: string | null;
+  complianceNotes: string | null;
+  milestones: unknown;
+  submittedAt: string;
+  supersededBecause: string | null;
+  createdAt: string;
+}
+
+export function serializeRevision(r: any): ResponseRevisionItem {
+  return {
+    version: r.version,
+    status: r.status,
+    proposedBudget: r.proposedBudget === null || r.proposedBudget === undefined ? null : Number(r.proposedBudget),
+    proposedDurationMonths: r.proposedDurationMonths ?? null,
+    implementationPlan: r.implementationPlan ?? null,
+    expectedOutcomes: r.expectedOutcomes ?? null,
+    complianceNotes: r.complianceNotes ?? null,
+    milestones: r.milestones ?? null,
+    submittedAt: new Date(r.submittedAt).toISOString(),
+    supersededBecause: r.supersededBecause ?? null,
+    createdAt: new Date(r.createdAt).toISOString(),
+  };
 }
 
 export interface MatchDTO {

@@ -61,3 +61,18 @@ describe("requirement state machine", () => {
     }
   });
 });
+
+describe("SPEC-6 — one phrase for the approved state, in every portal", () => {
+  it("the requirement, donor response and NGO response labels agree", async () => {
+    const { STATUS_LABELS } = await import("@/lib/requirements/status");
+    const { RESPONSE_STATUS_LABELS, NGO_RESPONSE_STATUS_LABELS } = await import("@/lib/requirements/response-status");
+    expect(STATUS_LABELS.SELECTED).toBe("Proposal approved — ready for contracting");
+    expect(NGO_RESPONSE_STATUS_LABELS.SELECTED).toBe("Proposal approved — ready for contracting");
+    expect(RESPONSE_STATUS_LABELS.SELECTED).toBe("Proposal approved");
+  });
+
+  it("an NGO never sees a bare 'Rejected' when another proposal was approved", async () => {
+    const { NGO_RESPONSE_STATUS_LABELS } = await import("@/lib/requirements/response-status");
+    expect(NGO_RESPONSE_STATUS_LABELS.REJECTED).toBe("Not selected for this opportunity");
+  });
+});
