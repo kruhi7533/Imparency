@@ -28,6 +28,25 @@ export default function MatchInboxClient({ opportunities, ngoId }: { opportuniti
     setAnalyzingId(null);
   };
 
+  const [decliningId, setDecliningId] = useState<string | null>(null);
+
+  const handleDecline = async (matchCandidateId: string) => {
+    if (!confirm("Are you sure you want to decline this opportunity? It will be removed from your inbox.")) return;
+    setDecliningId(matchCandidateId);
+    try {
+      const res = await fetch(`/api/ngo/matches/${matchCandidateId}/decline`, { method: 'POST' });
+      if (res.ok) {
+        toast({ title: "Opportunity Declined", description: "It has been removed from your inbox." });
+        window.location.reload();
+      } else {
+        toast({ variant: "destructive", title: "Error", description: "Failed to decline opportunity." });
+      }
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "An error occurred." });
+    }
+    setDecliningId(null);
+  };
+
   const handleExpressInterest = (reqTitle: string) => {
     toast({
       title: "Interest Expressed!",
@@ -114,10 +133,10 @@ export default function MatchInboxClient({ opportunities, ngoId }: { opportuniti
                       {gapReport.gapReport.map((gap: any, idx: number) => (
                         <div key={idx} className="bg-white dark:bg-zinc-900 border p-3 rounded-md shadow-sm">
                           <div className="flex justify-between items-center mb-1">
-                            <span className="font-medium text-sm">{gap.category}</span>
-                            {getSeverityBadge(gap.severity)}
+                            <span className="font-medium text-sm">{gap.label || gap.category}</span>
+                            {getSeverityBadge(gap.outcome === 'FAIL' ? 'HIGH' : gap.severity || 'LOW')}
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{gap.description}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{gap.detail || gap.description}</p>
                         </div>
                       ))}
                     </div>
@@ -144,9 +163,19 @@ export default function MatchInboxClient({ opportunities, ngoId }: { opportuniti
             {gapReport && (
               <div className="bg-gray-50 dark:bg-zinc-900 border-t p-4 flex justify-between items-center rounded-b-xl">
                 <p className="text-xs text-gray-500">Only express interest if you can address the highlighted gaps.</p>
-                <Button onClick={() => window.location.href = `/ngo/proposals/new/${opp.id}`}>
-                  Draft Proposal
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    className="text-gray-500 hover:text-red-600 dark:hover:text-red-400"
+                    onClick={() => handleDecline(opp.matchCandidateId)}
+                    disabled={decliningId === opp.matchCandidateId}
+                  >
+                    {decliningId === opp.matchCandidateId ? "Declining..." : "Not Interested"}
+                  </Button>
+                  <Button onClick={() => window.location.href = `/ngo/proposals/new/${opp.id}`}>
+                    Draft Proposal
+                  </Button>
+                </div>
               </div>
             )}
           </Card>

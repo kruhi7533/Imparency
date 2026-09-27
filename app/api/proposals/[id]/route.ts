@@ -11,12 +11,19 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const proposal = await prisma.proposal.findUnique({
       where: { id: params.id },
       include: {
-        sponsorRequirement: true
+        opportunity: true
       }
     });
 
     if (!proposal) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json(proposal);
+    
+    // Map to frontend expected names
+    return NextResponse.json({
+      ...proposal,
+      activities: proposal.plan,
+      budget: proposal.requestedAmount,
+      feedback: proposal.decisionNote
+    });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch proposal" }, { status: 500 });
   }
@@ -39,10 +46,15 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         where: { id: params.id },
         data: {
           status: "CHANGE_REQUESTED",
-          feedback: body.feedback,
+          decisionNote: body.feedback,
         }
       });
-      return NextResponse.json(updated);
+      return NextResponse.json({
+        ...updated,
+        activities: updated.plan,
+        budget: updated.requestedAmount,
+        feedback: updated.decisionNote
+      });
     }
     
     // Handle NGO submitting V2
@@ -54,26 +66,31 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       
       const newHistoryEntry = {
         version: existing.version,
-        activities: existing.activities,
-        budget: existing.budget,
+        activities: existing.plan,
+        budget: existing.requestedAmount,
         milestones: existing.milestones,
-        feedback: existing.feedback,
+        feedback: existing.decisionNote,
         submittedAt: new Date().toISOString()
       };
 
       const updated = await prisma.proposal.update({
         where: { id: params.id },
         data: {
-          activities: body.activities,
-          budget: parseFloat(body.budget),
+          plan: body.activities,
+          requestedAmount: parseFloat(body.budget),
           milestones: body.milestones,
           status: "SUBMITTED",
           version: existing.version + 1,
-          feedback: null,
+          decisionNote: null,
           history: [...history, newHistoryEntry]
         }
       });
-      return NextResponse.json(updated);
+      return NextResponse.json({
+        ...updated,
+        activities: updated.plan,
+        budget: updated.requestedAmount,
+        feedback: updated.decisionNote
+      });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });

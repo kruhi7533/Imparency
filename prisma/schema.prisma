@@ -337,10 +337,16 @@ model Project {
 
   problem_statement String?
   expected_outcome  String?
-  tocAnalysis       Json?    @map("toc_analysis")
-  isDeleted         Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  tocAnalysis       Json?   @map("toc_analysis")
+
+  durationMonths        Int?
+  expectedBeneficiaries Int?
+  primaryKPIs           String[] @default([])
+  reportingCadence      String?
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Admin approval gate
   reviewNote   String?
@@ -716,6 +722,7 @@ enum ProposalStatus {
   DRAFT
   SUBMITTED
   UNDER_REVIEW
+  CHANGE_REQUESTED
   APPROVED
   REJECTED
   WITHDRAWN
@@ -750,6 +757,10 @@ model Proposal {
   /// Free text for now. Structured deliverables belong with the milestone work
   /// in Week 8, not here.
   plan String?
+
+  milestones Json @default("[]")
+  version    Int  @default(1)
+  history    Json @default("[]")
 
   status ProposalStatus @default(DRAFT)
 

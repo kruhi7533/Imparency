@@ -46,6 +46,17 @@ export async function POST(request: Request) {
     const coverImage = formData.get("coverImage") as File | null;
     const milestonesStr = formData.get("milestones") as string;
 
+    // Matching Fields
+    const durationMonthsStr = formData.get("durationMonths") as string | null;
+    const expectedBeneficiariesStr = formData.get("expectedBeneficiaries") as string | null;
+    const reportingCadence = formData.get("reportingCadence") as string | null;
+    const primaryKPIsStr = formData.get("primaryKPIs") as string | null;
+
+    let primaryKPIs: string[] = [];
+    if (primaryKPIsStr) {
+      try { primaryKPIs = JSON.parse(primaryKPIsStr); } catch (e) {}
+    }
+
     // 4. Basic field validations
     if (!title || !description || !causeCategory || !targetAmountStr || !location || !coverImage || !milestonesStr) {
       return NextResponse.json({ error: "Missing required project information" }, { status: 400 });
@@ -142,6 +153,10 @@ export async function POST(request: Request) {
           location: location.trim(),
           problem_statement: problemStatement ? problemStatement.trim() : null,
           expected_outcome: expectedOutcome ? expectedOutcome.trim() : null,
+          durationMonths: durationMonthsStr ? parseInt(durationMonthsStr, 10) : null,
+          expectedBeneficiaries: expectedBeneficiariesStr ? parseInt(expectedBeneficiariesStr, 10) : null,
+          reportingCadence: reportingCadence || null,
+          primaryKPIs: primaryKPIs,
         }
       });
 

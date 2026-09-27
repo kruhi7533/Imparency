@@ -23,12 +23,15 @@ export async function POST(req: Request) {
 
     const proposal = await prisma.proposal.create({
       data: {
-        sponsorRequirementId: requirementId,
+        opportunityId: requirementId,
         ngoId: ngoProfile.id,
-        activities,
-        budget: parseFloat(budget),
+        title: "Proposal for Opportunity",
+        summary: "Proposal summary",
+        plan: activities,
+        requestedAmount: parseFloat(budget),
         milestones: milestones,
         status: "SUBMITTED",
+        submittedAt: new Date(),
         version: 1,
         history: "[]",
       }

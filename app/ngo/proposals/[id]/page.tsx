@@ -157,7 +157,7 @@ export default function ProposalDashboardPage({ params }: { params: { id: string
 
           {proposal.status === "CHANGE_REQUESTED" && (
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Submitting..." : `Submit Proposal V${proposal.version + 1}`}
+              {loading ? "Submitting..." : "Submit revision"}
             </Button>
           )}
         </form>

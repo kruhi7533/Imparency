@@ -15,7 +15,7 @@ async function main() {
     where: { id: proposal.id },
     data: {
       status: "CHANGE_REQUESTED",
-      feedback: "We like the proposal, but your budget is slightly too high for the initial phase. Please reduce the budget to ₹4,50,000 and remove the second milestone."
+      decisionNote: "We like the proposal, but your budget is slightly too high for the initial phase. Please reduce the budget to ₹4,50,000 and remove the second milestone."
     }
   });
 

@@ -47,6 +47,12 @@ export default function NewProjectPage() {
   const [location, setLocation] = useState("");
   const [coverImage, setCoverImage] = useState<File | null>(null);
 
+  // Matching Fields (Week 5)
+  const [durationMonths, setDurationMonths] = useState("");
+  const [expectedBeneficiaries, setExpectedBeneficiaries] = useState("");
+  const [reportingCadence, setReportingCadence] = useState("QUARTERLY");
+  const [primaryKPIs, setPrimaryKPIs] = useState<string[]>([""]);
+
   // Milestones state
   const [milestones, setMilestones] = useState<MilestoneInput[]>([
     { title: "", description: "", targetAmount: "", deadline: "", proofType: "Photo Evidence" },
@@ -225,6 +231,13 @@ export default function NewProjectPage() {
       formData.append("targetAmount", targetAmount);
       formData.append("location", location);
       formData.append("coverImage", coverImage);
+      
+      // Matching Fields
+      formData.append("durationMonths", durationMonths);
+      formData.append("expectedBeneficiaries", expectedBeneficiaries);
+      formData.append("reportingCadence", reportingCadence);
+      formData.append("primaryKPIs", JSON.stringify(primaryKPIs.filter(k => k.trim() !== "")));
+
       formData.append("milestones", JSON.stringify(milestones));
 
       const response = await fetch("/api/ngo/projects", {
@@ -412,7 +425,62 @@ export default function NewProjectPage() {
                 required
               />
             </div>
-          </div>
+            </div>
+
+            {/* AI Matching Fields (Week 5) */}
+            <div className="bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl p-5 border border-emerald-100 dark:border-emerald-900/50 mt-6">
+              <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-400 mb-1">Project Matching Data (Optional)</h3>
+              <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 mb-4">Projects that fill this in match much more accurately with CSR Donors.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Duration (Months)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={durationMonths}
+                    onChange={(e) => setDurationMonths(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                    placeholder="e.g. 12"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Expected Beneficiaries</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={expectedBeneficiaries}
+                    onChange={(e) => setExpectedBeneficiaries(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                    placeholder="e.g. 500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Reporting Cadence</label>
+                  <select
+                    value={reportingCadence}
+                    onChange={(e) => setReportingCadence(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  >
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="QUARTERLY">Quarterly</option>
+                    <option value="BI_ANNUAL">Bi-Annually</option>
+                    <option value="ANNUAL">Annually</option>
+                    <option value="END_OF_PROJECT">End of Project</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Primary KPIs (Comma separated)</label>
+                  <input
+                    type="text"
+                    value={primaryKPIs.join(", ")}
+                    onChange={(e) => setPrimaryKPIs(e.target.value.split(",").map(k => k.trim()))}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                    placeholder="e.g. Attendance Rate, Literacy Score"
+                  />
+                </div>
+              </div>
+            </div>
 
           {/* Section 2: Sequential Milestone Builder */}
           <div className="border-t border-gray-200 dark:border-gray-800 pt-8 space-y-6">
