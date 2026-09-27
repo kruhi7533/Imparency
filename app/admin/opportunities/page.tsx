@@ -1,3 +1,4 @@
+import SupersededTrackNotice from "@/app/admin/components/SupersededTrackNotice";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import AutoSubmitSelect from "@/app/admin/components/AutoSubmitSelect";
@@ -98,6 +99,7 @@ export default async function AdminOpportunitiesPage({
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <SupersededTrackNotice page="opportunities" />
         <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Opportunities</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           {opportunities.length} opportunit{opportunities.length === 1 ? "y" : "ies"} shown (newest

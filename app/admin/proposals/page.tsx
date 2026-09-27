@@ -1,3 +1,4 @@
+import SupersededTrackNotice from "@/app/admin/components/SupersededTrackNotice";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import AutoSubmitSelect from "@/app/admin/components/AutoSubmitSelect";
@@ -71,6 +72,7 @@ export default async function AdminProposalsPage({
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <SupersededTrackNotice page="proposals" />
         <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Proposals</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
           What shortlisted organisations propose to do with the funding. A proposal can only be

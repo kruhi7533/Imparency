@@ -114,11 +114,47 @@ export type AdminAction =
   | "NGO_REVERIFICATION_REQUIRED"
   | "NGO_REVERIFICATION_CLEARED";
 
+/**
+ * Every entity an admin action can be recorded against.
+ *
+ * A runtime array rather than a bare union, because the audit trail's own
+ * filter needs to enumerate these at runtime. Keeping the union derived from
+ * this list is what stops the two drifting: the filter on /admin/audit had
+ * fallen four behind (REQUIREMENT, GAP_REPORT, PROPOSAL, FCRA_REPORT), so the
+ * log held REQUIREMENT rows that no filter could select — an auditor asking
+ * "show me every CSR requirement decision" got nothing. Add a type here and
+ * the filter gains it in the same edit.
+ */
+export const ADMIN_ENTITY_TYPES = [
+  "NGO",
+  "DONOR",
+  "PROJECT",
+  "MILESTONE",
+  "FRAUD_ALERT",
+  "RISK_REVIEW",
+  "FCRA",
+  "FCRA_REPORT",
+  "THREAD",
+  "SYSTEM",
+  "SETTING",
+  "REQUIREMENT",
+  "GAP_REPORT",
+  "CRISIS_EVENT",
+  "RELIEF_INITIATIVE",
+  "AGENT_CASE",
+  "OPPORTUNITY",
+  "MATCHING_JOB",
+  "MATCH_CANDIDATE",
+  "PROPOSAL",
+] as const;
+
+export type AdminEntityType = (typeof ADMIN_ENTITY_TYPES)[number];
+
 export interface AdminActionParams {
   /** Null for an action the platform took on its own. */
   adminId: string | null;
   action: AdminAction;
-  entityType: "NGO" | "DONOR" | "PROJECT" | "MILESTONE" | "FRAUD_ALERT" | "RISK_REVIEW" | "FCRA" | "FCRA_REPORT" | "THREAD" | "SYSTEM" | "SETTING" | "REQUIREMENT" | "GAP_REPORT" | "CRISIS_EVENT" | "RELIEF_INITIATIVE" | "AGENT_CASE" | "OPPORTUNITY" | "MATCHING_JOB" | "MATCH_CANDIDATE" | "PROPOSAL";
+  entityType: AdminEntityType;
   entityId: string;
   oldValue?: Record<string, unknown> | null;
   newValue?: Record<string, unknown> | null;
