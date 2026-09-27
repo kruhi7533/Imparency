@@ -6,7 +6,7 @@
     "postinstall": "prisma generate",
     "predev": "prisma generate && prisma migrate deploy",
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && prisma db push --accept-data-loss && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
