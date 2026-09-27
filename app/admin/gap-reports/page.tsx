@@ -25,7 +25,7 @@ export default async function AdminGapReportsListPage() {
   const reports = await prisma.gapReport.findMany({
     include: {
       sponsorRequirement: {
-        select: { title: true }
+        select: { fileName: true }
       }
     },
     orderBy: { createdAt: "desc" }
@@ -60,7 +60,6 @@ export default async function AdminGapReportsListPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {reports.map((report) => {
-              const ngoName = report.ngoId ? ngoMap.get(report.ngoId) : "Global Alignment";
               return (
                 <Card key={report.id} className="border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:shadow-md transition-shadow">
                   <CardHeader>
@@ -72,11 +71,11 @@ export default async function AdminGapReportsListPage() {
                         {new Date(report.createdAt).toLocaleDateString()}
                       </span>
                     </div>
-                    <CardTitle className="mt-2 text-lg truncate" title={report.sponsorRequirement.title}>
-                      {report.sponsorRequirement.title}
+                    <CardTitle className="mt-2 text-lg truncate" title={report.sponsorRequirement.fileName}>
+                      {report.sponsorRequirement.fileName}
                     </CardTitle>
                     <CardDescription className="truncate">
-                      NGO: {ngoName}
+                      Global Run
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
