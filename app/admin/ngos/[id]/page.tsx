@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { computeCompliance, deriveFcraStatus, hasVerifiedImpactProof } from "@/lib/ngo-compliance";
 import { buildNgoRiskAndFraudView } from "@/lib/risk-compliance-view";
+import { deriveComplianceEvidence } from "@/lib/compliance-evidence";
+import { assessVerificationStanding } from "@/lib/verification-standing";
 import TrustInsight from "./TrustInsight";
 
 export const runtime = "nodejs";
@@ -78,7 +80,7 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
   });
   if (!ngo) notFound();
 
-  const [openAlerts, resolvedAlerts, adminActions, hasImpact] = await Promise.all([
+  const [openAlerts, resolvedAlerts, adminActions, hasImpact, extractedFields] = await Promise.all([
     prisma.fraudAlert.findMany({
       where: { entityType: "NGO", entityId: ngo.id, resolved: false },
       orderBy: { createdAt: "desc" },
@@ -95,9 +97,23 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
       include: { admin: { select: { name: true, email: true } } },
     }),
     hasVerifiedImpactProof(ngo.id),
+    // Loaded so this page can answer "does the evidence support the status"
+    // without depending on the reversal sweep having run. See
+    // lib/verification-standing.ts.
+    prisma.extractedField.findMany({
+      where: { ngoId: ngo.id },
+      select: { fieldKey: true, status: true },
+    }),
   ]);
 
   const compliance = computeCompliance(ngo.compliance ?? null, hasImpact);
+  const evidence = deriveComplianceEvidence(extractedFields);
+  const standing = assessVerificationStanding({
+    verificationStatus: ngo.verificationStatus,
+    noExtraction: evidence.noExtraction,
+    outstandingCount: evidence.outstanding.length,
+    openHighDefects: openAlerts.filter((a) => a.severity === "HIGH").length,
+  });
   const fcraBadge = ngo.compliance?.fcraExpiryDate
     ? deriveFcraStatus(ngo.compliance.fcraExpiryDate) ?? ngo.compliance.fcraStatus
     : ngo.compliance?.fcraStatus ?? "NONE";
@@ -113,6 +129,32 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
         <Link href="/admin/dashboard" className="text-xs font-bold text-emerald-600 hover:underline">
           ← Back to NGO Verification
         </Link>
+
+        {/* Does the evidence support the status? Above the header on purpose:
+            a green VERIFIED badge with nothing behind it is the thing this
+            page used to say, and a footnote would not have corrected it. */}
+        {standing.level !== "OK" && (
+          <div
+            className={`rounded-2xl border p-4 ${
+              standing.alarming
+                ? "border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20"
+                : "border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20"
+            }`}
+          >
+            <p className={`text-sm font-extrabold ${standing.alarming ? "text-red-700 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`}>
+              {standing.alarming ? "⚠ " : ""}
+              {standing.headline}
+            </p>
+            <p className={`text-sm mt-1 ${standing.alarming ? "text-red-600 dark:text-red-300" : "text-amber-700 dark:text-amber-300"}`}>
+              {standing.detail}
+            </p>
+            {standing.level === "UNSUPPORTED" && (
+              <Link href="/admin/document-review" className="text-xs font-bold underline mt-2 inline-block text-red-700 dark:text-red-400">
+                Run extraction in Document Review →
+              </Link>
+            )}
+          </div>
+        )}
 
         {/* Header */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">

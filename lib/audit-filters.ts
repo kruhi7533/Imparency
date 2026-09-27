@@ -4,24 +4,16 @@
  * exported from.
  */
 
-export const AUDIT_ENTITY_TYPES = [
-  "NGO",
-  "DONOR",
-  "PROJECT",
-  "MILESTONE",
-  "FRAUD_ALERT",
-  "RISK_REVIEW",
-  "FCRA",
-  "THREAD",
-  "SYSTEM",
-  "SETTING",
-  "CRISIS_EVENT",
-  "RELIEF_INITIATIVE",
-  "AGENT_CASE",
-  "OPPORTUNITY",
-  "MATCHING_JOB",
-  "MATCH_CANDIDATE",
-] as const;
+import { ADMIN_ENTITY_TYPES } from "@/lib/admin-log";
+
+/**
+ * The entity types the audit filter offers.
+ *
+ * Re-exported from the single list in lib/admin-log.ts rather than maintained
+ * here. This used to be its own hand-kept copy and fell four entries behind,
+ * which meant the log contained rows the UI could not filter to.
+ */
+export const AUDIT_ENTITY_TYPES = ADMIN_ENTITY_TYPES;
 
 export interface AuditFilters {
   action?: string;

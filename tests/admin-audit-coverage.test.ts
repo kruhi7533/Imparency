@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync } from "fs";
 import path from "path";
+import { ADMIN_ENTITY_TYPES } from "@/lib/admin-log";
+import { AUDIT_ENTITY_TYPES } from "@/lib/audit-filters";
 
 /**
  * What this test protects.
@@ -164,6 +166,37 @@ describe("the coverage check itself", () => {
 
     expect(CALLS_LOG.test(bodyOf(importOnly))).toBe(false);
     expect(CALLS_LOG.test(bodyOf(`${importOnly}\nawait logAdminAction({});`))).toBe(true);
+  });
+});
+
+describe("the audit trail can filter to everything it records", () => {
+  it("offers every entity type an admin action can be recorded against", () => {
+    // Found by running the console: the log held REQUIREMENT rows while the
+    // filter on /admin/audit offered no REQUIREMENT option, so "show me every
+    // CSR requirement decision" returned nothing. The two lists are now one.
+    expect(AUDIT_ENTITY_TYPES).toEqual(ADMIN_ENTITY_TYPES);
+  });
+
+  it("includes the four that had drifted out", () => {
+    for (const type of ["REQUIREMENT", "GAP_REPORT", "PROPOSAL", "FCRA_REPORT"]) {
+      expect(AUDIT_ENTITY_TYPES).toContain(type);
+    }
+  });
+
+  it("offers every entity type the admin routes actually log against", () => {
+    // A route logging an entityType the filter does not list would be
+    // invisible to a search, the same bug in a new place.
+    const used: string[] = [];
+    for (const route of routes) {
+      const body = bodyOf(source(route));
+      const pattern = /entityType:\s*"([A-Z_]+)"/g;
+      let match: RegExpExecArray | null;
+      while ((match = pattern.exec(body)) !== null) {
+        if (!used.includes(match[1])) used.push(match[1]);
+      }
+    }
+    expect(used.length).toBeGreaterThan(0);
+    expect(used.filter((t) => !(AUDIT_ENTITY_TYPES as readonly string[]).includes(t))).toEqual([]);
   });
 });
 
