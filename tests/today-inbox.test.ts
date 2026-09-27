@@ -34,13 +34,12 @@ const daysAgo = (n: number) => new Date(NOW - n * 24 * 60 * 60 * 1000);
 function sources(overrides: Partial<InboxSources> = {}): InboxSources {
   return {
     pendingNgos: [],
-    submittedOpportunities: [],
     pendingProjects: [],
     completedProjects: [],
-    openProposals: [],
     pendingProofs: [],
     pendingFcra: [],
-    proposedCandidates: [],
+    pendingOrgs: [],
+    institutionalDonations: [],
     openRiskReviews: [],
     openAlerts: [],
     threadsNeedingReply: [],
@@ -52,9 +51,6 @@ function sources(overrides: Partial<InboxSources> = {}): InboxSources {
 
 const ONE_OF_EACH = sources({
   pendingNgos: [{ id: "n1", orgName: "Asha Trust", createdAt: daysAgo(2) }],
-  submittedOpportunities: [
-    { id: "o1", title: "Clean Water 2026", funderName: "Acme CSR", createdAt: daysAgo(1) },
-  ],
   pendingProjects: [
     { id: "p1", title: "Well repair", createdAt: daysAgo(1), ngo: { orgName: "Asha Trust" } },
   ],
@@ -67,16 +63,6 @@ const ONE_OF_EACH = sources({
     },
   ],
   pendingFcra: [{ id: "c1", updatedAt: daysAgo(1), ngo: { id: "n1", orgName: "Asha Trust" } }],
-  proposedCandidates: [
-    {
-      id: "mc1",
-      jobId: "job_1",
-      verdict: "ELIGIBLE",
-      createdAt: daysAgo(1),
-      ngo: { orgName: "Asha Trust" },
-      job: { opportunityId: "o1", opportunity: { title: "Clean Water 2026" } },
-    },
-  ],
   openRiskReviews: [
     {
       id: "r1",
@@ -121,11 +107,9 @@ function categoryOf(queueOrId: string) {
 describe("which column each queue lands in", () => {
   it("puts everything the admin personally owes under Waiting on you", () => {
     expect(categoryOf("ngo-")).toBe("Waiting on you");
-    expect(categoryOf("opportunity-")).toBe("Waiting on you");
     expect(categoryOf("project-")).toBe("Waiting on you");
     expect(categoryOf("proof-")).toBe("Waiting on you");
     expect(categoryOf("fcra-")).toBe("Waiting on you");
-    expect(categoryOf("candidate-")).toBe("Waiting on you");
     expect(categoryOf("risk-")).toBe("Waiting on you");
     // An NGO replied and is now waiting on the admin, not the other way round.
     expect(categoryOf("thread-")).toBe("Waiting on you");
@@ -429,82 +413,6 @@ describe("fraud alerts collapse per organisation", () => {
   });
 });
 
-describe("matching decisions collapse per job", () => {
-  function candidate(id: string, jobId: string, orgName: string, ageDays: number, verdict = "ELIGIBLE") {
-    return {
-      id,
-      jobId,
-      verdict,
-      createdAt: daysAgo(ageDays),
-      ngo: { orgName },
-      job: { opportunityId: "opp_1", opportunity: { title: "Sishu Shiksha Grant 2026" } },
-    };
-  }
-
-  it("shows one row for a job with several undecided candidates", () => {
-    // Every candidate links to the same page, where they are decided together.
-    const items = buildInboxItems(
-      sources({
-        proposedCandidates: [
-          candidate("c1", "job_1", "Sparsh Sewa Samiti", 13),
-          candidate("c2", "job_1", "Anmol Vikas Trust", 13),
-          candidate("c3", "job_1", "Tejamma", 13),
-        ],
-      }),
-      NOW
-    );
-
-    expect(items).toHaveLength(1);
-    expect(items[0].title).toBe("Sishu Shiksha Grant 2026");
-    expect(items[0].subtitle).toContain("3 candidates awaiting a decision");
-    expect(items[0].href).toBe("/admin/opportunities/opp_1/jobs/job_1");
-  });
-
-  it("keeps naming the organisation when a job has only one candidate", () => {
-    const [item] = buildInboxItems(
-      sources({ proposedCandidates: [candidate("c1", "job_1", "Sparsh Sewa Samiti", 2)] }),
-      NOW
-    );
-
-    expect(item.title).toBe("Sparsh Sewa Samiti");
-    expect(item.subtitle).toContain("engine says eligible");
-  });
-
-  it("does not merge candidates from different jobs", () => {
-    const items = buildInboxItems(
-      sources({
-        proposedCandidates: [
-          candidate("c1", "job_1", "Sparsh Sewa Samiti", 1),
-          { ...candidate("c2", "job_2", "Sparsh Sewa Samiti", 1), job: { opportunityId: "opp_2", opportunity: { title: "VitaHospita" } } },
-        ],
-      }),
-      NOW
-    );
-
-    expect(items).toHaveLength(2);
-    expect(items.map((i) => i.href)).toEqual([
-      "/admin/opportunities/opp_1/jobs/job_1",
-      "/admin/opportunities/opp_2/jobs/job_2",
-    ]);
-  });
-
-  it("ages a job by its oldest candidate, not its newest", () => {
-    // A job is as overdue as the longest-waiting decision inside it.
-    const [item] = buildInboxItems(
-      sources({
-        proposedCandidates: [
-          candidate("c1", "job_1", "A", 1),
-          candidate("c2", "job_1", "B", 20),
-        ],
-      }),
-      NOW
-    );
-
-    expect(item.age).toBe(20);
-    expect(item.severity).toBe("medium");
-    expect(item.subtitle).toContain("oldest waiting 20d");
-  });
-});
 
 describe("severity", () => {
   it("escalates an NGO waiting more than five days", () => {
@@ -546,7 +454,7 @@ describe("severity", () => {
 
   it("counts each severity band for the header summary", () => {
     const counts = countBySeverity(buildInboxItems(ONE_OF_EACH, NOW));
-    expect(counts.high + counts.medium + counts.low).toBe(11);
+    expect(counts.high + counts.medium + counts.low).toBe(9);
   });
 });
 
@@ -642,8 +550,8 @@ describe("what earns a place on Today", () => {
   it("shows work that arrived since the admin last looked", () => {
     const [justArrived] = buildInboxItems(
       sources({
-        submittedOpportunities: [
-          { id: "o", title: "Just arrived", funderName: "F", createdAt: new Date(NOW - 60_000) },
+        pendingProjects: [
+          { id: "p", title: "Just arrived", createdAt: new Date(NOW - 60_000), ngo: { orgName: "Asha Trust" } },
         ],
       }),
       NOW
@@ -656,8 +564,8 @@ describe("what earns a place on Today", () => {
     // marker has moved past it.
     const [item] = buildInboxItems(
       sources({
-        submittedOpportunities: [
-          { id: "o", title: "Seen already", funderName: "F", createdAt: daysAgo(2) },
+        pendingProjects: [
+          { id: "p", title: "Seen already", createdAt: daysAgo(2), ngo: { orgName: "Asha Trust" } },
         ],
       }),
       NOW
@@ -680,8 +588,8 @@ describe("what earns a place on Today", () => {
     // This is the whole point: Today was a backlog, so the counts never moved.
     const [item] = buildInboxItems(
       sources({
-        submittedOpportunities: [
-          { id: "o", title: "Old", funderName: "F", createdAt: daysAgo(14) },
+        pendingProjects: [
+          { id: "p", title: "Old", createdAt: daysAgo(14), ngo: { orgName: "Asha Trust" } },
         ],
       }),
       NOW
@@ -694,8 +602,8 @@ describe("what earns a place on Today", () => {
     const items = buildInboxItems(
       sources({
         pendingNgos: [{ id: "n", orgName: "Old and urgent", createdAt: daysAgo(21) }],
-        submittedOpportunities: [
-          { id: "o", title: "Old routine", funderName: "F", createdAt: daysAgo(14) },
+        pendingProjects: [
+          { id: "p", title: "Old routine", createdAt: daysAgo(14), ngo: { orgName: "Asha Trust" } },
         ],
       }),
       NOW
@@ -870,5 +778,150 @@ describe("grouping and order", () => {
     );
 
     expect(groups[0].items.map((i) => i.title)).toEqual(["Old high", "New high", "Medium"]);
+  });
+});
+
+/**
+ * Corporate giving in the Action Center.
+ *
+ * Two different things, deliberately in two different columns: a company
+ * waiting on a decision is work the admin OWES, while money that already
+ * landed is something they can only be TOLD about. Putting the second in
+ * "Waiting on you" would fill the queue with items nobody can action.
+ */
+describe("donor organisations", () => {
+  it("puts a company awaiting verification in Waiting on you", () => {
+    const groups = groupByCategory(
+      buildInboxItems(
+        sources({
+          pendingOrgs: [
+            {
+              id: "d1",
+              displayName: "Suryodaya Industries Limited",
+              donorPersona: "CSR_OFFICER",
+              orgSubmittedAt: daysAgo(2),
+              createdAt: daysAgo(40),
+            },
+          ],
+        }),
+        NOW
+      )
+    );
+    const waiting = groups.find((g) => g.category === "Waiting on you")!;
+    expect(waiting.items).toHaveLength(1);
+    expect(waiting.items[0].title).toBe("Suryodaya Industries Limited");
+    expect(waiting.items[0].queue).toBe("CSR Verification");
+    expect(waiting.items[0].href).toBe("/admin/donors/d1");
+  });
+
+  it("ages a submission from when it was SUBMITTED, not when the account was made", () => {
+    // A company can hold an account for months before filing anything; ageing
+    // from createdAt would show every new submission as instantly overdue.
+    const [item] = buildInboxItems(
+      sources({
+        pendingOrgs: [
+          {
+            id: "d1",
+            displayName: "Late Filer Ltd",
+            donorPersona: "CSR_OFFICER",
+            orgSubmittedAt: daysAgo(1),
+            createdAt: daysAgo(200),
+          },
+        ],
+      }),
+      NOW
+    );
+    expect(item.age).toBe(1);
+    expect(item.severity).toBe("medium");
+  });
+
+  it("falls back to account age when nothing recorded a submission time", () => {
+    const [item] = buildInboxItems(
+      sources({
+        pendingOrgs: [
+          {
+            id: "d1",
+            displayName: "No Timestamp Ltd",
+            donorPersona: "FOUNDATION",
+            orgSubmittedAt: null,
+            createdAt: daysAgo(9),
+          },
+        ],
+      }),
+      NOW
+    );
+    expect(item.age).toBe(9);
+    expect(item.severity).toBe("high");
+  });
+
+  it("names the kind of body without leaking the raw enum", () => {
+    const [item] = buildInboxItems(
+      sources({
+        pendingOrgs: [
+          {
+            id: "d1",
+            displayName: "Asha Foundation",
+            donorPersona: "FOUNDATION",
+            orgSubmittedAt: daysAgo(1),
+            createdAt: daysAgo(1),
+          },
+        ],
+      }),
+      NOW
+    );
+    expect(item.subtitle).toContain("Foundation");
+    expect(item.subtitle).not.toContain("FOUNDATION");
+  });
+});
+
+describe("institutional donations", () => {
+  const donation = (overrides: Record<string, unknown> = {}) => ({
+    id: "don1",
+    amount: 2250000,
+    createdAt: daysAgo(1),
+    donorId: "d1",
+    donorName: "Suryodaya Industries Limited",
+    donorPersona: "CSR_OFFICER",
+    orgVerificationStatus: "VERIFIED",
+    projectTitle: "After-School Learning Centres",
+    ...overrides,
+  });
+
+  it("reports corporate money as a Signal, never as a queue item", () => {
+    const groups = groupByCategory(
+      buildInboxItems(sources({ institutionalDonations: [donation()] }), NOW)
+    );
+    const signals = groups.find((g) => g.category === "Signals")!;
+    expect(signals.items).toHaveLength(1);
+    expect(groups.find((g) => g.category === "Waiting on you")!.items).toHaveLength(0);
+  });
+
+  it("states the amount in the title, so the feed is readable without clicking", () => {
+    const [item] = buildInboxItems(sources({ institutionalDonations: [donation()] }), NOW);
+    expect(item.title).toContain("22,50,000");
+    expect(item.title).toContain("Suryodaya Industries Limited");
+  });
+
+  it("is LOW severity when the organisation behind the money was verified", () => {
+    const [item] = buildInboxItems(sources({ institutionalDonations: [donation()] }), NOW);
+    expect(item.severity).toBe("low");
+  });
+
+  it("is HIGH severity when it came from an unverified organisation", () => {
+    // Money taken on behalf of a company nobody checked. Should be true only
+    // for rows predating the create-order gate, so it must be loud.
+    const [item] = buildInboxItems(
+      sources({
+        institutionalDonations: [donation({ orgVerificationStatus: "NOT_SUBMITTED" })],
+      }),
+      NOW
+    );
+    expect(item.severity).toBe("high");
+    expect(item.subtitle).toContain("not submitted");
+  });
+
+  it("links to the donor, which is where the organisation can be acted on", () => {
+    const [item] = buildInboxItems(sources({ institutionalDonations: [donation()] }), NOW);
+    expect(item.href).toBe("/admin/donors/d1");
   });
 });

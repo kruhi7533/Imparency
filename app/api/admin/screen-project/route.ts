@@ -3,6 +3,7 @@ import { verifySessionRole } from "@/lib/auth-guards";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import prisma from "@/lib/prisma";
 import { screenProject } from "@/lib/gemini/screen-project";
+import { logAdminAction } from "@/lib/admin-log";
 
 export const runtime = "nodejs";
 
@@ -14,7 +15,7 @@ export const runtime = "nodejs";
  * Advisory only — it stores a recommendation but never changes project status.
  */
 export async function POST(request: Request) {
-  const { authorized, response } = await verifySessionRole("ADMIN");
+  const { authorized, response, session } = await verifySessionRole("ADMIN");
   if (!authorized) return response;
 
   const rl = await checkRateLimit(request, "admin/screen-project", 20, 60);
@@ -59,6 +60,20 @@ export async function POST(request: Request) {
         aiScreeningScore: screening.score,
         aiScreeningResult: JSON.stringify(screening),
       },
+    });
+
+    // Advisory, but it writes: aiScreeningScore is what a reviewer sees next to
+    // the Approve button. Recording the score that was stored keeps the advice
+    // a human acted on recoverable after a later re-run overwrites it.
+    await logAdminAction({
+      adminId: session.user.id,
+      action: "PROJECT_SCREENED",
+      entityType: "PROJECT",
+      entityId: projectId,
+      oldValue: { aiScreeningScore: project.aiScreeningScore ?? null },
+      newValue: { aiScreeningScore: screening.score },
+      note: "Ran the project pre-screening agent",
+      request,
     });
 
     return NextResponse.json({ screening });

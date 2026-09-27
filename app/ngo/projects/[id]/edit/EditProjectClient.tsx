@@ -51,6 +51,7 @@ interface EditProjectClientProps {
     geoFetchedAt: string | null;
     coverImage: string;
     tocAnalysis: any;
+    version?: number;
     milestones: Array<{
       id: string;
       title: string;
@@ -310,7 +311,12 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
         
         <div className="mb-8 border-b border-gray-100 dark:border-gray-800 pb-5 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Edit Campaign</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Edit Campaign</h1>
+              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                v{project.version || 1}
+              </span>
+            </div>
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
               {isLocked 
                 ? "This campaign has received donations. Budget and milestones are locked to protect donor transparency." 

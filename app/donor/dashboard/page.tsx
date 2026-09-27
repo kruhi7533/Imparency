@@ -33,6 +33,12 @@ export default async function DonorDashboardPage({
     prisma.user.findUnique({
     where: { id: userId },
     include: {
+      contracts: {
+        select: {
+          totalGrantAmount: true,
+          status: true,
+        },
+      },
       donations: {
         where: { status: "SUCCESS" },
         include: {
@@ -118,6 +124,16 @@ export default async function DonorDashboardPage({
     { label: "NGOs Followed", value: String(followedCount), sub: "organizations" },
     { label: "Donor Tier", value: getTierLabel(tier), sub: "tier status" },
   ];
+
+  // CSR / Corporate Governance metrics
+  const isCsrOrCorporate = donor.donorPersona === "CSR_OFFICER" || donor.isCorporate;
+  const csrBudgetNumber = donor.csrBudget ? Number(donor.csrBudget) : 0;
+  const contractCommitments = (donor.contracts || [])
+    .filter((c) => c.status === "ACTIVE" || c.status === "COMPLETED")
+    .reduce((sum, c) => sum + Number(c.totalGrantAmount), 0);
+  const totalUtilized = totalAmount + contractCommitments;
+  const csrUtilizationPct =
+    csrBudgetNumber > 0 ? Math.min(100, Math.round((totalUtilized / csrBudgetNumber) * 100)) : 0;
 
   // Find referred NGO details if the path is NGO_REFERRAL
   let referredNgoName = null;
@@ -212,6 +228,62 @@ export default async function DonorDashboardPage({
           referredNgoCategories={referredNgoCategories}
           referredNgoDescription={referredNgoDescription}
         />
+      )}
+
+      {/* CSR Governance & Annual Budget Utilization Banner */}
+      {isCsrOrCorporate && (
+        <div className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-gray-900 via-gray-900 to-emerald-950/40 border border-emerald-500/30 shadow-sm relative overflow-hidden">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-800 pb-4 mb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  CSR / Corporate Profile
+                </span>
+                {donor.companyName && (
+                  <span className="text-sm font-bold text-white">{donor.companyName}</span>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-gray-400">
+                {donor.gstNumber && <span>GSTIN: <span className="font-mono text-gray-300 font-bold">{donor.gstNumber}</span></span>}
+                {donor.csrRegistrationNumber && (
+                  <>
+                    <span>·</span>
+                    <span>MCA Form CSR-1: <span className="font-mono text-gray-300 font-bold">{donor.csrRegistrationNumber}</span></span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <a
+              href="/api/donations/csr-certificate"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center px-4 py-2 bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-sm transition shrink-0"
+            >
+              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download CSR Utilization Certificate
+            </a>
+          </div>
+
+          {csrBudgetNumber > 0 && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-400">
+                  Section 135 Budget Utilized: <span className="font-bold text-white">₹{totalUtilized.toLocaleString("en-IN")}</span> / ₹{csrBudgetNumber.toLocaleString("en-IN")}
+                </span>
+                <span className="font-bold text-emerald-400">{csrUtilizationPct}% Utilized</span>
+              </div>
+              <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${csrUtilizationPct}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Stats row — 4 cards */}

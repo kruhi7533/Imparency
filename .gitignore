@@ -44,6 +44,8 @@ next-env.d.ts
 
 # local uploads
 /public/uploads/
+# private document storage (CSR/RFP files) — never web-served, never committed
+/storage/
 sample-ngo-docs/
 scripts/
 

@@ -23,6 +23,7 @@ export async function POST(request: Request) {
 
     const resetToken = await prisma.passwordResetToken.findUnique({
       where: { token },
+      include: { user: { select: { email: true } } },
     });
 
     if (
@@ -50,6 +51,14 @@ export async function POST(request: Request) {
       prisma.passwordResetToken.updateMany({
         where: { userId: resetToken.userId, used: false },
         data: { used: true },
+      }),
+      // Lift any login lockout on this account so the new password works right
+      // away. Login buckets are keyed "<ip>|<email>" (see lib/auth.ts).
+      prisma.rateLimitLog.deleteMany({
+        where: {
+          route: "auth/login",
+          identifier: { endsWith: `|${resetToken.user.email.trim().toLowerCase()}` },
+        },
       }),
     ]);
 

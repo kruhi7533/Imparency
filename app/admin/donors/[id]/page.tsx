@@ -4,6 +4,10 @@ import Link from "next/link";
 import PanActions from "./PanActions";
 import RiskInsight from "./RiskInsight";
 import PersonaEditor from "./PersonaEditor";
+import OrgVerificationActions from "./OrgVerificationActions";
+import { assessFunderOrg, isFunderPersona, orgKindFor } from "@/lib/csr-verification";
+import { assessBudgetUtilisation, describeUtilisation } from "@/lib/csr-budget";
+import { financialYearRange } from "@/lib/finance-utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -115,6 +119,34 @@ export default async function DonorDetailPage({ params }: { params: { id: string
       donor.panVerifiedVia === "MOCK" ||
       donor.panNameMatch === false);
 
+  // What kind of body this is decides which identifiers are required, and so
+  // which ones are worth rendering. Computed once from the same pure rules the
+  // review route applies, so the page cannot disagree with the gate.
+  const orgKind = orgKindFor(donor.donorPersona);
+  // Budget utilisation for the CURRENT financial year, which is what an annual
+  // declared budget describes. `donor.donations` is capped at 50 rows, so this
+  // is counted from a dedicated windowed query rather than that list — a busy
+  // donor would otherwise silently under-report.
+  const fy = financialYearRange();
+  const fySpend = await prisma.donation.aggregate({
+    where: { donorId: donor.id, status: "SUCCESS", createdAt: { gte: fy.start, lt: fy.end } },
+    _sum: { amount: true },
+  });
+  const utilisation = assessBudgetUtilisation({
+    donorPersona: donor.donorPersona,
+    csrBudget: donor.csrBudget == null ? null : Number(donor.csrBudget),
+    trustAnnualBudget: donor.trustAnnualBudget == null ? null : Number(donor.trustAnnualBudget),
+    spent: Number(fySpend._sum.amount ?? 0),
+  });
+  const orgAssessment = assessFunderOrg({
+    donorPersona: donor.donorPersona,
+    orgName: donor.companyName,
+    cin: donor.cin,
+    csrBudget: donor.csrBudget == null ? null : Number(donor.csrBudget),
+    trustRegistrationId: donor.trustRegistrationId,
+    trustAnnualBudget: donor.trustAnnualBudget == null ? null : Number(donor.trustAnnualBudget),
+  });
+
   const KIND_DOT: Record<string, string> = {
     EVENT: "bg-blue-400",
     ADMIN: "bg-purple-400",
@@ -205,6 +237,100 @@ export default async function DonorDetailPage({ params }: { params: { id: string
             )}
           </Section>
         </div>
+
+        {/* Organisation — only for corporate donors, and only shown at all once
+            the donor has ticked the corporate flag. An individual giver has no
+            organisation and must not be rendered as one that is "unverified". */}
+        {(donor.isCorporate ||
+          isFunderPersona(donor.donorPersona) ||
+          donor.orgVerificationStatus !== "NOT_SUBMITTED") && (
+          <Section title="Organisation">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Field label="Legal name" value={donor.companyName} />
+              {/* Which identifier matters depends on what kind of body this is:
+                  a company has a CIN, a trust has a registration number, and a
+                  government department has neither. Showing all three would
+                  render two permanent blanks and read as missing evidence. */}
+              {orgKind === "COMPANY" && (
+                <>
+                  <Field label="CIN" value={donor.cin ?? "Not provided"} />
+                  <Field label="CSR registration" value={donor.csrRegistrationNumber} />
+                  <Field
+                    label="Annual CSR budget"
+                    value={donor.csrBudget != null ? `₹${Number(donor.csrBudget).toLocaleString("en-IN")}` : null}
+                  />
+                </>
+              )}
+              {orgKind === "TRUST" && (
+                <>
+                  <Field label="Trust registration" value={donor.trustRegistrationId ?? "Not provided"} />
+                  <Field label="12A / 80G" value={donor.trust12a80gRegNo} />
+                  <Field
+                    label="Annual grant budget"
+                    value={donor.trustAnnualBudget != null ? `₹${Number(donor.trustAnnualBudget).toLocaleString("en-IN")}` : null}
+                  />
+                </>
+              )}
+              <Field label="GST" value={donor.gstNumber} />
+              <Field
+                label="Status"
+                value={
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold ${
+                      donor.orgVerificationStatus === "VERIFIED"
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                        : donor.orgVerificationStatus === "REJECTED"
+                          ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                          : donor.orgVerificationStatus === "PENDING"
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                    }`}
+                  >
+                    {donor.orgVerificationStatus}
+                  </span>
+                }
+              />
+              <Field label="Submitted" value={donor.orgSubmittedAt ? fmt(donor.orgSubmittedAt) : null} />
+              <Field label="Decided" value={donor.orgVerifiedAt ? fmt(donor.orgVerifiedAt) : null} />
+            </div>
+
+            {donor.orgVerificationNote && (
+              <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+                <span className="font-bold text-gray-400">Reviewer note:</span> {donor.orgVerificationNote}
+              </p>
+            )}
+
+            {/* Budget utilisation. Rendered for every institutional donor,
+                including one who declared nothing — "no budget declared" is a
+                fact an admin needs, and hiding the row would let an absent
+                declaration read as a clean one. */}
+            {orgKind !== "NONE" && (
+              <p
+                className={`mt-4 text-xs ${
+                  utilisation.band === "OVER"
+                    ? "text-red-600 dark:text-red-400 font-semibold"
+                    : utilisation.band === "NEAR"
+                      ? "text-amber-700 dark:text-amber-400"
+                      : utilisation.band === "UNDECLARED"
+                        ? "text-gray-500 dark:text-gray-400"
+                        : "text-gray-600 dark:text-gray-300"
+                }`}
+              >
+                <span className="font-bold text-gray-400">Budget this FY:</span>{" "}
+                {describeUtilisation(utilisation)}
+              </p>
+            )}
+
+            {orgAssessment.missing.length > 0 && donor.orgVerificationStatus !== "VERIFIED" && (
+              <p className="mt-4 text-xs text-amber-700 dark:text-amber-400">
+                <span className="font-bold">Cannot be approved yet — missing:</span>{" "}
+                {orgAssessment.missing.join(", ")}
+              </p>
+            )}
+
+            <OrgVerificationActions donorId={donor.id} status={donor.orgVerificationStatus} />
+          </Section>
+        )}
 
         {/* Activity */}
         <Section title={`Donations (${donor.donations.length} shown)`}>

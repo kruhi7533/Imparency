@@ -102,6 +102,26 @@ export function getFinancialYear(date: Date): string {
 export const getIndianFinancialYear = getFinancialYear;
 
 /**
+ * The half-open date range of an Indian financial year: 1 April to 1 April.
+ *
+ * Pairs with getFinancialYear — that one labels a date, this one bounds a query,
+ * so a "this financial year" aggregate can be pushed into the database instead
+ * of fetching everything and filtering in code.
+ *
+ * Half-open [start, end) on purpose: a donation at 00:00:00.000 on 1 April
+ * belongs to the new year, and an inclusive end would double-count it.
+ */
+export function financialYearRange(asOf: Date = new Date()): { start: Date; end: Date } {
+  const year = asOf.getFullYear();
+  // Jan-Mar belong to the financial year that began the previous April.
+  const startYear = asOf.getMonth() < 3 ? year - 1 : year;
+  return {
+    start: new Date(startYear, 3, 1),
+    end: new Date(startYear + 1, 3, 1),
+  };
+}
+
+/**
  * Generates a formatted unique tax receipt number.
  * Format: IMP/{financialYear}/{sequence padded to 5 digits}
  */

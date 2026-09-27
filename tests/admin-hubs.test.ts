@@ -38,13 +38,15 @@ describe("admin hubs", () => {
     expect(hubForPath("/admin/crisis/abc-123")).toBeNull();
     expect(hubForPath("/admin/initiatives")).toBeNull();
     expect(hubForPath("/admin/donors/abc-123")?.key).toBe("people");
-    // A matching job lives several segments deep and still belongs to the hub
-    // its catalogue is registered in — the tab bar must not vanish there.
-    // Opportunities (and the proposals they produce) are the Grants hub now
-    // (funder-led model), split out from the donor-led Campaigns hub so the two
-    // funding models never share a home.
-    expect(hubForPath("/admin/opportunities/opp-1/jobs/job-1")?.key).toBe("grants");
-    expect(hubForPath("/admin/proposals/prop-1")?.key).toBe("grants");
+    // The funder-led track left the admin console the same way Crisis did.
+    // Matching an NGO to a CSR requirement is the two of them talking, not an
+    // admin decision — it moves to the CSR and NGO panels (docs/WEEK5-FLOW.md).
+    // The routes still exist and still function, and Today and the audit trail
+    // still deep-link into them, but the admin nav no longer claims them, so
+    // they belong to no hub and render no tab bar.
+    expect(hubForPath("/admin/opportunities")).toBeNull();
+    expect(hubForPath("/admin/opportunities/opp-1/jobs/job-1")).toBeNull();
+    expect(hubForPath("/admin/proposals/prop-1")).toBeNull();
   });
 
   it("puts an NGO detail view under the catalogue that lists it", () => {

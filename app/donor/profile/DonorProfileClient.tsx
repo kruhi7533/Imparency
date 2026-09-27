@@ -26,6 +26,9 @@ interface UserProfile {
   hniAdvisorName?: string;
   hniAdvisorEmail?: string;
   hniAnnualBudget?: number | null;
+  cin?: string | null;
+  orgVerificationStatus?: "NOT_SUBMITTED" | "PENDING" | "VERIFIED" | "REJECTED";
+  orgVerificationNote?: string;
   csrRegistrationNumber?: string;
   csrBudget?: number | null;
   trustRegistrationId?: string;
@@ -84,6 +87,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
   // CSR states
   const [companyName, setCompanyName] = useState(user.companyName);
   const [gstNumber, setGstNumber] = useState(user.gstNumber);
+  const [cin, setCin] = useState(user.cin || "");
   const [csrRegistrationNumber, setCsrRegistrationNumber] = useState(user.csrRegistrationNumber || "");
   const [csrBudget, setCsrBudget] = useState(user.csrBudget != null ? String(user.csrBudget) : "");
 
@@ -150,6 +154,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
           hniAdvisorName: persona === "HNI" ? hniAdvisorName : "",
           hniAdvisorEmail: persona === "HNI" ? hniAdvisorEmail : "",
           hniAnnualBudget: persona === "HNI" ? hniAnnualBudget : "",
+          cin: persona === "CSR_OFFICER" ? cin : "",
           csrRegistrationNumber: persona === "CSR_OFFICER" ? csrRegistrationNumber : "",
           csrBudget: persona === "CSR_OFFICER" ? csrBudget : "",
           trustRegistrationId: persona === "FOUNDATION" ? trustRegistrationId : "",
@@ -481,6 +486,41 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                     <p className="text-[11px] text-gray-400">Company registration identifiers and annual CSR allocation details.</p>
                   </div>
 
+                  {/* Where this organisation stands. Without it the only way a
+                      company learns it is not yet verified is by being refused
+                      at the moment it tries to give, which is the worst
+                      possible time to find out. */}
+                  {user.orgVerificationStatus && (
+                    <div
+                      className={`rounded-xl border px-4 py-3 text-[11px] ${
+                        user.orgVerificationStatus === "VERIFIED"
+                          ? "border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400"
+                          : user.orgVerificationStatus === "PENDING"
+                            ? "border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400"
+                            : user.orgVerificationStatus === "REJECTED"
+                              ? "border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400"
+                              : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400"
+                      }`}
+                    >
+                      <span className="font-bold">
+                        {user.orgVerificationStatus === "VERIFIED"
+                          ? "Organisation verified."
+                          : user.orgVerificationStatus === "PENDING"
+                            ? "Organisation awaiting verification."
+                            : user.orgVerificationStatus === "REJECTED"
+                              ? "Organisation could not be verified."
+                              : "Organisation not yet submitted."}
+                      </span>{" "}
+                      {user.orgVerificationStatus === "VERIFIED"
+                        ? "You can give as a company and download CSR utilisation certificates."
+                        : user.orgVerificationStatus === "PENDING"
+                          ? "Our team is reviewing your details. Company giving unlocks once that is done."
+                          : user.orgVerificationStatus === "REJECTED"
+                            ? user.orgVerificationNote || "Please contact us before giving as a company."
+                            : "Fill in your company name, CIN and annual CSR budget below, then save — that sends your details for review."}
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="sm:col-span-2 space-y-1.5">
                       <label htmlFor="companyName" className="block text-[10px] uppercase font-bold tracking-wider text-gray-400">
@@ -495,6 +535,26 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         placeholder="ABC Private Limited"
                         required
                       />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label htmlFor="cin" className="block text-[10px] uppercase font-bold tracking-wider text-gray-400">
+                        Corporate Identity Number (CIN)
+                      </label>
+                      <input
+                        id="cin"
+                        type="text"
+                        value={cin}
+                        onChange={(e) => setCin(e.target.value.toUpperCase())}
+                        className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-xs dark:text-white placeholder-gray-400 focus:outline-none transition-all tracking-wider font-mono"
+                        placeholder="U99999TG2026PLC000001"
+                        maxLength={21}
+                        required
+                      />
+                      <p className="text-[10px] text-gray-400">
+                        The 21-character number on your certificate of incorporation. Our team verifies your
+                        organisation against this before you can give as a company.
+                      </p>
                     </div>
 
                     <div className="space-y-1.5">

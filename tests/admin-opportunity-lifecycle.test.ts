@@ -50,6 +50,9 @@ function funder(overrides: Record<string, unknown> = {}) {
     role: "DONOR",
     donorPersona: "FOUNDATION",
     panStatus: "VERIFIED",
+    // Since ADM-003 a funder must clear BOTH gates: the person (PAN) and the
+    // organisation. The default fixture is a funder who passes cleanly.
+    orgVerificationStatus: "VERIFIED",
     ...overrides,
   };
 }
@@ -175,6 +178,21 @@ describe("the lifecycle", () => {
     db.fundingOpportunity.updateMany.mockResolvedValue({ count: 0 });
     const res = await PATCH(req({ action: "APPROVE" }), ctx);
     expect(res.status).toBe(409);
+  });
+
+  it("refuses to open an opportunity behind an unverified ORGANISATION", async () => {
+    // The asymmetry ADM-003 closed: a verified PAN used to be enough, so an NGO
+    // could be approached on behalf of a company nobody had checked.
+    db.user.findUnique.mockResolvedValue(funder({ orgVerificationStatus: "NOT_SUBMITTED" }));
+    const res = await PATCH(req({ action: "OPEN" }), ctx);
+    expect(res.status).toBe(400);
+    expect(db.fundingOpportunity.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses to open when the organisation is still in the review queue", async () => {
+    db.user.findUnique.mockResolvedValue(funder({ orgVerificationStatus: "PENDING" }));
+    const res = await PATCH(req({ action: "OPEN" }), ctx);
+    expect(res.status).toBe(400);
   });
 
   it("keeps accepting the old OPEN action so existing callers do not break", async () => {

@@ -136,6 +136,7 @@ const styles = StyleSheet.create({
 
 interface CertificateProps {
   companyName: string;
+  cin: string | null;
   gstNumber: string | null;
   financialYear: string;
   totalCSRSpend: number;
@@ -148,16 +149,20 @@ interface CertificateProps {
   }[];
   date: string;
   certificateNumber: string;
+  /** Milestones an admin actually approved — what the declaration may claim. */
+  verifiedMilestones: number;
 }
 
 const CertificateDocument: React.FC<CertificateProps> = ({
   companyName,
+  cin,
   gstNumber,
   financialYear,
   totalCSRSpend,
   projects,
   date,
   certificateNumber,
+  verifiedMilestones,
 }) => (
   <Document>
     <Page size="A4" style={styles.page}>
@@ -173,6 +178,15 @@ const CertificateDocument: React.FC<CertificateProps> = ({
           <Text style={styles.label}>Corporate Entity</Text>
           <Text style={styles.value}>{companyName}</Text>
         </View>
+        {/* CIN identifies the entity unambiguously, which a company name alone
+            does not. Rendered above GSTIN because it is the identifier this
+            certificate was actually verified against. */}
+        {cin && (
+          <View style={styles.metaRow}>
+            <Text style={styles.label}>CIN</Text>
+            <Text style={styles.value}>{cin}</Text>
+          </View>
+        )}
         {gstNumber && (
           <View style={styles.metaRow}>
             <Text style={styles.label}>GSTIN</Text>
@@ -222,12 +236,21 @@ const CertificateDocument: React.FC<CertificateProps> = ({
         ))}
       </View>
 
-      {/* Declaration box */}
+      {/* Declaration box.
+          Derived, never fixed. This used to assert that milestone completion
+          and fund utilisation "have been independently validated" as static
+          text — printed unchanged above a table showing 0 milestones completed
+          and an N/A score. A certificate that claims verification nobody did is
+          the one thing this document must not do, since a company files it. */}
       <View style={styles.declaration}>
         <Text>
-          "The above contributions were made to verified NGOs on the ImpactBridge platform. 
-          Milestone completion and fund utilization have been independently validated through our 
-          Gemini AI audit engine and administrative reviews."
+          {verifiedMilestones > 0
+            ? `The above contributions were made to NGOs verified on the ImpactBridge platform. ` +
+              `${verifiedMilestones} milestone${verifiedMilestones === 1 ? "" : "s"} recorded against ` +
+              `these contributions ${verifiedMilestones === 1 ? "has" : "have"} been reviewed and approved by an ImpactBridge administrator.`
+            : `The above contributions were made to NGOs verified on the ImpactBridge platform. ` +
+              `No milestone has been completed and approved against these contributions yet, so this ` +
+              `certificate records the contribution only — not delivery or outcomes.`}
         </Text>
       </View>
 
@@ -245,8 +268,12 @@ const CertificateDocument: React.FC<CertificateProps> = ({
 
       {/* Footer */}
       <View style={styles.footer}>
+        {/* The previous line here claimed "Verification hashes can be tracked
+            on-chain". There is no blockchain anywhere in this codebase, and
+            this document is filed with a regulator. */}
         <Text style={styles.footerText}>
-          This is a system-generated compliance utilization certificate. Verification hashes can be tracked on-chain.
+          This is a system-generated utilization certificate. Every figure above is derived from
+          payment and milestone records held by ImpactBridge and can be reconciled against them.
         </Text>
         <Text style={[styles.footerText, { marginTop: 2 }]}>
           ImpactBridge Compliance | Transparency in Philanthropy
@@ -286,6 +313,33 @@ export async function GET(request: Request) {
 
     if (!donor || !donor.isCorporate) {
       return NextResponse.json({ error: "Only registered corporate accounts can generate certificates" }, { status: 403 });
+    }
+
+    // The organisation gate.
+    //
+    // This document names a "Corporate Entity", states a CSR utilisation
+    // figure, and signs itself "ImpactBridge Compliance — Authorized Verifier".
+    // It used to be issued on `isCorporate` alone, which is a checkbox the
+    // donor ticks on their own profile: the platform was vouching, in writing,
+    // for a company nobody had checked. Verification is the thing that earns
+    // the signature, so it is now required to produce the document.
+    //
+    // Each state gets its own sentence because the next step differs: waiting
+    // is nothing the donor can act on, missing details are.
+    if (donor.orgVerificationStatus !== "VERIFIED") {
+      const detail =
+        donor.orgVerificationStatus === "PENDING"
+          ? "Your organisation's details are with our team for verification. This certificate becomes available once that is complete."
+          : donor.orgVerificationStatus === "REJECTED"
+            ? "Your organisation's details could not be verified. Please contact us before generating compliance documents."
+            : "Add your company name, CIN and annual CSR budget to your profile, and our team will verify them.";
+      return NextResponse.json(
+        {
+          error: `This certificate can only be issued for a verified organisation. ${detail}`,
+          orgVerificationStatus: donor.orgVerificationStatus,
+        },
+        { status: 403 }
+      );
     }
 
     // 3. Fetch all successful donations
@@ -388,12 +442,16 @@ export async function GET(request: Request) {
     const doc = (
       <CertificateDocument
         companyName={donor.companyName || donor.name}
+        cin={donor.cin}
         gstNumber={donor.gstNumber}
         financialYear={fy}
         totalCSRSpend={totalCSRSpend}
         projects={projectsList}
         date={new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
         certificateNumber={certificateNumber}
+        // Summed from the same rows the table renders, so the declaration and
+        // the table can never disagree with each other.
+        verifiedMilestones={projectsList.reduce((n, p) => n + p.milestonesCompleted, 0)}
       />
     );
 

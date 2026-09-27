@@ -4,6 +4,7 @@ vi.mock("@/lib/prisma", () => ({
   default: {
     passwordResetToken: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     user: { update: vi.fn() },
+    rateLimitLog: { deleteMany: vi.fn() },
     $transaction: vi.fn(async (ops: any[]) => Promise.all(ops)),
   },
 }));
@@ -34,6 +35,7 @@ describe("POST /api/auth/reset-password", () => {
       token: "valid-token",
       used: false,
       expiresAt: new Date(Date.now() + 60_000),
+      user: { email: "donor@example.com" },
     });
 
     const res = await POST(request({ token: "valid-token", password: "newpassword123" }));
@@ -54,6 +56,7 @@ describe("POST /api/auth/reset-password", () => {
       token: "valid-token",
       used: false,
       expiresAt: new Date(Date.now() + 60_000),
+      user: { email: "donor@example.com" },
     });
 
     const res = await POST(request({ token: "valid-token", password: "newpassword123" }));
@@ -65,6 +68,24 @@ describe("POST /api/auth/reset-password", () => {
     });
     // Not a single-row update scoped to the redeemed token.
     expect(prisma.passwordResetToken.update).not.toHaveBeenCalled();
+  });
+
+  it("lifts any login lockout on the account so the new password works immediately", async () => {
+    (prisma.passwordResetToken.findUnique as any).mockResolvedValue({
+      id: "token_3",
+      userId: "user_1",
+      token: "valid-token",
+      used: false,
+      expiresAt: new Date(Date.now() + 60_000),
+      user: { email: "Donor@Example.com" },
+    });
+
+    const res = await POST(request({ token: "valid-token", password: "newpassword123" }));
+
+    expect(res.status).toBe(200);
+    expect(prisma.rateLimitLog.deleteMany).toHaveBeenCalledWith({
+      where: { route: "auth/login", identifier: { endsWith: "|donor@example.com" } },
+    });
   });
 
   it("rejects an expired token", async () => {

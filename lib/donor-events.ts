@@ -12,7 +12,16 @@ export type DonorEventType =
   | "PAN_VERIFICATION_FAILED"
   | "PAN_CLEARED"
   | "PAN_MANUALLY_VERIFIED"
-  | "PAN_MANUALLY_REJECTED";
+  | "PAN_MANUALLY_REJECTED"
+  // Donor organisation verification. SUBMITTED is written by the donor's own
+  // profile save; the other two only ever by an admin decision.
+  | "CSR_ORG_SUBMITTED"
+  | "CSR_ORG_VERIFIED"
+  | "CSR_ORG_REJECTED"
+  /// An approved company edited its own name or CIN, which retires the
+  /// approval. Recorded because "why did this go back to pending" is the first
+  /// question anyone will ask.
+  | "CSR_ORG_REOPENED";
 
 export type DonorEventSource = "USER" | "ADMIN" | "SYSTEM" | "WEBHOOK";
 

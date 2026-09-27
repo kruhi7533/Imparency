@@ -68,9 +68,20 @@ describe("checkCsrRegistrationFormat", () => {
   });
 });
 
+/**
+ * These assertions changed deliberately.
+ *
+ * They used to pin a lifetime-total-vs-2x-annual-budget comparison, which the
+ * implementation itself documented as not like-for-like. The check now sums the
+ * current FINANCIAL YEAR and fires at the declared budget rather than twice it,
+ * so "under the 2x threshold" is no longer a thing to be under. Deeper coverage
+ * of the new bands lives in tests/csr-budget-overrun.test.ts and
+ * tests/csr-budget.test.ts; what stays here is the shape of the alert.
+ */
 describe("checkCsrBudgetOverrun", () => {
-  it("flags lifetime donations more than double the declared CSR budget", async () => {
-    prismaMock.user.findUnique.mockResolvedValue({ donorPersona: "CSR_OFFICER", csrBudget: 100_000, totalDonated: 250_000 });
+  it("flags this financial year's donations exceeding the declared CSR budget", async () => {
+    prismaMock.user.findUnique.mockResolvedValue({ donorPersona: "CSR_OFFICER", csrBudget: 100_000, trustAnnualBudget: null });
+    prismaMock.donation.findMany.mockResolvedValue([{ amount: 150_000 }]);
 
     await checkCsrBudgetOverrun("donor-1");
 
@@ -80,8 +91,9 @@ describe("checkCsrBudgetOverrun", () => {
     expect(created.severity).toBe("MEDIUM");
   });
 
-  it("does not flag donations under the 2x threshold", async () => {
-    prismaMock.user.findUnique.mockResolvedValue({ donorPersona: "CSR_OFFICER", csrBudget: 100_000, totalDonated: 150_000 });
+  it("does not flag a donor still inside their declared budget", async () => {
+    prismaMock.user.findUnique.mockResolvedValue({ donorPersona: "CSR_OFFICER", csrBudget: 100_000, trustAnnualBudget: null });
+    prismaMock.donation.findMany.mockResolvedValue([{ amount: 40_000 }]);
 
     await checkCsrBudgetOverrun("donor-1");
 
@@ -89,7 +101,7 @@ describe("checkCsrBudgetOverrun", () => {
   });
 
   it("skips donors with no declared budget — nothing to compare against", async () => {
-    prismaMock.user.findUnique.mockResolvedValue({ donorPersona: "CSR_OFFICER", csrBudget: null, totalDonated: 999_999 });
+    prismaMock.user.findUnique.mockResolvedValue({ donorPersona: "CSR_OFFICER", csrBudget: null, trustAnnualBudget: null });
 
     await checkCsrBudgetOverrun("donor-1");
 
@@ -97,7 +109,8 @@ describe("checkCsrBudgetOverrun", () => {
   });
 
   it("does not re-alert every donation once already flagged and open", async () => {
-    prismaMock.user.findUnique.mockResolvedValue({ donorPersona: "CSR_OFFICER", csrBudget: 100_000, totalDonated: 250_000 });
+    prismaMock.user.findUnique.mockResolvedValue({ donorPersona: "CSR_OFFICER", csrBudget: 100_000, trustAnnualBudget: null });
+    prismaMock.donation.findMany.mockResolvedValue([{ amount: 250_000 }]);
     prismaMock.fraudAlert.findFirst.mockResolvedValue({ id: "existing-alert" });
 
     await checkCsrBudgetOverrun("donor-1");

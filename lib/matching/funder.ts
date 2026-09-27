@@ -10,10 +10,16 @@ import prisma from "@/lib/prisma";
  * platform's credibility is doing work the platform has not earned. That is the
  * shape of an advance-fee scam.
  *
- * So a funder is a DONOR whose identity has actually been checked. There is no
- * separate funder role and, for now, no funder organisation: the account IS the
- * funder, and `panStatus` is the existing verification this reuses rather than
- * inventing a second one.
+ * So a funder is a DONOR whose identity has actually been checked — and, since
+ * ADM-003, whose ORGANISATION has been checked too. Those are two different
+ * questions: `panStatus` says a human's tax id is real, `orgVerificationStatus`
+ * says the body behind the money is real. This used to ask only the first and
+ * said so here; a company was effectively vouched for by one employee's PAN.
+ *
+ * Both gates are now required, which is the same standard the NGO side has
+ * always held: lib/matching/runner.ts will not put an organisation in front of
+ * a funder unless it is VERIFIED, and this will not put a funder in front of an
+ * organisation unless it is VERIFIED. The asymmetry is closed.
  */
 
 /** Personas that can plausibly fund an opportunity rather than give to one. */
@@ -23,7 +29,8 @@ export type FunderRejection =
   | "NOT_FOUND"
   | "NOT_A_DONOR"
   | "NOT_INSTITUTIONAL"
-  | "NOT_VERIFIED";
+  | "NOT_VERIFIED"
+  | "ORG_NOT_VERIFIED";
 
 export interface FunderCheck {
   ok: boolean;
@@ -51,6 +58,7 @@ export async function checkFunderEligibility(userId: string): Promise<FunderChec
       role: true,
       donorPersona: true,
       panStatus: true,
+      orgVerificationStatus: true,
     },
   });
 
@@ -89,6 +97,31 @@ export async function checkFunderEligibility(userId: string): Promise<FunderChec
         `${displayName}'s identity is not verified (PAN is ${user.panStatus.toLowerCase()}). ` +
         `An unverified funder must not be put in front of an organisation — verify the PAN ` +
         `on their donor record first.`,
+    };
+  }
+
+  // The organisation gate. Deliberately AFTER the PAN check so the two are
+  // reported one at a time rather than as a single undifferentiated "not
+  // verified" — they are fixed in different places by different people.
+  //
+  // Each state gets its own sentence, because "pending" is an admin's own queue
+  // and "not submitted" is the donor's to act on. Telling an admin to go and
+  // verify something that is already sitting in their queue would be a dead end.
+  if (user.orgVerificationStatus !== "VERIFIED") {
+    const remedy =
+      user.orgVerificationStatus === "PENDING"
+        ? `Their organisation is waiting in the verification queue — approve it on their donor record first.`
+        : user.orgVerificationStatus === "REJECTED"
+          ? `Their organisation was rejected. It cannot fund an opportunity until that is resolved.`
+          : `They have not submitted their organisation's details, so there is nothing to verify yet. ` +
+            `Ask them to complete their profile.`;
+    return {
+      ok: false,
+      reason: "ORG_NOT_VERIFIED",
+      displayName,
+      message:
+        `${displayName}'s organisation is not verified. An organisation would be approached on ` +
+        `the strength of a company name nobody checked. ${remedy}`,
     };
   }
 

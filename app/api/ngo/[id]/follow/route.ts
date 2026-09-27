@@ -59,6 +59,14 @@ export async function POST(
 
     return NextResponse.json({ success: true, followed });
   } catch (err: any) {
+    // P2003 = FK violation on donorId: the JWT carries a user id that no longer
+    // exists in the DB (e.g. after a DB reset). Signing in again mints a fresh token.
+    if (err?.code === "P2003") {
+      return NextResponse.json(
+        { error: "Your session is out of date. Please sign out and sign in again." },
+        { status: 401 }
+      );
+    }
     console.error("Follow Toggle Error:", err);
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
   }

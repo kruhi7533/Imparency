@@ -14,10 +14,17 @@ const PAN_BADGE: Record<string, string> = {
 export default async function AdminDonorsPage({
   searchParams,
 }: {
-  searchParams: { q?: string; pan?: string };
+  searchParams: { q?: string; pan?: string; org?: string };
 }) {
   const q = searchParams.q?.trim() || "";
   const panFilter = searchParams.pan || "";
+  const orgFilter = searchParams.org || "";
+
+  // The CSR verification queue count, independent of the current filter — an
+  // admin needs to know work is waiting even while looking at something else.
+  const orgPendingCount = await prisma.user.count({
+    where: { role: "DONOR", orgVerificationStatus: "PENDING" },
+  });
 
   const donors = await prisma.user.findMany({
     where: {
@@ -32,6 +39,7 @@ export default async function AdminDonorsPage({
           }
         : {}),
       ...(panFilter ? { panStatus: panFilter as any } : {}),
+      ...(orgFilter ? { orgVerificationStatus: orgFilter as any } : {}),
     },
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -44,6 +52,8 @@ export default async function AdminDonorsPage({
       panStatus: true,
       panVerifiedVia: true,
       isCorporate: true,
+      companyName: true,
+      orgVerificationStatus: true,
       totalDonated: true,
       createdAt: true,
       _count: { select: { donations: true } },
@@ -69,6 +79,15 @@ export default async function AdminDonorsPage({
           {donors.length} donor{donors.length === 1 ? "" : "s"} shown (newest first, max 100). Click a donor for the full 360° view.
         </p>
 
+        {orgPendingCount > 0 && (
+          <Link
+            href="/admin/donors?org=PENDING"
+            className="mt-4 flex items-center gap-2 rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition"
+          >
+            {orgPendingCount} organisation{orgPendingCount === 1 ? "" : "s"} awaiting verification — review now
+          </Link>
+        )}
+
         {/* Search / filter (GET form — server-rendered) */}
         <form className="mt-6 flex flex-wrap gap-3" method="GET">
           <input
@@ -88,6 +107,17 @@ export default async function AdminDonorsPage({
             <option value="UNVERIFIED">PAN Unverified</option>
             <option value="FAILED">PAN Failed</option>
             <option value="PROVIDER_ERROR">Provider Error (needs review)</option>
+          </select>
+          <select
+            name="org"
+            defaultValue={orgFilter}
+            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+          >
+            <option value="">All organisations</option>
+            <option value="PENDING">Org awaiting verification</option>
+            <option value="VERIFIED">Org verified</option>
+            <option value="REJECTED">Org rejected</option>
+            <option value="NOT_SUBMITTED">No org submitted</option>
           </select>
           <button
             type="submit"
@@ -123,7 +153,22 @@ export default async function AdminDonorsPage({
                     </td>
                     <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
                       {d.donorPersona ?? "—"}
-                      {d.isCorporate && <span className="ml-1 text-[10px] font-bold text-blue-500">CORP</span>}
+                      {d.isCorporate && (
+                        <span
+                          className={`ml-1 text-[10px] font-bold ${
+                            d.orgVerificationStatus === "VERIFIED"
+                              ? "text-emerald-600"
+                              : d.orgVerificationStatus === "PENDING"
+                                ? "text-amber-600"
+                                : d.orgVerificationStatus === "REJECTED"
+                                  ? "text-red-600"
+                                  : "text-blue-500"
+                          }`}
+                          title={`Organisation: ${d.orgVerificationStatus}`}
+                        >
+                          CORP{d.orgVerificationStatus === "VERIFIED" ? " ✓" : d.orgVerificationStatus === "PENDING" ? " ⏳" : ""}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{d.donorCategory ?? "Undeclared"}</td>
                     <td className="px-4 py-3">

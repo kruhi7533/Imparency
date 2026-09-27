@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma";
 import { createFraudAlert } from "@/lib/fraud-alerts";
+import { financialYearRange } from "@/lib/finance-utils";
+import { assessBudgetUtilisation, declaredAnnualBudget, describeUtilisation } from "@/lib/csr-budget";
 
 /**
  * Checks Gemini proof validation scores.
@@ -150,26 +152,53 @@ export async function checkCsrRegistrationFormat(donorId: string): Promise<void>
 }
 
 /**
- * Flags a CSR-persona donor whose cumulative donations badly outrun their own
- * declared CSR budget. Triggered on donation webhook (payment success).
+ * Flags an institutional donor whose giving this FINANCIAL YEAR outruns the
+ * annual budget they declared. Triggered on donation webhook (payment success).
  *
- * Caveat baked into the alert text on purpose: totalDonated is a LIFETIME
- * running total, csrBudget is normally an ANNUAL figure — there is no
- * fiscal-year-scoped donation aggregate in this schema to compare like-for-like.
- * A generous 2x multiplier and MEDIUM (not HIGH) severity reflect that this is
- * a "worth a look," not a confirmed anomaly.
+ * This used to compare `totalDonated` — a LIFETIME running total — against what
+ * is normally an ANNUAL figure, and said so in the alert text it sent. That is
+ * not a like-for-like comparison, and the 2x multiplier it used to compensate
+ * meant a donor could give double their declared budget before anything fired.
+ * The fiscal-year aggregate the old comment said did not exist is just a
+ * windowed sum over Donation, so it is computed here.
+ *
+ * Two further fixes: FOUNDATION donors are now covered (they declare
+ * `trustAnnualBudget`, and the old check bailed out for anyone who was not a
+ * CSR_OFFICER, exempting every foundation from a check it looked covered by),
+ * and the threshold is the declared budget itself rather than twice it.
+ *
+ * Still MEDIUM, and still never a block: over-spending a CSR budget is lawful
+ * (see lib/csr-budget.ts). The likeliest explanation is a stale declared
+ * figure, which is worth an admin's attention and nobody's refusal.
  */
 export async function checkCsrBudgetOverrun(donorId: string): Promise<void> {
   try {
     const donor = await prisma.user.findUnique({
       where: { id: donorId },
-      select: { donorPersona: true, csrBudget: true, totalDonated: true },
+      select: { donorPersona: true, csrBudget: true, trustAnnualBudget: true },
     });
-    if (!donor || donor.donorPersona !== "CSR_OFFICER" || donor.csrBudget == null) return;
+    if (!donor) return;
 
-    const budget = Number(donor.csrBudget);
-    const total = Number(donor.totalDonated);
-    if (budget <= 0 || total <= budget * 2) return;
+    // Decimal -> number at the call site, per the repo convention: these must
+    // never reach arithmetic as Decimal objects.
+    const budgetInput = {
+      donorPersona: donor.donorPersona as string | null,
+      csrBudget: donor.csrBudget == null ? null : Number(donor.csrBudget),
+      trustAnnualBudget: donor.trustAnnualBudget == null ? null : Number(donor.trustAnnualBudget),
+    };
+    const budget = declaredAnnualBudget(budgetInput);
+    if (budget == null) return; // nothing declared, nothing to compare against
+
+    // Sum only this financial year, which is what an annual budget describes.
+    const { start, end } = financialYearRange();
+    const fyDonations = await prisma.donation.findMany({
+      where: { donorId, status: "SUCCESS", createdAt: { gte: start, lt: end } },
+      select: { amount: true },
+    });
+    const spent = fyDonations.reduce((sum, d) => sum + Number(d.amount), 0);
+
+    const utilisation = assessBudgetUtilisation({ ...budgetInput, spent });
+    if (utilisation.band !== "OVER") return;
 
     const exists = await prisma.fraudAlert.findFirst({
       where: { type: "CSR_BUDGET_EXCEEDED", entityId: donorId, resolved: false },
@@ -180,7 +209,7 @@ export async function checkCsrBudgetOverrun(donorId: string): Promise<void> {
       "CSR_BUDGET_EXCEEDED",
       donorId,
       "DONOR",
-      `Donor's lifetime donations (₹${total.toLocaleString("en-IN")}) are more than double their declared CSR budget (₹${budget.toLocaleString("en-IN")}). Note: this compares a lifetime total against what is normally an annual figure — verify the declared budget is current before treating this as unusual.`,
+      describeUtilisation(utilisation),
       "MEDIUM",
       "FRAUD_ALERT"
     );
