@@ -8,7 +8,7 @@ export const runtime = "nodejs";
  * A drain of DISPATCH_BUDGET investigations can run for several minutes — the
  * expensive end of this pipeline is throttled by a token ceiling, not by CPU.
  */
-export const maxDuration = 800;
+export const maxDuration = 300;
 
 /**
  * The Radar's dispatch loop: decide, then do a bounded amount.
