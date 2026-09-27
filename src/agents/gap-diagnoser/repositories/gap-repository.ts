@@ -12,7 +12,6 @@ export class GapReportRepository {
     return prisma.gapReport.create({
       data: {
         sponsorRequirementId,
-        ngoId,
         overallCompatibility,
         gapReport: gaps,
         recommendations,
@@ -30,7 +29,7 @@ export class GapReportRepository {
     });
   }
 
-  async updateReport(id: string, updates: { gapReport?: any; reviewStatus?: 'PENDING' | 'APPROVED' | 'REVISION_REQUESTED', reviewedBy?: string }) {
+  async updateReport(id: string, updates: { gapReport?: any; reviewStatus?: 'PENDING' | 'APPROVED' | 'REJECTED', reviewedBy?: string }) {
     return prisma.gapReport.update({
       where: { id },
       data: updates
