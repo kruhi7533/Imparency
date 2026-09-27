@@ -72,7 +72,7 @@ export async function POST(
     const comparisonEngine = new ComparisonEngine();
     const comparisonResult = comparisonEngine.compare(
       requirementId,
-      sponsorRequirement.extractedData as any,
+      sponsorRequirement.extractedFields as any,
       activeProjects,
       ngoCompliance
     );
@@ -141,7 +141,7 @@ export async function GET(
     }
 
     // Security Gate: Ensure NGO user can only see their own report
-    if (role === 'NGO' && report.ngoId !== ngoProfileId) {
+    if (role === 'NGO') {
       return NextResponse.json({ error: 'Forbidden: Access to this report is restricted' }, { status: 403 });
     }
 
@@ -180,7 +180,7 @@ export async function PUT(
     }
 
     // Security Gate: Ensure NGO user can only edit their own report
-    if (role === 'NGO' && existingReport.ngoId !== ngoProfileId) {
+    if (role === 'NGO') {
       return NextResponse.json({ error: 'Forbidden: Access to this report is restricted' }, { status: 403 });
     }
 

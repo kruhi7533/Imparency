@@ -48,9 +48,10 @@ export class AIDiagnoserService {
       const processingTime = latency;
 
       // Extract tokens and response metadata safely
-      const promptTokens = result.usage?.promptTokens || 0;
-      const completionTokens = result.usage?.completionTokens || 0;
-      const totalTokens = result.usage?.totalTokens || 0;
+      const usage = result.usage as any;
+      const promptTokens = usage?.promptTokens || usage?.promptTokenCount || 0;
+      const completionTokens = usage?.completionTokens || usage?.completionTokenCount || 0;
+      const totalTokens = usage?.totalTokens || usage?.totalTokenCount || 0;
       
       // Determine response ID from response structure
       let responseId = 'unknown-id';

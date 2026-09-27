@@ -29,10 +29,10 @@ export default async function NGOGapReportsListPage() {
 
   // Fetch all Gap Reports for this NGO
   const reports = await prisma.gapReport.findMany({
-    where: { ngoId: ngoProfileId },
+    where: { matches: { some: { ngoId: ngoProfileId } } },
     include: {
       sponsorRequirement: {
-        select: { title: true }
+        select: { fileName: true }
       }
     },
     orderBy: { createdAt: "desc" }
@@ -71,8 +71,8 @@ export default async function NGOGapReportsListPage() {
                       {new Date(report.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <CardTitle className="mt-2 text-lg truncate" title={report.sponsorRequirement.title}>
-                    {report.sponsorRequirement.title}
+                  <CardTitle className="mt-2 text-lg truncate" title={report.sponsorRequirement.fileName}>
+                    {report.sponsorRequirement.fileName}
                   </CardTitle>
                   <CardDescription>
                     ID: {report.id.substring(0, 8)}...
