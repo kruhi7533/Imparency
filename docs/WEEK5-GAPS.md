@@ -28,15 +28,15 @@ step passes for the wrong reason, and one admin gate is decorative.
 | 2 | Admin verifies the NGO | ✅ |
 | 3a | Donor creates the CSR organisation | ✅ |
 | 3b | Donor creates/uploads the requirement | ✅ `DONOR_REVIEW`, v1 |
-| 4 | Admin verifies the donor | ⚠️ works, but changes nothing — see D-1 |
+| 4 | Admin verifies the donor | ✅ gates creation and matching — D-1 closed (`f047a61`) |
 | 5 | Show AI extraction, correct one value | ✅ `budgetMax` → 750000, `source=DONOR_ENTERED`, v2 |
 | — | Donor submits for validation → admin validates | ✅ `PENDING_ADMIN_REVIEW` → `VALIDATED` |
 | 6 | Ineligible NGO excluded **with its reason** | ⚠️ works only for candidates — see P-1, P-2 |
 | 7 | Eligible NGO on the ranked shortlist | ✅ rank #1, score 82, coverage 70% |
 | 8 | NGO opens it, submits proposal v1 | ✅ `PROPOSAL_SUBMITTED`, ₹550,000 |
-| 9 | Donor requests a change | ❌ **does not exist** — see D-2 |
-| 10 | NGO submits v2, v1 retained | ❌ **v1 destroyed** — see N-1 |
-| 11 | Donor approves → ready for contracting | ⚠️ different act, different wording — see D-3 |
+| 9 | Donor requests a change | ✅ "Request changes" with a required note — D-2 closed (`f047a61`) |
+| 10 | NGO submits v2, v1 retained | ✅ V1 kept in `OpportunityResponseRevision` — N-1 closed (`f047a61`) |
+| 11 | Donor approves → ready for contracting | ✅ "Proposal Approved — Ready for Contracting", version recorded — D-3 closed (`f047a61`) |
 
 Verbatim trace of the passing run:
 
@@ -74,7 +74,7 @@ two opposite verdicts, and the reason stored per rule. It works.
 
 ### Donor portal
 
-**D-1 — the donor verification gate is not wired. Admin's step-4 decision has no effect.**
+**~~D-1 — the donor verification gate is not wired. Admin's step-4 decision has no effect.~~** — **Closed in `f047a61`** (SPEC-1): `requireVerifiedFunder` gates form creation, upload and matching (matching checks the requirement's owner).
 Empirically proven, not inferred. Acting as `Hi-ideals Technologies`
 (`panStatus=VERIFIED`, `orgVerificationStatus=NOT_SUBMITTED`) the full chain ran:
 requirement created, submitted, admin-validated, matched, 1 eligible candidate.
@@ -95,7 +95,7 @@ close.
 *Fix:* call the funder check in `createRequirementFromForm`, the upload route,
 and `runMatching`. Small, and it makes step 4 mean something.
 
-**D-2 — there is no "request changes" on an NGO's proposal.** The donor's only
+**~~D-2 — there is no "request changes" on an NGO's proposal.~~** — **Closed in `f047a61`** (SPEC-3): `CHANGES_REQUESTED`, a required note, `POST …/responses/[responseId]/request-changes`, and the NGO revision screen. The donor's only
 action on a response is *Select this NGO* (`ResponsesPanel.tsx:89` →
 `selectResponse`). `OpportunityResponseStatus` contains `UNDER_REVIEW` and
 `SHORTLISTED`, and **no code writes either** — they are dead values. Step 9 of
@@ -105,7 +105,7 @@ the acceptance test cannot be performed at all.
 mandatory note, and an NGO-side reopen. This is the whole of the Week-5
 collaboration loop and the largest single missing piece.
 
-**D-3 — step 11 is a different act, and no screen says the required words.**
+**~~D-3 — step 11 is a different act, and no screen says the required words.~~** — **Closed in `f047a61`** (SPEC-6): approval requires a submitted proposal, records `selectedResponseVersion`, and all three portals say "Proposal approved — ready for contracting".
 `selectResponse` moves the requirement to `SELECTED`, marks the chosen response
 `SELECTED`, and **auto-rejects every other response** in the same transaction.
 That is "pick a winner", not "approve version 2". The donor page then shows
@@ -117,7 +117,7 @@ approve-this-version transition ahead of selection, and the terminal wording.
 
 ### NGO portal
 
-**N-1 — proposal v2 destroys v1.** `submitInterest` (`lib/requirements/opportunities.ts:200`)
+**~~N-1 — proposal v2 destroys v1.~~** — **Closed in `f047a61`** (SPEC-4): each resubmission snapshots the outgoing version into `OpportunityResponseRevision`; both portals show previous versions. `submitInterest` (`lib/requirements/opportunities.ts:200`)
 calls `opportunityResponse.update` in place. There is a `RequirementRevision`
 table for the *requirement* but nothing equivalent for a response, and
 `@@unique([requirementId, ngoId])` guarantees one row. Confirmed in the run:
@@ -226,11 +226,11 @@ migration. Harmless at runtime; it will surface as drift on the next
 
 ## Fix order
 
-1. **D-1** wire the funder gate into the requirements workflow — smallest change, biggest correctness win, and it makes admin's step 4 real.
+1. ~~**D-1** wire the funder gate into the requirements workflow — smallest change, biggest correctness win, and it makes admin's step 4 real.~~ Done (`f047a61`).
 2. **X-1** give candidate-stage exclusions a reason, and make the demo's ineligible NGO reach eligibility so step 6 renders.
-3. **D-2 + N-1** `CHANGES_REQUESTED` plus response revisions — steps 9 and 10, the only fully missing steps.
+3. ~~**D-2 + N-1** `CHANGES_REQUESTED` plus response revisions — steps 9 and 10, the only fully missing steps.~~ Done (`f047a61`).
 4. **A-1** resolve the phantom admin shortlist review, one way or the other.
-5. **D-3** the terminal approval wording and transition.
+5. ~~**D-3** the terminal approval wording and transition.~~ Done (`f047a61`).
 6. **A-2 / A-3 / X-2 / X-4** engine consolidation, `predev`, the doc-vs-engine mismatch on sector, drift cleanup.
 7. **N-2** seed the demo NGO so the whole run is reproducible from the repo.
 
