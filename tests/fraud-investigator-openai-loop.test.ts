@@ -19,6 +19,10 @@ vi.mock("@/lib/prisma", () => ({ default: prismaMock }));
 beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
+  // Belt and braces: if a previous test was aborted (timeout), its afterEach
+  // never ran and its fetch stub is still installed. Clearing here means a
+  // timeout can fail only its own test rather than the one after it.
+  vi.unstubAllGlobals();
 
   process.env.INVESTIGATOR_ENABLED = "true";
   process.env.INVESTIGATOR_PROVIDER = "custom";
@@ -66,10 +70,12 @@ beforeEach(() => {
  * `fraud-investigator-providers.test.ts` already deletes the one variable it
  * sets; this matches that.
  *
- * NOTE: this is hygiene, not a proven fix for the intermittent failures seen
- * in this file on 2026-09-26. Those could not be reproduced afterwards (three
- * consecutive clean full-suite runs) and both occurrences were on a loaded
- * machine, so timing pressure remains the likelier explanation.
+ * NOTE: this is hygiene, and it was never the fix for the intermittent failures
+ * seen on 2026-09-26. Those were reproduced on 2026-09-27 under
+ * `vitest --coverage` and diagnosed: the per-test dynamic import eats most of
+ * the default 5s timeout. See the comment above the describe block. "Timing
+ * pressure on a loaded machine" was the right instinct, but the pressure came
+ * from this file's own import cost, not from the machine alone.
  */
 const INVESTIGATOR_ENV_KEYS = [
   "INVESTIGATOR_ENABLED",
@@ -96,7 +102,32 @@ function openAIResponse(message: any, usage = { prompt_tokens: 100, completion_t
   };
 }
 
-describe("investigate() over an OpenAI-compatible provider", () => {
+/**
+ * Root cause of the intermittent failures first seen on 2026-09-26 and
+ * reproduced reliably on 2026-09-27 under `vitest --coverage`:
+ *
+ * every test here calls `await import("@/lib/fraud-investigator/run")` inside
+ * its own body, because `vi.resetModules()` in beforeEach means the graph has
+ * to be re-imported per test to pick up fresh INVESTIGATOR_* env. That import
+ * re-transforms the whole fraud-investigator graph and measured at ~2.4s of the
+ * 5s default timeout on this machine — with nothing left over for a loaded CPU
+ * or v8 coverage instrumentation, which is exactly when it tipped over.
+ *
+ * The failure then cascaded: when the first test timed out, vitest abandoned it
+ * mid-flight and its `vi.unstubAllGlobals()` never ran, so the NEXT test
+ * inherited test 1's fetch mock — whose canned second reply is
+ * close_investigation{clean:true}. That is why the second test reported
+ * riskLevel null instead of HIGH: it was a symptom of the timeout, not a
+ * separate bug in the investigator.
+ *
+ * Two changes, both in the harness rather than the product code:
+ *  - an explicit timeout that accounts for the import cost this file pays;
+ *  - unstubbing globals in beforeEach as well as afterEach, so an aborted test
+ *    can never hand its mock to the next one.
+ */
+const IMPORT_HEAVY_TIMEOUT_MS = 30_000;
+
+describe("investigate() over an OpenAI-compatible provider", { timeout: IMPORT_HEAVY_TIMEOUT_MS }, () => {
   it("calls a read tool, feeds the result back, then closes cleanly with no finding", async () => {
     let call = 0;
     const fetchMock = vi.fn(async (_url?: string, _init?: RequestInit) => {
