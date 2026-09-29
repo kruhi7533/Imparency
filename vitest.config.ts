@@ -31,5 +31,18 @@ export default defineConfig({
     // overridden per-file via a `// @vitest-environment jsdom` docblock) are
     // picked up too — added for tests/risk-compliance-client.test.tsx.
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
+    coverage: {
+      provider: "v8",
+      // Vitest defaults reportOnFailure to false; without this a single failing
+      // test silently suppresses the whole coverage report.
+      reportOnFailure: true,
+      reporter: ["text-summary", "json-summary", "json"],
+      reportsDirectory: "./coverage",
+      // Scope: the logic that tests can actually exercise without a browser or
+      // a database. Server Components / pages render through the Next runtime
+      // and are covered by the deployed-flow checks instead, not by vitest.
+      include: ["lib/**/*.ts", "app/api/**/route.ts"],
+      exclude: ["**/*.d.ts", "lib/generated/**"],
+    },
   },
 });
