@@ -6,7 +6,7 @@ const STEPS = [
   { label: "Validated", statuses: ["VALIDATED", "MATCHING"] },
   { label: "Shortlist", statuses: ["SHORTLISTED"] },
   { label: "NGO responses", statuses: ["NGO_RESPONSE"] },
-  { label: "Selected", statuses: ["SELECTED"] },
+  { label: "Proposal approved", statuses: ["SELECTED"] },
   { label: "Contracted", statuses: ["CONTRACTED"] },
 ];
 

@@ -1468,6 +1468,8 @@ enum RequirementStatus {
 enum OpportunityResponseStatus {
   INTERESTED
   PROPOSAL_SUBMITTED
+  /// The donor sent the proposal back with a note; the NGO may revise and resubmit.
+  CHANGES_REQUESTED
   UNDER_REVIEW
   SHORTLISTED
   REJECTED
@@ -1512,9 +1514,12 @@ model SponsorRequirement {
   reviewNote   String? // admin note for NEEDS_CORRECTION / REJECTED (shown to the donor)
 
   // Selection (one award per requirement)
-  selectedProjectId String?
-  selectedNgoId     String?
-  selectedAt        DateTime?
+  selectedProjectId       String?
+  selectedNgoId           String?
+  selectedAt              DateTime?
+  /// The proposal version the donor approved. Pins "approved" to what was
+  /// actually read, so a later edit cannot change what the contract is built on.
+  selectedResponseVersion Int?
 
   createdAt  DateTime              @default(now())
   updatedAt  DateTime              @updatedAt
@@ -1616,8 +1621,49 @@ model OpportunityResponse {
   reviewedAt             DateTime?
   reviewedById           String?
 
+  /// What the donor asked to be changed, verbatim. Kept because the NGO's next
+  /// version is a reply to it, and "why is this back with me" must have an
+  /// answer that survives a later edit to the requirement.
+  changeRequestNote   String?
+  changeRequestedAt   DateTime?
+  changeRequestedById String?
+  /// How many times the donor has sent it back. Renders as "Revision N".
+  revisionRounds      Int       @default(0)
+  /// Live version number. Every resubmission snapshots the outgoing values
+  /// into OpportunityResponseRevision first, so V1 survives V2.
+  version             Int       @default(1)
+
+  revisions OpportunityResponseRevision[]
+
   @@unique([requirementId, ngoId])
   @@index([ngoId])
+}
+
+/// Superseded versions of an NGO's proposal. One live OpportunityResponse per
+/// NGO per requirement; its history lives here, mirroring RequirementRevision.
+model OpportunityResponseRevision {
+  id                     String              @id @default(uuid())
+  responseId             String
+  response               OpportunityResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  version                Int
+  status                 String
+  projectId              String
+  proposedBudget         Decimal?            @db.Decimal(14, 2)
+  proposedDurationMonths Int?
+  implementationPlan     String?
+  milestones             Json?
+  expectedOutcomes       String?
+  complianceNotes        String?
+  submittedAt            DateTime
+  /// Why this version was superseded — the donor's change-request note when the
+  /// NGO was sent back, null when the NGO revised on its own initiative.
+  supersededBecause      String?
+  changedById            String?
+  changedByRole          String?
+  createdAt              DateTime            @default(now())
+
+  @@unique([responseId, version])
+  @@index([responseId])
 }
 
 model AgentExecution {

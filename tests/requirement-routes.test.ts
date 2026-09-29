@@ -17,6 +17,9 @@ vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("next-auth/next", () => ({ getServerSession: vi.fn() }));
 vi.mock("@/lib/storage", () => ({ readPrivateFile: vi.fn(), uploadPrivateFile: vi.fn(), deletePrivateFile: vi.fn() }));
 vi.mock("@/lib/requirements/extraction", () => ({ runExtraction: vi.fn() }));
+// The funder gate (SPEC-1) has its own tests in requirement-funder-gate.test.ts;
+// here every donor is a verified funder.
+vi.mock("@/lib/matching/funder", () => ({ checkFunderEligibility: vi.fn(async () => ({ ok: true })) }));
 
 import { getServerSession } from "next-auth/next";
 import { readPrivateFile } from "@/lib/storage";
@@ -380,7 +383,7 @@ describe("gap analysis gate and authorization", () => {
 });
 
 describe("donor selection", () => {
-  it("selects one NGO response and declines the rest", async () => {
+  it("approves one NGO proposal, pins its version, and declines the rest", async () => {
     signIn(DONOR);
     db.sponsorRequirement.findUnique.mockResolvedValue(row({ status: "NGO_RESPONSE" }));
     db.opportunityResponse.findUnique.mockResolvedValue({
@@ -389,19 +392,62 @@ describe("donor selection", () => {
       projectId: "proj-9",
       ngoId: "ngo-9",
       status: "PROPOSAL_SUBMITTED",
+      version: 2,
       ngo: { orgName: "Rural Learning Trust", verificationStatus: "VERIFIED", isSuspended: false },
     });
+    db.opportunityResponse.updateMany.mockResolvedValue({ count: 1 });
     const res = await selectNgo(post({ responseId: "resp-1" }), ctx);
     expect(res.status).toBe(200);
     expect(db.sponsorRequirement.updateMany.mock.calls[0][0].data).toMatchObject({
       status: "SELECTED",
       selectedProjectId: "proj-9",
       selectedNgoId: "ngo-9",
+      selectedResponseVersion: 2,
     });
+    // The approved row is guarded on the version the donor read…
+    expect(db.opportunityResponse.updateMany).toHaveBeenCalledWith({
+      where: { id: "resp-1", status: "PROPOSAL_SUBMITTED", version: 2 },
+      data: expect.objectContaining({ status: "SELECTED" }),
+    });
+    // …and every other response is declined.
     expect(db.opportunityResponse.updateMany).toHaveBeenCalledWith({
       where: { requirementId: "req-1", id: { not: "resp-1" }, status: { not: "REJECTED" } },
       data: expect.objectContaining({ status: "REJECTED" }),
     });
+  });
+
+  it("refuses to approve a proposal that is back with the NGO, or only an expression of interest", async () => {
+    signIn(DONOR);
+    db.sponsorRequirement.findUnique.mockResolvedValue(row({ status: "NGO_RESPONSE" }));
+    for (const status of ["CHANGES_REQUESTED", "INTERESTED"]) {
+      db.opportunityResponse.findUnique.mockResolvedValue({
+        id: "resp-1",
+        requirementId: "req-1",
+        projectId: "p",
+        ngoId: "n",
+        status,
+        version: 1,
+        ngo: { orgName: "X", verificationStatus: "VERIFIED", isSuspended: false },
+      });
+      expect((await selectNgo(post({ responseId: "resp-1" }), ctx)).status).toBe(400);
+    }
+    expect(db.sponsorRequirement.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses the approval (409) when the NGO resubmitted after the donor read it", async () => {
+    signIn(DONOR);
+    db.sponsorRequirement.findUnique.mockResolvedValue(row({ status: "NGO_RESPONSE" }));
+    db.opportunityResponse.findUnique.mockResolvedValue({
+      id: "resp-1",
+      requirementId: "req-1",
+      projectId: "p",
+      ngoId: "n",
+      status: "PROPOSAL_SUBMITTED",
+      version: 1,
+      ngo: { orgName: "X", verificationStatus: "VERIFIED", isSuspended: false },
+    });
+    db.opportunityResponse.updateMany.mockResolvedValue({ count: 0 });
+    expect((await selectNgo(post({ responseId: "resp-1" }), ctx)).status).toBe(409);
   });
 
   it("cannot select before NGOs have responded", async () => {

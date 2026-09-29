@@ -163,7 +163,7 @@ export function MatchResults({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
         <span>
           Run {new Date(run.createdAt).toLocaleString("en-IN")} · {run.candidateCount} projects evaluated · {run.eligibleCount} eligible ·{" "}
-          {excluded.length} excluded by hard rules
+          {excluded.length} excluded
         </span>
         <span
           className={`px-2 py-0.5 rounded-full border text-[10px] font-bold ${
@@ -199,7 +199,7 @@ export function MatchResults({
       {excluded.length > 0 && (
         <div className="border border-gray-800 rounded-2xl p-4">
           <button type="button" onClick={() => setShowExcluded((s) => !s)} className="text-xs font-semibold text-gray-300">
-            {showExcluded ? "▾" : "▸"} {excluded.length} project(s) excluded by hard eligibility rules
+            {showExcluded ? "▾" : "▸"} {excluded.length} {excluded.length === 1 ? "organisation was" : "organisations were"} excluded — {showExcluded ? "hide" : "see why"}
           </button>
           {showExcluded && (
             <ul className="mt-3 space-y-2 text-xs">

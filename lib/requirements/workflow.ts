@@ -15,8 +15,9 @@ import {
   REQUIREMENT_FIELDS,
   type RequirementFieldKey,
 } from "./provenance";
-import { assertAdmin, loadRequirementForActor, workflowRole, type Actor } from "./access";
+import { assertAdmin, loadRequirementForActor, requireVerifiedFunder, workflowRole, type Actor } from "./access";
 import { runExtraction } from "./extraction";
+import { assertResponseTransition } from "./response-status";
 
 /**
  * CSR requirement workflow actions. Every action: load → authorize (owner or
@@ -47,6 +48,7 @@ const FORM_REQUIRED: RequirementFieldKey[] = ["summary", "sector", "state"];
  */
 export async function createRequirementFromForm(actor: Actor, body: unknown) {
   if (actor.role !== "DONOR") throw new RequirementWorkflowError("Only donor accounts can create CSR requirements.", 403);
+  await requireVerifiedFunder(actor.id);
   const input = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
 
   const title = typeof input.title === "string" ? input.title.trim() : "";
@@ -375,6 +377,12 @@ export async function selectResponse(id: string, actor: Actor, responseId: unkno
     throw new RequirementWorkflowError("Response not found for this requirement.", 404);
   }
   if (response.status === "REJECTED") throw new RequirementWorkflowError("This response was already declined.", 400);
+  // Approval is of a submitted proposal — not an expression of interest, and not
+  // one that is back with the NGO for changes (WEEK5 SPEC-3/SPEC-6).
+  if (response.status === "CHANGES_REQUESTED") {
+    throw new RequirementWorkflowError("This proposal is back with the organisation for changes. Wait for the revised version.", 400);
+  }
+  assertResponseTransition(response.status, "SELECTED", role);
   if (response.ngo.verificationStatus !== "VERIFIED" || response.ngo.isSuspended) {
     throw new RequirementWorkflowError("This NGO is no longer verified and cannot be selected.", 400);
   }
@@ -385,17 +393,26 @@ export async function selectResponse(id: string, actor: Actor, responseId: unkno
       actorId: actor.id,
       actorRole: role,
       toStatus: "SELECTED",
-      data: { selectedProjectId: response.projectId, selectedNgoId: response.ngoId, selectedAt: now },
+      // SPEC-6: pin the approved version, so "approved" means what the donor read.
+      data: {
+        selectedProjectId: response.projectId,
+        selectedNgoId: response.ngoId,
+        selectedAt: now,
+        selectedResponseVersion: response.version,
+      },
       audit: {
         action: "NGO_SELECTED",
-        detail: `${response.ngo.orgName} selected.`,
-        metadata: { responseId, projectId: response.projectId, ngoId: response.ngoId },
+        detail: `Proposal V${response.version} from ${response.ngo.orgName} approved — ready for contracting.`,
+        metadata: { responseId, projectId: response.projectId, ngoId: response.ngoId, version: response.version },
       },
     });
-    await tx.opportunityResponse.update({
-      where: { id: responseId },
+    // Guarded on the version read above: if the NGO resubmitted in the meantime,
+    // the donor approved something that no longer exists — refuse, don't guess.
+    const { count } = await tx.opportunityResponse.updateMany({
+      where: { id: responseId, status: response.status, version: response.version },
       data: { status: "SELECTED", reviewedAt: now, reviewedById: actor.id },
     });
+    if (count === 0) throw ERRORS.conflict();
     await tx.opportunityResponse.updateMany({
       where: { requirementId: id, id: { not: responseId }, status: { not: "REJECTED" } },
       data: { status: "REJECTED", reviewedAt: now, reviewedById: actor.id },

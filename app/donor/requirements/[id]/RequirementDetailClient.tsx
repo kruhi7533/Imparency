@@ -109,13 +109,33 @@ export default function RequirementDetailClient({
       "Opportunity brief shared. The NGO sees only the sanitized brief, not your document."
     );
   const select = (responseId: string) => {
-    if (!window.confirm("Select this NGO? The other responses will be declined and this cannot be undone.")) return;
+    const r = responses.find((x) => x.id === responseId);
+    const label = r ? `proposal V${r.version} from ${r.ngo.orgName}` : "this proposal";
+    if (!window.confirm(`Approve ${label}? Every other proposal will be declined, and this cannot be undone.`)) return;
     perform(
       `select:${responseId}`,
       () => requirementApi(`/api/requirements/${id}/select`, { method: "POST", body: JSON.stringify({ responseId }) }),
-      "NGO selected. You can now initiate the grant contract."
+      "Proposal approved — ready for contracting."
     );
   };
+  /** Sends one proposal back to its NGO with a note. Resolves true on success so the form can close. */
+  const requestChanges = async (responseId: string, note: string) => {
+    let ok = false;
+    await perform(
+      `changes:${responseId}`,
+      async () => {
+        await requirementApi(`/api/requirements/${id}/responses/${responseId}/request-changes`, {
+          method: "POST",
+          body: JSON.stringify({ note }),
+        });
+        ok = true;
+      },
+      "Change request sent. The organisation has been notified and can submit a revised version."
+    );
+    return ok;
+  };
+  const waitingOnRevision = responses.filter((r) => r.status === "CHANGES_REQUESTED").length;
+  const readyToDecide = responses.filter((r) => r.status === "PROPOSAL_SUBMITTED" || r.status === "UNDER_REVIEW").length;
 
   return (
     <div className="px-6 lg:px-10 py-10 max-w-6xl space-y-6">
@@ -184,10 +204,34 @@ export default function RequirementDetailClient({
         ) : status === "SHORTLISTED" ? (
           <p>Your ranked shortlist is ready. Invite the NGOs you want to hear from — they receive a sanitized brief, never your document.</p>
         ) : status === "NGO_RESPONSE" ? (
-          <p>NGOs have responded. Review their proposals and select one.</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p>
+              Review each proposal: <span className="font-semibold text-white">request changes</span> with a note, or{" "}
+              <span className="font-semibold text-white">approve</span> the one you want to fund.
+              {readyToDecide > 0 && ` ${readyToDecide} ready for your decision.`}
+              {waitingOnRevision > 0 && ` ${waitingOnRevision} back with the organisation for changes.`}
+            </p>
+            {tab !== "responses" && (
+              <button type="button" onClick={() => setTab("responses")} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-950 text-xs font-bold">
+                Review proposals
+              </button>
+            )}
+          </div>
         ) : status === "SELECTED" ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p>You selected an NGO. Initiate the grant contract — it will be prefilled from this requirement and the NGO&apos;s proposal.</p>
+            <div>
+              <p className="text-base font-extrabold text-emerald-300">Proposal Approved — Ready for Contracting</p>
+              <p className="mt-1">
+                {(() => {
+                  const approved = responses.find((r) => r.status === "SELECTED");
+                  const v = requirement.selectedResponseVersion ?? approved?.version;
+                  return approved
+                    ? `You approved ${v ? `proposal V${v}` : "the proposal"} from ${approved.ngo.orgName}.`
+                    : "You approved a proposal.";
+                })()}{" "}
+                Initiate the grant contract — it is prefilled from this requirement and the approved proposal.
+              </p>
+            </div>
             <Link href={`/donor/contracts/new?requirementId=${id}`} className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-bold">
               Initiate Contract
             </Link>
@@ -305,7 +349,8 @@ export default function RequirementDetailClient({
           responses={responses}
           canSelect={status === "NGO_RESPONSE"}
           onSelect={select}
-          selectingId={busy?.startsWith("select:") ? busy.slice(7) : null}
+          onRequestChanges={requestChanges}
+          busyId={busy}
         />
       )}
     </div>

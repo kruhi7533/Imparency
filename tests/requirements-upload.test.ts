@@ -22,6 +22,9 @@ vi.mock("@/src/agents/requirements-agent/services/llm/llm.service", () => ({
   LlmUnavailableError: class LlmUnavailableError extends Error {},
 }));
 vi.mock("@/lib/requirements/extraction", () => ({ runExtraction: vi.fn() }));
+// The funder gate (SPEC-1) has its own tests in requirement-funder-gate.test.ts;
+// here every donor is a verified funder.
+vi.mock("@/lib/matching/funder", () => ({ checkFunderEligibility: vi.fn(async () => ({ ok: true })) }));
 
 import { getServerSession } from "next-auth/next";
 import { uploadPrivateFile } from "@/lib/storage";

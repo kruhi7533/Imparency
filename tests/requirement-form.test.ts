@@ -11,6 +11,9 @@ vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("next-auth/next", () => ({ getServerSession: vi.fn() }));
 vi.mock("@/lib/storage", () => ({ readPrivateFile: vi.fn(), uploadPrivateFile: vi.fn(), deletePrivateFile: vi.fn() }));
 vi.mock("@/lib/requirements/extraction", () => ({ runExtraction: vi.fn() }));
+// The funder gate (SPEC-1) has its own tests in requirement-funder-gate.test.ts;
+// here every donor is a verified funder.
+vi.mock("@/lib/matching/funder", () => ({ checkFunderEligibility: vi.fn(async () => ({ ok: true })) }));
 
 import { getServerSession } from "next-auth/next";
 import { POST } from "@/app/api/requirements/route";

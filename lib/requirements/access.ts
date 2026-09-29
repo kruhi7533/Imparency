@@ -1,7 +1,8 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { ERRORS } from "./errors";
+import { checkFunderEligibility } from "@/lib/matching/funder";
+import { ERRORS, RequirementWorkflowError } from "./errors";
 
 /**
  * Identity + authorization for the CSR requirement workflow. Identity and role
@@ -30,6 +31,24 @@ export async function requireActor(): Promise<Actor> {
   const actor = await getActor();
   if (!actor) throw ERRORS.unauthenticated();
   return actor;
+}
+
+/**
+ * Can this donor put a requirement in front of an NGO? (WEEK5 SPEC-1)
+ *
+ * Reuses lib/matching/funder.ts rather than re-deriving the rule: the funder-led
+ * engine and this one must not disagree about who is allowed to fund. Its
+ * messages are kept as-is — each failure (not institutional, PAN unverified,
+ * organisation not verified / pending / rejected) has a different fix.
+ *
+ * Gated only where money and NGO attention start: creating a requirement and
+ * running matching. Editing, submitting and admin validation stay open so a
+ * company whose verification is PENDING can finish preparing while it waits.
+ */
+export async function requireVerifiedFunder(userId: string | null): Promise<void> {
+  if (!userId) throw new RequirementWorkflowError("This requirement has no owning donor account.", 403);
+  const check = await checkFunderEligibility(userId);
+  if (!check.ok) throw new RequirementWorkflowError(check.message ?? "Your organisation is not verified yet.", 403);
 }
 
 export function isRequirementOwner(req: { sponsorId: string | null }, actor: Actor): boolean {

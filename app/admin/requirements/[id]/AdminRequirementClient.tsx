@@ -310,10 +310,22 @@ export default function AdminRequirementClient({
                 responses={responses}
                 canSelect={status === "NGO_RESPONSE"}
                 onSelect={(responseId) => {
-                  if (!window.confirm("Select this NGO on the donor's behalf? Other responses will be declined.")) return;
-                  perform(`select:${responseId}`, () => post("select", { responseId }), "NGO selected.");
+                  if (!window.confirm("Approve this proposal on the donor's behalf? Every other proposal will be declined.")) return;
+                  perform(`select:${responseId}`, () => post("select", { responseId }), "Proposal approved — ready for contracting.");
                 }}
-                selectingId={busy?.startsWith("select:") ? busy.slice(7) : null}
+                onRequestChanges={async (responseId, note) => {
+                  let ok = false;
+                  await perform(
+                    `changes:${responseId}`,
+                    async () => {
+                      await post(`responses/${responseId}/request-changes`, { note });
+                      ok = true;
+                    },
+                    "Change request sent to the organisation."
+                  );
+                  return ok;
+                }}
+                busyId={busy}
               />
             )}
 
