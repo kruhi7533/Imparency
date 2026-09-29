@@ -53,7 +53,21 @@ describe("resolveNgoId", () => {
   });
 });
 
-describe("investigate() guard", () => {
+/**
+ * Same import-cost trap as `fraud-investigator-openai-loop.test.ts`: the test
+ * below calls `vi.resetModules()` and then re-imports the whole
+ * fraud-investigator graph inside its own body, which re-transforms the graph
+ * and measured at roughly half the default 5s budget on this machine. With
+ * nothing left over it times out whenever the CPU is busy — it failed exactly
+ * that way on 2026-09-29 during a loaded full-suite run, then passed in 16s
+ * alone.
+ *
+ * The timeout is on the harness, not the product: the code under test is not
+ * slow, the per-test module reload is.
+ */
+const IMPORT_HEAVY_TIMEOUT_MS = 30_000;
+
+describe("investigate() guard", { timeout: IMPORT_HEAVY_TIMEOUT_MS }, () => {
   /**
    * This block needs the investigator ENABLED, because a disabled one short-
    * circuits before it ever reaches the NGO guard under test.
