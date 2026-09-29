@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { verifyRazorpaySignature } from "@/lib/razorpay-webhook";
+import { verifyRazorpaySignature, webhookDedupeKey, isUniqueConstraintError } from "@/lib/razorpay-webhook";
 import { sendPaymentRetryEmail } from "@/lib/email";
 import { generateRetryToken, getRetryDelay } from "@/lib/retry-utils";
 import { evaluateReceiptEligibility, issueTaxReceipt, queueReceiptClaim } from "@/lib/tax-receipt";
@@ -44,7 +44,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true }, { status: 200 });
       }
 
-      // If already successfully processed, return 200
+      // Fast path only — NOT the correctness boundary. This read happens
+      // outside the transaction below, so two concurrent deliveries of the same
+      // payment can both pass it. It is kept because it lets an ordinary
+      // sequential redelivery skip the compliance-snapshot queries entirely.
+      // The guarantee itself is the WebhookEvent row created in the transaction.
       if (donation.status === "SUCCESS") {
         return NextResponse.json({ received: true }, { status: 200 });
       }
@@ -99,28 +103,54 @@ export async function POST(req: Request) {
       }
 
       // Update database: status: SUCCESS, increment project.raisedAmount, increment user.totalDonated
-      await prisma.$transaction([
-        prisma.donation.update({
-          where: { id: donation.id },
-          data: {
-            status: "SUCCESS",
-            razorpayPaymentId: paymentId,
-            ...(complianceSnapshot ? { complianceSnapshot: complianceSnapshot as any } : {}),
-          },
-        }),
-        prisma.project.update({
-          where: { id: donation.projectId },
-          data: {
-            raisedAmount: { increment: donation.amount },
-          },
-        }),
-        prisma.user.update({
-          where: { id: donation.donorId },
-          data: {
-            totalDonated: { increment: donation.amount },
-          },
-        }),
-      ]);
+      //
+      // The WebhookEvent insert is FIRST and is what makes this safe to replay.
+      // Both increments below are relative (`increment`), so applying them a
+      // second time silently inflates a project's raised total and a donor's
+      // lifetime giving — with no failed write to alert anyone. On a concurrent
+      // redelivery the second transaction violates the unique dedupeKey, which
+      // rolls back this whole batch rather than just the insert.
+      try {
+        await prisma.$transaction([
+          prisma.webhookEvent.create({
+            data: {
+              eventType: eventName,
+              dedupeKey: webhookDedupeKey(eventName, paymentId),
+              payloadId: paymentId,
+              eventId: event.id ?? null,
+            },
+          }),
+          prisma.donation.update({
+            where: { id: donation.id },
+            data: {
+              status: "SUCCESS",
+              razorpayPaymentId: paymentId,
+              ...(complianceSnapshot ? { complianceSnapshot: complianceSnapshot as any } : {}),
+            },
+          }),
+          prisma.project.update({
+            where: { id: donation.projectId },
+            data: {
+              raisedAmount: { increment: donation.amount },
+            },
+          }),
+          prisma.user.update({
+            where: { id: donation.donorId },
+            data: {
+              totalDonated: { increment: donation.amount },
+            },
+          }),
+        ]);
+      } catch (err) {
+        // Lost the race, or this payment was already applied by an earlier
+        // delivery. Nothing was written. Acknowledge so Razorpay stops
+        // retrying — a 5xx here would have it redeliver a payment that is
+        // already correctly recorded.
+        if (isUniqueConstraintError(err)) {
+          return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
+        }
+        throw err;
+      }
 
       // If milestoneIds present: move PENDING milestones -> IN_PROGRESS
       if (donation.milestoneIds && donation.milestoneIds.length > 0) {
@@ -301,14 +331,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (error) {
     const err = error as Error;
-    // Returning 200 stops Razorpay retrying, so anything that lands here is a
-    // payment we took and may never have recorded. There is no second chance
-    // and no automatic recovery — this is the most important error in the app.
+    // Anything landing here is a payment we took and may never have recorded.
+    //
+    // This used to answer 200, which stopped Razorpay retrying and made every
+    // such failure a permanent silent loss — the comment here already said so.
+    // It answers 5xx now because redelivery became SAFE in the same change that
+    // added the WebhookEvent dedupe: a retry of an already-applied payment now
+    // loses on the unique key instead of double-incrementing. Handing the retry
+    // back to Razorpay is the only automatic recovery this path has.
+    //
+    // The tradeoff is a permanently malformed payload retrying for a while. A
+    // retry loop is visible in logs and costs nothing; a dropped payment is
+    // invisible and costs money.
     captureError(
       err,
       { scope: "donations/webhook", operation: "process_webhook" },
       "fatal"
     );
-    return NextResponse.json({ error: err.message, fallback: true }, { status: 200 });
+    // No err.message in the body — it can carry row ids and query text, and
+    // audit/error context in this repo is ids-only by rule.
+    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 }

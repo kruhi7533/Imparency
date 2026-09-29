@@ -24,3 +24,28 @@ export function verifyRazorpaySignature(rawBody: string, signature: string, secr
 
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
 }
+
+/**
+ * The idempotency key a webhook delivery is recorded under.
+ *
+ * Keyed on the SUBJECT (a payment id), not on the delivery. Razorpay retries a
+ * failed delivery with a fresh event id, so deduping on the delivery id would
+ * let the same captured payment apply twice — which is the entire failure this
+ * is here to prevent. `eventType` is part of the key so that `payment.captured`
+ * and `payment.failed` for one payment stay separate rows.
+ *
+ * Lives here next to the signature check so a second webhook route cannot
+ * invent a different key shape for the same idea.
+ */
+export function webhookDedupeKey(eventType: string, payloadId: string, provider = "razorpay"): string {
+  return `${provider}:${eventType}:${payloadId}`;
+}
+
+/**
+ * Prisma's unique-constraint violation. The concurrent-redelivery loser hits
+ * this on `WebhookEvent.dedupeKey`, and it means "already applied", not
+ * "failed" — callers acknowledge with 200 so Razorpay stops retrying.
+ */
+export function isUniqueConstraintError(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { code?: string }).code === "P2002";
+}
