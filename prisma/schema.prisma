@@ -2484,3 +2484,183 @@ model WebhookEvent {
 
   @@index([eventType, processedAt])
 }
+
+// ─── Week 6: finance ledger, reconciliation, exceptions ──────────────────────
+
+/// What kind of money event a ledger row records.
+///
+/// Deliberately small. Disbursement/payout is the LAST module and is not
+/// modelled here — see CLAUDE.md. Adding a member means deciding what balance
+/// it moves, so the set stays closed until that decision is made.
+enum LedgerEntryType {
+  /// A payment Razorpay confirmed as captured. The only entry the webhook writes.
+  DONATION_CAPTURED
+  /// A captured payment given back. Not written by any code path yet — the
+  /// refund webhook is not wired — but the reconciler must be able to read it.
+  DONATION_REFUNDED
+  /// Funds an admin has committed to an approved proposal. No money leaves the
+  /// platform; this is an intent, recorded so allocations can be reconciled
+  /// against what was actually received.
+  ALLOCATION_COMMITTED
+}
+
+/// Which way the money moved, from the platform's point of view.
+enum LedgerDirection {
+  CREDIT
+  DEBIT
+}
+
+/// Append-only record of every money event. The ledger is the finance system's
+/// memory: `Project.raisedAmount` and `User.totalDonated` are running counters
+/// that can drift, and nothing could previously prove what they should be.
+///
+/// INVARIANT: rows are IMMUTABLE. Nothing updates or deletes a LedgerEntry —
+/// a correction is a new, opposing entry. There is no update route, and the
+/// reconciler only ever reads this table.
+///
+/// `amount` is always POSITIVE; `direction` carries the sign. A signed amount
+/// invites `sum(amount)` to silently mean different things to different
+/// callers.
+model LedgerEntry {
+  id String @id @default(uuid())
+
+  entryType LedgerEntryType
+  direction LedgerDirection
+
+  /// Decimal, never float — see CLAUDE.md on finance. 12,2 matches Proposal.
+  amount   Decimal @db.Decimal(12, 2)
+  currency String  @default("INR")
+
+  /// Ids only, no relations and no names: this table outlives PII retention on
+  /// the rows it points at, the same rule AdminActionLog follows. A dangling id
+  /// is a reconciliation exception, not a foreign-key error that blocks a write
+  /// in the payment path.
+  projectId   String?
+  ngoId       String?
+  donorId     String?
+  donationId  String?
+  /// The provider's own id (a Razorpay payment id), for tying a row back to a
+  /// statement line.
+  externalRef String?
+
+  /// What makes replay safe. Written inside the same transaction as the money
+  /// movement, so a redelivery that gets past every other guard still cannot
+  /// append a second row for one event.
+  idempotencyKey String @unique
+
+  /// When the money moved, per the source of truth — NOT when we heard about
+  /// it. A webhook redelivered two days late must not land in today's totals.
+  occurredAt DateTime
+  recordedAt DateTime @default(now())
+
+  /// Context for the finance view. Ids and amounts only.
+  metadata Json?
+
+  @@index([projectId, entryType])
+  @@index([donorId])
+  @@index([donationId])
+  @@index([occurredAt])
+}
+
+/// A finance fact that does not add up. Each type is one specific
+/// discrepancy a human has to look at.
+enum FinanceExceptionType {
+  /// A captured payment arrived for an order with no donation row. Previously
+  /// this was a console.warn and a 200 — money taken, nothing recorded, nobody
+  /// told.
+  UNMATCHED_PAYMENT
+  /// A SUCCESS donation with no DONATION_CAPTURED entry. Either the ledger
+  /// write was lost or the donation was marked paid by something other than
+  /// the webhook.
+  MISSING_LEDGER_ENTRY
+  /// Project.raisedAmount disagrees with the sum of its ledger entries.
+  PROJECT_TOTAL_MISMATCH
+  /// User.totalDonated disagrees with the sum of that donor's ledger entries.
+  DONOR_TOTAL_MISMATCH
+  /// A donation stuck PENDING long past any plausible checkout. Either the
+  /// donor abandoned it (harmless, but it inflates nothing and should be
+  /// visible) or a webhook never arrived (money taken, unrecorded).
+  STALE_PENDING_DONATION
+}
+
+enum FinanceExceptionStatus {
+  OPEN
+  RESOLVED
+}
+
+/// The finance exception queue: what reconciliation found and nobody has
+/// answered for yet.
+///
+/// Re-running reconciliation must not duplicate a finding, so each exception
+/// carries a `dedupeKey` derived from (type + subject). A recurrence bumps
+/// `lastSeenAt`/`occurrences` on the existing OPEN row. A finding that was
+/// resolved and then RECURS opens a new row, because "we looked at this and
+/// closed it, and it came back" is a different fact from "still open".
+model FinanceException {
+  id String @id @default(uuid())
+
+  type   FinanceExceptionType
+  status FinanceExceptionStatus @default(OPEN)
+
+  /// `type:entityId[:generation]` — unique, and the whole reason a re-run is
+  /// idempotent.
+  dedupeKey String @unique
+
+  /// "PROJECT" | "DONOR" | "DONATION" | "PAYMENT"
+  entityType String
+  entityId   String
+
+  /// Ids and amounts only — never a donor name or email. Audit and error
+  /// context in this repo is ids-only by rule and this queue is read by admins
+  /// who may not be entitled to the underlying PII.
+  summary String
+
+  /// What the counter says vs what the ledger says. Null where the exception
+  /// is not an arithmetic one (an unmatched payment has an observed amount and
+  /// no expectation).
+  expectedAmount Decimal? @db.Decimal(12, 2)
+  observedAmount Decimal? @db.Decimal(12, 2)
+
+  detail Json?
+
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  occurrences Int      @default(1)
+
+  resolvedAt     DateTime?
+  resolvedById   String?
+  /// Required by the resolve route. Closing a money discrepancy without saying
+  /// why is indistinguishable from hiding it.
+  resolutionNote String?
+
+  @@index([status, type])
+  @@index([entityType, entityId])
+  @@index([lastSeenAt])
+}
+
+/// One execution of the reconciler. Kept so the finance page can answer "when
+/// was this last checked, and against how much" — an exception queue that is
+/// empty because nothing ever ran looks identical to one that is empty because
+/// everything balances.
+model ReconciliationRun {
+  id String @id @default(uuid())
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  /// Null when the platform ran it on a schedule rather than an admin clicking.
+  triggeredById String?
+
+  /// Counts, not rows: the findings themselves are FinanceException.
+  projectsChecked  Int @default(0)
+  donationsChecked Int @default(0)
+  donorsChecked    Int @default(0)
+  opened           Int @default(0)
+  recurred         Int @default(0)
+  autoResolved     Int @default(0)
+
+  /// Set when the run itself failed. A crashed run must not read as "clean".
+  error String?
+
+  @@index([startedAt])
+}

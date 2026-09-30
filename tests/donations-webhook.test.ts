@@ -8,6 +8,8 @@ vi.mock("@/lib/prisma", () => ({
     user: { update: vi.fn() },
     nGOCompliance: { findUnique: vi.fn() },
     webhookEvent: { create: vi.fn() },
+    ledgerEntry: { create: vi.fn() },
+    financeException: { findFirst: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn() },
     impactReport: { findFirst: vi.fn() },
     $transaction: vi.fn(),
   },
@@ -139,13 +141,32 @@ describe("webhook signature verification", () => {
 });
 
 describe("payment.captured", () => {
-  it("acknowledges unknown orders without touching the database", async () => {
+  it("raises a finance exception for a payment with no donation row", async () => {
+    // Money was taken and there is nothing to attach it to. This used to be a
+    // console.warn and a silent 200 — the payment left no trace at all.
     mocked(prisma.donation.findFirst).mockResolvedValue(null as never);
+    mocked(prisma.financeException.findFirst).mockResolvedValue(null as never);
+    mocked(prisma.financeException.count).mockResolvedValue(0 as never);
 
-    const res = await POST(signedRequest(capturedEvent("order_unknown")));
+    const res = await POST(
+      signedRequest({
+        event: "payment.captured",
+        payload: {
+          payment: { entity: { order_id: "order_unknown", id: "pay_orphan", amount: 250000 } },
+        },
+      })
+    );
 
     expect(res.status).toBe(200);
+    // No money moved: there is nothing to move it against.
     expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.financeException.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        type: "UNMATCHED_PAYMENT",
+        entityType: "PAYMENT",
+        entityId: "pay_orphan",
+      }),
+    });
   });
 
   it("is idempotent: an already-SUCCESS donation is not processed again", async () => {
@@ -223,7 +244,20 @@ describe("payment.captured", () => {
     // cast has to go through unknown. The assertion below is the point: this
     // route must use the ARRAY form.
     const batch = mocked(prisma.$transaction).mock.calls[0][0] as unknown as unknown[];
-    expect(batch).toHaveLength(4);
+    // WebhookEvent, LedgerEntry, donation, project, user. The ledger entry is
+    // in the batch for the same reason as the WebhookEvent row: written
+    // outside it, the ledger could disagree with the counters it exists to
+    // check precisely when a write failed halfway.
+    expect(batch).toHaveLength(5);
+    expect(prisma.ledgerEntry.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        entryType: "DONATION_CAPTURED",
+        direction: "CREDIT",
+        donationId: "don_1",
+        externalRef: "pay_999",
+        idempotencyKey: "DONATION_CAPTURED:pay_999",
+      }),
+    });
   });
 
   it("acknowledges without re-applying when a concurrent delivery already won the race", async () => {

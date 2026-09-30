@@ -5,6 +5,8 @@ import { sendPaymentRetryEmail } from "@/lib/email";
 import { generateRetryToken, getRetryDelay } from "@/lib/retry-utils";
 import { evaluateReceiptEligibility, issueTaxReceipt, queueReceiptClaim } from "@/lib/tax-receipt";
 import { captureError } from "@/lib/observability";
+import { donationCapturedEntry, paymentOccurredAt } from "@/lib/ledger";
+import { recordUnmatchedPayment } from "@/lib/finance-exceptions";
 
 export async function POST(req: Request) {
   try {
@@ -40,8 +42,18 @@ export async function POST(req: Request) {
       });
 
       if (!donation) {
+        // Money was taken and there is nothing on our side to attach it to.
+        // This used to be a console.warn and a 200: the payment simply
+        // vanished from the platform's point of view, and nobody was told.
+        // It is now a finance exception, which is the only record that this
+        // payment exists at all — a human has to match or refund it.
+        //
+        // Acknowledged with 200 on purpose. Razorpay redelivering will not
+        // conjure the missing donation row, and recordException dedupes, so a
+        // retry loop would add nothing but noise.
         console.warn(`Donation with order_id ${order_id} not found.`);
-        return NextResponse.json({ received: true }, { status: 200 });
+        await recordUnmatchedPayment(paymentEntity, order_id);
+        return NextResponse.json({ received: true, unmatched: true }, { status: 200 });
       }
 
       // Fast path only — NOT the correctness boundary. This read happens
@@ -119,6 +131,22 @@ export async function POST(req: Request) {
               payloadId: paymentId,
               eventId: event.id ?? null,
             },
+          }),
+          // The ledger entry belongs INSIDE this transaction, next to the
+          // increments it exists to check. Written outside it, the ledger and
+          // the counters could disagree exactly when something failed halfway
+          // — the one case the ledger is here to settle. Its own unique
+          // idempotencyKey is a second, independent guard against replay.
+          prisma.ledgerEntry.create({
+            data: donationCapturedEntry({
+              donationId: donation.id,
+              projectId: donation.projectId,
+              ngoId: donation.project.ngoId,
+              donorId: donation.donorId,
+              amount: donation.amount,
+              paymentId,
+              occurredAt: paymentOccurredAt(paymentEntity.created_at),
+            }),
           }),
           prisma.donation.update({
             where: { id: donation.id },

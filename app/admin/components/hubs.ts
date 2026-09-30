@@ -139,6 +139,11 @@ export const ADMIN_HUBS: Hub[] = [
         hint: "How long each queue is allowed to keep someone waiting, and what is currently past that.",
       },
       {
+        href: "/admin/finance",
+        label: "Finance",
+        hint: "The money ledger, what does not reconcile against it, and when it was last checked.",
+      },
+      {
         href: "/admin/audit",
         label: "Audit trail",
         hint: "Every recorded admin decision, across every entity — searchable by actor, action, entity type, and date.",

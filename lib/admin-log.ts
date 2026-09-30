@@ -112,7 +112,13 @@ export type AdminAction =
   // comment on AdminActionLog.adminId for why these live in the same trail as
   // human actions rather than a separate one.
   | "NGO_REVERIFICATION_REQUIRED"
-  | "NGO_REVERIFICATION_CLEARED";
+  | "NGO_REVERIFICATION_CLEARED"
+  // Finance control plane. A reconciliation run is logged because "when was
+  // the money last checked, and by whom" is the first question an auditor
+  // asks; resolving a finance exception is logged because it is someone
+  // saying a discrepancy has been answered for.
+  | "RECONCILIATION_RUN"
+  | "FINANCE_EXCEPTION_RESOLVED";
 
 /**
  * Every entity an admin action can be recorded against.
@@ -146,6 +152,8 @@ export const ADMIN_ENTITY_TYPES = [
   "MATCHING_JOB",
   "MATCH_CANDIDATE",
   "PROPOSAL",
+  "FINANCE_EXCEPTION",
+  "RECONCILIATION_RUN",
 ] as const;
 
 export type AdminEntityType = (typeof ADMIN_ENTITY_TYPES)[number];
