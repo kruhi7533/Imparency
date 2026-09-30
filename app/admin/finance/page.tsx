@@ -32,6 +32,8 @@ const EXCEPTION_LABEL: Record<FinanceExceptionType, string> = {
   PROJECT_TOTAL_MISMATCH: "Project raised total disagrees with the ledger",
   DONOR_TOTAL_MISMATCH: "Donor lifetime total disagrees with the ledger",
   STALE_PENDING_DONATION: "Donation stuck pending",
+  PAYMENT_AMOUNT_MISMATCH: "Captured amount differs from the donation",
+  REFUND_AFTER_RECEIPT: "Refund on a donation with an 80G receipt issued",
 };
 
 /**
@@ -43,6 +45,12 @@ const EXCEPTION_LABEL: Record<FinanceExceptionType, string> = {
 const SEVERE: FinanceExceptionType[] = [
   FinanceExceptionType.UNMATCHED_PAYMENT,
   FinanceExceptionType.MISSING_LEDGER_ENTRY,
+  // The provider took a different amount than we recorded. No other check can
+  // find this one, because every other check compares our records against our
+  // own records.
+  FinanceExceptionType.PAYMENT_AMOUNT_MISMATCH,
+  // A tax document exists for money that was given back.
+  FinanceExceptionType.REFUND_AFTER_RECEIPT,
 ];
 
 function rupees(value: { toString(): string } | null | undefined): string {
@@ -193,7 +201,7 @@ export default async function AdminFinancePage() {
                 : "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30"
             }`}
           >
-            {severeCount} unaccounted-for {severeCount === 1 ? "payment" : "payments"}
+            {severeCount} money {severeCount === 1 ? "discrepancy" : "discrepancies"}
           </span>
           <span className="px-3 py-1.5 rounded-full text-sm font-bold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">
             {exceptions.length} open exception{exceptions.length === 1 ? "" : "s"}

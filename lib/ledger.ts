@@ -73,6 +73,63 @@ export function donationCapturedEntry(args: {
 }
 
 /**
+ * The provider speaks in PAISE. Every amount in this database is in rupees.
+ *
+ * Converted through Decimal, never through a float divide: `1/3` of a rupee
+ * is not the kind of thing to hand to binary floating point in a money path.
+ * Returns null for a payload we cannot read, so the caller has to decide what
+ * an unreadable amount means rather than silently getting zero.
+ */
+export function paiseToRupees(paise: unknown): Prisma.Decimal | null {
+  if (typeof paise !== "number" || !Number.isFinite(paise) || paise < 0) return null;
+  if (!Number.isInteger(paise)) return null;
+  return new Prisma.Decimal(paise).dividedBy(100);
+}
+
+/**
+ * The ledger entry for money given back.
+ *
+ * DEBIT: it reverses a credit rather than erasing it. The original capture
+ * stays exactly as it was recorded — a donation that was made and then
+ * refunded is two facts, and a ledger that deleted the first one could not
+ * answer "was this ever paid?".
+ *
+ * Keyed on the REFUND id, not the payment id: a payment can be refunded more
+ * than once (partial refunds), and keying on the payment would silently drop
+ * every refund after the first.
+ */
+export function donationRefundedEntry(args: {
+  donationId: string;
+  projectId: string;
+  ngoId: string;
+  donorId: string;
+  amount: Prisma.Decimal | string | number;
+  refundId: string;
+  paymentId: string;
+  occurredAt: Date;
+  /** Recorded because a refund on a receipted donation is a compliance event. */
+  hadTaxReceipt?: boolean;
+}): Prisma.LedgerEntryCreateInput {
+  return {
+    entryType: LedgerEntryType.DONATION_REFUNDED,
+    direction: LedgerDirection.DEBIT,
+    amount: new Prisma.Decimal(args.amount.toString()),
+    projectId: args.projectId,
+    ngoId: args.ngoId,
+    donorId: args.donorId,
+    donationId: args.donationId,
+    externalRef: args.refundId,
+    idempotencyKey: ledgerIdempotencyKey(LedgerEntryType.DONATION_REFUNDED, args.refundId),
+    occurredAt: args.occurredAt,
+    metadata: {
+      source: "razorpay_webhook",
+      paymentId: args.paymentId,
+      hadTaxReceipt: Boolean(args.hadTaxReceipt),
+    },
+  };
+}
+
+/**
  * Razorpay reports `created_at` as unix SECONDS, and only on some payloads.
  *
  * A missing or malformed timestamp must not become `new Date(NaN)` — that

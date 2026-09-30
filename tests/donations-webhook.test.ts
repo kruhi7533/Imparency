@@ -200,14 +200,16 @@ describe("payment.captured", () => {
         }),
       })
     );
-    expect(prisma.project.update).toHaveBeenCalledWith({
-      where: { id: "proj_1" },
-      data: { raisedAmount: { increment: 500 } },
-    });
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: "user_1" },
-      data: { totalDonated: { increment: 500 } },
-    });
+    // Decimal, not a raw number, and it carries the amount the provider
+    // CAPTURED rather than the one the donation was created for — the two are
+    // equal here, and the mismatch case is covered in
+    // tests/donations-webhook-refund.test.ts.
+    const projectCall = mocked(prisma.project.update).mock.calls[0][0] as any;
+    expect(projectCall.where).toEqual({ id: "proj_1" });
+    expect(projectCall.data.raisedAmount.increment.toFixed(2)).toBe("500.00");
+    const donorCall = mocked(prisma.user.update).mock.calls[0][0] as any;
+    expect(donorCall.where).toEqual({ id: "user_1" });
+    expect(donorCall.data.totalDonated.increment.toFixed(2)).toBe("500.00");
   });
 
   /**

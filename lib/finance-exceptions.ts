@@ -179,3 +179,89 @@ export async function recordUnmatchedPayment(
     detail: { orderId, currency: typeof payment.currency === "string" ? payment.currency : null },
   });
 }
+
+/**
+ * The provider captured an amount other than the one we asked for.
+ *
+ * This is the only check in the system that compares our records against the
+ * MONEY rather than against each other. Everything reconciliation does comes
+ * back to the donation's requested amount, so an over- or under-capture is
+ * invisible to it: the ledger, the project total and the donor total would
+ * all agree, and all three would be wrong together.
+ *
+ * Subject is the DONATION, because that is the row a human has to decide
+ * about — refund the difference, invoice it, or accept it.
+ */
+export async function recordAmountMismatch(args: {
+  donationId: string;
+  projectId: string;
+  requested: Prisma.Decimal;
+  captured: Prisma.Decimal;
+  paymentId: string;
+}): Promise<RecordOutcome> {
+  const delta = args.captured.minus(args.requested);
+  return recordException({
+    type: FinanceExceptionType.PAYMENT_AMOUNT_MISMATCH,
+    entityType: "DONATION",
+    entityId: args.donationId,
+    summary: `Captured ${args.captured.toFixed(2)} against a donation created for ${args.requested.toFixed(2)} (delta ${delta.toFixed(2)})`,
+    expectedAmount: args.requested,
+    observedAmount: args.captured,
+    detail: {
+      projectId: args.projectId,
+      paymentId: args.paymentId,
+      delta: delta.toFixed(2),
+      overpaid: delta.greaterThan(0),
+    },
+  });
+}
+
+/**
+ * Money was given back on a donation that already has an 80G receipt.
+ *
+ * The receipt is a document the donor may have filed with their tax return,
+ * so it cannot simply be voided in the database and forgotten. Raised as a
+ * finding rather than handled automatically, because what has to happen next
+ * depends on facts the platform does not hold — whether the return was filed,
+ * and in which assessment year.
+ */
+export async function recordRefundAfterReceipt(args: {
+  donationId: string;
+  refundedAmount: Prisma.Decimal;
+  refundId: string;
+}): Promise<RecordOutcome> {
+  return recordException({
+    type: FinanceExceptionType.REFUND_AFTER_RECEIPT,
+    entityType: "DONATION",
+    entityId: args.donationId,
+    summary: `Refund of ${args.refundedAmount.toFixed(2)} on a donation that already has an 80G receipt`,
+    observedAmount: args.refundedAmount,
+    detail: { refundId: args.refundId },
+  });
+}
+
+/**
+ * A refund for a payment we have no donation row for.
+ *
+ * Reuses UNMATCHED_PAYMENT — the finding is the same shape ("a money event we
+ * cannot attach to anything") and splitting it would put two queues in front
+ * of one problem. The summary says which direction the money went, because
+ * that changes what the human does about it.
+ */
+export async function recordUnmatchedRefund(args: {
+  refundId: string;
+  paymentId: string;
+  amount: Prisma.Decimal | null;
+}): Promise<RecordOutcome> {
+  return recordException({
+    type: FinanceExceptionType.UNMATCHED_PAYMENT,
+    entityType: "PAYMENT",
+    entityId: args.paymentId,
+    summary:
+      args.amount === null
+        ? "Refund against a payment with no donation row (amount not reported)"
+        : `Refund of ${args.amount.toFixed(2)} against a payment with no donation row`,
+    observedAmount: args.amount,
+    detail: { refundId: args.refundId, direction: "REFUND" },
+  });
+}

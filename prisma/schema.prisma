@@ -2581,6 +2581,16 @@ enum FinanceExceptionType {
   /// donor abandoned it (harmless, but it inflates nothing and should be
   /// visible) or a webhook never arrived (money taken, unrecorded).
   STALE_PENDING_DONATION
+  /// The provider captured an amount other than the one the donation was
+  /// created for. Nothing else in the system can catch this: every other
+  /// check compares our own records against each other, and they all derive
+  /// from the SAME requested amount, so they agree with each other while
+  /// disagreeing with the money.
+  PAYMENT_AMOUNT_MISMATCH
+  /// Money was refunded on a donation that already has an 80G tax receipt.
+  /// The receipt is a document a donor may have filed with their return, so
+  /// this needs a human and a paper trail, not a silent status change.
+  REFUND_AFTER_RECEIPT
 }
 
 enum FinanceExceptionStatus {
