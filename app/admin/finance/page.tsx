@@ -253,6 +253,14 @@ export default async function AdminFinancePage() {
                         );
                       })()}
                       <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{exception.summary}</p>
+                      {exception.entityType === "DONATION" ? (
+                        <Link
+                          href={`/admin/finance/donations/${exception.entityId}`}
+                          className="mt-1 inline-block text-xs font-bold text-gray-600 dark:text-gray-300 underline underline-offset-2"
+                        >
+                          Open the full transaction →
+                        </Link>
+                      ) : null}
                       <p className="mt-1 text-xs text-gray-400 font-mono break-all">
                         {exception.entityType} {exception.entityId}
                       </p>
@@ -355,7 +363,16 @@ export default async function AdminFinancePage() {
                         {rupees(entry.amount)}
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-gray-400 break-all">
-                        {entry.externalRef ?? entry.donationId ?? "—"}
+                        {entry.donationId ? (
+                          <Link
+                            href={`/admin/finance/donations/${entry.donationId}`}
+                            className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-200"
+                          >
+                            {entry.externalRef ?? entry.donationId}
+                          </Link>
+                        ) : (
+                          entry.externalRef ?? "—"
+                        )}
                       </td>
                     </tr>
                     );
@@ -366,7 +383,8 @@ export default async function AdminFinancePage() {
           )}
           <p className="mt-2 text-xs text-gray-400">
             Ledger entries are immutable. A correction is recorded as a new, opposing entry —
-            nothing here is ever edited or deleted.
+            nothing here is ever edited or deleted. Open a reference to see the whole transaction:
+            documents, evidence, and everything that happened to it.
           </p>
         </section>
       </div>
