@@ -73,6 +73,68 @@ export function donationCapturedEntry(args: {
 }
 
 /**
+ * The entry types that represent CASH the platform actually received or
+ * returned.
+ *
+ * This list is load-bearing, and forgetting it is the easy way to break
+ * reconciliation. Every counter check compares a running total against the
+ * ledger — but `Project.raisedAmount` and `User.totalDonated` only ever move
+ * on donations, while the ledger also carries commitments, which are not cash
+ * and never touched those counters. Netting all entry types together would
+ * report every allocation as project-total drift: a loud, confident, entirely
+ * wrong finding.
+ *
+ * A new entry type belongs here ONLY if the money genuinely moved in or out.
+ */
+export const CASH_ENTRY_TYPES: LedgerEntryType[] = [
+  LedgerEntryType.DONATION_CAPTURED,
+  LedgerEntryType.DONATION_REFUNDED,
+];
+
+/**
+ * The ledger entry for money committed to an approved proposal.
+ *
+ * On the COMMITMENT plane, not the cash one — see CASH_ENTRY_TYPES. It is
+ * recorded here anyway, rather than only on the Allocation row, so that the
+ * money log stays the one chronological answer to "what happened to this
+ * opportunity's funds", commitments and receipts alike.
+ *
+ * DEBIT because the amount is spoken for and no longer available to commit
+ * elsewhere. It does NOT reduce any cash balance, and nothing in the
+ * reconciler reads it.
+ *
+ * Keyed on the allocation id, so approving the same allocation twice — a
+ * double-clicked button, a retried request — appends nothing the second time.
+ */
+export function allocationCommittedEntry(args: {
+  allocationId: string;
+  opportunityId: string;
+  ngoId: string;
+  amount: Prisma.Decimal | string | number;
+  proposalId: string;
+  occurredAt: Date;
+}): Prisma.LedgerEntryCreateInput {
+  return {
+    entryType: LedgerEntryType.ALLOCATION_COMMITTED,
+    direction: LedgerDirection.DEBIT,
+    amount: new Prisma.Decimal(args.amount.toString()),
+    // No projectId and no donorId: a commitment belongs to an opportunity and
+    // an organisation, and filling those columns would put it inside the very
+    // per-project and per-donor sums it must stay out of.
+    ngoId: args.ngoId,
+    externalRef: args.allocationId,
+    idempotencyKey: ledgerIdempotencyKey(LedgerEntryType.ALLOCATION_COMMITTED, args.allocationId),
+    occurredAt: args.occurredAt,
+    metadata: {
+      source: "allocation_approval",
+      opportunityId: args.opportunityId,
+      proposalId: args.proposalId,
+      plane: "COMMITMENT",
+    },
+  };
+}
+
+/**
  * The provider speaks in PAISE. Every amount in this database is in rupees.
  *
  * Converted through Decimal, never through a float divide: `1/3` of a rupee

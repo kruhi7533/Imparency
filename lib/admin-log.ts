@@ -118,7 +118,13 @@ export type AdminAction =
   // asks; resolving a finance exception is logged because it is someone
   // saying a discrepancy has been answered for.
   | "RECONCILIATION_RUN"
-  | "FINANCE_EXCEPTION_RESOLVED";
+  | "FINANCE_EXCEPTION_RESOLVED"
+  // Committing money to an approved proposal. Proposing and deciding are
+  // logged separately even when the same admin does both, because the whole
+  // point of recording them apart is that they need not be one person.
+  | "ALLOCATION_PROPOSED"
+  | "ALLOCATION_APPROVED"
+  | "ALLOCATION_REJECTED";
 
 /**
  * Every entity an admin action can be recorded against.
@@ -154,6 +160,7 @@ export const ADMIN_ENTITY_TYPES = [
   "PROPOSAL",
   "FINANCE_EXCEPTION",
   "RECONCILIATION_RUN",
+  "ALLOCATION",
 ] as const;
 
 export type AdminEntityType = (typeof ADMIN_ENTITY_TYPES)[number];

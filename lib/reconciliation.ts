@@ -7,6 +7,7 @@ import {
   type FinanceEntityType,
 } from "@/lib/finance-exceptions";
 import { captureError } from "@/lib/observability";
+import { CASH_ENTRY_TYPES } from "@/lib/ledger";
 
 /**
  * Reconciliation: does what we say we hold match what we can prove we received?
@@ -133,8 +134,12 @@ export async function runReconciliation(
     // 1. Project raised totals
     const [projects, projectSums] = await Promise.all([
       prisma.project.findMany({ select: { id: true, raisedAmount: true } }),
+      // CASH ONLY. The ledger also carries commitments, which never moved
+      // Project.raisedAmount — including them here would report every
+      // allocation as drift. See CASH_ENTRY_TYPES.
       prisma.ledgerEntry.groupBy({
         by: ["projectId", "direction"],
+        where: { entryType: { in: CASH_ENTRY_TYPES } },
         _sum: { amount: true },
       }),
     ]);
@@ -162,6 +167,7 @@ export async function runReconciliation(
       }),
       prisma.ledgerEntry.groupBy({
         by: ["donorId", "direction"],
+        where: { entryType: { in: CASH_ENTRY_TYPES } },
         _sum: { amount: true },
       }),
     ]);

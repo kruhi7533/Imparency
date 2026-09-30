@@ -139,6 +139,11 @@ export const ADMIN_HUBS: Hub[] = [
         hint: "How long each queue is allowed to keep someone waiting, and what is currently past that.",
       },
       {
+        href: "/admin/allocations",
+        label: "Allocations",
+        hint: "Money committed to approved proposals, and what is left of each opportunity's budget.",
+      },
+      {
         href: "/admin/finance",
         label: "Finance",
         hint: "The money ledger, what does not reconcile against it, and when it was last checked.",

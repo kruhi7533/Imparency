@@ -215,6 +215,20 @@ describe("a reconciliation run", () => {
     expect(types).not.toContain("UNMATCHED_PAYMENT");
   });
 
+  it("ignores commitments when checking cash counters", async () => {
+    // The ledger carries allocations as well as donations, and an allocation
+    // never moved Project.raisedAmount. Netting all entry types together would
+    // report every commitment as project-total drift — a loud, confident,
+    // entirely wrong finding.
+    await runReconciliation();
+
+    for (const call of db.ledgerEntry.groupBy.mock.calls) {
+      expect(call[0].where).toEqual({
+        entryType: { in: ["DONATION_CAPTURED", "DONATION_REFUNDED"] },
+      });
+    }
+  });
+
   it("records who asked for the run", async () => {
     await runReconciliation({ triggeredById: "admin_1" });
     expect(db.reconciliationRun.create).toHaveBeenCalledWith(

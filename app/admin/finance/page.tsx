@@ -5,7 +5,7 @@ import { FinanceExceptionStatus, FinanceExceptionType, LedgerDirection } from "@
 import prisma from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import SchemaOutOfSync from "@/app/admin/components/SchemaOutOfSync";
-import { netAmount } from "@/lib/ledger";
+import { netAmount, CASH_ENTRY_TYPES } from "@/lib/ledger";
 import { loadFinanceLabels, shortId, EMPTY_LABELS, type FinanceLabels } from "@/lib/finance-labels";
 import { RunReconciliationButton, ResolveExceptionForm } from "./FinanceActions";
 
@@ -116,7 +116,15 @@ export default async function AdminFinancePage() {
         take: 25,
       }),
       prisma.reconciliationRun.findFirst({ orderBy: { startedAt: "desc" } }),
-      prisma.ledgerEntry.groupBy({ by: ["direction"], _sum: { amount: true }, _count: true }),
+      // Cash only: the headline figure answers "what did we receive and keep",
+      // and netting commitments into it would understate that by whatever has
+      // been promised but not yet paid out.
+      prisma.ledgerEntry.groupBy({
+        by: ["direction"],
+        where: { entryType: { in: CASH_ENTRY_TYPES } },
+        _sum: { amount: true },
+        _count: true,
+      }),
     ]);
   } catch (err: any) {
     if (err?.code === "P2021" || err?.code === "P2022") {
@@ -207,7 +215,7 @@ export default async function AdminFinancePage() {
             {exceptions.length} open exception{exceptions.length === 1 ? "" : "s"}
           </span>
           <span className="px-3 py-1.5 rounded-full text-sm font-bold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">
-            {rupees(net)} across {entryCount} ledger {entryCount === 1 ? "entry" : "entries"}
+            {rupees(net)} cash across {entryCount} {entryCount === 1 ? "entry" : "entries"}
           </span>
         </div>
 
