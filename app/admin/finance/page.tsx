@@ -6,6 +6,7 @@ import prisma from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import SchemaOutOfSync from "@/app/admin/components/SchemaOutOfSync";
 import { netAmount } from "@/lib/ledger";
+import { loadFinanceLabels, shortId, EMPTY_LABELS, type FinanceLabels } from "@/lib/finance-labels";
 import { RunReconciliationButton, ResolveExceptionForm } from "./FinanceActions";
 
 export const runtime = "nodejs";
@@ -49,6 +50,43 @@ function rupees(value: { toString(): string } | null | undefined): string {
   return `₹${Number(value.toString()).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+/**
+ * Who a finding is actually about, in words.
+ *
+ * An exception card used to read "DONATION f7da6928-b098-…", which tells an
+ * admin nothing they can act on — they had to go and look every id up by hand
+ * before they could even judge whether the finding mattered. Resolved from the
+ * live tables at render time; see lib/finance-labels.ts for why the names are
+ * not stored on the row itself.
+ *
+ * An UNMATCHED_PAYMENT deliberately resolves to nothing: not knowing who it
+ * belongs to IS the finding.
+ */
+function describeSubject(
+  exception: { entityType: string; entityId: string },
+  labels: FinanceLabels,
+): { line: string; sub?: string } | null {
+  if (exception.entityType === "DONOR") {
+    const name = labels.donors.get(exception.entityId);
+    return name ? { line: name } : null;
+  }
+  if (exception.entityType === "PROJECT") {
+    const project = labels.projects.get(exception.entityId);
+    return project ? { line: project.orgName, sub: project.title } : null;
+  }
+  if (exception.entityType === "DONATION") {
+    const donation = labels.donations.get(exception.entityId);
+    if (!donation) return null;
+    const donor = labels.donors.get(donation.donorId) ?? shortId(donation.donorId);
+    const project = labels.projects.get(donation.projectId);
+    return {
+      line: `${donor} → ${project?.orgName ?? shortId(donation.projectId)}`,
+      sub: project?.title,
+    };
+  }
+  return null;
+}
+
 export default async function AdminFinancePage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
@@ -77,6 +115,29 @@ export default async function AdminFinancePage() {
       return <SchemaOutOfSync title="Finance view failed to load" detail={err?.meta?.table || err?.message} />;
     }
     throw err;
+  }
+
+  // One batched lookup for both tables. Best-effort: if it fails, the page
+  // still renders with ids — a finance view that 500s because a name could not
+  // be found would be a worse trade than an unfriendly one.
+  let labels: FinanceLabels = EMPTY_LABELS;
+  try {
+    labels = await loadFinanceLabels({
+      donorIds: [
+        ...entries.map((e) => e.donorId),
+        ...exceptions.filter((e) => e.entityType === "DONOR").map((e) => e.entityId),
+      ],
+      projectIds: [
+        ...entries.map((e) => e.projectId),
+        ...exceptions.filter((e) => e.entityType === "PROJECT").map((e) => e.entityId),
+      ],
+      donationIds: [
+        ...entries.map((e) => e.donationId),
+        ...exceptions.filter((e) => e.entityType === "DONATION").map((e) => e.entityId),
+      ],
+    });
+  } catch {
+    labels = EMPTY_LABELS;
   }
 
   const net = netAmount(
@@ -171,6 +232,18 @@ export default async function AdminFinancePage() {
                       <p className="text-sm font-bold text-gray-900 dark:text-white">
                         {EXCEPTION_LABEL[exception.type]}
                       </p>
+                      {(() => {
+                        const subject = describeSubject(exception, labels);
+                        if (!subject) return null;
+                        return (
+                          <p className="mt-0.5 text-sm font-medium text-gray-700 dark:text-gray-200">
+                            {subject.line}
+                            {subject.sub && (
+                              <span className="text-gray-400 font-normal"> · {subject.sub}</span>
+                            )}
+                          </p>
+                        );
+                      })()}
                       <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{exception.summary}</p>
                       <p className="mt-1 text-xs text-gray-400 font-mono break-all">
                         {exception.entityType} {exception.entityId}
@@ -226,16 +299,39 @@ export default async function AdminFinancePage() {
                 <thead className="text-xs uppercase tracking-wide text-gray-400 border-b border-gray-200 dark:border-gray-800">
                   <tr>
                     <th className="text-left font-bold px-4 py-3">Occurred</th>
+                    <th className="text-left font-bold px-4 py-3">From</th>
+                    <th className="text-left font-bold px-4 py-3">To</th>
                     <th className="text-left font-bold px-4 py-3">Type</th>
                     <th className="text-right font-bold px-4 py-3">Amount</th>
                     <th className="text-left font-bold px-4 py-3">Reference</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.map((entry) => (
+                  {entries.map((entry) => {
+                    const project = entry.projectId ? labels.projects.get(entry.projectId) : undefined;
+                    const donor = entry.donorId ? labels.donors.get(entry.donorId) : undefined;
+                    return (
                     <tr key={entry.id} className="border-b last:border-0 border-gray-100 dark:border-gray-800">
                       <td className="px-4 py-3 whitespace-nowrap text-gray-500 dark:text-gray-400">
-                        {entry.occurredAt.toLocaleString("en-IN")}
+                        <div>{entry.occurredAt.toLocaleDateString("en-IN")}</div>
+                        <div className="text-xs text-gray-400">
+                          {entry.occurredAt.toLocaleTimeString("en-IN")}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-900 dark:text-white">
+                        {donor ?? (
+                          <span className="font-mono text-xs text-gray-400">{shortId(entry.donorId)}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {project ? (
+                          <>
+                            <div className="text-gray-900 dark:text-white">{project.orgName}</div>
+                            <div className="text-xs text-gray-400">{project.title}</div>
+                          </>
+                        ) : (
+                          <span className="font-mono text-xs text-gray-400">{shortId(entry.projectId)}</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">
                         {entry.entryType.replaceAll("_", " ").toLowerCase()}
@@ -254,7 +350,8 @@ export default async function AdminFinancePage() {
                         {entry.externalRef ?? entry.donationId ?? "—"}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
