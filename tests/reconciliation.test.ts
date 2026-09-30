@@ -8,6 +8,7 @@ vi.mock("@/lib/prisma", () => ({
     user: { findMany: vi.fn() },
     donation: { findMany: vi.fn() },
     ledgerEntry: { groupBy: vi.fn(), findMany: vi.fn() },
+    allocation: { findMany: vi.fn() },
   },
 }));
 vi.mock("@/lib/finance-exceptions", async () => {
@@ -56,6 +57,7 @@ beforeEach(() => {
   db.donation.findMany.mockResolvedValue([]);
   db.ledgerEntry.groupBy.mockResolvedValue([]);
   db.ledgerEntry.findMany.mockResolvedValue([]);
+  db.allocation.findMany.mockResolvedValue([]);
   record.mockResolvedValue("opened");
   autoResolve.mockResolvedValue(0);
 });
@@ -227,6 +229,90 @@ describe("a reconciliation run", () => {
         entryType: { in: ["DONATION_CAPTURED", "DONATION_REFUNDED"] },
       });
     }
+  });
+
+  it("flags a commitment nobody confirmed as paid", async () => {
+    // An allocation is a promise. Until this check existed nothing asked
+    // whether it was kept, so an organisation could be planning work against
+    // money that never arrived while the platform showed it as committed.
+    const longAgo = new Date(Date.now() - 45 * 86_400_000);
+    db.allocation.findMany.mockResolvedValue([
+      { id: "alloc_1", amount: dec("100000.00"), ngoId: "ngo_1", decidedAt: longAgo, payments: [] },
+    ]);
+
+    await runReconciliation();
+
+    const call = record.mock.calls.find((c: any[]) => c[0].type === "UNCONFIRMED_ALLOCATION");
+    expect(call).toBeTruthy();
+    expect(call[0].entityId).toBe("alloc_1");
+    expect(call[0].observedAmount.toFixed(2)).toBe("0.00");
+    expect(call[0].detail.state).toBe("UNFUNDED");
+  });
+
+  it("flags a commitment only PARTLY confirmed", async () => {
+    const longAgo = new Date(Date.now() - 45 * 86_400_000);
+    db.allocation.findMany.mockResolvedValue([
+      {
+        id: "alloc_1",
+        amount: dec("100000.00"),
+        ngoId: "ngo_1",
+        decidedAt: longAgo,
+        payments: [{ amount: dec("40000.00") }],
+      },
+    ]);
+
+    await runReconciliation();
+
+    const call = record.mock.calls.find((c: any[]) => c[0].type === "UNCONFIRMED_ALLOCATION");
+    expect(call[0].detail.state).toBe("PARTIALLY_FUNDED");
+  });
+
+  it("closes the finding once the money is confirmed", async () => {
+    const longAgo = new Date(Date.now() - 45 * 86_400_000);
+    db.allocation.findMany.mockResolvedValue([
+      {
+        id: "alloc_1",
+        amount: dec("100000.00"),
+        ngoId: "ngo_1",
+        decidedAt: longAgo,
+        payments: [{ amount: dec("100000.00") }],
+      },
+    ]);
+
+    await runReconciliation();
+
+    expect(record.mock.calls.find((c: any[]) => c[0].type === "UNCONFIRMED_ALLOCATION")).toBeFalsy();
+    expect(autoResolve).toHaveBeenCalledWith(
+      "UNCONFIRMED_ALLOCATION",
+      ["alloc_1"],
+      expect.any(String),
+    );
+  });
+
+  it("does not call an overfunded commitment unconfirmed", async () => {
+    // Overfunding is its own problem; saying "unconfirmed" about money that
+    // plainly arrived would point at the wrong one.
+    const longAgo = new Date(Date.now() - 45 * 86_400_000);
+    db.allocation.findMany.mockResolvedValue([
+      {
+        id: "alloc_1",
+        amount: dec("100000.00"),
+        ngoId: "ngo_1",
+        decidedAt: longAgo,
+        payments: [{ amount: dec("150000.00") }],
+      },
+    ]);
+
+    await runReconciliation();
+
+    expect(record.mock.calls.find((c: any[]) => c[0].type === "UNCONFIRMED_ALLOCATION")).toBeFalsy();
+  });
+
+  it("only looks at commitments past the grace period", async () => {
+    await runReconciliation();
+    const where = db.allocation.findMany.mock.calls[0][0].where;
+    expect(where.status).toBe("APPROVED");
+    expect(where.decidedAt.lt).toBeInstanceOf(Date);
   });
 
   it("records who asked for the run", async () => {

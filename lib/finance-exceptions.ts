@@ -22,7 +22,7 @@ import { isUniqueConstraintError } from "@/lib/razorpay-webhook";
  *    erase the first investigation's outcome.
  */
 
-export type FinanceEntityType = "PROJECT" | "DONOR" | "DONATION" | "PAYMENT";
+export type FinanceEntityType = "PROJECT" | "DONOR" | "DONATION" | "PAYMENT" | "ALLOCATION";
 
 export interface ExceptionFinding {
   type: FinanceExceptionType;
@@ -146,6 +146,9 @@ export const AUTO_RESOLVABLE_TYPES: FinanceExceptionType[] = [
   FinanceExceptionType.DONOR_TOTAL_MISMATCH,
   FinanceExceptionType.MISSING_LEDGER_ENTRY,
   FinanceExceptionType.STALE_PENDING_DONATION,
+  // Closes on its own once the money is confirmed — unlike an unmatched
+  // payment, the reconciler can see the evidence that resolves it.
+  FinanceExceptionType.UNCONFIRMED_ALLOCATION,
 ];
 
 /**

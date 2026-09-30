@@ -135,6 +135,46 @@ export function allocationCommittedEntry(args: {
 }
 
 /**
+ * A confirmed transfer against a commitment.
+ *
+ * CREDIT on the commitment plane: the promise has been honoured, in whole or
+ * in part. It is NOT in CASH_ENTRY_TYPES, and that is the honest choice —
+ * today a funder pays an organisation directly, so the platform never received
+ * this money and must not count it as its own. What this records is that a
+ * named admin attested to a transfer, with a reference a statement can be
+ * checked against.
+ *
+ * Keyed on the payment row, so one confirmation lands once however many times
+ * it is submitted.
+ */
+export function allocationFundedEntry(args: {
+  paymentId: string;
+  allocationId: string;
+  ngoId: string;
+  amount: Prisma.Decimal | string | number;
+  reference: string | null;
+  occurredAt: Date;
+  recordedById: string;
+}): Prisma.LedgerEntryCreateInput {
+  return {
+    entryType: LedgerEntryType.ALLOCATION_FUNDED,
+    direction: LedgerDirection.CREDIT,
+    amount: new Prisma.Decimal(args.amount.toString()),
+    ngoId: args.ngoId,
+    externalRef: args.reference ?? args.allocationId,
+    idempotencyKey: ledgerIdempotencyKey(LedgerEntryType.ALLOCATION_FUNDED, args.paymentId),
+    occurredAt: args.occurredAt,
+    metadata: {
+      source: "allocation_payment",
+      allocationId: args.allocationId,
+      attestedBy: args.recordedById,
+      plane: "COMMITMENT",
+      hasReference: Boolean(args.reference),
+    },
+  };
+}
+
+/**
  * The provider speaks in PAISE. Every amount in this database is in rupees.
  *
  * Converted through Decimal, never through a float divide: `1/3` of a rupee

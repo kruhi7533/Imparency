@@ -25,12 +25,19 @@ export interface FinanceLabels {
   projects: Map<string, { title: string; orgName: string; ngoId: string }>;
   /** donationId -> the two ends of that donation, for exceptions that name one */
   donations: Map<string, { donorId: string; projectId: string }>;
+  /**
+   * ngoId -> organisation name. Needed on its own because a COMMITMENT entry
+   * names an organisation and nothing else — no donor, no project — so without
+   * this a committed allocation renders as an unexplained debit.
+   */
+  ngos: Map<string, string>;
 }
 
 export const EMPTY_LABELS: FinanceLabels = {
   donors: new Map(),
   projects: new Map(),
   donations: new Map(),
+  ngos: new Map(),
 };
 
 /**
@@ -43,10 +50,12 @@ export async function loadFinanceLabels(ids: {
   donorIds?: Array<string | null | undefined>;
   projectIds?: Array<string | null | undefined>;
   donationIds?: Array<string | null | undefined>;
+  ngoIds?: Array<string | null | undefined>;
 }): Promise<FinanceLabels> {
   const donorIds = unique(ids.donorIds);
   const projectIds = unique(ids.projectIds);
   const donationIds = unique(ids.donationIds);
+  const directNgoIds = unique(ids.ngoIds);
 
   // Donations are resolved first: one names a donor and a project that the
   // other two lookups then have to cover.
@@ -60,7 +69,7 @@ export async function loadFinanceLabels(ids: {
   const allDonorIds = unique([...donorIds, ...donations.map((d) => d.donorId)]);
   const allProjectIds = unique([...projectIds, ...donations.map((d) => d.projectId)]);
 
-  const [donors, projects] = await Promise.all([
+  const [donors, projects, ngos] = await Promise.all([
     allDonorIds.length
       ? prisma.user.findMany({
           where: { id: { in: allDonorIds } },
@@ -71,6 +80,12 @@ export async function loadFinanceLabels(ids: {
       ? prisma.project.findMany({
           where: { id: { in: allProjectIds } },
           select: { id: true, title: true, ngoId: true, ngo: { select: { orgName: true } } },
+        })
+      : Promise.resolve([]),
+    directNgoIds.length
+      ? prisma.nGOProfile.findMany({
+          where: { id: { in: directNgoIds } },
+          select: { id: true, orgName: true },
         })
       : Promise.resolve([]),
   ]);
@@ -84,6 +99,12 @@ export async function loadFinanceLabels(ids: {
       ]),
     ),
     donations: new Map(donations.map((d) => [d.id, { donorId: d.donorId, projectId: d.projectId }])),
+    // The projects above already name their organisation; this map adds the
+    // ones reached only through a commitment entry.
+    ngos: new Map([
+      ...projects.map((p) => [p.ngoId, p.ngo?.orgName ?? "Unknown organisation"] as const),
+      ...ngos.map((n) => [n.id, n.orgName] as const),
+    ]),
   };
 }
 

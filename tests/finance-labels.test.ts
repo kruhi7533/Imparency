@@ -5,6 +5,7 @@ vi.mock("@/lib/prisma", () => ({
     donation: { findMany: vi.fn() },
     user: { findMany: vi.fn() },
     project: { findMany: vi.fn() },
+    nGOProfile: { findMany: vi.fn() },
   },
 }));
 
@@ -27,6 +28,7 @@ beforeEach(() => {
   db.donation.findMany.mockResolvedValue([]);
   db.user.findMany.mockResolvedValue([]);
   db.project.findMany.mockResolvedValue([]);
+  db.nGOProfile.findMany.mockResolvedValue([]);
 });
 
 describe("loadFinanceLabels", () => {
@@ -79,6 +81,29 @@ describe("loadFinanceLabels", () => {
     await loadFinanceLabels({ donorIds: ["user_1"] });
     // A finance view has no business pulling a donor's PAN or address.
     expect(db.user.findMany.mock.calls[0][0].select).toEqual({ id: true, name: true, email: true });
+  });
+});
+
+describe("organisations behind commitment entries", () => {
+  it("resolves an ngoId that no project or donation leads to", async () => {
+    // A committed allocation names an organisation and nothing else. Without
+    // this lookup it renders as an unexplained debit.
+    db.nGOProfile.findMany.mockResolvedValue([{ id: "ngo_7", orgName: "Kiran Welfare Society" }]);
+
+    const labels = await loadFinanceLabels({ ngoIds: ["ngo_7"] });
+
+    expect(labels.ngos.get("ngo_7")).toBe("Kiran Welfare Society");
+  });
+
+  it("also carries the organisations reached through a project", async () => {
+    db.project.findMany.mockResolvedValue([
+      { id: "proj_1", title: "Clean Water", ngoId: "ngo_1", ngo: { orgName: "Jal Trust" } },
+    ]);
+
+    const labels = await loadFinanceLabels({ projectIds: ["proj_1"] });
+
+    expect(labels.ngos.get("ngo_1")).toBe("Jal Trust");
+    expect(db.nGOProfile.findMany).not.toHaveBeenCalled();
   });
 });
 

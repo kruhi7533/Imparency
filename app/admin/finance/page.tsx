@@ -34,6 +34,7 @@ const EXCEPTION_LABEL: Record<FinanceExceptionType, string> = {
   STALE_PENDING_DONATION: "Donation stuck pending",
   PAYMENT_AMOUNT_MISMATCH: "Captured amount differs from the donation",
   REFUND_AFTER_RECEIPT: "Refund on a donation with an 80G receipt issued",
+  UNCONFIRMED_ALLOCATION: "Committed money never confirmed as received",
 };
 
 /**
@@ -51,6 +52,8 @@ const SEVERE: FinanceExceptionType[] = [
   FinanceExceptionType.PAYMENT_AMOUNT_MISMATCH,
   // A tax document exists for money that was given back.
   FinanceExceptionType.REFUND_AFTER_RECEIPT,
+  // An organisation may be planning work against money that never arrived.
+  FinanceExceptionType.UNCONFIRMED_ALLOCATION,
 ];
 
 function rupees(value: { toString(): string } | null | undefined): string {
@@ -151,6 +154,8 @@ export default async function AdminFinancePage() {
         ...entries.map((e) => e.donationId),
         ...exceptions.filter((e) => e.entityType === "DONATION").map((e) => e.entityId),
       ],
+      // Commitment entries name an organisation and nothing else.
+      ngoIds: entries.map((e) => e.ngoId),
     });
   } catch {
     labels = EMPTY_LABELS;
@@ -334,6 +339,10 @@ export default async function AdminFinancePage() {
                   {entries.map((entry) => {
                     const project = entry.projectId ? labels.projects.get(entry.projectId) : undefined;
                     const donor = entry.donorId ? labels.donors.get(entry.donorId) : undefined;
+                    // A commitment has no donor and no project — it belongs to
+                    // an opportunity and an organisation.
+                    const org = entry.ngoId ? labels.ngos.get(entry.ngoId) : undefined;
+                    const isCommitment = !CASH_ENTRY_TYPES.includes(entry.entryType);
                     return (
                     <tr key={entry.id} className="border-b last:border-0 border-gray-100 dark:border-gray-800">
                       <td className="px-4 py-3 whitespace-nowrap text-gray-500 dark:text-gray-400">
@@ -344,7 +353,9 @@ export default async function AdminFinancePage() {
                       </td>
                       <td className="px-4 py-3 text-gray-900 dark:text-white">
                         {donor ?? (
-                          <span className="font-mono text-xs text-gray-400">{shortId(entry.donorId)}</span>
+                          <span className="text-xs text-gray-400">
+                            {isCommitment ? "Opportunity budget" : shortId(entry.donorId)}
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -352,6 +363,11 @@ export default async function AdminFinancePage() {
                           <>
                             <div className="text-gray-900 dark:text-white">{project.orgName}</div>
                             <div className="text-xs text-gray-400">{project.title}</div>
+                          </>
+                        ) : org ? (
+                          <>
+                            <div className="text-gray-900 dark:text-white">{org}</div>
+                            <div className="text-xs text-gray-400">committed, not paid</div>
                           </>
                         ) : (
                           <span className="font-mono text-xs text-gray-400">{shortId(entry.projectId)}</span>

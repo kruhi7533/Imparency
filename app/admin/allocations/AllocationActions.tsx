@@ -156,3 +156,117 @@ export function AllocationDecision({ allocationId }: { allocationId: string }) {
     </div>
   );
 }
+
+/**
+ * Confirming that committed money actually arrived.
+ *
+ * Every label here says "confirm", never "pay". The platform does not move
+ * this money — an admin is attesting to a transfer someone else made, and the
+ * form asks for the reference precisely so the attestation can be checked
+ * rather than taken on trust.
+ */
+export function RecordPaymentForm({
+  allocationId,
+  outstanding,
+}: {
+  allocationId: string;
+  /** What is still unconfirmed, as a fixed-2 string. */
+  outstanding: string;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState(outstanding);
+  const [reference, setReference] = useState("");
+  const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function record() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/allocations/${allocationId}/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, reference, paidAt: new Date(paidAt).toISOString() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error ?? "Could not record this confirmation.");
+        return;
+      }
+      setOpen(false);
+      setReference("");
+      router.refresh();
+    } catch {
+      setError("Could not reach the server.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="text-xs font-bold text-gray-600 dark:text-gray-300 underline underline-offset-2"
+      >
+        Confirm money received
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="flex gap-2 flex-wrap">
+        <label className="text-xs font-bold text-gray-500 dark:text-gray-400">
+          Amount
+          <input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            inputMode="decimal"
+            className="mt-1 block w-32 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs font-bold text-gray-500 dark:text-gray-400">
+          Date received
+          <input
+            type="date"
+            value={paidAt}
+            onChange={(e) => setPaidAt(e.target.value)}
+            className="mt-1 block rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 flex-1 min-w-[12rem]">
+          Reference (UTR / cheque no.)
+          <input
+            value={reference}
+            onChange={(e) => setReference(e.target.value)}
+            placeholder="What can this be matched against?"
+            className="mt-1 block w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm"
+          />
+        </label>
+      </div>
+      <p className="text-xs text-gray-400">
+        Recorded as your attestation, under your name, and never as proof the platform received the
+        money. Without a reference there is nothing to check it against.
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={record}
+          disabled={busy || amount.trim().length === 0}
+          className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold disabled:opacity-50"
+        >
+          {busy ? "Saving…" : "Confirm receipt"}
+        </button>
+        <button
+          onClick={() => { setOpen(false); setError(null); }}
+          className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300"
+        >
+          Cancel
+        </button>
+      </div>
+      {error && <p className="text-xs font-medium text-red-600 dark:text-red-400">{error}</p>}
+    </div>
+  );
+}

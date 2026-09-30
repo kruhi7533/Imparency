@@ -5,6 +5,7 @@ vi.mock("@/lib/prisma", () => ({
   default: {
     proposal: { findUnique: vi.fn() },
     allocation: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
+    allocationPayment: { create: vi.fn() },
     ledgerEntry: { create: vi.fn() },
     $transaction: vi.fn(),
   },
@@ -17,6 +18,7 @@ import { getServerSession } from "next-auth/next";
 import { logAdminAction } from "@/lib/admin-log";
 import { POST as propose } from "@/app/api/admin/allocations/route";
 import { PATCH as decide } from "@/app/api/admin/allocations/[id]/route";
+import { POST as confirmPayment } from "@/app/api/admin/allocations/[id]/payments/route";
 
 const db = prisma as any;
 const session = getServerSession as any;
@@ -73,6 +75,7 @@ beforeEach(() => {
   db.allocation.findUnique.mockResolvedValue(pendingAllocation);
   db.allocation.updateMany.mockResolvedValue({ count: 1 });
   db.ledgerEntry.create.mockResolvedValue({ id: "ledger_1" });
+  db.allocationPayment.create.mockResolvedValue({ id: "pay_1" });
   // Interactive transaction: run the callback against the same mock client.
   db.$transaction.mockImplementation(async (fn: any) => fn(db));
 });
@@ -264,5 +267,115 @@ describe("deciding an allocation", () => {
   it("rejects an unknown action rather than guessing", async () => {
     const res = await decide(req({ action: "UNDO" }), params);
     expect(res.status).toBe(400);
+  });
+});
+
+describe("confirming that committed money arrived", () => {
+  const params = { params: { id: "alloc_1" } };
+  const approved = {
+    id: "alloc_1",
+    status: "APPROVED",
+    amount: dec("100000.00"),
+    ngoId: "ngo_1",
+    proposalId: "prop_1",
+    payments: [],
+  };
+
+  beforeEach(() => {
+    db.allocation.findUnique.mockResolvedValue(approved);
+  });
+
+  it("refuses a non-admin", async () => {
+    session.mockResolvedValue({ user: { id: "ngo_1", role: "NGO" } });
+    const res = await confirmPayment(req({ amount: "1000" }), params);
+    expect(res.status).toBe(403);
+    expect(db.allocationPayment.create).not.toHaveBeenCalled();
+  });
+
+  it("records the attestation with the admin who made it", async () => {
+    // The attester is the whole value of the record. A confirmation with no
+    // name behind it is an unsourced claim.
+    const res = await confirmPayment(
+      req({ amount: "100000.00", reference: "UTR12345", paidAt: "2026-09-28T00:00:00Z" }),
+      params,
+    );
+
+    expect(res.status).toBe(201);
+    const data = db.allocationPayment.create.mock.calls[0][0].data;
+    expect(data.recordedById).toBe("admin_1");
+    expect(data.reference).toBe("UTR12345");
+    expect(data.amount.toFixed(2)).toBe("100000.00");
+  });
+
+  it("writes the confirmation to the money log as a non-cash entry", async () => {
+    await confirmPayment(req({ amount: "100000.00", reference: "UTR1" }), params);
+
+    const entry = db.ledgerEntry.create.mock.calls[0][0].data;
+    expect(entry.entryType).toBe("ALLOCATION_FUNDED");
+    expect(entry.direction).toBe("CREDIT");
+    expect(entry.idempotencyKey).toBe("ALLOCATION_FUNDED:pay_1");
+    // The platform did not receive this money — a funder paid the organisation
+    // directly — so it must never land in a project or donor total.
+    expect(entry.projectId).toBeUndefined();
+    expect(entry.donorId).toBeUndefined();
+  });
+
+  it("writes the payment and its log entry in one transaction", async () => {
+    await confirmPayment(req({ amount: "100000.00" }), params);
+    expect(db.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("records that a confirmation had no reference", async () => {
+    // Without one there is nothing to match against a statement, and the
+    // record is only somebody's word — worth knowing later.
+    await confirmPayment(req({ amount: "100000.00" }), params);
+
+    expect(db.allocationPayment.create.mock.calls[0][0].data.reference).toBeNull();
+    expect(db.ledgerEntry.create.mock.calls[0][0].data.metadata.hasReference).toBe(false);
+  });
+
+  it("refuses to confirm more than was committed", async () => {
+    db.allocation.findUnique.mockResolvedValue({
+      ...approved,
+      payments: [{ amount: dec("70000.00") }],
+    });
+
+    const res = await confirmPayment(req({ amount: "40000.00" }), params);
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ refusal: "EXCEEDS_COMMITMENT" });
+    expect(db.allocationPayment.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses a confirmation against a commitment that is not approved", async () => {
+    db.allocation.findUnique.mockResolvedValue({ ...approved, status: "PENDING" });
+
+    const res = await confirmPayment(req({ amount: "1000" }), params);
+
+    expect(res.status).toBe(409);
+    expect(db.allocationPayment.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses a transfer dated in the future", async () => {
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
+    const res = await confirmPayment(req({ amount: "1000", paidAt: tomorrow }), params);
+    expect(res.status).toBe(400);
+  });
+
+  it("404s on an allocation that does not exist", async () => {
+    db.allocation.findUnique.mockResolvedValue(null);
+    const res = await confirmPayment(req({ amount: "1000" }), params);
+    expect(res.status).toBe(404);
+  });
+
+  it("audits the confirmation", async () => {
+    await confirmPayment(req({ amount: "100000.00", reference: "UTR1" }), params);
+    expect(audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "ALLOCATION_PAYMENT_RECORDED",
+        entityType: "ALLOCATION",
+        entityId: "alloc_1",
+      }),
+    );
   });
 });

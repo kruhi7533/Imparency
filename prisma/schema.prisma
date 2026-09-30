@@ -2505,6 +2505,14 @@ enum LedgerEntryType {
   /// platform; this is an intent, recorded so allocations can be reconciled
   /// against what was actually received.
   ALLOCATION_COMMITTED
+  /// A funder's committed money confirmed as actually transferred, with a
+  /// reference a bank statement can be matched against.
+  ///
+  /// NOT cash on the platform's own books: today a funder pays an organisation
+  /// directly and an admin attests to it, so this is a recorded third-party
+  /// movement. It stays off CASH_ENTRY_TYPES for that reason — claiming it as
+  /// platform cash would be a bigger lie than not recording it at all.
+  ALLOCATION_FUNDED
 }
 
 /// Which way the money moved, from the platform's point of view.
@@ -2594,6 +2602,12 @@ enum FinanceExceptionType {
   /// The receipt is a document a donor may have filed with their return, so
   /// this needs a human and a paper trail, not a silent status change.
   REFUND_AFTER_RECEIPT
+  /// Money was committed to an organisation and, long past any plausible
+  /// transfer window, nothing has been confirmed as paid. This is the finding
+  /// that stops a commitment from quietly standing in for money that never
+  /// arrived — the failure that would cost the platform its credibility with
+  /// the organisation planning work against it.
+  UNCONFIRMED_ALLOCATION
 }
 
 enum FinanceExceptionStatus {
@@ -2738,6 +2752,13 @@ model Allocation {
   /// as the approval. Null while PENDING and on a rejection.
   ledgerEntryId String?
 
+  /// Confirmed transfers against this commitment. Funding state is DERIVED
+  /// from these rows (see fundingState in lib/allocation.ts) rather than
+  /// cached on a column — a stored paid-total is another counter that can
+  /// drift from its evidence, which is the failure this whole module exists
+  /// to make impossible.
+  payments AllocationPayment[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -2746,4 +2767,50 @@ model Allocation {
   @@index([opportunityId, status])
   @@index([ngoId])
   @@index([status])
+}
+
+/// A confirmed transfer against an allocation.
+///
+/// An allocation on its own is a PROMISE: an admin said a funder would put up
+/// an amount. Nothing in the platform could say whether that money ever
+/// arrived, and an organisation planning work against an unkept promise is
+/// precisely how a transparency platform loses the trust it sells.
+///
+/// The platform does not move this money — today a funder pays an organisation
+/// directly. What is recorded here is an ATTESTATION by a named admin, with a
+/// reference a bank statement can be checked against. That distinction is kept
+/// visible everywhere it is shown: this is evidence that someone confirmed a
+/// payment, not proof that the platform received one.
+///
+/// Separate rows rather than a paid/unpaid flag on Allocation, because a
+/// commitment is often honoured in tranches, and "₹2L of ₹5L arrived, on these
+/// two dates, against these two references" is the answer an organisation
+/// actually needs.
+model AllocationPayment {
+  id String @id @default(uuid())
+
+  allocationId String
+  allocation   Allocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+
+  amount Decimal @db.Decimal(12, 2)
+
+  /// When the money moved, per the reference — not when it was recorded here.
+  paidAt DateTime
+
+  /// UTR, cheque number, or the funder's own transfer reference. Nullable
+  /// because a confirmation with no reference is still better than silence,
+  /// but the UI asks for it: without one, nothing can be matched against a
+  /// statement and this row is only somebody's word.
+  reference String?
+
+  /// What the admin was looking at when they confirmed it.
+  note String?
+
+  /// Who attested. Never null: an attestation with no attester is an
+  /// unsourced claim, which is the opposite of what this table is for.
+  recordedById String
+  recordedAt   DateTime @default(now())
+
+  @@index([allocationId])
+  @@index([paidAt])
 }

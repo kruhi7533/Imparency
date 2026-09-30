@@ -8,6 +8,7 @@ import {
 } from "@/lib/finance-exceptions";
 import { captureError } from "@/lib/observability";
 import { CASH_ENTRY_TYPES } from "@/lib/ledger";
+import { confirmationCutoff, fundingState, paidTotal, CONFIRMATION_GRACE_DAYS } from "@/lib/allocation";
 
 /**
  * Reconciliation: does what we say we hold match what we can prove we received?
@@ -245,7 +246,48 @@ export async function runReconciliation(
     // which is exactly the set that is now SUCCESS.
     const nowSettled = successful.map((d) => d.id);
 
-    // 5. Close what now balances.
+    // 5. Commitments nobody has confirmed as paid.
+    // An allocation is a promise. Until this check existed, nothing asked
+    // whether the promise was kept — an organisation could be planning work
+    // against money that never arrived while the platform displayed the
+    // commitment as though it had. That is the trust failure this catches.
+    const overdue = await prisma.allocation.findMany({
+      where: { status: "APPROVED", decidedAt: { lt: confirmationCutoff() } },
+      select: {
+        id: true,
+        amount: true,
+        ngoId: true,
+        decidedAt: true,
+        payments: { select: { amount: true } },
+      },
+    });
+
+    const confirmedIds: string[] = [];
+    for (const allocation of overdue) {
+      const paid = paidTotal(allocation.payments);
+      const state = fundingState(allocation.amount, paid);
+      // FUNDED and OVERFUNDED both mean the money came. Overfunding is its own
+      // problem, but not this one — flagging it here would say "unconfirmed"
+      // about money that plainly arrived.
+      if (state === "FUNDED" || state === "OVERFUNDED") {
+        confirmedIds.push(allocation.id);
+        continue;
+      }
+      const days = allocation.decidedAt
+        ? Math.floor((Date.now() - allocation.decidedAt.getTime()) / 86_400_000)
+        : CONFIRMATION_GRACE_DAYS;
+      await apply({
+        type: FinanceExceptionType.UNCONFIRMED_ALLOCATION,
+        entityType: "ALLOCATION",
+        entityId: allocation.id,
+        summary: `Committed ${new Prisma.Decimal(allocation.amount.toString()).toFixed(2)} ${days} days ago, ${paid.toFixed(2)} confirmed as received`,
+        expectedAmount: new Prisma.Decimal(allocation.amount.toString()),
+        observedAmount: paid,
+        detail: { ngoId: allocation.ngoId, days, state },
+      });
+    }
+
+    // 6. Close what now balances.
     // UNMATCHED_PAYMENT is absent on purpose: nothing the reconciler can see
     // proves an orphaned payment was dealt with.
     autoResolved += await autoResolveExceptions(
@@ -267,6 +309,11 @@ export async function runReconciliation(
       FinanceExceptionType.STALE_PENDING_DONATION,
       nowSettled,
       "Donation is no longer PENDING",
+    );
+    autoResolved += await autoResolveExceptions(
+      FinanceExceptionType.UNCONFIRMED_ALLOCATION,
+      confirmedIds,
+      "The committed money has since been confirmed as received",
     );
 
     await prisma.reconciliationRun.update({

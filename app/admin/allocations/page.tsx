@@ -5,8 +5,8 @@ import { AllocationStatus, Prisma, ProposalStatus } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import SchemaOutOfSync from "@/app/admin/components/SchemaOutOfSync";
-import { committedTotal, remainingBudget } from "@/lib/allocation";
-import { ProposeAllocationForm, AllocationDecision } from "./AllocationActions";
+import { committedTotal, fundingState, paidTotal, remainingBudget } from "@/lib/allocation";
+import { ProposeAllocationForm, AllocationDecision, RecordPaymentForm } from "./AllocationActions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,6 +62,10 @@ export default async function AdminAllocationsPage() {
           decidedAt: true,
           decisionNote: true,
           opportunityId: true,
+          payments: {
+            select: { id: true, amount: true, paidAt: true, reference: true },
+            orderBy: { paidAt: "desc" },
+          },
           proposal: {
             select: {
               id: true,
@@ -104,6 +108,13 @@ export default async function AdminAllocationsPage() {
             opportunity&rsquo;s budget is spoken for — it does not move money and does not pay
             anyone. Nothing here can be undone: an organisation that plans work against a
             commitment has to be able to rely on it.
+          </p>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+            Once committed, each one tracks whether the funder&rsquo;s money was actually confirmed
+            as received, and by whom. A commitment nobody confirms is chased by reconciliation
+            after {" "}
+            <strong>30 days</strong> — a promise the platform never checks is worth no more than
+            the promise itself.
           </p>
         </div>
 
@@ -184,6 +195,7 @@ export default async function AdminAllocationsPage() {
                         <span className="text-gray-400 font-normal"> · {allocation.proposal.title}</span>
                       </p>
                       <p className="text-xs text-gray-400">
+                        from {allocation.proposal.opportunity.funderName} ·{" "}
                         {allocation.proposal.opportunity.title} · proposed{" "}
                         {allocation.proposedAt.toLocaleDateString("en-IN")}
                       </p>
@@ -214,8 +226,12 @@ export default async function AdminAllocationsPage() {
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {allocation.proposal.opportunity.funderName}
+                        <span className="text-gray-400 font-normal"> → </span>
                         {allocation.proposal.ngo.orgName}
-                        <span className="text-gray-400"> · {allocation.proposal.title}</span>
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {allocation.proposal.opportunity.title} · {allocation.proposal.title}
                       </p>
                       <p className="text-xs text-gray-400">
                         {allocation.status === AllocationStatus.APPROVED ? "committed" : "rejected"}{" "}
@@ -237,6 +253,62 @@ export default async function AdminAllocationsPage() {
                       {rupees(allocation.amount)}
                     </p>
                   </div>
+
+                  {allocation.status === AllocationStatus.APPROVED &&
+                    (() => {
+                      // Derived on every render from the payment rows. A cached
+                      // paid-total would be one more counter able to drift from
+                      // the evidence behind it.
+                      const paid = paidTotal(allocation.payments);
+                      const state = fundingState(allocation.amount, paid);
+                      const outstanding = new Prisma.Decimal(allocation.amount.toString()).minus(paid);
+                      const tone =
+                        state === "FUNDED"
+                          ? "text-emerald-700 dark:text-emerald-400"
+                          : state === "UNFUNDED"
+                            ? "text-amber-700 dark:text-amber-400"
+                            : state === "OVERFUNDED"
+                              ? "text-red-700 dark:text-red-400"
+                              : "text-gray-600 dark:text-gray-300";
+                      return (
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+                          <p className={`text-xs font-bold ${tone}`}>
+                            {state === "UNFUNDED"
+                              ? "No money confirmed as received yet"
+                              : state === "FUNDED"
+                                ? `Fully confirmed — ${rupees(paid)} received`
+                                : state === "OVERFUNDED"
+                                  ? `More confirmed than committed — ${rupees(paid)} against ${rupees(allocation.amount)}`
+                                  : `${rupees(paid)} of ${rupees(allocation.amount)} confirmed · ${rupees(outstanding)} outstanding`}
+                          </p>
+                          {allocation.payments.length > 0 && (
+                            <ul className="mt-1 space-y-0.5">
+                              {allocation.payments.map((payment) => (
+                                <li key={payment.id} className="text-xs text-gray-400">
+                                  {rupees(payment.amount)} on{" "}
+                                  {payment.paidAt.toLocaleDateString("en-IN")} ·{" "}
+                                  {payment.reference ? (
+                                    <span className="font-mono">{payment.reference}</span>
+                                  ) : (
+                                    <span className="text-amber-600 dark:text-amber-400">
+                                      no reference — nothing to match this against
+                                    </span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {state !== "FUNDED" && state !== "OVERFUNDED" && (
+                            <div className="mt-2">
+                              <RecordPaymentForm
+                                allocationId={allocation.id}
+                                outstanding={outstanding.toFixed(2)}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                 </li>
               ))}
             </ul>

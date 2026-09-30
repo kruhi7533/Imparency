@@ -124,7 +124,11 @@ export type AdminAction =
   // point of recording them apart is that they need not be one person.
   | "ALLOCATION_PROPOSED"
   | "ALLOCATION_APPROVED"
-  | "ALLOCATION_REJECTED";
+  | "ALLOCATION_REJECTED"
+  // An admin attesting that a funder's committed money actually arrived. The
+  // attester is the whole value of the record, so it is logged like a
+  // decision, not like a data entry.
+  | "ALLOCATION_PAYMENT_RECORDED";
 
 /**
  * Every entity an admin action can be recorded against.
