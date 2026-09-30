@@ -52,7 +52,7 @@ export default function NGORegistrationPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/login");
+      router.push("/login?callbackUrl=/ngo/register");
     } else if (session?.user && session.user.role !== "NGO") {
       router.push("/unauthorized");
     }
