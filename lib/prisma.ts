@@ -3,6 +3,12 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import { Pool } from '@neondatabase/serverless';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { captureError } from './observability';
+// Pure predicates live in a module that opens no connection, so they can be
+// unit-tested without a database. Re-exported here because this is where
+// callers expect retry behaviour to be described.
+import { isConnectionDropped, mayRetryAfterDroppedConnection } from './prisma-retry';
+
+export { isConnectionDropped, mayRetryAfterDroppedConnection, READ_OPERATIONS } from './prisma-retry';
 
 // Connection errors that are worth retrying — typically a Neon serverless
 // endpoint waking from auto-suspend (cold start) or a brief network blip.
@@ -115,12 +121,30 @@ const prismaClientSingleton = () => {
             const code =
               err instanceof Prisma.PrismaClientKnownRequestError ? err.code : undefined;
             const isInitError = err instanceof Prisma.PrismaClientInitializationError;
-            if (attempt < MAX_RETRIES && (isInitError || (code && RETRYABLE_CODES.has(code)))) {
+            // RETRYABLE_CODES covers Prisma failing to CONNECT. It does not
+            // cover a connection that was established and then dropped, which
+            // the Neon driver reports as a bare ErrorEvent with no code —
+            // that fell through every branch and became a 500. Retried for
+            // READS only: a dropped socket is ambiguous for a write, which
+            // may have committed just before it died.
+            const droppedRead =
+              isConnectionDropped(err) && mayRetryAfterDroppedConnection(operation);
+            if (
+              attempt < MAX_RETRIES &&
+              (isInitError || droppedRead || (code && RETRYABLE_CODES.has(code)))
+            ) {
               const delayMs = BASE_DELAY_MS * 2 ** attempt;
               // Observe, then behave exactly as before: same condition, same
               // delay, same continue. Recording is synchronous and allocation
               // -only, so it cannot itself add latency to the backoff.
-              recordRetry(err, isInitError ? 'INIT' : code!, model, operation, attempt, delayMs);
+              recordRetry(
+                err,
+                isInitError ? 'INIT' : (code ?? 'CONNECTION_DROPPED'),
+                model,
+                operation,
+                attempt,
+                delayMs
+              );
               lastError = err;
               await sleep(delayMs);
               continue;
