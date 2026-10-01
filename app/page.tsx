@@ -29,6 +29,13 @@ export default async function Home() {
 
   const latest = stats.recentActivity[0];
 
+  // Sectors carrying live campaigns lead. Empty ones still appear — they are
+  // real sectors and hiding them would overstate the catalogue — but they
+  // recede, so a donor scanning this sees where they can actually give today.
+  const rankedCauses = [...causes].sort(
+    (a, b) => (stats.causeCategoryCounts[b.name] ?? 0) - (stats.causeCategoryCounts[a.name] ?? 0)
+  );
+
   return (
     <div className="relative isolate min-h-screen bg-gray-950 text-white font-sans selection:bg-trust-500 selection:text-white">
 
@@ -56,7 +63,7 @@ export default async function Home() {
       {/* Hero — full-viewport statement */}
       <section className="min-h-[85vh] flex items-center">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center space-y-10">
-          <h1 className="font-display font-semibold text-5xl sm:text-7xl lg:text-8xl tracking-tight leading-[1.25] sm:leading-[1.2]">
+          <h1 className="font-display font-semibold text-5xl sm:text-7xl lg:text-8xl tracking-tight leading-[1.02] sm:leading-[0.98]">
             <Reveal>Transparency you can</Reveal>
             <Reveal delay={0.12}>
               <span className="italic text-gold-300">audit in real time</span>
@@ -73,15 +80,18 @@ export default async function Home() {
 
           <Reveal delay={0.34}>
             <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+              {/* Two doors, each naming its own audience. The audience captions
+                  that used to sit under these are gone: once the labels say
+                  "Donor" and "your NGO", repeating it underneath is noise. */}
               <Link
-                href="/discover"
-                className="w-full sm:w-auto bg-trust-600 hover:bg-trust-500 text-white font-semibold px-8 py-4 rounded-lg text-base transition"
+                href="/login?signup=1&callbackUrl=/discover"
+                className="w-full sm:w-auto text-center bg-trust-600 hover:bg-trust-500 text-white font-semibold px-8 py-4 rounded-lg text-base transition"
               >
-                Browse campaigns
+                Register as Donor
               </Link>
               <Link
                 href="/ngo/register"
-                className="w-full sm:w-auto border border-gray-800 hover:border-gray-700 bg-gray-900/50 hover:bg-gray-900 text-white font-semibold px-8 py-4 rounded-lg text-base transition"
+                className="w-full sm:w-auto text-center border border-gray-800 hover:border-gray-700 bg-gray-900/50 hover:bg-gray-900 text-white font-semibold px-8 py-4 rounded-lg text-base transition"
               >
                 Register your NGO
               </Link>
@@ -109,7 +119,7 @@ export default async function Home() {
       <NgoMarquee names={stats.verifiedNgoNames} />
 
       {/* The ledger so far — oversized real numbers, live from the database */}
-      <section id="numbers" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-28 space-y-16">
+      <section id="numbers" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 space-y-16">
         <p className="font-mono text-[11px] uppercase tracking-widest text-gold-400 text-center">
           The ledger so far
         </p>
@@ -146,7 +156,7 @@ export default async function Home() {
       </section>
 
       {/* How it Works / Trust Stepper */}
-      <section id="protocol" className="border-t border-gray-900 bg-gray-900/20 py-28">
+      <section id="protocol" className="border-t border-gray-900 bg-gray-900/20 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center space-y-3 mb-16">
             <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight">How the money actually moves</h2>
@@ -201,7 +211,7 @@ export default async function Home() {
       {/* Impact stories — what a rupee becomes, drawn in the same line-art
           voice as the bridge: a first day of school, a girl who stays in it,
           care reaching a village, the country it all compounds into */}
-      <section id="stories" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-28 space-y-14">
+      <section id="stories" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-32 space-y-14">
         <div className="text-center space-y-3">
           <p className="font-mono text-[11px] uppercase tracking-widest text-gold-400">
             Impact stories
@@ -214,7 +224,7 @@ export default async function Home() {
       </section>
 
       {/* Causes grid */}
-      <section id="causes" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-28 space-y-12">
+      <section id="causes" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 space-y-12">
         <div className="flex justify-between items-end">
           <div className="space-y-2">
             <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight">Explore Causes</h2>
@@ -228,7 +238,7 @@ export default async function Home() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {causes.map((cause, causeIdx) => {
+          {rankedCauses.map((cause, causeIdx) => {
             const count = stats.causeCategoryCounts[cause.name] ?? 0;
             const Icon = cause.icon;
             return (
@@ -236,14 +246,22 @@ export default async function Home() {
                 <TiltCard
                   maxTilt={5}
                   index={causeIdx}
-                  className="bg-gray-900/60 border border-gray-800 group-hover:border-gray-700 rounded-xl p-6 transition-colors"
+                  className={`rounded-xl p-6 transition-colors ${
+                    count > 0
+                      ? "bg-gray-900/60 border border-gray-800 group-hover:border-trust-700/60"
+                      : "bg-gray-900/25 border border-gray-900 group-hover:border-gray-800"
+                  }`}
                 >
                   <div className="flex justify-between items-start mb-4">
                     <span className="p-3 bg-gray-950 border border-gray-800 rounded-lg group-hover:border-trust-700/60 transition">
                       <Icon className="w-6 h-6 text-trust-300" strokeWidth={1.75} />
                     </span>
-                    <span className="font-mono text-[11px] text-gray-400 uppercase tracking-widest">
-                      {count > 0 ? `${count} Campaigns` : "New sector"}
+                    <span
+                      className={`font-mono text-[11px] uppercase tracking-widest ${
+                        count > 0 ? "text-gold-300" : "text-gray-600"
+                      }`}
+                    >
+                      {count > 0 ? `${count} campaign${count === 1 ? "" : "s"}` : "No campaigns yet"}
                     </span>
                   </div>
                   <h3 className="text-base font-semibold text-white mb-1 group-hover:text-trust-300 transition">{cause.name}</h3>
@@ -256,7 +274,7 @@ export default async function Home() {
       </section>
 
       {/* Quick Donate Section */}
-      <section id="give" className="border-t border-gray-900 bg-gradient-to-b from-gold-950/20 to-gray-950 py-28">
+      <section id="give" className="border-t border-gray-900 bg-gradient-to-b from-gold-950/20 to-gray-950 py-32">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-10">
 
           {/* Heading */}
@@ -318,9 +336,9 @@ export default async function Home() {
             <span>© {new Date().getFullYear()} ImpactBridge</span>
           </div>
           <div className="flex justify-center gap-6 text-[10px] font-bold text-gray-500">
-            <Link href="/discover" className="hover:text-white transition">Discover</Link>
+            <Link href="/discover" className="hover:text-white transition">Discover NGOs</Link>
             <Link href="/ngo/register" className="hover:text-white transition">Join as NGO</Link>
-            <Link href="/admin/dashboard" className="hover:text-white transition">Admin Panel</Link>
+            <Link href="/give" className="hover:text-white transition">Give</Link>
           </div>
         </div>
       </footer>

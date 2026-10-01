@@ -3,6 +3,7 @@
 import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -11,6 +12,7 @@ function ResetPasswordContent() {
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -82,26 +84,50 @@ function ResetPasswordContent() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-gray-400 mb-1">New Password *</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition"
-              placeholder="••••••••"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-2.5 pr-12 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition"
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                tabIndex={-1}
+                className="absolute inset-y-0 right-0 flex items-center justify-center min-w-[44px] px-3.5 text-gray-500 hover:text-gray-300 transition focus:outline-none focus-visible:text-trust-300"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-400 mb-1">Confirm New Password *</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition"
-              placeholder="••••••••"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-2.5 pr-12 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition"
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                tabIndex={-1}
+                className="absolute inset-y-0 right-0 flex items-center justify-center min-w-[44px] px-3.5 text-gray-500 hover:text-gray-300 transition focus:outline-none focus-visible:text-trust-300"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           <button

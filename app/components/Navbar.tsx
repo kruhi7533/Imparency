@@ -122,7 +122,7 @@ export default function Navbar() {
                   not just the NGO side of the platform */}
               {!session?.user && (
                 <>
-                  <Link href="/login" className={`hover:text-white transition ${pathname === "/login" ? "text-white" : ""}`}>
+                  <Link href="/give" className={`hover:text-white transition ${pathname === "/give" ? "text-white" : ""}`}>
                     Become a Donor
                   </Link>
                   <Link href="/ngo/register" className={`hover:text-white transition ${pathname === "/ngo/register" ? "text-white" : ""}`}>

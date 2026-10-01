@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { signIn, useSession, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
 function LoginContent() {
   const router = useRouter();
@@ -20,12 +21,16 @@ function LoginContent() {
     }
   }, [sessionStatus, callbackUrl, router]);
 
-  const [isSignUp, setIsSignUp] = useState(false);
+  // Entry points that say "Register" (the landing hero, NGO onboarding) must
+  // open on the Register tab — a button labelled Register that lands on Sign In
+  // makes the caller a liar.
+  const [isSignUp, setIsSignUp] = useState(searchParams.get("signup") === "1");
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"DONOR" | "NGO">("DONOR");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -190,6 +195,17 @@ function LoginContent() {
   return (
     <div className="max-w-md w-full bg-gray-900/40 border border-gray-800 border-t-2 border-t-gold-500/70 rounded-xl p-8 sm:p-10 relative">
 
+      {/* The global Navbar is hidden on /login (components/Navbar.tsx), so
+          without this there is no signposted way back to the public site —
+          only the wordmark, which does not read as a control. */}
+      <Link
+        href="/"
+        className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-2 text-[11px] font-semibold text-gray-500 hover:text-gray-300 transition"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back to home
+      </Link>
+
       {/* Logo Branding */}
       <div className="text-center mb-8">
         <Link href="/" className="font-display text-3xl font-semibold italic text-white tracking-tight">
@@ -204,13 +220,13 @@ function LoginContent() {
       {!isForgotPassword && (
         <div className="flex border-b border-gray-800 mb-6">
           <button
-            onClick={() => { setIsSignUp(false); setError(""); setSuccess(""); }}
+            onClick={() => { setIsSignUp(false); setShowPassword(false); setError(""); setSuccess(""); }}
             className={`flex-1 pb-2.5 text-sm font-semibold transition ${!isSignUp ? "text-white border-b-2 border-trust-400" : "text-gray-500 hover:text-gray-300"}`}
           >
             Sign In
           </button>
           <button
-            onClick={() => { setIsSignUp(true); setError(""); setSuccess(""); }}
+            onClick={() => { setIsSignUp(true); setShowPassword(false); setError(""); setSuccess(""); }}
             className={`flex-1 pb-2.5 text-sm font-semibold transition ${isSignUp ? "text-white border-b-2 border-trust-400" : "text-gray-500 hover:text-gray-300"}`}
           >
             Register Account
@@ -299,14 +315,26 @@ function LoginContent() {
 
         <div>
           <label className="block text-xs font-semibold text-gray-400 mb-1">Password *</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition [&:-webkit-autofill]:[-webkit-text-fill-color:#fff] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#030712]"
-            placeholder="••••••••"
-            required
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-2.5 pr-12 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition [&:-webkit-autofill]:[-webkit-text-fill-color:#fff] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#030712]"
+              placeholder="••••••••"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              tabIndex={-1}
+              className="absolute inset-y-0 right-0 flex items-center justify-center min-w-[44px] px-3.5 text-gray-500 hover:text-gray-300 transition focus:outline-none focus-visible:text-trust-300"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
           {!isSignUp && (
             <div className="text-right mt-1.5">
               <button
