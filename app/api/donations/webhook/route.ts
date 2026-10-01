@@ -5,6 +5,19 @@ import { sendPaymentRetryEmail } from "@/lib/email";
 import { generateRetryToken, getRetryDelay } from "@/lib/retry-utils";
 import { evaluateReceiptEligibility, issueTaxReceipt, queueReceiptClaim } from "@/lib/tax-receipt";
 import { captureError } from "@/lib/observability";
+import { Prisma } from "@prisma/client";
+import {
+  donationCapturedEntry,
+  donationRefundedEntry,
+  paiseToRupees,
+  paymentOccurredAt,
+} from "@/lib/ledger";
+import {
+  recordAmountMismatch,
+  recordRefundAfterReceipt,
+  recordUnmatchedPayment,
+  recordUnmatchedRefund,
+} from "@/lib/finance-exceptions";
 
 export async function POST(req: Request) {
   try {
@@ -40,8 +53,18 @@ export async function POST(req: Request) {
       });
 
       if (!donation) {
+        // Money was taken and there is nothing on our side to attach it to.
+        // This used to be a console.warn and a 200: the payment simply
+        // vanished from the platform's point of view, and nobody was told.
+        // It is now a finance exception, which is the only record that this
+        // payment exists at all — a human has to match or refund it.
+        //
+        // Acknowledged with 200 on purpose. Razorpay redelivering will not
+        // conjure the missing donation row, and recordException dedupes, so a
+        // retry loop would add nothing but noise.
         console.warn(`Donation with order_id ${order_id} not found.`);
-        return NextResponse.json({ received: true }, { status: 200 });
+        await recordUnmatchedPayment(paymentEntity, order_id);
+        return NextResponse.json({ received: true, unmatched: true }, { status: 200 });
       }
 
       // Fast path only — NOT the correctness boundary. This read happens
@@ -52,6 +75,23 @@ export async function POST(req: Request) {
       if (donation.status === "SUCCESS") {
         return NextResponse.json({ received: true }, { status: 200 });
       }
+
+      // ── What was ACTUALLY captured ─────────────────────────────────────────
+      // Until now this route recorded `donation.amount` — the amount we asked
+      // for — and never looked at what the provider captured. That made an
+      // over- or under-capture undetectable: the ledger, the project total and
+      // the donor total all derive from the requested amount, so all three
+      // would agree with each other and all three would be wrong.
+      //
+      // The captured amount wins everywhere money is counted, because it is
+      // the money. `donation.amount` is left untouched as the record of what
+      // was requested, and the gap between the two becomes a finding.
+      const requestedAmount = new Prisma.Decimal(donation.amount.toString());
+      // A payload we cannot read falls back to the requested amount: applying
+      // nothing would mean money taken and not recorded, which is worse than
+      // applying the only number we have.
+      const capturedAmount = paiseToRupees(paymentEntity.amount) ?? requestedAmount;
+      const amountDisagrees = !capturedAmount.equals(requestedAmount);
 
       // ── Compliance snapshot (IMMUTABLE) ────────────────────────────────────
       // Point-in-time record of the donor's and NGO's compliance state at the
@@ -120,6 +160,22 @@ export async function POST(req: Request) {
               eventId: event.id ?? null,
             },
           }),
+          // The ledger entry belongs INSIDE this transaction, next to the
+          // increments it exists to check. Written outside it, the ledger and
+          // the counters could disagree exactly when something failed halfway
+          // — the one case the ledger is here to settle. Its own unique
+          // idempotencyKey is a second, independent guard against replay.
+          prisma.ledgerEntry.create({
+            data: donationCapturedEntry({
+              donationId: donation.id,
+              projectId: donation.projectId,
+              ngoId: donation.project.ngoId,
+              donorId: donation.donorId,
+              amount: capturedAmount,
+              paymentId,
+              occurredAt: paymentOccurredAt(paymentEntity.created_at),
+            }),
+          }),
           prisma.donation.update({
             where: { id: donation.id },
             data: {
@@ -128,16 +184,20 @@ export async function POST(req: Request) {
               ...(complianceSnapshot ? { complianceSnapshot: complianceSnapshot as any } : {}),
             },
           }),
+          // Counters move by what was CAPTURED, so they keep agreeing with the
+          // ledger. Incrementing by the requested amount instead would leave
+          // reconciliation reporting a project-total drift for every mismatched
+          // payment, pointing at the wrong problem.
           prisma.project.update({
             where: { id: donation.projectId },
             data: {
-              raisedAmount: { increment: donation.amount },
+              raisedAmount: { increment: capturedAmount },
             },
           }),
           prisma.user.update({
             where: { id: donation.donorId },
             data: {
-              totalDonated: { increment: donation.amount },
+              totalDonated: { increment: capturedAmount },
             },
           }),
         ]);
@@ -150,6 +210,27 @@ export async function POST(req: Request) {
           return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
         }
         throw err;
+      }
+
+      // Raised AFTER the transaction, never inside it: the payment is real and
+      // must be recorded whether or not we manage to file a finding about it.
+      if (amountDisagrees) {
+        try {
+          await recordAmountMismatch({
+            donationId: donation.id,
+            projectId: donation.projectId,
+            requested: requestedAmount,
+            captured: capturedAmount,
+            paymentId,
+          });
+        } catch (mismatchErr) {
+          captureError(mismatchErr, {
+            scope: "donations/webhook",
+            operation: "record_amount_mismatch",
+            entityType: "DONATION",
+            entityId: donation.id,
+          });
+        }
       }
 
       // If milestoneIds present: move PENDING milestones -> IN_PROGRESS
@@ -245,6 +326,149 @@ export async function POST(req: Request) {
           console.error("[ReEngagement Scheduler Error]", err);
         }
       }, FORTY_EIGHT_HOURS);
+    } else if (eventName === "refund.created" || eventName === "refund.processed") {
+      // Money given back. Nothing handled this before: a refund left the
+      // ledger, the project's raised total and the donor's lifetime giving
+      // permanently overstated, with no trace that it had happened.
+      //
+      // BOTH events are handled, and that is safe rather than double-counting,
+      // because the ledger entry is keyed on the REFUND id — whichever of the
+      // two arrives first applies it, and the other loses on the unique key.
+      // Keying on the payment id instead would silently drop every refund
+      // after the first on a partially-refunded payment.
+      const refundEntity = event.payload?.refund?.entity ?? {};
+      const refundId = typeof refundEntity.id === "string" ? refundEntity.id : null;
+      const refundPaymentId =
+        typeof refundEntity.payment_id === "string" ? refundEntity.payment_id : null;
+      const refundAmount = paiseToRupees(refundEntity.amount);
+
+      if (!refundId || !refundPaymentId || !refundAmount) {
+        // Unreadable payload. 200, because redelivery will carry the same one.
+        captureError(new Error("Unreadable refund payload"), {
+          scope: "donations/webhook",
+          operation: "parse_refund",
+          entityType: "PAYMENT",
+          entityId: refundPaymentId ?? "unknown",
+        });
+        return NextResponse.json({ received: true, unreadable: true }, { status: 200 });
+      }
+
+      const donation = await prisma.donation.findFirst({
+        where: { razorpayPaymentId: refundPaymentId },
+        select: {
+          id: true,
+          amount: true,
+          status: true,
+          donorId: true,
+          projectId: true,
+          project: { select: { ngoId: true } },
+          taxReceipt: { select: { id: true } },
+        },
+      });
+
+      if (!donation) {
+        await recordUnmatchedRefund({
+          refundId,
+          paymentId: refundPaymentId,
+          amount: refundAmount,
+        });
+        return NextResponse.json({ received: true, unmatched: true }, { status: 200 });
+      }
+
+      // Partial refunds are real: a payment can be refunded more than once and
+      // for less than its full value. The donation only becomes REFUNDED when
+      // everything given has been given back — flipping it on the first
+      // partial would claim the donor got all their money back.
+      //
+      // The prior-refunds read sits outside the transaction, so two refunds
+      // landing at once could both compute "not yet fully refunded". That
+      // costs a status flag, not money: both DEBIT entries still apply exactly
+      // once each, and reconciliation sees the true total either way.
+      const priorRefunds = await prisma.ledgerEntry.findMany({
+        where: { donationId: donation.id, entryType: "DONATION_REFUNDED" },
+        select: { amount: true },
+      });
+      const refundedSoFar = priorRefunds.reduce(
+        (sum, e) => sum.plus(new Prisma.Decimal(e.amount.toString())),
+        new Prisma.Decimal(0),
+      );
+      const fullyRefunded = refundedSoFar
+        .plus(refundAmount)
+        .greaterThanOrEqualTo(new Prisma.Decimal(donation.amount.toString()));
+
+      try {
+        await prisma.$transaction([
+          prisma.webhookEvent.create({
+            data: {
+              eventType: eventName,
+              dedupeKey: webhookDedupeKey(eventName, refundId),
+              payloadId: refundId,
+              eventId: event.id ?? null,
+            },
+          }),
+          prisma.ledgerEntry.create({
+            data: donationRefundedEntry({
+              donationId: donation.id,
+              projectId: donation.projectId,
+              ngoId: donation.project.ngoId,
+              donorId: donation.donorId,
+              amount: refundAmount,
+              refundId,
+              paymentId: refundPaymentId,
+              occurredAt: paymentOccurredAt(refundEntity.created_at),
+              hadTaxReceipt: Boolean(donation.taxReceipt),
+            }),
+          }),
+          // The counters come back down by exactly what was returned. Without
+          // this the project keeps showing money it no longer holds.
+          prisma.project.update({
+            where: { id: donation.projectId },
+            data: { raisedAmount: { decrement: refundAmount } },
+          }),
+          prisma.user.update({
+            where: { id: donation.donorId },
+            data: { totalDonated: { decrement: refundAmount } },
+          }),
+          ...(fullyRefunded
+            ? [
+                prisma.donation.update({
+                  where: { id: donation.id },
+                  data: { status: "REFUNDED" as const },
+                }),
+              ]
+            : []),
+        ]);
+      } catch (err) {
+        if (isUniqueConstraintError(err)) {
+          // Already applied — the other event for this refund won, or this is
+          // a redelivery. Nothing was written twice.
+          return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
+        }
+        throw err;
+      }
+
+      // An 80G receipt for money that was given back is a document the donor
+      // may already have filed with a tax return. The platform cannot know
+      // whether it was, so this is raised for a human rather than resolved by
+      // voiding the receipt quietly.
+      if (donation.taxReceipt) {
+        try {
+          await recordRefundAfterReceipt({
+            donationId: donation.id,
+            refundedAmount: refundAmount,
+            refundId,
+          });
+        } catch (receiptErr) {
+          captureError(receiptErr, {
+            scope: "donations/webhook",
+            operation: "record_refund_after_receipt",
+            entityType: "DONATION",
+            entityId: donation.id,
+          });
+        }
+      }
+
+      return NextResponse.json({ received: true, refunded: true }, { status: 200 });
     } else if (eventName === "payment.failed") {
       const paymentEntity = event.payload.payment.entity;
       const orderId = paymentEntity.order_id;

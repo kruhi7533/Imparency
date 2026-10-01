@@ -112,7 +112,23 @@ export type AdminAction =
   // comment on AdminActionLog.adminId for why these live in the same trail as
   // human actions rather than a separate one.
   | "NGO_REVERIFICATION_REQUIRED"
-  | "NGO_REVERIFICATION_CLEARED";
+  | "NGO_REVERIFICATION_CLEARED"
+  // Finance control plane. A reconciliation run is logged because "when was
+  // the money last checked, and by whom" is the first question an auditor
+  // asks; resolving a finance exception is logged because it is someone
+  // saying a discrepancy has been answered for.
+  | "RECONCILIATION_RUN"
+  | "FINANCE_EXCEPTION_RESOLVED"
+  // Committing money to an approved proposal. Proposing and deciding are
+  // logged separately even when the same admin does both, because the whole
+  // point of recording them apart is that they need not be one person.
+  | "ALLOCATION_PROPOSED"
+  | "ALLOCATION_APPROVED"
+  | "ALLOCATION_REJECTED"
+  // An admin attesting that a funder's committed money actually arrived. The
+  // attester is the whole value of the record, so it is logged like a
+  // decision, not like a data entry.
+  | "ALLOCATION_PAYMENT_RECORDED";
 
 /**
  * Every entity an admin action can be recorded against.
@@ -146,6 +162,9 @@ export const ADMIN_ENTITY_TYPES = [
   "MATCHING_JOB",
   "MATCH_CANDIDATE",
   "PROPOSAL",
+  "FINANCE_EXCEPTION",
+  "RECONCILIATION_RUN",
+  "ALLOCATION",
 ] as const;
 
 export type AdminEntityType = (typeof ADMIN_ENTITY_TYPES)[number];
