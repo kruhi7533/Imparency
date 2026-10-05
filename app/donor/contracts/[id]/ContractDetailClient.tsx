@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import ContractPaymentsPanel from "./ContractPaymentsPanel";
 
 interface SerializedContract {
   id: string;
@@ -88,9 +89,11 @@ const STATUS_BADGE: Record<string, { bg: string; text: string; label: string }> 
 export default function ContractDetailClient({
   contract,
   currentUser,
+  funding,
 }: {
   contract: SerializedContract;
   currentUser: { id: string; role: string; name: string; email: string };
+  funding: React.ComponentProps<typeof ContractPaymentsPanel> & { milestoneStates: Record<string, string> };
 }) {
   const router = useRouter();
 
@@ -406,6 +409,9 @@ export default function ContractDetailClient({
         </div>
       </div>
 
+      {/* Week 6: payments and reconciliation */}
+      <ContractPaymentsPanel {...funding} />
+
       {/* Milestone Disbursement Schedule */}
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
@@ -474,7 +480,8 @@ export default function ContractDetailClient({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {contract.status === "ACTIVE" && isDonor && m.status !== "DISBURSED" && (
+                    {contract.status === "ACTIVE" && isDonor && m.status !== "DISBURSED" &&
+                      funding.milestoneStates[m.id] === "FUNDED" && (
                       <button
                         onClick={() => handleDisburseMilestone(m.id, m.title)}
                         disabled={loading}
@@ -485,6 +492,9 @@ export default function ContractDetailClient({
                     )}
                     {m.status === "DISBURSED" && (
                       <span className="text-xs text-emerald-600 font-semibold">Released ✓</span>
+                    )}
+                    {contract.status === "ACTIVE" && m.status !== "DISBURSED" && funding.milestoneStates[m.id] !== "FUNDED" && (
+                      <span className="text-[11px] text-gray-400">Release after payment is reconciled</span>
                     )}
                   </td>
                 </tr>

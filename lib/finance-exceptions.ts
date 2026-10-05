@@ -22,7 +22,7 @@ import { isUniqueConstraintError } from "@/lib/razorpay-webhook";
  *    erase the first investigation's outcome.
  */
 
-export type FinanceEntityType = "PROJECT" | "DONOR" | "DONATION" | "PAYMENT" | "ALLOCATION";
+export type FinanceEntityType = "PROJECT" | "DONOR" | "DONATION" | "PAYMENT" | "ALLOCATION" | "CONTRACT_PAYMENT";
 
 export interface ExceptionFinding {
   type: FinanceExceptionType;
@@ -266,5 +266,27 @@ export async function recordUnmatchedRefund(args: {
         : `Refund of ${args.amount.toFixed(2)} against a payment with no donation row`,
     observedAmount: args.amount,
     detail: { refundId: args.refundId, direction: "REFUND" },
+  });
+}
+
+/**
+ * The NGO says a donor-recorded contract payment did not arrive as recorded.
+ *
+ * Never auto-resolved: two parties disagree about money and the reconciler can
+ * see neither bank account. Subject is the ContractPayment, ids and amount only.
+ */
+export async function recordContractPaymentDispute(args: {
+  paymentId: string;
+  contractId: string;
+  projectId: string;
+  amount: Prisma.Decimal;
+}): Promise<RecordOutcome> {
+  return recordException({
+    type: FinanceExceptionType.CONTRACT_PAYMENT_DISPUTED,
+    entityType: "CONTRACT_PAYMENT",
+    entityId: args.paymentId,
+    summary: `NGO disputed a donor-recorded contract payment of ${args.amount.toFixed(2)}`,
+    observedAmount: args.amount,
+    detail: { contractId: args.contractId, projectId: args.projectId },
   });
 }

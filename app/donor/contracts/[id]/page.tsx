@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import ContractDetailClient from "@/app/donor/contracts/[id]/ContractDetailClient";
+import { fundingPanelProps, resolveContractParty } from "@/lib/contract-payments";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,7 @@ export default async function DonorContractDetailPage({
       auditLogs: {
         orderBy: { createdAt: "desc" },
       },
+      payments: true,
     },
   });
 
@@ -82,6 +84,12 @@ export default async function DonorContractDetailPage({
     });
     if (!isMember) notFound();
   }
+
+  // Same ownership rule as the payment routes, so the panel never offers an
+  // action the API would refuse.
+  const party = await resolveContractParty({ id: userId, role: userRole }, contract);
+  if (!party) notFound();
+  const funding = fundingPanelProps(contract, party);
 
   const serializedContract = {
     ...contract,
@@ -109,6 +117,7 @@ export default async function DonorContractDetailPage({
       ...a,
       createdAt: a.createdAt.toISOString(),
     })),
+    payments: undefined,
   };
 
   return (
@@ -116,6 +125,7 @@ export default async function DonorContractDetailPage({
       <div className="max-w-6xl mx-auto space-y-6">
         <ContractDetailClient
           contract={serializedContract}
+          funding={funding}
           currentUser={{
             id: userId,
             role: userRole,

@@ -35,6 +35,7 @@ const EXCEPTION_LABEL: Record<FinanceExceptionType, string> = {
   PAYMENT_AMOUNT_MISMATCH: "Captured amount differs from the donation",
   REFUND_AFTER_RECEIPT: "Refund on a donation with an 80G receipt issued",
   UNCONFIRMED_ALLOCATION: "Committed money never confirmed as received",
+  CONTRACT_PAYMENT_DISPUTED: "NGO disputes a donor-recorded contract payment",
 };
 
 /**
@@ -54,6 +55,8 @@ const SEVERE: FinanceExceptionType[] = [
   FinanceExceptionType.REFUND_AFTER_RECEIPT,
   // An organisation may be planning work against money that never arrived.
   FinanceExceptionType.UNCONFIRMED_ALLOCATION,
+  // Donor and NGO disagree about whether contract money arrived.
+  FinanceExceptionType.CONTRACT_PAYMENT_DISPUTED,
 ];
 
 function rupees(value: { toString(): string } | null | undefined): string {
