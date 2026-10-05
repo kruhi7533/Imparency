@@ -128,7 +128,10 @@ export type AdminAction =
   // An admin attesting that a funder's committed money actually arrived. The
   // attester is the whole value of the record, so it is logged like a
   // decision, not like a data entry.
-  | "ALLOCATION_PAYMENT_RECORDED";
+  | "ALLOCATION_PAYMENT_RECORDED"
+  // Week 7: a reviewer's decision on a field photo. It decides whether a
+  // donor can ever see the photo, so it is logged like any approval.
+  | "FIELD_EVIDENCE_REVIEWED";
 
 /**
  * Every entity an admin action can be recorded against.
@@ -165,6 +168,7 @@ export const ADMIN_ENTITY_TYPES = [
   "FINANCE_EXCEPTION",
   "RECONCILIATION_RUN",
   "ALLOCATION",
+  "FIELD_EVIDENCE",
 ] as const;
 
 export type AdminEntityType = (typeof ADMIN_ENTITY_TYPES)[number];

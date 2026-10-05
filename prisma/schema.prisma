@@ -272,6 +272,7 @@ model NGOProfile {
   requirementMatches   RequirementMatch[]
   opportunityResponses OpportunityResponse[]
   contracts            Contract[]
+  fieldTasks           FieldTask[]
 
   // Discover, the admin verification queue and every public listing filter on
   // verification state plus the two independent "shouldn't be visible" flags.
@@ -401,6 +402,7 @@ model Project {
   requirementMatches   RequirementMatch[]
   opportunityResponses OpportunityResponse[]
   contracts            Contract[]
+  FieldTask            FieldTask[]
 
   @@index([ngoId])
   // Discover, admin review queues and the NGO profile all filter on these two
@@ -456,6 +458,7 @@ model Milestone {
   proofs        MilestoneProof[]
   impactReports ImpactReport[]
   reviews       MilestoneReview[]
+  fieldTasks    FieldTask[]
 
   @@index([projectId])
   // The overdue sweep (risk-sweep cron, Today inbox, Impact Health) filters on
@@ -2884,4 +2887,141 @@ model AllocationPayment {
 
   @@index([allocationId])
   @@index([paidAt])
+}
+
+// ─── Week 7: field tasks, mobile evidence, beneficiary feedback & consent ────
+
+enum FieldTaskStatus {
+  OPEN
+  SUBMITTED
+  COMPLETED
+  CANCELLED
+}
+
+/// A piece of field work an NGO owner/admin assigns to a team member, tied to
+/// a project and optionally one milestone. Evidence is captured against it
+/// from the mobile /ngo/field page, which works offline.
+model FieldTask {
+  id           String          @id @default(uuid())
+  /// Tenant. Every read and write checks it against the caller's NGO.
+  ngoId        String
+  projectId    String
+  project      Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestoneId  String?
+  milestone    Milestone?      @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  title        String
+  instructions String?
+  /// User id of the assignee: the NGO owner or a member of this NGO's team.
+  assignedToId String
+  createdById  String
+  dueDate      DateTime?
+  status       FieldTaskStatus @default(OPEN)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  evidence     FieldEvidence[]
+  NGOProfile   NGOProfile?     @relation(fields: [nGOProfileId], references: [id])
+  nGOProfileId String?
+
+  @@index([ngoId, status])
+  @@index([assignedToId, status])
+  @@index([projectId])
+}
+
+enum FieldEvidenceStatus {
+  PENDING_REVIEW
+  APPROVED
+  RESUBMIT_REQUESTED
+  REJECTED
+}
+
+/// One photo + GPS + note captured in the field. The photo lives in PRIVATE
+/// storage and is only ever served through an authenticated route.
+///
+/// `clientId` is generated on the device when the evidence is captured, so a
+/// capture queued offline and synced twice (flaky network, retry) is stored once.
+model FieldEvidence {
+  id          String    @id @default(uuid())
+  taskId      String
+  task        FieldTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  ngoId       String
+  projectId   String
+  milestoneId String?
+
+  capturedById String
+  clientId     String @unique
+
+  photoKey      String
+  photoMime     String
+  /// SHA-256 of the photo bytes: the same image submitted twice is flagged.
+  photoSha256   String
+  duplicateOfId String?
+
+  latitude       Float?
+  longitude      Float?
+  accuracyM      Float?
+  /// MATCH | MISMATCH | NO_GPS_DATA against the project's site (lib/proof-location.ts).
+  locationStatus String
+  distanceKm     Float?
+
+  note           String?
+  /// False when the photo shows no identifiable person (a built wall, a
+  /// delivered kit). Then no beneficiary consent is needed to show it to a donor.
+  containsPeople Boolean @default(true)
+
+  /// When the device captured it vs when the server received it. A gap means
+  /// it was captured offline and synced later.
+  capturedAt DateTime
+  syncedAt   DateTime @default(now())
+
+  status       FieldEvidenceStatus @default(PENDING_REVIEW)
+  reviewedById String?
+  reviewedAt   DateTime?
+  reviewNote   String?
+
+  feedback BeneficiaryFeedback?
+
+  @@index([ngoId, status])
+  @@index([projectId, status])
+  @@index([photoSha256])
+}
+
+enum ConsentMethod {
+  VERBAL
+  WRITTEN
+  THUMBPRINT
+}
+
+/// Beneficiary feedback and consent, captured by field staff.
+///
+/// No names: `beneficiaryRef` is the NGO's own pseudonymous label (e.g.
+/// "HH-014"). Consent is per purpose — recording the feedback, and showing a
+/// linked photo to the funder — and can be withdrawn; a withdrawn consent
+/// hides the photo from donors immediately.
+model BeneficiaryFeedback {
+  id         String         @id @default(uuid())
+  ngoId      String
+  projectId  String
+  taskId     String?
+  evidenceId String?        @unique
+  evidence   FieldEvidence? @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+
+  clientId       String  @unique
+  beneficiaryRef String?
+
+  consentToRecord     Boolean
+  consentToSharePhoto Boolean       @default(false)
+  consentMethod       ConsentMethod
+  policyVersion       String        @default("1.0")
+  withdrawnAt         DateTime?
+
+  rating       Int?
+  feedbackText String?
+
+  capturedById String
+  capturedAt   DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([ngoId])
+  @@index([projectId])
 }

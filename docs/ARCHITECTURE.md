@@ -671,3 +671,29 @@ Allocations above live on the funder track (`Proposal`), which donors never reac
 - **Not done**: no `LedgerEntry` is written for contract payments (no money moves through the platform; deciding which balance it belongs to is Intern 1's call), and no reconciler check on contracts.
 
 Tests: `tests/contract-payments.test.ts` (rules, tenant isolation, role gates, idempotency, concurrency).
+
+## 15. Field tasks, offline evidence, beneficiary consent (Week 7, 2026-10-05)
+
+- **Models**:
+  - `FieldTask` (ngoId tenant, project, optional milestone, `assignedToId`).
+  - `FieldEvidence`: a photo in **private** storage, SHA-256, GPS plus `locationStatus`, a `containsPeople` flag, device `capturedAt` vs server `syncedAt`, and a review status. `clientId` is unique.
+  - `BeneficiaryFeedback`: pseudonymous `beneficiaryRef` (no names). Consent is per purpose: `consentToRecord` and `consentToSharePhoto`, plus `consentMethod`, `policyVersion` and `withdrawnAt`.
+  - Migration `20261005200000_field_evidence` (hand-written, additive).
+- **Rules** live in `lib/field-evidence.ts`. Assigning is OWNER/ADMIN only; FIELD_STAFF see only their own tasks. If consent to record is refused, the feedback text and rating are dropped, and share consent is forced false.
+- **The donor visibility gate is `isShareableWithDonor`**: APPROVED, and either no people in the photo, or `consentToSharePhoto` with no withdrawal. `DONOR_VISIBLE_EVIDENCE_WHERE` is the same rule as a Prisma `where`; use it for any donor-facing list.
+- **Sync**: `POST /api/field/evidence` (multipart).
+  - Idempotent on the device `clientId`. A replay returns 200; a lost race cleans up its upload and replays.
+  - The image type is sniffed from the bytes. Duplicate photos are flagged via the SHA-256; GPS is checked by `classifyProofLocation`.
+  - Feedback can be sent alone, without a photo.
+- **Photos** are only served by `GET /api/field/evidence/[id]/photo`:
+  - the NGO's own team, or an admin;
+  - a donor only through an ACTIVE/COMPLETED contract on the project **and** `isShareableWithDonor`;
+  - everyone else gets 404.
+- **Offline**: `/ngo/field` writes each capture to IndexedDB (`lib/field-queue.ts`) **before** any network call, and syncs on `online` or a button press. `syncOutcome` decides whether a queued item is done, retried or failed. Photos are re-encoded through a canvas, which drops EXIF. `public/field-sw.js` (scope `/ngo/field`) caches the page, `/_next/static` and the task list so the app opens with no signal.
+- **Review**: `PATCH /api/admin/field-evidence/[id]` (APPROVE / REQUEST_RESUBMIT / REJECT).
+  - Compare-and-swap on PENDING_REVIEW. Decisions are terminal, and a reason is required for anything other than approval.
+  - Approval completes the task; a resubmit reopens it. Logged as `FIELD_EVIDENCE_REVIEWED`.
+  - There is a minimal queue at `/admin/field-evidence`, which Intern 1 owns from here.
+- **Not built**: consent withdrawal UI (the field exists), task cancel/edit, and conversion of approved field evidence into `MilestoneProof`.
+
+Tests: `tests/field-evidence.test.ts`.

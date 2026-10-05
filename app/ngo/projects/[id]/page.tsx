@@ -6,6 +6,8 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { fundingPanelProps, resolveContractParty } from "@/lib/contract-payments";
 import ContractPaymentsPanel from "@/app/donor/contracts/[id]/ContractPaymentsPanel";
+import { CAN_ASSIGN } from "@/lib/field-evidence";
+import FieldTasksPanel, { type PanelTask } from "./FieldTasksPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +56,52 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
   // Tenant check: the caller must be on this project's NGO.
   const party = await resolveContractParty(user, { donorId: "", ngoId: project.ngoId });
   if (!party || party.party !== "NGO") notFound();
+
+  // Week 7: field tasks. Owners/admins see and assign all; others see their own.
+  const canManage = CAN_ASSIGN.includes(party.teamRole);
+  const [ngo, teamMembers, fieldTasks] = await Promise.all([
+    prisma.nGOProfile.findUnique({ where: { id: project.ngoId }, select: { user: { select: { id: true, name: true } } } }),
+    prisma.nGOTeamMember.findMany({ where: { ngoId: project.ngoId }, select: { role: true, user: { select: { id: true, name: true } } } }),
+    prisma.fieldTask.findMany({
+      where: { projectId: project.id, status: { not: "CANCELLED" }, ...(canManage ? {} : { assignedToId: user.id }) },
+      orderBy: { createdAt: "desc" },
+      include: {
+        milestone: { select: { title: true } },
+        evidence: { orderBy: { syncedAt: "desc" }, include: { feedback: true } },
+      },
+    }),
+  ]);
+  const team = [
+    ...(ngo ? [{ userId: ngo.user.id, name: ngo.user.name || "Owner", role: "OWNER" }] : []),
+    ...teamMembers.map((m) => ({ userId: m.user.id, name: m.user.name || "Team member", role: m.role })),
+  ];
+  const nameOf = new Map(team.map((m) => [m.userId, m.name]));
+  const panelTasks: PanelTask[] = fieldTasks.map((t) => ({
+    id: t.id,
+    title: t.title,
+    status: t.status,
+    dueDate: t.dueDate?.toISOString() ?? null,
+    assigneeName: nameOf.get(t.assignedToId) ?? "Former member",
+    milestoneTitle: t.milestone?.title ?? null,
+    evidence: t.evidence.map((e) => ({
+      id: e.id,
+      status: e.status,
+      note: e.note,
+      locationStatus: e.locationStatus,
+      distanceKm: e.distanceKm,
+      duplicate: !!e.duplicateOfId,
+      capturedAt: e.capturedAt.toISOString(),
+      syncedAt: e.syncedAt.toISOString(),
+      reviewNote: e.reviewNote,
+      consent: e.feedback
+        ? {
+            consentToRecord: e.feedback.consentToRecord,
+            consentToSharePhoto: e.feedback.consentToSharePhoto,
+            withdrawn: !!e.feedback.withdrawnAt,
+          }
+        : null,
+    })),
+  }));
 
   const funded = project.contracts.filter((c) => c.status === "ACTIVE" || c.status === "COMPLETED");
   const awaitingSignature = project.contracts.filter((c) => !funded.includes(c));
@@ -104,6 +152,14 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
             </ul>
           )}
         </section>
+
+        <FieldTasksPanel
+          projectId={project.id}
+          canManage={canManage}
+          team={team}
+          milestones={project.milestones.map((m) => ({ id: m.id, title: m.title }))}
+          tasks={panelTasks}
+        />
 
         {/* Funded contracts */}
         {funded.length === 0 ? (
