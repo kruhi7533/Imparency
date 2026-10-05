@@ -409,8 +409,17 @@ describe("GET /api/field/evidence/[id]/photo", () => {
 describe("PATCH /api/admin/field-evidence/[id]", () => {
   const patch = (body: unknown) => REVIEW(json(body, "PATCH"), { params: { id: "ev-1" } });
   beforeEach(() => {
-    prismaMock.fieldEvidence.findUnique.mockResolvedValue({ id: "ev-1", status: "PENDING_REVIEW", taskId: "t1", projectId: "p1" });
+    prismaMock.fieldEvidence.findUnique.mockResolvedValue({
+      id: "ev-1",
+      status: "PENDING_REVIEW",
+      taskId: "t1",
+      projectId: "p1",
+      containsPeople: false,
+      feedback: null,
+      task: { project: { title: "School" }, milestone: null },
+    });
     prismaMock.fieldEvidence.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.contract.findMany = vi.fn().mockResolvedValue([]);
   });
 
   it("an NGO cannot review", async () => {

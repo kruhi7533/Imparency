@@ -405,6 +405,14 @@ export default function ContractDetailClient({
             >
               {contract.project.title} →
             </Link>
+            {isDonor && (contract.status === "ACTIVE" || contract.status === "COMPLETED") && (
+              <Link
+                href={`/donor/funded/${contract.project.id}`}
+                className="text-xs font-bold text-blue-600 hover:underline mt-1 block"
+              >
+                Milestone progress & verified evidence →
+              </Link>
+            )}
           </div>
         </div>
       </div>

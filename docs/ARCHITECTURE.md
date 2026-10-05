@@ -697,3 +697,17 @@ Tests: `tests/contract-payments.test.ts` (rules, tenant isolation, role gates, i
 - **Not built**: consent withdrawal UI (the field exists), task cancel/edit, and conversion of approved field evidence into `MilestoneProof`.
 
 Tests: `tests/field-evidence.test.ts`.
+
+### 15.1 Donor funded-project view and milestone updates (Week 7 Donor, 2026-10-05)
+
+- **`/donor/funded/[projectId]`** shows project milestone progress, the donor's own contract funding (`fundingSummary`) and verified field evidence.
+  - Access: the donor needs an ACTIVE/COMPLETED `Contract` on the project; anyone else gets 404.
+  - Evidence is queried **only** through `DONOR_VISIBLE_EVIDENCE_WHERE`, the same rule the photo route enforces, so the page cannot list a photo the route would refuse.
+  - Linked from `/donor/contracts` and the contract detail page.
+- **Milestone updates for contract donors**: `lib/contract-donor-updates.ts`. The existing triggers (`lib/notification-triggers.ts`) find donors through **donations**, so CSR contract donors were never told anything.
+  - `notifyContractDonorsMilestoneCompleted` runs from `admin/review-proof` on approval.
+  - `notifyContractDonorsEvidenceApproved` runs from `admin/field-evidence/[id]` on approval, and **only when the evidence is donor-visible**. Approved-but-unconsented evidence stays silent.
+  - Both write `Notification` rows plus FCM push via `sendPushNotification`, never throw, and fire once per decision because the decisions use compare-and-swap.
+- **Known gap, not fixed here**: the public `/projects/[id]` page and the impact feed still show the latest `MilestoneProof` media before admin review. That is the older proof track, separate from field evidence.
+
+Tests: `tests/donor-funded-view.test.ts`.

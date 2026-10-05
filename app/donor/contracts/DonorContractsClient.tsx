@@ -234,6 +234,14 @@ export default function DonorContractsClient({
                       >
                         View & Manage →
                       </Link>
+                      {(c.status === "ACTIVE" || c.status === "COMPLETED") && (
+                        <Link
+                          href={`/donor/funded/${c.project.id}`}
+                          className="block mt-1 px-3 py-1 text-[11px] font-semibold text-blue-600 hover:underline"
+                        >
+                          Progress & evidence →
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 );

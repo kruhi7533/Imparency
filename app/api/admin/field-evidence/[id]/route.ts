@@ -3,7 +3,8 @@ import { Role } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { logAdminAction } from "@/lib/admin-log";
-import { checkReview, isReviewDecision } from "@/lib/field-evidence";
+import { checkReview, isReviewDecision, isShareableWithDonor } from "@/lib/field-evidence";
+import { notifyContractDonorsEvidenceApproved } from "@/lib/contract-donor-updates";
 
 /**
  * Review one piece of field evidence: APPROVE, REQUEST_RESUBMIT or REJECT.
@@ -20,7 +21,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     const evidence = await prisma.fieldEvidence.findUnique({
       where: { id: params.id },
-      select: { id: true, status: true, taskId: true, projectId: true },
+      select: {
+        id: true,
+        status: true,
+        taskId: true,
+        projectId: true,
+        containsPeople: true,
+        feedback: { select: { consentToSharePhoto: true, withdrawnAt: true } },
+        task: { select: { project: { select: { title: true } }, milestone: { select: { title: true } } } },
+      },
     });
     if (!evidence) return NextResponse.json({ error: "Evidence not found" }, { status: 404 });
 
@@ -59,6 +68,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       metadata: { taskId: evidence.taskId, projectId: evidence.projectId },
       request,
     });
+
+    // Week 7 donor: tell funding donors — but only about evidence they can
+    // actually open. Approved-but-unconsented evidence stays silent.
+    // The decision has committed; a notification problem must not turn it into a 500.
+    if (check.target === "APPROVED" && isShareableWithDonor({ status: check.target, containsPeople: evidence.containsPeople }, evidence.feedback)) {
+      try {
+        await notifyContractDonorsEvidenceApproved({
+          projectId: evidence.projectId,
+          projectTitle: evidence.task.project.title,
+          milestoneTitle: evidence.task.milestone?.title ?? null,
+        });
+      } catch (err) {
+        console.error("[api/admin/field-evidence/[id]] donor notification failed:", err);
+      }
+    }
 
     return NextResponse.json({ ok: true, status: check.target });
   } catch (error) {
