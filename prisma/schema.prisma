@@ -272,7 +272,6 @@ model NGOProfile {
   requirementMatches   RequirementMatch[]
   opportunityResponses OpportunityResponse[]
   contracts            Contract[]
-  fieldTasks           FieldTask[]
 
   // Discover, the admin verification queue and every public listing filter on
   // verification state plus the two independent "shouldn't be visible" flags.
@@ -402,7 +401,7 @@ model Project {
   requirementMatches   RequirementMatch[]
   opportunityResponses OpportunityResponse[]
   contracts            Contract[]
-  FieldTask            FieldTask[]
+  fieldTasks           FieldTask[]
 
   @@index([ngoId])
   // Discover, admin review queues and the NGO profile all filter on these two
@@ -2919,9 +2918,7 @@ model FieldTask {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
-  evidence     FieldEvidence[]
-  NGOProfile   NGOProfile?     @relation(fields: [nGOProfileId], references: [id])
-  nGOProfileId String?
+  evidence FieldEvidence[]
 
   @@index([ngoId, status])
   @@index([assignedToId, status])
