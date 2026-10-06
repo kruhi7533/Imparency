@@ -208,7 +208,21 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-gray-400">Proposed milestones</p>
+                <p className="text-xs text-gray-400">
+                  Proposed milestones{" "}
+                  {(() => {
+                    const allocated = milestones.reduce((s, m) => s + (Number(m.amount) || 0), 0);
+                    const total = Number(budget) || 0;
+                    if (!allocated && !total) return null;
+                    const over = total > 0 && allocated > total;
+                    return (
+                      <span className={over ? "text-red-400 font-semibold" : "text-gray-500"}>
+                        · ₹{allocated.toLocaleString("en-IN")} allocated of ₹{total.toLocaleString("en-IN")} budget
+                        {over ? " — milestones exceed the budget" : total > allocated ? ` (₹${(total - allocated).toLocaleString("en-IN")} unallocated)` : ""}
+                      </span>
+                    );
+                  })()}
+                </p>
                 <button
                   type="button"
                   onClick={() => setMilestones((m) => [...m, { title: "", amount: "", durationMonths: "" }])}
