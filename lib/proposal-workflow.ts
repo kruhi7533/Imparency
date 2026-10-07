@@ -40,7 +40,12 @@ export const PROPOSAL_TRANSITIONS: Record<ProposalAction, Transition> = {
 export const PROPOSAL_ACTIONS = Object.keys(PROPOSAL_TRANSITIONS) as ProposalAction[];
 
 export function isProposalAction(value: unknown): value is ProposalAction {
-  return typeof value === "string" && value in PROPOSAL_TRANSITIONS;
+  // hasOwnProperty, NOT `in`. `in` walks the prototype chain, so "toString"
+  // and "constructor" would both pass the guard and then index the table to
+  // a function, giving a transition whose `from` is undefined — which reaches
+  // the caller as a 500 instead of a 400. Same reasoning as isGrievanceAction
+  // in lib/grievance-workflow.ts.
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(PROPOSAL_TRANSITIONS, value);
 }
 
 /**

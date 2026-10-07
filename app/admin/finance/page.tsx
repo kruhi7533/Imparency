@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
-import { FinanceExceptionStatus, FinanceExceptionType, LedgerDirection } from "@prisma/client";
+import { FinanceExceptionStatus, LedgerDirection } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import SchemaOutOfSync from "@/app/admin/components/SchemaOutOfSync";
 import { netAmount, CASH_ENTRY_TYPES } from "@/lib/ledger";
 import { loadFinanceLabels, shortId, EMPTY_LABELS, type FinanceLabels } from "@/lib/finance-labels";
 import { RunReconciliationButton, ResolveExceptionForm } from "./FinanceActions";
+// Shared with the Today inbox (SPEC-2.2) so both pages agree on which
+// exceptions are serious. See lib/finance-exception-labels.ts.
+import { EXCEPTION_LABEL, SEVERE_EXCEPTION_TYPES as SEVERE } from "@/lib/finance-exception-labels";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,40 +27,6 @@ export const dynamic = "force-dynamic";
  * Read-only except for two actions: run the reconciler, and close a finding
  * with a note.
  */
-
-/** Plain-language label per exception type — the enum name is not an answer. */
-const EXCEPTION_LABEL: Record<FinanceExceptionType, string> = {
-  UNMATCHED_PAYMENT: "Payment with no donation record",
-  MISSING_LEDGER_ENTRY: "Confirmed donation missing from the ledger",
-  PROJECT_TOTAL_MISMATCH: "Project raised total disagrees with the ledger",
-  DONOR_TOTAL_MISMATCH: "Donor lifetime total disagrees with the ledger",
-  STALE_PENDING_DONATION: "Donation stuck pending",
-  PAYMENT_AMOUNT_MISMATCH: "Captured amount differs from the donation",
-  REFUND_AFTER_RECEIPT: "Refund on a donation with an 80G receipt issued",
-  UNCONFIRMED_ALLOCATION: "Committed money never confirmed as received",
-  CONTRACT_PAYMENT_DISPUTED: "NGO disputes a donor-recorded contract payment",
-};
-
-/**
- * Severity is a property of the TYPE, not of the amount. An unmatched payment
- * of ₹100 is still money we took and cannot account for; a ₹100 drift on a
- * counter is an arithmetic error. Ranking by amount would bury the first kind
- * under the second.
- */
-const SEVERE: FinanceExceptionType[] = [
-  FinanceExceptionType.UNMATCHED_PAYMENT,
-  FinanceExceptionType.MISSING_LEDGER_ENTRY,
-  // The provider took a different amount than we recorded. No other check can
-  // find this one, because every other check compares our records against our
-  // own records.
-  FinanceExceptionType.PAYMENT_AMOUNT_MISMATCH,
-  // A tax document exists for money that was given back.
-  FinanceExceptionType.REFUND_AFTER_RECEIPT,
-  // An organisation may be planning work against money that never arrived.
-  FinanceExceptionType.UNCONFIRMED_ALLOCATION,
-  // Donor and NGO disagree about whether contract money arrived.
-  FinanceExceptionType.CONTRACT_PAYMENT_DISPUTED,
-];
 
 function rupees(value: { toString(): string } | null | undefined): string {
   if (value === null || value === undefined) return "—";

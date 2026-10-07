@@ -46,3 +46,42 @@ export const COMMON_DOCUMENTS = [
   "Annual report",
   "Project proposal & budget",
 ];
+
+/**
+ * Does this free text name one of `options`?
+ *
+ * Deliberately a containment test rather than equality. Both the extractor and
+ * the donor form legitimately produce compound values -- "Education & skilling",
+ * "Maharashtra, Goa" -- that are correct but are not list entries, so equality
+ * would reject good data. What this is here to catch is the opposite case: a
+ * value that names no known option *at all*.
+ *
+ * Two tiers, both on word boundaries so "Goals" does not match "Goa":
+ *   - the whole option appears ("Water & Sanitation"), or
+ *   - any word of it with 5+ letters does ("Water and Sanitation" -> "Water").
+ * The second tier is what keeps near-miss phrasings working. It is permissive by
+ * design: the cost of a false accept is the status quo, the cost of a false
+ * reject is an admin blocked from validating a correct requirement.
+ */
+export function namesKnownOption(value: string, options: string[]): boolean {
+  const text = value.toLowerCase();
+  // Index walk rather than a built RegExp: the option strings would otherwise
+  // need escaping ("Water & Sanitation", "Disability & Inclusion").
+  const isBoundary = (char: string | undefined) => char === undefined || !/[a-z0-9]/.test(char);
+  const hasWord = (word: string) => {
+    for (let from = 0; ; ) {
+      const at = text.indexOf(word, from);
+      if (at === -1) return false;
+      if (isBoundary(text[at - 1]) && isBoundary(text[at + word.length])) return true;
+      from = at + 1;
+    }
+  };
+  return options.some(
+    (option) =>
+      hasWord(option.toLowerCase()) ||
+      option
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .some((word) => word.length >= 5 && hasWord(word))
+  );
+}

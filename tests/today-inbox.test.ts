@@ -37,6 +37,7 @@ function sources(overrides: Partial<InboxSources> = {}): InboxSources {
     pendingProjects: [],
     completedProjects: [],
     pendingProofs: [],
+    openGrievances: [],
     pendingFcra: [],
     pendingOrgs: [],
     institutionalDonations: [],
@@ -45,6 +46,7 @@ function sources(overrides: Partial<InboxSources> = {}): InboxSources {
     threadsNeedingReply: [],
     quietNgos: [],
     overdueMilestones: [],
+    financeExceptions: [],
     ...overrides,
   };
 }
@@ -923,5 +925,159 @@ describe("institutional donations", () => {
   it("links to the donor, which is where the organisation can be acted on", () => {
     const [item] = buildInboxItems(sources({ institutionalDonations: [donation()] }), NOW);
     expect(item.href).toBe("/admin/donors/d1");
+  });
+});
+
+describe("grievances on Today", () => {
+  function grievance(overrides: Partial<InboxSources["openGrievances"][number]> = {}) {
+    return {
+      id: "g1",
+      subject: "Milestone reported complete but no work done",
+      category: "FUND_MISUSE",
+      createdAt: daysAgo(1),
+      ngo: { orgName: "Asha Trust" },
+      ...overrides,
+    };
+  }
+
+  it("is work the admin owes, not something to chase someone else for", () => {
+    const [item] = buildInboxItems(sources({ openGrievances: [grievance()] }), NOW);
+    expect(item.queue).toBe("Grievances");
+    expect(item.category).toBe("Waiting on you");
+    expect(item.href).toBe("/admin/grievances");
+  });
+
+  it("starts at MEDIUM rather than LOW — the reporter has no other way in", () => {
+    // Every other queue opens at "low" for a fresh item. A complaint does not:
+    // the person waiting has no contract, no account manager, and no leverage.
+    const [item] = buildInboxItems(sources({ openGrievances: [grievance({ createdAt: daysAgo(0) })] }), NOW);
+    expect(item.severity).toBe("medium");
+  });
+
+  it("escalates to HIGH once past the two-day target", () => {
+    const [item] = buildInboxItems(sources({ openGrievances: [grievance({ createdAt: daysAgo(3) })] }), NOW);
+    expect(item.severity).toBe("high");
+  });
+
+  it("names the organisation and the kind of complaint, but never quotes the complaint itself", () => {
+    const [item] = buildInboxItems(sources({ openGrievances: [grievance()] }), NOW);
+    expect(item.subtitle).toContain("Asha Trust");
+    expect(item.subtitle).toContain("fund misuse");
+    // The subject line is the title; the body is not loaded by this query at
+    // all, so there is nothing here that could leak it.
+    expect(item.title).toBe("Milestone reported complete but no work done");
+  });
+});
+
+/**
+ * SPEC-2.2 — the finance exception queue on Today.
+ *
+ * The point of putting it here is that an admin should not have to remember to
+ * open /admin/finance to discover the platform took money it cannot account
+ * for. Two things have to hold for that to be true: the serious kinds must be
+ * high on arrival (so they are never filed behind "new since your last
+ * visit"), and the arithmetic kinds must stay quiet (so the queue does not cry
+ * wolf over a drift the reconciler will close by itself on its next run).
+ */
+describe("finance exceptions", () => {
+  const exception = (over: Partial<InboxSources["financeExceptions"][number]> = {}) => ({
+    id: "fe1",
+    type: "UNMATCHED_PAYMENT" as const,
+    entityType: "PAYMENT",
+    entityId: "pay_123",
+    summary: "Captured payment of 5000.00 with no donation row",
+    firstSeenAt: daysAgo(1),
+    occurrences: 1,
+    ...over,
+  });
+
+  it("files a payment we cannot account for as the admin's to answer", () => {
+    const [item] = buildInboxItems(sources({ financeExceptions: [exception()] }), NOW);
+
+    expect(item.queue).toBe("Finance Exceptions");
+    expect(item.category).toBe("Waiting on you");
+    expect(item.href).toBe("/admin/finance");
+    // The plain-language label, not the enum name.
+    expect(item.title).toBe("Payment with no donation record");
+    expect(item.subtitle).toContain("Captured payment of 5000.00");
+  });
+
+  it("treats the severe kinds as high the day they appear", () => {
+    // Severity is the type's, not the amount's and not the age's.
+    for (const type of [
+      "UNMATCHED_PAYMENT",
+      "MISSING_LEDGER_ENTRY",
+      "PAYMENT_AMOUNT_MISMATCH",
+      "REFUND_AFTER_RECEIPT",
+      "UNCONFIRMED_ALLOCATION",
+      "CONTRACT_PAYMENT_DISPUTED",
+    ] as const) {
+      const [item] = buildInboxItems(
+        sources({ financeExceptions: [exception({ type, firstSeenAt: daysAgo(0) })] }),
+        NOW
+      );
+      expect(item.severity, `${type} should be high on arrival`).toBe("high");
+    }
+  });
+
+  it("starts the arithmetic kinds low and raises them after a week", () => {
+    for (const type of ["PROJECT_TOTAL_MISMATCH", "DONOR_TOTAL_MISMATCH", "STALE_PENDING_DONATION"] as const) {
+      const [fresh] = buildInboxItems(
+        sources({ financeExceptions: [exception({ type, firstSeenAt: daysAgo(1) })] }),
+        NOW
+      );
+      expect(fresh.severity, `${type} fresh`).toBe("low");
+
+      const [old] = buildInboxItems(
+        sources({ financeExceptions: [exception({ type, firstSeenAt: daysAgo(8) })] }),
+        NOW
+      );
+      expect(old.severity, `${type} after a week`).toBe("medium");
+    }
+  });
+
+  it("shows a severe exception even when the admin looked a minute ago", () => {
+    // The thing this queue exists for: money unaccounted for must not wait for
+    // a quiet day. High severity is what gets it past the newness filter.
+    const justVisited = new Date(NOW - 60 * 1000);
+    const [item] = buildInboxItems(
+      sources({ financeExceptions: [exception({ firstSeenAt: daysAgo(30) })] }),
+      NOW
+    );
+    expect(isTodayWorthy(item, justVisited)).toBe(true);
+  });
+
+  it("does not show a week-old arithmetic drift the admin has already seen", () => {
+    const justVisited = new Date(NOW - 60 * 1000);
+    const [item] = buildInboxItems(
+      sources({
+        financeExceptions: [exception({ type: "PROJECT_TOTAL_MISMATCH", firstSeenAt: daysAgo(3) })],
+      }),
+      NOW
+    );
+    expect(isTodayWorthy(item, justVisited)).toBe(false);
+  });
+
+  it("ages a recurring discrepancy from when it first appeared", () => {
+    // Ageing from the last reconciler run would make a month-old problem look
+    // like it arrived an hour ago, and it would never breach its target.
+    const [item] = buildInboxItems(
+      sources({ financeExceptions: [exception({ firstSeenAt: daysAgo(30), occurrences: 12 })] }),
+      NOW
+    );
+    expect(item.occurredAt).toEqual(daysAgo(30));
+    expect(item.age).toBe(30);
+    expect(item.subtitle).toContain("seen 12");
+    expect(isBreached(item)).toBe(true);
+  });
+
+  it("counts into its own queue for the filter bar", () => {
+    const counts = countByQueue(
+      buildInboxItems(
+        sources({ financeExceptions: [exception(), exception({ id: "fe2", entityId: "pay_456" })] }),
+        NOW
+      )
+    );
+    expect(counts).toContainEqual({ queue: "Finance Exceptions", count: 2 });
   });
 });

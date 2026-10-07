@@ -129,6 +129,17 @@ export type AdminAction =
   // attester is the whole value of the record, so it is logged like a
   // decision, not like a data entry.
   | "ALLOCATION_PAYMENT_RECORDED"
+  // Grievance redress. NOTE: these four are logged with ids and status only —
+  // never the complaint body and never the admin's resolution note. Every
+  // other route here passes its note through (see FINANCE_EXCEPTION_RESOLVED),
+  // but a grievance is the most sensitive free text in the product and the log
+  // outlives PII retention on the main tables. The reason lives on the
+  // Grievance row, which is subject to that retention; the log records that a
+  // reason was given, not what it said.
+  | "GRIEVANCE_TRIAGED"
+  | "GRIEVANCE_INVESTIGATION_STARTED"
+  | "GRIEVANCE_RESOLVED"
+  | "GRIEVANCE_DISMISSED"
   // Week 7: a reviewer's decision on a field photo. It decides whether a
   // donor can ever see the photo, so it is logged like any approval.
   | "FIELD_EVIDENCE_REVIEWED";
@@ -168,6 +179,7 @@ export const ADMIN_ENTITY_TYPES = [
   "FINANCE_EXCEPTION",
   "RECONCILIATION_RUN",
   "ALLOCATION",
+  "GRIEVANCE",
   "FIELD_EVIDENCE",
 ] as const;
 

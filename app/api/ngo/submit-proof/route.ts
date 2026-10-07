@@ -6,6 +6,13 @@ import { validateMilestoneProof } from "@/lib/gemini/validate-proof";
 import { Role } from "@prisma/client";
 import { recalculateNGOHealthScore } from "@/lib/ngo-health";
 import { extractGpsFromImage, classifyProofLocation } from "@/lib/proof-location";
+import {
+  hashBuffer,
+  classifyDuplicate,
+  duplicateSeverity,
+  buildDuplicateDescription,
+  type PriorProofMatch,
+} from "@/lib/proof-fingerprint";
 
 export const runtime = "nodejs";
 
@@ -86,10 +93,16 @@ export async function POST(request: Request) {
     const documentUrls: string[] = [];
     const fileBuffers: { buffer: Buffer; mimeType: string }[] = [];
 
+    // SHA-256 per file, taken from the buffer that is already in memory for the
+    // AI call — so fingerprinting costs one pass over bytes already read, and
+    // adds no dependency and no second download.
+    const contentHashes: string[] = [];
+
     for (const file of files) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       fileBuffers.push({ buffer, mimeType: file.type });
+      contentHashes.push(hashBuffer(buffer));
 
       // Save to storage
       const fileUrl = await uploadFile(buffer, file.name, `proofs/${milestoneId}`);
@@ -125,6 +138,41 @@ export async function POST(request: Request) {
       fileBuffers
     );
 
+    // Earlier proofs sharing a file with this submission. Queried BEFORE the
+    // new row is written, so the submission cannot match itself — the
+    // alternative (querying afterwards and excluding the new id) is one easy
+    // mistake away from every proof flagging itself as a duplicate.
+    //
+    // Best-effort like the GPS read: a failure here must not cost an NGO its
+    // submission, so it is caught and logged rather than thrown.
+    let priorMatches: PriorProofMatch[] = [];
+    try {
+      const collisions = await prisma.milestoneProof.findMany({
+        where: { contentHashes: { hasSome: contentHashes } },
+        select: {
+          id: true,
+          milestoneId: true,
+          milestone: {
+            select: {
+              title: true,
+              projectId: true,
+              project: { select: { ngoId: true, ngo: { select: { orgName: true } } } },
+            },
+          },
+        },
+      });
+      priorMatches = collisions.map((c) => ({
+        proofId: c.id,
+        milestoneId: c.milestoneId,
+        milestoneTitle: c.milestone.title,
+        projectId: c.milestone.projectId,
+        ngoId: c.milestone.project.ngoId,
+        orgName: c.milestone.project.ngo.orgName,
+      }));
+    } catch (hashErr) {
+      console.error("Failed to check proof fingerprints for duplicates:", hashErr);
+    }
+
     // Save MilestoneProof details
     const proof = await prisma.milestoneProof.create({
       data: {
@@ -142,6 +190,7 @@ export async function POST(request: Request) {
         proofLatitude: proofCoordinates?.latitude ?? null,
         proofLongitude: proofCoordinates?.longitude ?? null,
         gpsSource: proofCoordinates ? "EXIF" : null,
+        contentHashes,
       },
     });
 
@@ -180,6 +229,34 @@ export async function POST(request: Request) {
       }
     } catch (locationErr) {
       console.error("Failed to run proof location check:", locationErr);
+    }
+
+    // Duplicate-evidence check. A RESUBMISSION — the same files against the
+    // same milestone — raises nothing: an organisation re-uploading after a
+    // rejection or fixing a description legitimately sends the same
+    // photographs, and alerting on that would teach admins to ignore this
+    // alert type. Only evidence crossing a milestone (MEDIUM) or a project or
+    // organisation boundary (HIGH) is a human's problem.
+    try {
+      const duplicate = classifyDuplicate(priorMatches, {
+        milestoneId: milestone.id,
+        projectId: milestone.projectId,
+        ngoId: user.ngoProfile.id,
+      });
+      const severity = duplicateSeverity(duplicate.verdict);
+      if (severity) {
+        const { createFraudAlert } = await import("@/lib/fraud-alerts");
+        await createFraudAlert(
+          "PROOF_DUPLICATE_MEDIA",
+          milestone.id,
+          "NGO",
+          buildDuplicateDescription(duplicate, milestone.title),
+          severity,
+          "FRAUD_ALERT"
+        );
+      }
+    } catch (duplicateErr) {
+      console.error("Failed to run proof duplicate check:", duplicateErr);
     }
 
     // Always queue for admin review — milestones never auto-complete regardless of AI score.

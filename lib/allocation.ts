@@ -35,7 +35,12 @@ export const ALLOCATION_TRANSITIONS: Record<AllocationAction, Transition> = {
 };
 
 export function isAllocationAction(value: unknown): value is AllocationAction {
-  return typeof value === "string" && value in ALLOCATION_TRANSITIONS;
+  // hasOwnProperty, NOT `in`. `in` walks the prototype chain, so "toString"
+  // and "constructor" would both pass the guard and then index the table to
+  // a function, giving a transition whose `from` is undefined — which reaches
+  // the caller as a 500 instead of a 400. Same reasoning as isGrievanceAction
+  // in lib/grievance-workflow.ts.
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(ALLOCATION_TRANSITIONS, value);
 }
 
 /**

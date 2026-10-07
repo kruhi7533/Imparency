@@ -4,6 +4,7 @@ import { ComparisonEngine } from '@/src/agents/gap-diagnoser/services/comparison
 import { AIDiagnoserService } from '@/src/agents/gap-diagnoser/services/ai-diagnoser';
 import { GapReportRepository } from '@/src/agents/gap-diagnoser/repositories/gap-repository';
 import { verifySessionRole } from '@/lib/auth-guards';
+import { toSponsorRequirementData } from '@/src/agents/gap-diagnoser/services/requirement-adapter';
 
 // POST /api/gap-analysis/:requirementId
 // Creates a new Gap Report comparing sponsor requirement to NGO initiatives
@@ -47,6 +48,29 @@ export async function POST(
       return NextResponse.json({ error: 'NGO profile association not found' }, { status: 400 });
     }
 
+    // 3b. Ownership, not just role.
+    //
+    // verifySessionRole proved the caller is *an* NGO. It never proved this
+    // requirement is any of their business, and the report produced below
+    // exposes the donor's budget, constraints and KPIs. An NGO may run this
+    // only against a requirement it was actually invited to; admins always
+    // may, as the governance layer.
+    //
+    // Checked here rather than after the comparison so an uninvited caller
+    // costs no database scan of someone else's projects and no model call.
+    if (role === 'NGO') {
+      const invitation = await prisma.requirementMatch.findFirst({
+        where: { requirementId, ngoId: targetNgoId as string, invitedAt: { not: null } },
+        select: { id: true }
+      });
+      if (!invitation) {
+        return NextResponse.json(
+          { error: 'Forbidden: your organisation has not been invited to this requirement' },
+          { status: 403 }
+        );
+      }
+    }
+
     // 4. Fetch active initiatives (Projects) with Milestones
     const activeProjects = await prisma.project.findMany({
       where: {
@@ -72,7 +96,9 @@ export async function POST(
     const comparisonEngine = new ComparisonEngine();
     const comparisonResult = comparisonEngine.compare(
       requirementId,
-      sponsorRequirement.extractedFields as any,
+      // Flattened from the stored `{ value, confidence, source }` shape. Passing
+      // the raw JSON threw on the first dimension — see requirement-adapter.ts.
+      toSponsorRequirementData(sponsorRequirement.extractedFields),
       activeProjects,
       ngoCompliance
     );
@@ -109,7 +135,9 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 422 });
     }
     
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    // The message is logged above, not returned: it carries stack-adjacent
+    // detail and, for a Prisma failure, table and column names.
+    return NextResponse.json({ error: 'Gap analysis failed' }, { status: 500 });
   }
 }
 
