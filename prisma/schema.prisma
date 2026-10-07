@@ -272,7 +272,6 @@ model NGOProfile {
   requirementMatches   RequirementMatch[]
   opportunityResponses OpportunityResponse[]
   contracts            Contract[]
-  fieldTasks           FieldTask[]
 
   // Discover, the admin verification queue and every public listing filter on
   // verification state plus the two independent "shouldn't be visible" flags.
@@ -2920,8 +2919,6 @@ model FieldTask {
   updatedAt    DateTime        @updatedAt
 
   evidence     FieldEvidence[]
-  NGOProfile   NGOProfile?     @relation(fields: [nGOProfileId], references: [id])
-  nGOProfileId String?
 
   @@index([ngoId, status])
   @@index([assignedToId, status])
