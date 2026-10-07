@@ -19,7 +19,8 @@ import {
   IndianRupee,
   FileCheck,
   Pencil,
-  MessageCircle
+  MessageCircle,
+  Wallet,
 } from "lucide-react";
 
 interface Milestone {
@@ -929,6 +930,13 @@ export default function DashboardClient({
                               <Share2 className="w-3.5 h-3.5" />
                               Share Campaign
                             </button>
+                            <Link
+                              href={`/ngo/projects/${project.id}`}
+                              className="w-full px-4 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
+                            >
+                              <Wallet className="w-3.5 h-3.5" />
+                              Project Cockpit
+                            </Link>
                             <Link
                               href={`/ngo/projects/${project.id}/edit`}
                               className="w-full px-4 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"

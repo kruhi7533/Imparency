@@ -652,3 +652,62 @@ Admin finance used to be four aggregate sums on the dashboard. `Project.raisedAm
 - **Not built**: disbursement/payout (deliberately last), and any settlement/bank matching. Four-eyes on allocations is off — `proposedById` and `decidedById` are recorded separately so enabling it is a rule change, not a migration, matching the single-admin sign-off chosen for proposals in Week 5.
 
 Tests: `tests/allocation-rules.test.ts`, `tests/admin-allocation-routes.test.ts`, `tests/donations-webhook-refund.test.ts` (capture-amount and refund paths), `tests/ledger.test.ts`, `tests/finance-exceptions.test.ts`, `tests/reconciliation.test.ts`, `tests/admin-finance-routes.test.ts`, plus the ledger/unmatched cases in `tests/donations-webhook.test.ts`.
+
+### 14.1 Contract funding on the CSR track (Week 6 NGO + Donor, 2026-10-05)
+
+Allocations above live on the funder track (`Proposal`), which donors never reach. Donors and NGOs fund work through the CSR track: requirement → `OpportunityResponse` → SELECTED → `Contract`. Before this, "disbursing" a contract milestone only flipped a status; no money was recorded on that track at all.
+
+- **Acceptance gate**: `Contract.ngoAcceptedAt/ngoAcceptedById`. `POST /api/contracts/[id]/accept` (NGO OWNER/ADMIN only, contract must be ACTIVE). It is idempotent: a second accept is a 200 with no second audit row, and a compare-and-swap on `ngoAcceptedAt: null` handles races. Signing agrees to terms; accepting commits the organisation to the budget and milestones. **No payment can be recorded before it.**
+- **`ContractPayment`** (`lib/contract-payments.ts`): the donor records a `SANDBOX` (simulated, generated `SANDBOX-…` ref) or `MANUAL` (UTR/cheque ref required) payment via `POST /api/contracts/[id]/payments`. The platform moves no money.
+  - The amount can never exceed the contract's or the milestone's unpaid balance. That balance is computed in Decimal, counting PENDING + RECONCILED (not DISPUTED), under a `SELECT … FOR UPDATE` on the contract row.
+  - Idempotent on a client `idempotencyKey`, which is unique. Replay → 200 with the original payment; the same key on another contract → 409.
+- **Reconciliation is two-sided**: `PATCH /api/contracts/[id]/payments/[paymentId]` `{decision: CONFIRM|DISPUTE}`, NGO OWNER/ADMIN/FINANCE only (not FIELD_STAFF, not the donor).
+  - Decisions leave PENDING_CONFIRMATION only. Repeating a decision is a no-op; a reversal is a 409.
+  - DISPUTE needs a note and raises a `CONTRACT_PAYMENT_DISPUTED` `FinanceException` (ids only, never auto-resolved), which shows in `/admin/finance`.
+- **Funding state** (`fundingSummary`) is derived from **RECONCILED money only**. A donor's claim of payment is not funding. The donor's "Authorize Release" button on a contract milestone now appears only once that milestone is fully reconciled. The `disburse` API itself is unchanged.
+- **Surfaces**:
+  - `ContractPaymentsPanel` on `/donor/contracts/[id]` (shared with NGOs).
+  - The new NGO project cockpit `/ngo/projects/[id]`: project milestones, funded contracts, approved budget and milestones, and the funding panel. Owner and team members can open it; any other NGO gets a 404.
+- **Not done**: no `LedgerEntry` is written for contract payments (no money moves through the platform; deciding which balance it belongs to is Intern 1's call), and no reconciler check on contracts.
+
+Tests: `tests/contract-payments.test.ts` (rules, tenant isolation, role gates, idempotency, concurrency).
+
+## 15. Field tasks, offline evidence, beneficiary consent (Week 7, 2026-10-05)
+
+- **Models**:
+  - `FieldTask` (ngoId tenant, project, optional milestone, `assignedToId`).
+  - `FieldEvidence`: a photo in **private** storage, SHA-256, GPS plus `locationStatus`, a `containsPeople` flag, device `capturedAt` vs server `syncedAt`, and a review status. `clientId` is unique.
+  - `BeneficiaryFeedback`: pseudonymous `beneficiaryRef` (no names). Consent is per purpose: `consentToRecord` and `consentToSharePhoto`, plus `consentMethod`, `policyVersion` and `withdrawnAt`.
+  - Migration `20261005200000_field_evidence` (hand-written, additive).
+- **Rules** live in `lib/field-evidence.ts`. Assigning is OWNER/ADMIN only; FIELD_STAFF see only their own tasks. If consent to record is refused, the feedback text and rating are dropped, and share consent is forced false.
+- **The donor visibility gate is `isShareableWithDonor`**: APPROVED, and either no people in the photo, or `consentToSharePhoto` with no withdrawal. `DONOR_VISIBLE_EVIDENCE_WHERE` is the same rule as a Prisma `where`; use it for any donor-facing list.
+- **Sync**: `POST /api/field/evidence` (multipart).
+  - Idempotent on the device `clientId`. A replay returns 200; a lost race cleans up its upload and replays.
+  - The image type is sniffed from the bytes. Duplicate photos are flagged via the SHA-256; GPS is checked by `classifyProofLocation`.
+  - Feedback can be sent alone, without a photo.
+- **Photos** are only served by `GET /api/field/evidence/[id]/photo`:
+  - the NGO's own team, or an admin;
+  - a donor only through an ACTIVE/COMPLETED contract on the project **and** `isShareableWithDonor`;
+  - everyone else gets 404.
+- **Offline**: `/ngo/field` writes each capture to IndexedDB (`lib/field-queue.ts`) **before** any network call, and syncs on `online` or a button press. `syncOutcome` decides whether a queued item is done, retried or failed. Photos are re-encoded through a canvas, which drops EXIF. `public/field-sw.js` (scope `/ngo/field`) caches the page, `/_next/static` and the task list so the app opens with no signal.
+- **Review**: `PATCH /api/admin/field-evidence/[id]` (APPROVE / REQUEST_RESUBMIT / REJECT).
+  - Compare-and-swap on PENDING_REVIEW. Decisions are terminal, and a reason is required for anything other than approval.
+  - Approval completes the task; a resubmit reopens it. Logged as `FIELD_EVIDENCE_REVIEWED`.
+  - There is a minimal queue at `/admin/field-evidence`, which Intern 1 owns from here.
+- **Not built**: consent withdrawal UI (the field exists), task cancel/edit, and conversion of approved field evidence into `MilestoneProof`.
+
+Tests: `tests/field-evidence.test.ts`.
+
+### 15.1 Donor funded-project view and milestone updates (Week 7 Donor, 2026-10-05)
+
+- **`/donor/funded/[projectId]`** shows project milestone progress, the donor's own contract funding (`fundingSummary`) and verified field evidence.
+  - Access: the donor needs an ACTIVE/COMPLETED `Contract` on the project; anyone else gets 404.
+  - Evidence is queried **only** through `DONOR_VISIBLE_EVIDENCE_WHERE`, the same rule the photo route enforces, so the page cannot list a photo the route would refuse.
+  - Linked from `/donor/contracts` and the contract detail page.
+- **Milestone updates for contract donors**: `lib/contract-donor-updates.ts`. The existing triggers (`lib/notification-triggers.ts`) find donors through **donations**, so CSR contract donors were never told anything.
+  - `notifyContractDonorsMilestoneCompleted` runs from `admin/review-proof` on approval.
+  - `notifyContractDonorsEvidenceApproved` runs from `admin/field-evidence/[id]` on approval, and **only when the evidence is donor-visible**. Approved-but-unconsented evidence stays silent.
+  - Both write `Notification` rows plus FCM push via `sendPushNotification`, never throw, and fire once per decision because the decisions use compare-and-swap.
+- **Known gap, not fixed here**: the public `/projects/[id]` page and the impact feed still show the latest `MilestoneProof` media before admin review. That is the older proof track, separate from field evidence.
+
+Tests: `tests/donor-funded-view.test.ts`.
