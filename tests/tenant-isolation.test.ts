@@ -40,7 +40,9 @@ vi.mock("@/lib/prisma", () => ({
     donorInquiryMessage: { create: vi.fn() },
     user: { findUnique: vi.fn() },
     milestone: { findUnique: vi.fn(), update: vi.fn() },
-    milestoneProof: { create: vi.fn() },
+    // findMany is the duplicate-fingerprint lookup in submit-proof. Stubbed to
+    // empty so the positive control exercises ownership, not provenance.
+    milestoneProof: { create: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn((cb: any) => cb(prismaMock)),
   },
 }));

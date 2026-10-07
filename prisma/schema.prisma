@@ -177,6 +177,13 @@ model User {
   /// Proposals this admin took off the review queue.
   proposalsReviewing Proposal[] @relation("ProposalReviewer")
 
+  /// Grievances this user filed, and the ones they triaged or closed as an
+  /// admin. Three relations rather than one because "who complained" and "who
+  /// handled it" must never be confusable.
+  grievancesFiled    Grievance[] @relation("GrievanceReporter")
+  grievancesTriaged  Grievance[] @relation("GrievanceTriager")
+  grievancesResolved Grievance[] @relation("GrievanceResolver")
+
   /// The CSR verification queue, and the "what is waiting on me" count —
   /// same reason Proposal carries @@index([status]).
   @@index([orgVerificationStatus])
@@ -272,6 +279,7 @@ model NGOProfile {
   requirementMatches   RequirementMatch[]
   opportunityResponses OpportunityResponse[]
   contracts            Contract[]
+  grievances           Grievance[]
 
   // Discover, the admin verification queue and every public listing filter on
   // verification state plus the two independent "shouldn't be visible" flags.
@@ -401,6 +409,7 @@ model Project {
   requirementMatches   RequirementMatch[]
   opportunityResponses OpportunityResponse[]
   contracts            Contract[]
+  grievances           Grievance[]
 
   @@index([ngoId])
   // Discover, admin review queues and the NGO profile all filter on these two
@@ -489,9 +498,21 @@ model MilestoneProof {
   proofLongitude Float?
   gpsSource      String? // "EXIF" today; leaves room for a future capture method without a migration
 
+  // SHA-256 of every uploaded file, so the same photograph cannot be submitted
+  // as evidence twice without a human being told (see lib/proof-fingerprint.ts).
+  // An array on the proof rather than a child table: the only query is "which
+  // earlier proofs share a hash with these", which a GIN index answers
+  // directly. Empty for proofs that predate the check — absence means
+  // "unknown", never "unique", which is why the backfill in
+  // tools/backfill-proof-hashes.ts exists.
+  contentHashes String[]
+
   submittedAt DateTime @default(now())
 
   @@index([milestoneId])
+  // The duplicate lookup is `contentHashes hasSome [...]` — an array
+  // containment test, which a default B-tree index cannot serve.
+  @@index([contentHashes], type: Gin)
 }
 
 model MilestoneReview {
@@ -2813,4 +2834,107 @@ model AllocationPayment {
 
   @@index([allocationId])
   @@index([paidAt])
+}
+
+// ---------------------------------------------------------------------------
+// Grievance redress (Week 7)
+// ---------------------------------------------------------------------------
+
+/// What the complaint is about. The REPORTER picks this; an admin never
+/// overrides it, because reclassifying someone's complaint is a way of
+/// disagreeing with it quietly.
+enum GrievanceCategory {
+  FUND_MISUSE
+  SERVICE_FAILURE
+  SAFEGUARDING
+  DATA_PRIVACY
+  OTHER
+}
+
+enum GrievanceStatus {
+  OPEN
+  TRIAGED
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+/// Set by an ADMIN at triage, never by the reporter — a self-selected severity
+/// field is CRITICAL on every row inside a week, at which point the ranking
+/// carries no information at all.
+enum GrievanceSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+/// A complaint about a funded organisation, and what was done about it.
+///
+/// `app/privacy-policy/page.tsx` has promised a grievance redress channel since
+/// before this model existed, which made it a stated-policy gap rather than
+/// merely an unbuilt feature.
+///
+/// VISIBILITY IS THE LOAD-BEARING PROPERTY HERE, and it runs opposite to every
+/// other model in this schema. The usual tenancy bug is forgetting an ownership
+/// check; on this table an ownership check would BE the bug — an organisation
+/// must never be able to read complaints filed against it, or the channel
+/// becomes a way to identify whoever complained. There is deliberately no NGO
+/// route that reads this table.
+model Grievance {
+  id String @id @default(uuid())
+
+  /// Who the complaint is about. Always an organisation; optionally narrowed to
+  /// one of its projects.
+  ngoId String
+  ngo   NGOProfile @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  /// NOT NULL: signed-in filing only, decided 2026-10-05.
+  ///
+  /// The consequence was accepted explicitly rather than overlooked — the
+  /// platform has no beneficiary accounts, so this channel serves donors and
+  /// NGO staff, not the people a funded project actually touches. Anonymous
+  /// intake belongs with the beneficiary-consent work that is also unbuilt.
+  /// The column stays NOT NULL rather than nullable-and-unused so that opening
+  /// anonymous filing has to be a deliberate migration, not a flag flip.
+  reporterId String
+  reporter   User   @relation("GrievanceReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  category GrievanceCategory
+  subject  String
+  /// The most sensitive free text in the product. Never copied into
+  /// AdminActionLog — see lib/admin-log.ts on why the log carries ids only.
+  body     String
+
+  status GrievanceStatus @default(OPEN)
+
+  /// Null until an admin triages. Nullable rather than defaulted, so "nobody
+  /// has judged this yet" is distinguishable from "judged, and it is LOW".
+  severity GrievanceSeverity?
+
+  triagedById String?
+  triagedBy   User?     @relation("GrievanceTriager", fields: [triagedById], references: [id])
+  triagedAt   DateTime?
+
+  resolvedById String?
+  resolvedBy   User?     @relation("GrievanceResolver", fields: [resolvedById], references: [id])
+  resolvedAt   DateTime?
+  /// Required on BOTH outcomes. A complaint closed with no reason given is
+  /// indistinguishable from one that was never read — and a dismissal with no
+  /// reason is the specific failure a redress channel exists to prevent.
+  resolutionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// The admin queue and the "waiting on you" count.
+  @@index([status])
+  /// Every complaint against one organisation, for its risk picture.
+  @@index([ngoId, status])
+  /// A reporter's own filings, and the rate-limiting question "has this person
+  /// filed twenty of these today".
+  @@index([reporterId])
 }

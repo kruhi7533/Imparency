@@ -103,6 +103,11 @@ export const ADMIN_HUBS: Hub[] = [
         label: "Reviews & alerts",
         hint: "Open risk reviews, the alerts behind them, and what the investigator found.",
       },
+      {
+        href: "/admin/grievances",
+        label: "Grievances",
+        hint: "Complaints filed against organisations on the platform. Only admins can see these — the organisation reported never can.",
+      },
       // NOTE: /admin/fraud-alerts is NOT listed. It is a bare redirect to
       // risk-compliance, so giving it a tab put two entries in this hub that
       // land on the same page — the exact "one thing appearing as several"

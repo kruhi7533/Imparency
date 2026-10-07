@@ -9,7 +9,9 @@
  * in a plain node test without React.
  */
 
+import type { FinanceExceptionType } from "@prisma/client";
 import { daysOverTarget, slaState } from "@/lib/sla";
+import { exceptionLabel, isSevereException } from "@/lib/finance-exception-labels";
 
 export type Severity = "high" | "medium" | "low";
 
@@ -52,7 +54,9 @@ export type IconKey =
   | "thread"
   | "quiet"
   | "overdue"
-  | "donor";
+  | "donor"
+  | "grievance"
+  | "exception";
 
 export interface InboxItem {
   id: string;
@@ -160,6 +164,36 @@ export interface InboxSources {
     donorPersona: string | null;
     orgVerificationStatus: string;
     projectTitle: string;
+  }[];
+  /**
+   * Complaints nobody has triaged yet.
+   *
+   * Only OPEN rows: once triaged, the grievance has an owner and a severity
+   * and lives in its own queue. What belongs on Today is the state where
+   * nobody has yet read it.
+   */
+  openGrievances: {
+    id: string;
+    subject: string;
+    category: string;
+    createdAt: Date;
+    ngo: { orgName: string };
+  }[];
+  /**
+   * Money that does not add up and nobody has answered for yet (SPEC-2.2).
+   *
+   * Only OPEN rows. `summary` is written ids-and-amounts-only at the source
+   * (lib/finance-exceptions.ts), which is what makes it safe to render on a
+   * page that resolves no names.
+   */
+  financeExceptions: {
+    id: string;
+    type: FinanceExceptionType;
+    entityType: string;
+    entityId: string;
+    summary: string;
+    firstSeenAt: Date;
+    occurrences: number;
   }[];
   threadsNeedingReply: { id: string; subject: string; updatedAt: Date; subjectType: string }[];
   quietNgos: { id: string; orgName: string }[];
@@ -348,6 +382,21 @@ export function buildInboxItems(s: InboxSources, now: number = Date.now()): Inbo
       severity: age(m.updatedAt) > 3 ? "medium" : "low",
       href: "/admin/proof-review",
     })),
+    ...s.openGrievances.map((g): InboxItem => ({
+      id: `grievance-${g.id}`,
+      queue: "Grievances",
+      category: "Waiting on you",
+      iconKey: "grievance",
+      title: g.subject,
+      subtitle: `${g.ngo.orgName} · ${g.category.toLowerCase().replace(/_/g, " ")} — unread ${age(g.createdAt)}d`,
+      occurredAt: g.createdAt,
+      age: age(g.createdAt),
+      // Escalates faster than any other queue: the reporter has no contract,
+      // no account manager and no other way in. Two days is the declared
+      // target in lib/sla.ts and this mirrors it.
+      severity: age(g.createdAt) > 2 ? "high" : "medium",
+      href: "/admin/grievances",
+    })),
     ...s.pendingFcra.map((c): InboxItem => ({
       id: `fcra-${c.id}`,
       queue: "FCRA Review",
@@ -373,6 +422,34 @@ export function buildInboxItems(s: InboxSources, now: number = Date.now()): Inbo
       href: "/admin/risk-compliance",
     })),
     ...collapseAlertsByEntity(s.openAlerts, s.alertNgos ?? {}, age),
+    // Open finance exceptions (SPEC-2.2).
+    //
+    // Severity is the TYPE's, not the amount's and not the age's: a payment we
+    // took and cannot account for is no less serious for being small, or for
+    // having been found this morning. Those kinds are high on arrival, which
+    // also means isTodayWorthy() never files them behind "new since your last
+    // visit" — money unaccounted for should not wait for a quiet day.
+    //
+    // The arithmetic kinds (a counter disagreeing with the ledger) start low
+    // and rise after a week, because the reconciler closes most of them by
+    // itself on its next run — see AUTO_RESOLVABLE_TYPES.
+    ...s.financeExceptions.map((e): InboxItem => ({
+      id: `finance-exception-${e.id}`,
+      queue: "Finance Exceptions",
+      category: "Waiting on you",
+      iconKey: "exception",
+      title: exceptionLabel(e.type),
+      subtitle: `${e.summary} — open ${age(e.firstSeenAt)}d${
+        e.occurrences > 1 ? `, seen ${e.occurrences}×` : ""
+      }`,
+      // firstSeenAt, not lastSeenAt: a recurring discrepancy has been wrong
+      // since it first appeared, and ageing it from the last reconciler run
+      // would make a month-old problem look like it arrived an hour ago.
+      occurredAt: e.firstSeenAt,
+      age: age(e.firstSeenAt),
+      severity: isSevereException(e.type) ? "high" : age(e.firstSeenAt) > 7 ? "medium" : "low",
+      href: "/admin/finance",
+    })),
     // Institutional money that arrived without an opportunity behind it.
     // HIGH when the organisation behind it was never verified, because that is
     // a company the platform has taken money for and never checked.

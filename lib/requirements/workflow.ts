@@ -16,6 +16,7 @@ import {
   type RequirementFieldKey,
 } from "./provenance";
 import { assertAdmin, loadRequirementForActor, requireVerifiedFunder, workflowRole, type Actor } from "./access";
+import { SECTOR_OPTIONS, INDIAN_STATES, namesKnownOption } from "./form-options";
 import { runExtraction } from "./extraction";
 import { assertResponseTransition } from "./response-status";
 
@@ -34,6 +35,23 @@ function requireText(value: unknown, label: string, min = 5): string {
   if (text.length < min) throw new RequirementWorkflowError(`${label} is required (at least ${min} characters).`, 400);
   if (text.length > 2000) throw new RequirementWorkflowError(`${label} is too long.`, 400);
   return text;
+}
+
+/**
+ * Matching compares sector and state against the lists in form-options.ts. A
+ * value those lists cannot read scores zero against every candidate, so the run
+ * comes back empty and reads as "no NGO fits this" rather than "the extractor
+ * put nonsense in this field". Refuse it at the validation gate instead, which
+ * is the last point where a human is looking and can still correct it.
+ */
+function assertKnownOption(value: unknown, options: string[], label: string) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!namesKnownOption(text, options)) {
+    throw new RequirementWorkflowError(
+      `The ${label} reads "${text.slice(0, 80)}", which names nothing matching can use. Correct it before validating.`,
+      400
+    );
+  }
 }
 
 /** Fields a form-entered requirement must have — matching and admin validation need them. */
@@ -200,6 +218,10 @@ export async function approveRequirement(id: string, actor: Actor, note: unknown
   if (!current.sector.value) {
     throw new RequirementWorkflowError("Add the CSR sector before validating — matching needs it.", 400);
   }
+  assertKnownOption(current.sector.value, SECTOR_OPTIONS, "CSR sector");
+  // State is not required to exist (document extractions often miss it), but a
+  // state that *is* set has to be one matching can read.
+  if (current.state.value) assertKnownOption(current.state.value, INDIAN_STATES, "target state");
   const reviewNote = typeof note === "string" && note.trim() ? note.trim().slice(0, 2000) : null;
   const now = new Date();
 

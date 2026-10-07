@@ -15,6 +15,7 @@
     "db:migrate": "prisma migrate dev",
     "db:status": "prisma migrate status",
     "backfill:ledger": "npx tsx tools/backfill-ledger.ts",
+    "backfill:proof-hashes": "npx tsx tools/backfill-proof-hashes.ts",
   "seed": "npx tsx scripts/seed-demo.ts",
     "seed-inquiry": "npx tsx scripts/seed-inquiry-notification.ts",
     "seed:matching": "npx tsx scripts/seed-matching-demo.ts",

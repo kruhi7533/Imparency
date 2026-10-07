@@ -17,6 +17,8 @@ import {
   MessageCircleQuestion,
   CheckCircle2,
   Building2,
+  Megaphone,
+  Scale,
 } from "lucide-react";
 import {
   buildInboxItems,
@@ -56,6 +58,8 @@ const ICONS: Record<IconKey, React.ElementType> = {
   quiet: BellOff,
   overdue: CalendarClock,
   donor: Building2,
+  grievance: Megaphone,
+  exception: Scale,
 };
 
 /** One row, identical in the main area and the sidebar. */

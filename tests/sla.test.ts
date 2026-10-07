@@ -33,10 +33,20 @@ describe("the declared targets", () => {
       "Fraud Alerts",
       "Inquiries & Appeals",
       "Impact Health",
+      "Finance Exceptions",
     ];
     for (const queue of inboxQueues) {
       expect(slaTargetFor(queue), `no SLA target declared for "${queue}"`).toBeDefined();
     }
+  });
+
+  it("holds finance exceptions to the same two days as grievances (SPEC-2.2)", () => {
+    // Money that does not add up gets harder to answer the longer it sits:
+    // statements close and provider records age out of easy reach. The target
+    // applies before anyone has judged how bad the finding is.
+    expect(slaTargetFor("Finance Exceptions")?.days).toBe(2);
+    expect(slaState("Finance Exceptions", 1)).toBe("at_risk");
+    expect(slaState("Finance Exceptions", 3)).toBe("breached");
   });
 
   it("states a reason for every target", () => {

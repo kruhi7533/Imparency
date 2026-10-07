@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isBudgetViolation, getBudgetVerdict, parseValidationResult } from "@/lib/budget-rule";
 import { classifyProofLocation } from "@/lib/proof-location";
@@ -80,11 +81,18 @@ interface AuditRecord {
 interface ProofReviewClientProps {
   initialPending: Milestone[];
   initialAudit: AuditRecord[];
+  /** How far back the audit tab reaches. Displayed, not just applied — see the
+   *  constants in page.tsx for why a silent window is the worse option. */
+  auditWindowDays: number;
+  /** True when more decisions exist in the window than were fetched. */
+  auditTruncated: boolean;
 }
 
 export default function ProofReviewClient({
   initialPending,
   initialAudit,
+  auditWindowDays,
+  auditTruncated,
 }: ProofReviewClientProps) {
   const router = useRouter();
   const [pendingList, setPendingList] = useState<Milestone[]>(initialPending);
@@ -307,7 +315,9 @@ export default function ProofReviewClient({
         >
           <span>Audit Trail</span>
           <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs px-2 py-0.5 rounded-full font-bold">
-            {auditList.length}
+            {/* "100+" when the window holds more than was fetched — a bare
+                "100" would claim an exact total this page never counted. */}
+            {auditTruncated ? `${auditList.length}+` : auditList.length}
           </span>
         </button>
       </div>
@@ -707,9 +717,16 @@ export default function ProofReviewClient({
         auditList.length === 0 ? (
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-sm">
             <span className="text-4xl mb-4 block">📋</span>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No decisions recorded yet</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+              No decisions in the last {auditWindowDays} days
+            </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Every approval and rejection will appear here with the admin name, timestamp, AI score, and reason.
+              Every approval and rejection appears here with the admin name, timestamp, AI score, and reason.
+              Older decisions are in the{" "}
+              <Link href="/admin/audit" className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline">
+                full audit trail
+              </Link>
+              .
             </p>
           </div>
         ) : (
@@ -784,6 +801,17 @@ export default function ProofReviewClient({
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="px-6 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {auditTruncated
+                  ? `Showing the ${auditList.length} most recent decisions from the last ${auditWindowDays} days — there are more.`
+                  : `All decisions from the last ${auditWindowDays} days.`}{" "}
+                <Link href="/admin/audit" className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline">
+                  Full audit trail
+                </Link>{" "}
+                covers every admin action, with filters and CSV export.
+              </p>
             </div>
           </div>
         )

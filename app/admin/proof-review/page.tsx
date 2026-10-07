@@ -3,6 +3,23 @@ import ProofReviewClient from "./ProofReviewClient";
 
 export const runtime = "nodejs";
 
+/**
+ * How much decision history this page carries.
+ *
+ * The audit query used to be unbounded: every MilestoneReview ever written,
+ * with four levels of include, on every page load — a query with no ceiling
+ * that gets slower for the rest of the platform's life. The Today page already
+ * took this lesson (project completions are windowed to 30 days).
+ *
+ * The window is SURFACED in the UI rather than applied silently. An audit
+ * trail that quietly stops short is worse than no audit trail, because a
+ * reviewer who scrolls to the bottom and sees nothing concludes nothing
+ * happened. The complete, filterable, exportable history lives at
+ * `/admin/audit`, which is where the page points.
+ */
+const AUDIT_WINDOW_DAYS = 90;
+const AUDIT_PAGE_SIZE = 100;
+
 export default async function AdminProofReviewPage() {
   // Fetch milestones awaiting manual review (status PROOF_SUBMITTED)
   const pendingMilestones = await prisma.milestone.findMany({
@@ -32,8 +49,14 @@ export default async function AdminProofReviewPage() {
     orderBy: { updatedAt: "desc" },
   });
 
-  // Fetch audit trail — all review decisions, newest first
+  // Recent review decisions, newest first — see AUDIT_WINDOW_DAYS above.
+  const auditWindowStart = new Date(Date.now() - AUDIT_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const auditRecords = await prisma.milestoneReview.findMany({
+    where: { reviewedAt: { gte: auditWindowStart } },
+    // One more than the page size, so the client can tell "exactly 100
+    // decisions happened" from "there are more than these 100" without a
+    // second count query.
+    take: AUDIT_PAGE_SIZE + 1,
     orderBy: { reviewedAt: "desc" },
     include: {
       milestone: {
@@ -74,7 +97,10 @@ export default async function AdminProofReviewPage() {
     })),
   }));
 
-  const serializedAudit = auditRecords.map((r) => ({
+  // The extra row fetched above is the "there is more" signal, not a row to
+  // render — drop it before serialising.
+  const auditTruncated = auditRecords.length > AUDIT_PAGE_SIZE;
+  const serializedAudit = auditRecords.slice(0, AUDIT_PAGE_SIZE).map((r) => ({
     id: r.id,
     action: r.action,
     note: r.note,
@@ -106,6 +132,8 @@ export default async function AdminProofReviewPage() {
         <ProofReviewClient
           initialPending={serializedPending}
           initialAudit={serializedAudit}
+          auditWindowDays={AUDIT_WINDOW_DAYS}
+          auditTruncated={auditTruncated}
         />
       </main>
     </div>

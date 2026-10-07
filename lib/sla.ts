@@ -38,6 +38,25 @@ export const SLA_TARGETS: Record<string, SlaTarget> = {
       "NEW TARGET. A review is opened because something already looked wrong, so it should not " +
       "wait longer than the inquiry it often triggers.",
   },
+  "Grievances": {
+    days: 2,
+    rationale:
+      "NEW TARGET. A complaint about a funded organisation is the one queue where the person " +
+      "waiting is not a counterparty with a contract — they have no other way in, and no " +
+      "leverage if ignored. The target is deliberately tight and applies BEFORE triage, " +
+      "because an untriaged grievance has no severity yet: the platform cannot know whether " +
+      "it is a billing question or a safeguarding report until someone reads it.",
+  },
+  "Finance Exceptions": {
+    days: 2,
+    rationale:
+      "NEW TARGET. A discrepancy in money is the one kind of defect that gets harder to " +
+      "answer the longer it sits: statements close, provider records age out of easy reach, " +
+      "and a donor asking where their money went cannot be told to wait. Two days matches " +
+      "Grievances for the same reason — the target applies before anyone has judged how bad " +
+      "the finding is, because the reconciler cannot know which of these is a rounding drift " +
+      "and which is a payment nobody recorded.",
+  },
   "Inquiries & Appeals": {
     days: 2,
     rationale: "An organisation that replied is waiting on us; two days matches the old threshold.",

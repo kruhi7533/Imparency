@@ -128,7 +128,18 @@ export type AdminAction =
   // An admin attesting that a funder's committed money actually arrived. The
   // attester is the whole value of the record, so it is logged like a
   // decision, not like a data entry.
-  | "ALLOCATION_PAYMENT_RECORDED";
+  | "ALLOCATION_PAYMENT_RECORDED"
+  // Grievance redress. NOTE: these four are logged with ids and status only —
+  // never the complaint body and never the admin's resolution note. Every
+  // other route here passes its note through (see FINANCE_EXCEPTION_RESOLVED),
+  // but a grievance is the most sensitive free text in the product and the log
+  // outlives PII retention on the main tables. The reason lives on the
+  // Grievance row, which is subject to that retention; the log records that a
+  // reason was given, not what it said.
+  | "GRIEVANCE_TRIAGED"
+  | "GRIEVANCE_INVESTIGATION_STARTED"
+  | "GRIEVANCE_RESOLVED"
+  | "GRIEVANCE_DISMISSED";
 
 /**
  * Every entity an admin action can be recorded against.
@@ -165,6 +176,7 @@ export const ADMIN_ENTITY_TYPES = [
   "FINANCE_EXCEPTION",
   "RECONCILIATION_RUN",
   "ALLOCATION",
+  "GRIEVANCE",
 ] as const;
 
 export type AdminEntityType = (typeof ADMIN_ENTITY_TYPES)[number];

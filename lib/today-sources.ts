@@ -84,6 +84,7 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
     pendingProjects,
     completedProjects,
     pendingProofs,
+    openGrievances,
     pendingFcra,
     openAlerts,
     openRiskReviews,
@@ -92,6 +93,7 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
     overdueMilestones,
     pendingOrgRows,
     institutionalDonationRows,
+    financeExceptionRows,
   ] = await Promise.all([
     prisma.nGOProfile.findMany({
       where: { verificationStatus: "PENDING" },
@@ -115,6 +117,19 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
         title: true,
         updatedAt: true,
         project: { select: { title: true, ngo: { select: { orgName: true } } } },
+      },
+    }),
+    // Complaints nobody has read yet. `body` is deliberately NOT selected —
+    // the inbox card shows a subject line, and the complaint text has no
+    // business being loaded into a page that renders twelve other queues.
+    prisma.grievance.findMany({
+      where: { status: "OPEN" },
+      select: {
+        id: true,
+        subject: true,
+        category: true,
+        createdAt: true,
+        ngo: { select: { orgName: true } },
       },
     }),
     prisma.nGOCompliance.findMany({
@@ -204,6 +219,32 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
+    // Money that does not add up and nobody has answered for yet (SPEC-2.2).
+    //
+    // Guarded rather than trusted. FinanceException is a recent table, and the
+    // repo's migration history is uneven across environments — a Today page
+    // that 500s because one table is absent would take the other thirteen
+    // queues down with it. A missing table reads as "no exceptions", which is
+    // exactly what this page showed before the queue existed. The same two
+    // Prisma codes the finance page handles, and nothing else: any other error
+    // is a real failure and still throws.
+    prisma.financeException
+      .findMany({
+        where: { status: "OPEN" },
+        select: {
+          id: true,
+          type: true,
+          entityType: true,
+          entityId: true,
+          summary: true,
+          firstSeenAt: true,
+          occurrences: true,
+        },
+      })
+      .catch((err: any) => {
+        if (err?.code === "P2021" || err?.code === "P2022") return [];
+        throw err;
+      }),
   ]);
 
   const alertNgos = await resolveAlertOrganisations(prisma, openAlerts);
@@ -213,6 +254,7 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
     pendingProjects,
     completedProjects,
     pendingProofs,
+    openGrievances,
     pendingFcra,
     openAlerts,
     openRiskReviews,
@@ -229,6 +271,7 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
       orgSubmittedAt: d.orgSubmittedAt,
       createdAt: d.createdAt,
     })),
+    financeExceptions: financeExceptionRows,
     institutionalDonations: (institutionalDonationRows as any[]).map((d) => ({
       id: d.id,
       // Decimal -> number at the call site, per the repo convention.
