@@ -24,6 +24,7 @@ export const EXCEPTION_LABEL: Record<FinanceExceptionType, string> = {
   PAYMENT_AMOUNT_MISMATCH: "Captured amount differs from the donation",
   REFUND_AFTER_RECEIPT: "Refund on a donation with an 80G receipt issued",
   UNCONFIRMED_ALLOCATION: "Committed money never confirmed as received",
+  CONTRACT_PAYMENT_DISPUTED: "NGO disputes a donor-recorded contract payment",
 };
 
 /**
@@ -43,6 +44,9 @@ export const SEVERE_EXCEPTION_TYPES: FinanceExceptionType[] = [
   "REFUND_AFTER_RECEIPT",
   // An organisation may be planning work against money that never arrived.
   "UNCONFIRMED_ALLOCATION",
+  // Donor and NGO disagree about whether contract money arrived. Two parties
+  // asserting different facts about the same payment is not arithmetic drift.
+  "CONTRACT_PAYMENT_DISPUTED",
 ];
 
 export function isSevereException(type: FinanceExceptionType): boolean {

@@ -1010,6 +1010,7 @@ describe("finance exceptions", () => {
       "PAYMENT_AMOUNT_MISMATCH",
       "REFUND_AFTER_RECEIPT",
       "UNCONFIRMED_ALLOCATION",
+      "CONTRACT_PAYMENT_DISPUTED",
     ] as const) {
       const [item] = buildInboxItems(
         sources({ financeExceptions: [exception({ type, firstSeenAt: daysAgo(0) })] }),

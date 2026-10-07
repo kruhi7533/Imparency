@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
+import { notifyContractDonorsMilestoneCompleted } from "@/lib/contract-donor-updates";
 import {
   triggerMilestoneCompleted,
   triggerProofApproved,
@@ -158,6 +159,8 @@ export async function POST(request: Request) {
 
       await triggerMilestoneCompleted(milestoneId);
       await triggerProofApproved(milestoneId);
+      // CSR contract donors have no donation row, so the trigger above misses them.
+      await notifyContractDonorsMilestoneCompleted(milestoneId);
 
       // Impact feed: admin-verified completion, delivered to every subscribed
       // donor through the outbox (guaranteed, retried — not fire-and-forget).

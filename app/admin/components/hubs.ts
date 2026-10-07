@@ -86,6 +86,11 @@ export const ADMIN_HUBS: Hub[] = [
         hint: "Every campaign on the platform, searchable — active and completed ones live here too, not only what's still pending.",
       },
       { href: "/admin/proof-review", label: "Milestone proof", hint: "Evidence submitted against funded milestones." },
+      {
+        href: "/admin/field-evidence",
+        label: "Field evidence",
+        hint: "Photos captured by NGO field staff, with GPS, duplicate and consent flags. Approve before donors can see them.",
+      },
     ],
   },
   {

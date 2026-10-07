@@ -410,6 +410,7 @@ model Project {
   opportunityResponses OpportunityResponse[]
   contracts            Contract[]
   grievances           Grievance[]
+  fieldTasks           FieldTask[]
 
   @@index([ngoId])
   // Discover, admin review queues and the NGO profile all filter on these two
@@ -465,6 +466,7 @@ model Milestone {
   proofs        MilestoneProof[]
   impactReports ImpactReport[]
   reviews       MilestoneReview[]
+  fieldTasks    FieldTask[]
 
   @@index([projectId])
   // The overdue sweep (risk-sweep cron, Today inbox, Impact Health) filters on
@@ -1794,8 +1796,16 @@ model Contract {
   ngoSignerTitle  String?
   ngoSignerIp     String?
 
+  /// Week 6: the NGO's explicit acceptance of the funded project, after the
+  /// contract is ACTIVE. Signing agrees to terms; accepting commits the
+  /// organisation to delivering the budget and milestones. Payments cannot be
+  /// recorded before it, so money never lands on a project nobody took on.
+  ngoAcceptedAt   DateTime?
+  ngoAcceptedById String?
+
   milestones ContractMilestone[]
   auditLogs  ContractAuditLog[]
+  payments   ContractPayment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1819,10 +1829,69 @@ model ContractMilestone {
   dueDate            DateTime?
   completedAt        DateTime?
   orderIndex         Int                     @default(0)
+  payments           ContractPayment[]
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 
   @@index([contractId])
+}
+
+/// How a donor-recorded contract payment was made. Neither moves money through
+/// the platform: SANDBOX is a simulated transfer for demos and testing, MANUAL
+/// is the donor's own record of a bank transfer (NEFT/RTGS/cheque).
+enum ContractPaymentMode {
+  SANDBOX
+  MANUAL
+}
+
+/// Reconciliation state of a contract payment. The donor saying "I paid" is
+/// one side; the NGO confirming the money arrived is the other. Only a payment
+/// both sides agree on is RECONCILED.
+enum ContractPaymentStatus {
+  PENDING_CONFIRMATION
+  RECONCILED
+  DISPUTED
+}
+
+/// A payment a donor records against an ACTIVE, NGO-accepted contract,
+/// optionally tied to one contract milestone.
+///
+/// Amount rules (lib/contract-payments.ts): never more than the contract's
+/// unpaid balance, and never more than the milestone's unpaid allocation.
+/// A DISPUTED payment stops counting toward either, and raises a finance
+/// exception so an admin sees it.
+model ContractPayment {
+  id String @id @default(uuid())
+
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  contractMilestoneId String?
+  contractMilestone   ContractMilestone? @relation(fields: [contractMilestoneId], references: [id], onDelete: SetNull)
+
+  amount    Decimal             @db.Decimal(12, 2)
+  mode      ContractPaymentMode
+  /// UTR / cheque number for MANUAL; a generated SANDBOX-… id for SANDBOX.
+  reference String?
+  /// When the money moved, per the donor — not when it was recorded.
+  paidAt    DateTime
+  note      String?
+
+  recordedById String
+  recordedAt   DateTime @default(now())
+
+  /// Client-generated key, unique, so a double-submitted form records once.
+  idempotencyKey String @unique
+
+  status        ContractPaymentStatus @default(PENDING_CONFIRMATION)
+  confirmedById String?
+  confirmedAt   DateTime?
+  /// Required when the NGO disputes the payment.
+  disputeNote   String?
+
+  @@index([contractId])
+  @@index([contractMilestoneId])
+  @@index([status])
 }
 
 model ContractAuditLog {
@@ -2629,6 +2698,10 @@ enum FinanceExceptionType {
   /// arrived — the failure that would cost the platform its credibility with
   /// the organisation planning work against it.
   UNCONFIRMED_ALLOCATION
+  /// An NGO says a donor-recorded contract payment never arrived, or arrived
+  /// for a different amount. The donor's word and the NGO's disagree about
+  /// money, which only a human can settle.
+  CONTRACT_PAYMENT_DISPUTED
 }
 
 enum FinanceExceptionStatus {
@@ -2937,4 +3010,139 @@ model Grievance {
   /// A reporter's own filings, and the rate-limiting question "has this person
   /// filed twenty of these today".
   @@index([reporterId])
+}
+
+// ─── Week 7: field tasks, mobile evidence, beneficiary feedback & consent ────
+
+enum FieldTaskStatus {
+  OPEN
+  SUBMITTED
+  COMPLETED
+  CANCELLED
+}
+
+/// A piece of field work an NGO owner/admin assigns to a team member, tied to
+/// a project and optionally one milestone. Evidence is captured against it
+/// from the mobile /ngo/field page, which works offline.
+model FieldTask {
+  id           String          @id @default(uuid())
+  /// Tenant. Every read and write checks it against the caller's NGO.
+  ngoId        String
+  projectId    String
+  project      Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestoneId  String?
+  milestone    Milestone?      @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  title        String
+  instructions String?
+  /// User id of the assignee: the NGO owner or a member of this NGO's team.
+  assignedToId String
+  createdById  String
+  dueDate      DateTime?
+  status       FieldTaskStatus @default(OPEN)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  evidence FieldEvidence[]
+
+  @@index([ngoId, status])
+  @@index([assignedToId, status])
+  @@index([projectId])
+}
+
+enum FieldEvidenceStatus {
+  PENDING_REVIEW
+  APPROVED
+  RESUBMIT_REQUESTED
+  REJECTED
+}
+
+/// One photo + GPS + note captured in the field. The photo lives in PRIVATE
+/// storage and is only ever served through an authenticated route.
+///
+/// `clientId` is generated on the device when the evidence is captured, so a
+/// capture queued offline and synced twice (flaky network, retry) is stored once.
+model FieldEvidence {
+  id          String    @id @default(uuid())
+  taskId      String
+  task        FieldTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  ngoId       String
+  projectId   String
+  milestoneId String?
+
+  capturedById String
+  clientId     String @unique
+
+  photoKey      String
+  photoMime     String
+  /// SHA-256 of the photo bytes: the same image submitted twice is flagged.
+  photoSha256   String
+  duplicateOfId String?
+
+  latitude       Float?
+  longitude      Float?
+  accuracyM      Float?
+  /// MATCH | MISMATCH | NO_GPS_DATA against the project's site (lib/proof-location.ts).
+  locationStatus String
+  distanceKm     Float?
+
+  note           String?
+  /// False when the photo shows no identifiable person (a built wall, a
+  /// delivered kit). Then no beneficiary consent is needed to show it to a donor.
+  containsPeople Boolean @default(true)
+
+  /// When the device captured it vs when the server received it. A gap means
+  /// it was captured offline and synced later.
+  capturedAt DateTime
+  syncedAt   DateTime @default(now())
+
+  status       FieldEvidenceStatus @default(PENDING_REVIEW)
+  reviewedById String?
+  reviewedAt   DateTime?
+  reviewNote   String?
+
+  feedback BeneficiaryFeedback?
+
+  @@index([ngoId, status])
+  @@index([projectId, status])
+  @@index([photoSha256])
+}
+
+enum ConsentMethod {
+  VERBAL
+  WRITTEN
+  THUMBPRINT
+}
+
+/// Beneficiary feedback and consent, captured by field staff.
+///
+/// No names: `beneficiaryRef` is the NGO's own pseudonymous label (e.g.
+/// "HH-014"). Consent is per purpose — recording the feedback, and showing a
+/// linked photo to the funder — and can be withdrawn; a withdrawn consent
+/// hides the photo from donors immediately.
+model BeneficiaryFeedback {
+  id         String         @id @default(uuid())
+  ngoId      String
+  projectId  String
+  taskId     String?
+  evidenceId String?        @unique
+  evidence   FieldEvidence? @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+
+  clientId       String  @unique
+  beneficiaryRef String?
+
+  consentToRecord     Boolean
+  consentToSharePhoto Boolean       @default(false)
+  consentMethod       ConsentMethod
+  policyVersion       String        @default("1.0")
+  withdrawnAt         DateTime?
+
+  rating       Int?
+  feedbackText String?
+
+  capturedById String
+  capturedAt   DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([ngoId])
+  @@index([projectId])
 }

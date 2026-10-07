@@ -139,7 +139,10 @@ export type AdminAction =
   | "GRIEVANCE_TRIAGED"
   | "GRIEVANCE_INVESTIGATION_STARTED"
   | "GRIEVANCE_RESOLVED"
-  | "GRIEVANCE_DISMISSED";
+  | "GRIEVANCE_DISMISSED"
+  // Week 7: a reviewer's decision on a field photo. It decides whether a
+  // donor can ever see the photo, so it is logged like any approval.
+  | "FIELD_EVIDENCE_REVIEWED";
 
 /**
  * Every entity an admin action can be recorded against.
@@ -177,6 +180,7 @@ export const ADMIN_ENTITY_TYPES = [
   "RECONCILIATION_RUN",
   "ALLOCATION",
   "GRIEVANCE",
+  "FIELD_EVIDENCE",
 ] as const;
 
 export type AdminEntityType = (typeof ADMIN_ENTITY_TYPES)[number];
