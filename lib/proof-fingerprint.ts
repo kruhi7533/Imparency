@@ -32,9 +32,22 @@ export function hashBuffer(buffer: Buffer): string {
   return createHash("sha256").update(buffer).digest("hex");
 }
 
+/**
+ * Where a matching file was found. Evidence reaches the platform two ways —
+ * milestone proofs (/ngo submit-proof) and field captures (/ngo/field) — and a
+ * check that only looked inside its own table would let the same photograph
+ * cross from one to the other unseen. Both submission paths query both tables.
+ */
+export type EvidenceSource = "MILESTONE_PROOF" | "FIELD_EVIDENCE";
+
 /** A prior proof that shares at least one file with the one being submitted. */
 export interface PriorProofMatch {
+  /** Id of the prior row — a MilestoneProof or a FieldEvidence, per `source`. */
   proofId: string;
+  /** Defaults to MILESTONE_PROOF, the original and most common case. */
+  source?: EvidenceSource;
+  /** The evidence "slot" — see evidenceSlot(). For a milestone proof this is
+   *  simply its milestone id. */
   milestoneId: string;
   milestoneTitle: string;
   projectId: string;
@@ -42,6 +55,19 @@ export interface PriorProofMatch {
   /** Null for a match inside the submitting organisation — only a cross-org
    *  collision needs the other organisation named. */
   orgName?: string | null;
+}
+
+/**
+ * The slot a piece of evidence fills, which is what decides "resubmission".
+ *
+ * A milestone proof fills its milestone. A field capture fills its task's
+ * milestone when the task has one — so a field photo later attached to that
+ * same milestone's proof is a RESUBMISSION, the intended capture → proof
+ * flow, and raises nothing. A field capture with no milestone fills its task.
+ */
+export function evidenceSlot(milestoneId: string | null | undefined, taskId?: string | null): string {
+  if (milestoneId) return milestoneId;
+  return `task:${taskId ?? "unknown"}`;
 }
 
 /** Where the submission being checked sits. */
@@ -120,17 +146,37 @@ export function buildDuplicateDescription(result: DuplicateResult, submittedTitl
   const [first] = result.matches;
   const others = result.matches.length - 1;
   const alsoIn = others > 0 ? ` (and ${others} other earlier proof${others > 1 ? "s" : ""})` : "";
+  // Name the table, so the admin opens the right queue to find it.
+  const ref = first.source === "FIELD_EVIDENCE" ? `field evidence ${first.proofId}` : `proof ${first.proofId}`;
 
   if (result.verdict === "CROSS_PROJECT") {
     const whose = first.orgName ? ` submitted by ${first.orgName}` : "";
     return (
       `Proof for "${submittedTitle}" reuses a file already submitted as evidence for a ` +
-      `different project — milestone "${first.milestoneTitle}"${whose}, proof ${first.proofId}${alsoIn}.`
+      `different project — milestone "${first.milestoneTitle}"${whose}, ${ref}${alsoIn}.`
     );
   }
 
   return (
     `Proof for "${submittedTitle}" reuses a file already submitted for milestone ` +
-    `"${first.milestoneTitle}" on the same project, proof ${first.proofId}${alsoIn}.`
+    `"${first.milestoneTitle}" on the same project, ${ref}${alsoIn}.`
   );
+}
+
+/**
+ * Short, reviewer-facing label for a stored verdict. RESUBMISSION is
+ * informational, never a warning: the same photo against the same slot is the
+ * normal correct-and-resend path.
+ */
+export function duplicateLabel(verdict: string | null | undefined): { text: string; tone: "neutral" | "warn" | "bad" } | null {
+  switch (verdict) {
+    case "CROSS_PROJECT":
+      return { text: "Photo already used as evidence on another project", tone: "bad" };
+    case "REUSED_IN_PROJECT":
+      return { text: "Photo already used for a different milestone", tone: "warn" };
+    case "RESUBMISSION":
+      return { text: "Same photo as an earlier submission for this milestone", tone: "neutral" };
+    default:
+      return null;
+  }
 }

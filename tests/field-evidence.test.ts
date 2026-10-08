@@ -18,7 +18,8 @@ vi.mock("@/lib/prisma", () => ({
     project: { findUnique: vi.fn() },
     contract: { findFirst: vi.fn() },
     fieldTask: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
-    fieldEvidence: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
+    fieldEvidence: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
+    milestoneProof: { findMany: vi.fn() },
     beneficiaryFeedback: { findUnique: vi.fn(), create: vi.fn() },
     $transaction: vi.fn((cb: any) => cb(prismaMock)),
   },
@@ -30,11 +31,13 @@ vi.mock("@/lib/storage", () => ({
   deletePrivateFile: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/admin-log", () => ({ logAdminAction: vi.fn() }));
+vi.mock("@/lib/fraud-alerts", () => ({ createFraudAlert: vi.fn() }));
 
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { uploadPrivateFile, deletePrivateFile } from "@/lib/storage";
 import { logAdminAction } from "@/lib/admin-log";
+import { createFraudAlert } from "@/lib/fraud-alerts";
 import { checkReview, isShareableWithDonor, parseCapture, sniffImage, DONOR_VISIBLE_EVIDENCE_WHERE } from "@/lib/field-evidence";
 import { syncOutcome } from "@/lib/field-queue";
 import { GET as LIST_TASKS, POST as CREATE_TASK } from "@/app/api/ngo/field-tasks/route";
@@ -249,6 +252,7 @@ function captureRequest(extra: Record<string, string> = {}, photo: Uint8Array | 
 describe("POST /api/field/evidence", () => {
   const TASK = {
     id: "t1",
+    title: "Photograph kits",
     ngoId: "ngo-a",
     projectId: "p1",
     milestoneId: null,
@@ -260,7 +264,8 @@ describe("POST /api/field/evidence", () => {
     prismaMock.fieldTask.findUnique.mockResolvedValue(TASK);
     prismaMock.fieldEvidence.findUnique.mockResolvedValue(null);
     prismaMock.beneficiaryFeedback.findUnique.mockResolvedValue(null);
-    prismaMock.fieldEvidence.findFirst.mockResolvedValue(null);
+    prismaMock.fieldEvidence.findMany.mockResolvedValue([]);
+    prismaMock.milestoneProof.findMany.mockResolvedValue([]);
     prismaMock.fieldEvidence.create.mockImplementation(({ data }: any) => Promise.resolve({ id: "ev-1", status: "PENDING_REVIEW", ...data }));
     prismaMock.beneficiaryFeedback.create.mockImplementation(({ data }: any) => Promise.resolve({ id: "fb-1", ...data }));
   });
@@ -319,11 +324,74 @@ describe("POST /api/field/evidence", () => {
     expect(deletePrivateFile).toHaveBeenCalled();
   });
 
-  it("flags a duplicate photo and a GPS mismatch", async () => {
+  const priorCapture = (o: { id?: string; ngoId?: string; projectId?: string; milestoneId?: string | null; taskId?: string }) => ({
+    id: o.id ?? "ev-old",
+    ngoId: o.ngoId ?? "ngo-a",
+    projectId: o.projectId ?? "p1",
+    milestoneId: o.milestoneId === undefined ? null : o.milestoneId,
+    taskId: o.taskId ?? "t1",
+    task: { title: "Earlier task", milestone: null },
+  });
+
+  it("flags a resubmitted photo and a GPS mismatch, without raising an alert for the resubmission", async () => {
     session("u-field", "NGO");
-    prismaMock.fieldEvidence.findFirst.mockResolvedValue({ id: "ev-old" });
+    prismaMock.fieldEvidence.findMany.mockResolvedValue([priorCapture({})]); // same task, no milestone
     await SYNC(captureRequest({ latitude: "28.61", longitude: "77.20" })); // Delhi, project is Mumbai
-    expect(prismaMock.fieldEvidence.create.mock.calls[0][0].data).toMatchObject({ duplicateOfId: "ev-old", locationStatus: "MISMATCH" });
+    expect(prismaMock.fieldEvidence.create.mock.calls[0][0].data).toMatchObject({
+      duplicateOfId: "ev-old",
+      duplicateVerdict: "RESUBMISSION",
+      locationStatus: "MISMATCH",
+    });
+    expect(createFraudAlert).not.toHaveBeenCalled();
+  });
+
+  it("stores NONE when the photo is new, and searches both evidence tables", async () => {
+    session("u-field", "NGO");
+    await SYNC(captureRequest());
+    const data = prismaMock.fieldEvidence.create.mock.calls[0][0].data;
+    expect(data).toMatchObject({ duplicateOfId: null, duplicateVerdict: "NONE" });
+    expect(prismaMock.fieldEvidence.findMany.mock.calls[0][0].where).toEqual({ photoSha256: { in: [data.photoSha256] } });
+    expect(prismaMock.milestoneProof.findMany.mock.calls[0][0].where).toEqual({ contentHashes: { hasSome: [data.photoSha256] } });
+  });
+
+  it("raises a HIGH alert when another NGO already used the photo", async () => {
+    session("u-field", "NGO");
+    prismaMock.fieldEvidence.findMany.mockResolvedValue([priorCapture({ id: "ev-b", ngoId: "ngo-b", projectId: "pb" })]);
+    const res = await SYNC(captureRequest());
+    expect(res.status).toBe(201);
+    expect((await res.json()).evidence.duplicate).toBe(true);
+    expect(createFraudAlert).toHaveBeenCalledTimes(1);
+    const [type, entityId, entityType, description, severity] = (createFraudAlert as any).mock.calls[0];
+    expect([type, entityId, entityType, severity]).toEqual(["PROOF_DUPLICATE_MEDIA", "ngo-a", "NGO", "HIGH"]);
+    expect(description).toContain("field evidence ev-b");
+  });
+
+  it("raises a HIGH alert when a milestone proof on another project already used the photo", async () => {
+    session("u-field", "NGO");
+    prismaMock.milestoneProof.findMany.mockResolvedValue([
+      { id: "proof-9", milestoneId: "m9", milestone: { title: "Handover", projectId: "p9", project: { ngoId: "ngo-a", ngo: { orgName: "Org A" } } } },
+    ]);
+    await SYNC(captureRequest());
+    expect(prismaMock.fieldEvidence.create.mock.calls[0][0].data).toMatchObject({ duplicateVerdict: "CROSS_PROJECT", duplicateOfId: null });
+    expect((createFraudAlert as any).mock.calls[0][4]).toBe("HIGH");
+  });
+
+  it("a failed duplicate lookup stores 'not checked' (null) and still saves the capture", async () => {
+    session("u-field", "NGO");
+    prismaMock.milestoneProof.findMany.mockRejectedValue(new Error("db blip"));
+    const res = await SYNC(captureRequest());
+    expect(res.status).toBe(201);
+    expect(prismaMock.fieldEvidence.create.mock.calls[0][0].data.duplicateVerdict).toBeNull();
+    expect(createFraudAlert).not.toHaveBeenCalled();
+  });
+
+  it("a failed sync raises no alert for a row that never committed", async () => {
+    session("u-field", "NGO");
+    prismaMock.fieldEvidence.findMany.mockResolvedValue([priorCapture({ id: "ev-b", ngoId: "ngo-b", projectId: "pb" })]);
+    prismaMock.fieldEvidence.create.mockRejectedValue(new Error("write failed"));
+    const res = await SYNC(captureRequest());
+    expect(res.status).toBe(500);
+    expect(createFraudAlert).not.toHaveBeenCalled();
   });
 
   it("another NGO's task is 404 and nothing is uploaded", async () => {

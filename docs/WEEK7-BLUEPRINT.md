@@ -327,6 +327,27 @@ Officer with `[PLACEHOLDER]` contact details. The new channel covers complaint
 intake but does not fill those placeholders, and `/report-concern` points
 anyone needing anonymity at that section — which is currently a dead end.
 
+## 5b. Week 7 completion (2026-10-08, branch `feat/week7-completion`)
+
+Gaps found by checking `main` @ `741257f` against the plan's Week 7 rows, and closed:
+
+| Gap | Fix |
+|---|---|
+| **Consent could not be withdrawn.** `BeneficiaryFeedback.withdrawnAt` was read by every donor-visibility check but written by nothing. | `POST /api/field/feedback/[id]/withdraw` (any member of the owning NGO; 404 to others; idempotent, race-safe). Erases rating/feedback text, records `withdrawnById`. Button in the NGO project cockpit. `tests/consent-withdrawal.test.ts`. |
+| **Two duplicate checks that never compared notes.** Field captures were compared only with field captures (globally, no alert, no verdict). Milestone proofs were compared only with milestone proofs. A photo could cross from one to the other unseen. | `lib/evidence-duplicates.ts` gathers candidates from BOTH tables; both routes classify with `classifyDuplicate`. Field evidence stores `duplicateVerdict` and raises `PROOF_DUPLICATE_MEDIA` (MEDIUM/HIGH) after commit. A field photo reused as the proof for the same milestone is a RESUBMISSION and raises nothing, since capture then proof is the intended flow. |
+| SPEC-2.3: duplicate verdict not visible in `/admin/proof-review`. | One batched lookup per page load, shown next to the GPS badge. Unfingerprinted proofs read "not fingerprinted", never clean. |
+| `NO_GPS_DATA` rendered red in the field-evidence queue and NGO cockpit, contradicting the "absence is not a defect" rule. | Neutral grey. Only `MISMATCH` is red. |
+| "Approved notifications + opt-out" had no opt-out. | `User.projectUpdatesOptOut`, `GET/PATCH /api/donor/notification-preferences` (own row, DONOR only, set not toggle), filter inside the recipient query, toggle on `/donor/funded/[projectId]`. |
+| Proof review said "threshold: 70+ for auto-completion". Nothing auto-completes. | Now reads "advisory only — a human decides". |
+
+Migration `20261008090000_consent_withdrawal_and_update_optout` is additive and `IF NOT EXISTS`. **Not applied to any database yet.** Apply with `npx prisma migrate deploy`.
+
+Regression guard: `tests/weekly-acceptance.test.ts` + `docs/ACCEPTANCE-MATRIX.md` pin W1–W7.
+
+Still open for Week 7, and they need a decision rather than more code:
+- **SPEC-3 is not built, and the plan now has two money→project paths.** `Contract` (donor track) already binds money to a `Project`. `Allocation` (admin track) still does not. Pick one as the pilot's source of truth before Week 8 builds outcomes on top of it.
+- **Two evidence queues** (`/admin/proof-review` for milestone proofs, `/admin/field-evidence` for captures). Field-evidence approval completes the *task* but never moves the *milestone*. Human milestone acceptance only happens through proof review.
+
 ## 6. Decisions taken (2026-10-05)
 
 - **SPEC-3: Option A** — `Allocation.projectId`, reusing the existing

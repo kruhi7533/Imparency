@@ -6,6 +6,7 @@ import { validateMilestoneProof } from "@/lib/gemini/validate-proof";
 import { Role } from "@prisma/client";
 import { recalculateNGOHealthScore } from "@/lib/ngo-health";
 import { extractGpsFromImage, classifyProofLocation } from "@/lib/proof-location";
+import { findPriorEvidence } from "@/lib/evidence-duplicates";
 import {
   hashBuffer,
   classifyDuplicate,
@@ -147,28 +148,9 @@ export async function POST(request: Request) {
     // submission, so it is caught and logged rather than thrown.
     let priorMatches: PriorProofMatch[] = [];
     try {
-      const collisions = await prisma.milestoneProof.findMany({
-        where: { contentHashes: { hasSome: contentHashes } },
-        select: {
-          id: true,
-          milestoneId: true,
-          milestone: {
-            select: {
-              title: true,
-              projectId: true,
-              project: { select: { ngoId: true, ngo: { select: { orgName: true } } } },
-            },
-          },
-        },
-      });
-      priorMatches = collisions.map((c) => ({
-        proofId: c.id,
-        milestoneId: c.milestoneId,
-        milestoneTitle: c.milestone.title,
-        projectId: c.milestone.projectId,
-        ngoId: c.milestone.project.ngoId,
-        orgName: c.milestone.project.ngo.orgName,
-      }));
+      // Both evidence tables: a photo first captured in the field app and then
+      // reused here must be seen too (lib/evidence-duplicates.ts).
+      priorMatches = await findPriorEvidence(contentHashes);
     } catch (hashErr) {
       console.error("Failed to check proof fingerprints for duplicates:", hashErr);
     }

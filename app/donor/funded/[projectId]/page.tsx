@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { fundingSummary } from "@/lib/contract-payments";
 import { DONOR_VISIBLE_EVIDENCE_WHERE } from "@/lib/field-evidence";
+import ProjectUpdatesToggle from "./ProjectUpdatesToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export default async function DonorFundedProjectPage({ params }: { params: { pro
   });
   if (contracts.length === 0) notFound();
 
-  const [project, evidence] = await Promise.all([
+  const [project, evidence, prefs] = await Promise.all([
     prisma.project.findUnique({
       where: { id: params.projectId },
       include: {
@@ -61,6 +62,7 @@ export default async function DonorFundedProjectPage({ params }: { params: { pro
         task: { select: { title: true, milestone: { select: { title: true } } } },
       },
     }),
+    prisma.user.findUnique({ where: { id: donorId }, select: { projectUpdatesOptOut: true } }),
   ]);
   if (!project) notFound();
 
@@ -90,6 +92,9 @@ export default async function DonorFundedProjectPage({ params }: { params: { pro
           <p className="text-sm text-gray-500">
             {project.ngo.orgName} · {project.location}
           </p>
+          <div className="mt-2">
+            <ProjectUpdatesToggle initialOn={!prefs?.projectUpdatesOptOut} />
+          </div>
         </div>
 
         {/* Milestone progress */}

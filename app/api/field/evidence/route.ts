@@ -7,6 +7,15 @@ import { isUniqueConstraintError } from "@/lib/razorpay-webhook";
 import { deletePrivateFile, uploadPrivateFile } from "@/lib/storage";
 import { classifyProofLocation } from "@/lib/proof-location";
 import { canManageTasks, MAX_PHOTO_BYTES, parseCapture, resolveNgoActor, sniffImage } from "@/lib/field-evidence";
+import { findPriorEvidence } from "@/lib/evidence-duplicates";
+import { createFraudAlert } from "@/lib/fraud-alerts";
+import {
+  buildDuplicateDescription,
+  classifyDuplicate,
+  duplicateSeverity,
+  evidenceSlot,
+  type DuplicateResult,
+} from "@/lib/proof-fingerprint";
 
 export const runtime = "nodejs";
 
@@ -67,6 +76,7 @@ export async function POST(request: Request) {
     }
 
     let evidenceData: Record<string, unknown> | null = null;
+    let duplicate: DuplicateResult | null = null;
     if (hasPhoto) {
       if (photo.size > MAX_PHOTO_BYTES) return NextResponse.json({ error: "Photo is larger than 8 MB." }, { status: 413 });
       const bytes = Buffer.from(await photo.arrayBuffer());
@@ -74,7 +84,20 @@ export async function POST(request: Request) {
       if (!kind) return NextResponse.json({ error: "Photo must be a JPEG, PNG or WebP image." }, { status: 415 });
 
       const photoSha256 = createHash("sha256").update(bytes).digest("hex");
-      const duplicate = await prisma.fieldEvidence.findFirst({ where: { photoSha256 }, select: { id: true } });
+      // Same verdict table as milestone proofs, over BOTH evidence tables, so a
+      // photo cannot cross from one submission path to the other unseen.
+      // Best-effort: a failed lookup stores a null verdict ("not checked"),
+      // never "NONE", and never costs the field worker the capture.
+      try {
+        const prior = await findPriorEvidence([photoSha256]);
+        duplicate = classifyDuplicate(prior, {
+          milestoneId: evidenceSlot(task.milestoneId, task.id),
+          projectId: task.projectId,
+          ngoId: task.ngoId,
+        });
+      } catch (dupErr) {
+        console.error("[api/field/evidence] duplicate check failed:", dupErr);
+      }
       const location = classifyProofLocation(
         capture.latitude !== null ? { latitude: capture.latitude, longitude: capture.longitude! } : null,
         task.project.latitude !== null && task.project.longitude !== null
@@ -93,7 +116,8 @@ export async function POST(request: Request) {
         photoKey: uploadedKey,
         photoMime: kind.mime,
         photoSha256,
-        duplicateOfId: duplicate?.id ?? null,
+        duplicateOfId: duplicate?.matches.find((m) => m.source === "FIELD_EVIDENCE")?.proofId ?? null,
+        duplicateVerdict: duplicate?.verdict ?? null,
         latitude: capture.latitude,
         longitude: capture.longitude,
         accuracyM: capture.accuracyM,
@@ -126,13 +150,32 @@ export async function POST(request: Request) {
         }
         return { evidence, feedback };
       });
+
+      // Only after the row committed, so a failed sync never leaves an alert
+      // pointing at evidence that does not exist. createFraudAlert dedupes on
+      // its description, which names the colliding row.
+      const severity = duplicate ? duplicateSeverity(duplicate.verdict) : null;
+      if (duplicate && severity) {
+        try {
+          await createFraudAlert(
+            "PROOF_DUPLICATE_MEDIA",
+            task.ngoId,
+            "NGO",
+            buildDuplicateDescription(duplicate, task.title),
+            severity,
+            "FRAUD_ALERT",
+          );
+        } catch (alertErr) {
+          console.error("[api/field/evidence] duplicate alert failed:", alertErr);
+        }
+      }
       return NextResponse.json(
         {
           evidence: result.evidence && {
             id: result.evidence.id,
             status: result.evidence.status,
             locationStatus: result.evidence.locationStatus,
-            duplicate: !!result.evidence.duplicateOfId,
+            duplicate: isDuplicate(result.evidence.duplicateVerdict, result.evidence.duplicateOfId),
           },
           feedbackId: result.feedback?.id ?? null,
         },
@@ -164,7 +207,7 @@ async function cleanup(key: string | null) {
 async function findReplay(clientId: string, feedbackClientId: string | null, ngoId: string) {
   const evidence = await prisma.fieldEvidence.findUnique({
     where: { clientId },
-    select: { id: true, ngoId: true, status: true, locationStatus: true, duplicateOfId: true },
+    select: { id: true, ngoId: true, status: true, locationStatus: true, duplicateOfId: true, duplicateVerdict: true },
   });
   const feedback = feedbackClientId
     ? await prisma.beneficiaryFeedback.findUnique({ where: { clientId: feedbackClientId }, select: { id: true, ngoId: true } })
@@ -179,11 +222,17 @@ async function findReplay(clientId: string, feedbackClientId: string | null, ngo
         id: evidence.id,
         status: evidence.status,
         locationStatus: evidence.locationStatus,
-        duplicate: !!evidence.duplicateOfId,
+        duplicate: isDuplicate(evidence.duplicateVerdict, evidence.duplicateOfId),
       },
       feedbackId: feedback?.id ?? null,
       replayed: true,
     },
     { status: 200 },
   );
+}
+
+/** Rows from before duplicateVerdict existed only carry duplicateOfId. */
+function isDuplicate(verdict: string | null | undefined, duplicateOfId: string | null | undefined): boolean {
+  if (verdict) return verdict !== "NONE";
+  return !!duplicateOfId;
 }

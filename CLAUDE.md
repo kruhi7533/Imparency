@@ -38,7 +38,7 @@ Rules worth not breaking:
 ## Schema / migrations — read before changing `prisma/schema.prisma`
 **This repo uses Prisma Migrate. Do not run `prisma db push`.**
 - Add a field/model with `npm run db:migrate` (`prisma migrate dev`) so a migration lands in `prisma/migrations/` and gets committed. A new model needs **both** the schema edit and the migration, or its table will never exist anywhere else.
-- `predev` and `build` both run `prisma migrate deploy`, so schema ships with the deploy instead of depending on someone running a command.
+- `predev` runs `prisma migrate deploy`. **`build` does NOT.** It runs `prisma db push --accept-data-loss` (commit `4a942fc`) until production is baselined, so every Vercel deploy pushes the schema with data loss approved against whatever `DATABASE_URL` it is given. Treat that as an open P0 before the pilot. Baseline production, then move `build` back to `migrate deploy`.
 - `npm run db:status` shows drift. `db:sync` is an alias for `migrate deploy` (several admin pages print it in their empty states).
 - History: the dev database was originally built entirely with `db push` and had no `_prisma_migrations` table, so `migrate deploy` would have failed against it. It was brought in sync and baselined on 2026-07-25 (all three migrations marked applied). Reintroducing `db push` would recreate that drift — don't.
 - **The Neon dev DB is shared with other branches** and contains tables this schema doesn't know (e.g. crisis/relief). `prisma migrate diff` against it proposes *dropping* them, and `prisma migrate dev` currently fails at the shadow database on `20260905120000_reconcile_sponsor_requirement_drift`. Write additive migrations by hand (see `20260915100000_csr_governance_workflow`) and apply with `npx prisma migrate deploy`.
@@ -61,23 +61,24 @@ Amounts are Prisma `Decimal` — never round-trip them through `float`. Shared h
 
 Payment truth comes from the Razorpay webhook (`app/api/donations/webhook/route.ts` → `lib/razorpay-webhook.ts`), not from the client. Webhook and cron handlers must be **idempotent**: replaying a delivery must not double-apply. Existing idempotent paths to copy: the donations webhook, `app/api/donor/receipts/claim`, and the risk crons.
 
-Not built yet, and P0 for the pilot: a finance ledger, reconciliation, unmatched-payment exceptions, and allocation approval. Admin currently sees only four aggregate sums on the dashboard. Fund disbursement/payout is deliberately the last module — don't build it until asked.
+Built in Week 6: the append-only ledger (`lib/ledger.ts`), reconciliation (`lib/reconciliation.ts`), finance exceptions, allocation approval (`lib/allocation.ts`) and contract payments (`lib/contract-payments.ts`). Fund disbursement/payout is deliberately the last module — don't build it until asked.
 
 ## Privacy
 - Audit and error context carry **ids only** — never names, emails, or donation amounts. `logAdminAction()` takes snapshots of only the fields an action touched, because the log outlives PII retention on the main tables. `captureError()` context (`lib/observability.ts`) follows the same rule.
 - Never put personal data in URL query strings.
-- Consent is recorded in `ConsentLog` / `ConsentAudit` against a `ConsentPurpose` and a policy version. Beneficiary-scoped consent is a P0 that does **not** exist yet — today's purposes are donor-side only.
+- Consent is recorded in `ConsentLog` / `ConsentAudit` against a `ConsentPurpose` and a policy version (donor-side). Beneficiary consent lives on `BeneficiaryFeedback` (per purpose, Week 7). `isShareableWithDonor` / `DONOR_VISIBLE_EVIDENCE_WHERE` in `lib/field-evidence.ts` are the only gate for donor visibility. Withdrawal goes through `POST /api/field/feedback/[id]/withdraw`.
 - Documents are private by default; serve them through the app, not a public URL.
 
 ## Tests and PR rules
 `npm test` runs Vitest over `tests/*.test.ts` (Prisma mocked per test, `@` alias resolved, no database needed). Add tests there — not new `scripts/test-*.ts` harnesses. Never make a live model or network call in a test; pin AI behaviour with fixtures.
 
-Four kinds of test are treated as mandatory, not optional:
+These kinds of test are treated as mandatory, not optional:
 1. **Tenant isolation** — org A gets 403 on org B's row.
 2. **Approval state machines** — no sensitive transition without its required human gate.
 3. **Idempotency/retry** — replaying a webhook or job does not double-apply.
 4. **AI output** — schema conformance, missing fields, hard rules, hallucination, on fixed fixtures.
 5. **Admin audit coverage** — every route under `app/api/admin` must call `logAdminAction` or be named in the `EXEMPT` list in `tests/admin-audit-coverage.test.ts` with a reason. The test fails the build either way, so adding a route means making that call deliberately. Audit payloads carry ids only; `tests/admin-audit-gaps.test.ts` asserts no `@` and no fixture names reach the log.
+6. **Weekly acceptance** — `tests/weekly-acceptance.test.ts` pins every past week's Friday demo (routes + handlers, pages, behavioural tests not skipped). Moving a pinned feature means editing that manifest in the same PR. See `docs/ACCEPTANCE-MATRIX.md`.
 
 Before opening a PR:
 

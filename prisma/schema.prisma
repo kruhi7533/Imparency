@@ -162,6 +162,11 @@ model User {
 
   // Emergency Crisis Relief
   crisisAlertsOptOut   Boolean                      @default(false)
+
+  /// Week 7: a funding donor can switch off milestone / verified-evidence
+  /// updates for the projects they fund. The funded-project page still shows
+  /// everything — this only stops the in-app + push messages.
+  projectUpdatesOptOut Boolean @default(false)
   crisisEventsCreated  CrisisEvent[]                @relation("CrisisEventsCreated")
   initiativesSubmitted ReliefInitiative[]           @relation("InitiativesSubmitted")
   crisisDonations      CrisisDonation[]
@@ -3077,6 +3082,10 @@ model FieldEvidence {
   /// SHA-256 of the photo bytes: the same image submitted twice is flagged.
   photoSha256   String
   duplicateOfId String?
+  /// NONE | RESUBMISSION | REUSED_IN_PROJECT | CROSS_PROJECT, from
+  /// classifyDuplicate (lib/proof-fingerprint.ts) across BOTH field evidence
+  /// and milestone proofs. Null on rows captured before 2026-10-08.
+  duplicateVerdict String?
 
   latitude       Float?
   longitude      Float?
@@ -3135,6 +3144,8 @@ model BeneficiaryFeedback {
   consentMethod       ConsentMethod
   policyVersion       String        @default("1.0")
   withdrawnAt         DateTime?
+  /// Who recorded the withdrawal on the beneficiary's behalf (an NGO user).
+  withdrawnById       String?
 
   rating       Int?
   feedbackText String?

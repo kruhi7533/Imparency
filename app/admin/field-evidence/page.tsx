@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import EvidenceReviewActions from "./EvidenceReviewActions";
+import { duplicateLabel } from "@/lib/proof-fingerprint";
 
 export const dynamic = "force-dynamic";
 
@@ -44,11 +45,18 @@ export default async function FieldEvidenceQueuePage() {
                 {e.task.project.title} · {e.task.project.location}
               </p>
               <div className="flex flex-wrap gap-1 text-xs">
-                <Flag bad={e.locationStatus !== "MATCH"}>
+                {/* NO_GPS_DATA is neutral: most phones strip location, and absence
+                    of evidence is not evidence of a problem. Only MISMATCH is red. */}
+                <Flag bad={e.locationStatus === "MISMATCH"}>
                   GPS {e.locationStatus.replace(/_/g, " ").toLowerCase()}
                   {e.distanceKm !== null ? ` · ${e.distanceKm.toFixed(1)} km from site` : ""}
                 </Flag>
-                {e.duplicateOfId && <Flag bad>Duplicate of an earlier photo</Flag>}
+                {(() => {
+                  const d = duplicateLabel(e.duplicateVerdict);
+                  if (d) return <Flag bad={d.tone !== "neutral"}>{d.text}</Flag>;
+                  // Rows captured before verdicts were stored.
+                  return !e.duplicateVerdict && e.duplicateOfId ? <Flag bad>Duplicate of an earlier photo</Flag> : null;
+                })()}
                 {offline && <Flag>Captured offline, synced later</Flag>}
                 {!e.containsPeople ? (
                   <Flag>No people in photo</Flag>

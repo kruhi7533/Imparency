@@ -23,13 +23,27 @@ export async function contractDonorIds(projectId: string): Promise<string[]> {
   return Array.from(new Set(contracts.map((c) => c.donorId)));
 }
 
+/**
+ * The funding donors who still want these updates. A donor who switched off
+ * project updates (User.projectUpdatesOptOut) is skipped entirely — no in-app
+ * row and no push. Their funded-project page still shows everything; opting
+ * out silences messages, never visibility.
+ */
+export async function notifiableDonorIds(projectId: string): Promise<string[]> {
+  const contracts = await prisma.contract.findMany({
+    where: { projectId, status: { in: ["ACTIVE", "COMPLETED"] }, donor: { projectUpdatesOptOut: false } },
+    select: { donorId: true },
+  });
+  return Array.from(new Set(contracts.map((c) => c.donorId)));
+}
+
 export async function notifyContractDonors(
   projectId: string,
   title: string,
   body: string,
 ): Promise<{ notified: number; failed: number }> {
   try {
-    const donorIds = await contractDonorIds(projectId);
+    const donorIds = await notifiableDonorIds(projectId);
     const results = await Promise.allSettled(
       donorIds.map((id) => sendPushNotification(id, title, body, { projectId, link: `/donor/funded/${projectId}` })),
     );

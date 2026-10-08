@@ -250,3 +250,31 @@ export const DONOR_VISIBLE_EVIDENCE_WHERE = {
   status: FieldEvidenceStatus.APPROVED,
   OR: [{ containsPeople: false }, { feedback: { is: { consentToSharePhoto: true, withdrawnAt: null } } }],
 };
+
+// ─── Consent withdrawal ──────────────────────────────────────────────────────
+
+/**
+ * A beneficiary can take back consent at any time, usually by telling field
+ * staff. Any member of the owning NGO may record it — the people who meet
+ * beneficiaries are field staff, not owners — but never another NGO.
+ *
+ * Withdrawal covers every purpose recorded on the row: the photo stops being
+ * donor-visible at once (isShareableWithDonor / DONOR_VISIBLE_EVIDENCE_WHERE
+ * read `withdrawnAt`), and the feedback captured under that consent is erased.
+ * The consent flags themselves are kept as the record of what was agreed and
+ * when it ended. Withdrawal is one-way: re-consenting is a new capture.
+ */
+export function checkWithdrawal(
+  feedback: { ngoId: string; withdrawnAt: Date | null } | null,
+  actorNgoId: string,
+): { ok: true; noop: boolean } | { ok: false; status: number; error: string } {
+  // Another NGO's row is "not found", not a hint that it exists.
+  if (!feedback || feedback.ngoId !== actorNgoId) return { ok: false, status: 404, error: "Feedback not found" };
+  if (feedback.withdrawnAt) return { ok: true, noop: true };
+  return { ok: true, noop: false };
+}
+
+/** What a withdrawal writes. Erases the content gathered under the consent. */
+export function withdrawalData(actorUserId: string, now: Date = new Date()) {
+  return { withdrawnAt: now, withdrawnById: actorUserId, rating: null, feedbackText: null };
+}

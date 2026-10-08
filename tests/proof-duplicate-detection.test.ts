@@ -22,6 +22,7 @@ vi.mock("@/lib/prisma", () => ({
     user: { findUnique: vi.fn() },
     milestone: { findUnique: vi.fn(), update: vi.fn() },
     milestoneProof: { create: vi.fn(), findMany: vi.fn() },
+    fieldEvidence: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }));
 
@@ -238,5 +239,45 @@ describe("the check is best-effort", () => {
     expect(prismaMock.milestoneProof.create.mock.calls[0][0].data.contentHashes).toEqual([
       EXPECTED_HASH,
     ]);
+  });
+});
+
+// ─── Cross-table: a field capture reused as a milestone proof ────────────────
+
+function fieldCapture(overrides: { id?: string; ngoId?: string; projectId?: string; milestoneId?: string | null; taskId?: string }) {
+  return {
+    id: overrides.id ?? "fe_earlier",
+    ngoId: overrides.ngoId ?? ORG_A,
+    projectId: overrides.projectId ?? PROJECT_A,
+    milestoneId: overrides.milestoneId === undefined ? MILESTONE_A : overrides.milestoneId,
+    taskId: overrides.taskId ?? "task_1",
+    task: { title: "Photograph kits", milestone: overrides.milestoneId === null ? null : { title: "Kit distribution" } },
+  };
+}
+
+describe("duplicates across field evidence and milestone proofs", () => {
+  it("searches field evidence for the same hashes", async () => {
+    await SUBMIT_PROOF(proofRequest());
+    expect(prismaMock.fieldEvidence.findMany.mock.calls[0][0].where).toEqual({ photoSha256: { in: [EXPECTED_HASH] } });
+  });
+
+  it("raises nothing when the NGO's own field photo for THIS milestone becomes its proof", async () => {
+    // The intended flow: capture in the field app, then submit as proof.
+    prismaMock.fieldEvidence.findMany.mockResolvedValue([fieldCapture({})]);
+    const res = await SUBMIT_PROOF(proofRequest());
+    expect(res.status).toBe(200);
+    expect(alertMock).not.toHaveBeenCalled();
+  });
+
+  it("raises HIGH when another organisation's field photo is submitted as proof", async () => {
+    prismaMock.fieldEvidence.findMany.mockResolvedValue([
+      fieldCapture({ id: "fe_orgb", ngoId: ORG_B, projectId: "proj_b", milestoneId: "ms_x" }),
+    ]);
+    await SUBMIT_PROOF(proofRequest());
+    expect(alertMock).toHaveBeenCalledTimes(1);
+    const [type, , , description, severity] = alertMock.mock.calls[0];
+    expect(type).toBe("PROOF_DUPLICATE_MEDIA");
+    expect(severity).toBe("HIGH");
+    expect(description).toContain("field evidence fe_orgb");
   });
 });

@@ -89,12 +89,14 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
       note: e.note,
       locationStatus: e.locationStatus,
       distanceKm: e.distanceKm,
-      duplicate: !!e.duplicateOfId,
+      // Verdict-aware: re-sending the same photo for the same milestone is not a duplicate warning.
+      duplicate: e.duplicateVerdict ? e.duplicateVerdict === "REUSED_IN_PROJECT" || e.duplicateVerdict === "CROSS_PROJECT" : !!e.duplicateOfId,
       capturedAt: e.capturedAt.toISOString(),
       syncedAt: e.syncedAt.toISOString(),
       reviewNote: e.reviewNote,
       consent: e.feedback
         ? {
+            feedbackId: e.feedback.id,
             consentToRecord: e.feedback.consentToRecord,
             consentToSharePhoto: e.feedback.consentToSharePhoto,
             withdrawn: !!e.feedback.withdrawnAt,
