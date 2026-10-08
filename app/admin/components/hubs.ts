@@ -143,6 +143,15 @@ export const ADMIN_HUBS: Hub[] = [
       { href: "/admin/dashboard", label: "Overview", hint: "Donations, verification counts, and platform totals." },
       { href: "/admin/trust-trends", label: "Trust trends", hint: "How verification and compliance are moving over time." },
       { href: "/admin/impact-health", label: "Impact health", hint: "Whether funded work is actually reporting outcomes." },
+      // Week 8. Deliberately next to "Impact health", which measures whether
+      // donor UPDATES got delivered — a different question from whether the
+      // numbers in them are backed by evidence. The hints have to do the work
+      // of telling them apart until impact-health is renamed.
+      {
+        href: "/admin/metrics",
+        label: "Metric registry",
+        hint: "The governed definition of every metric: what counts, in what unit, and what evidence can prove it.",
+      },
       {
         href: "/admin/sla",
         label: "Response targets",

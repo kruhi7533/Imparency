@@ -18,8 +18,17 @@ Answer architecture questions from that document plus a targeted re-read of the 
 - ~~`app/donor/dashboard/page.tsx` is a hardcoded stub~~ — fixed; it is now wired to real Prisma data.
 - ~~`app/api/ngo/whatsapp-drafts/convert/route.ts` is dead code~~ — deleted; it was unreferenced by any UI, bypassed the `lib/prisma.ts` singleton, and updated a `milestoneId` without an ownership check. The live draft routes are `app/api/drafts/*`.
 - There **is** now a Vitest suite: `npm test` runs `tests/*.test.ts` (77 files / 905 tests as of 2026-09-26, config in `vitest.config.ts`, `@` alias resolved). Prisma is mocked per-test, so no database is needed. Add tests there rather than writing new `scripts/test-*.ts` harnesses.
+- **A green test suite does not mean the pages load.** Anything a `"use client"` component imports is compiled for the browser, and webpack does not polyfill the `node:` scheme — one Node builtin in that import closure makes the route fail to build and serve a 500. Week 7 shipped exactly this (`duplicateLabel` in `lib/proof-fingerprint.ts`, which imported `node:crypto`) and `/admin/proof-review` was dead while 1668 tests passed, because vitest runs in Node. `tests/client-bundle-safety.test.ts` now guards it; server-only helpers belong in their own module (`lib/proof-hash.ts`). **Open the page in a browser before calling a change done.**
 - CSR/RFP workflow (upload → admin validation → matching → NGO brief → selection → contract) is documented in `docs/ARCHITECTURE.md` §13.7. Requirement status changes go only through `lib/requirements/commit.ts`; CSR files live in private storage and are served only by `GET /api/requirements/[id]/file`.
  Donors can also create a requirement from the structured form on `/donor/requirements` (no document, starts in `DONOR_REVIEW`).
+
+## Impact: governed metrics, not free text
+`ImpactReport.sdgTags` / `irisMetrics` are ungoverned `String[]`. Week 8 adds the layer that makes a reported number checkable — see `docs/WEEK8-BLUEPRINT.md`:
+- `MetricDefinition` (`lib/metric-registry.ts`) is the registry, keyed by a published `code`. **A metric cannot be ACTIVE with an empty `requiredEvidence`** — without an evidence rule no claim against it could ever fail a check, which would be a permanent hole in the one rule the module exists to enforce. Seeded idempotently by `tools/seed-metric-registry.ts`.
+- `OutcomeClaim` + `OutcomeClaimEvidence` hold the number and its citations. `value` is `Decimal` — an impact figure quoted to a funder gets the same treatment as money.
+- `lib/outcome-triage.ts` judges a claim. **No model call**, like `lib/verification-triage.ts`: arithmetic and set membership only. `DOUBLE_COUNTED` is the headline — Week 7 stopped the same photo being reused as evidence, this stops the same evidence being counted twice as impact.
+- `CLEAN` must never mean "nothing was examined", and a failed claim must render as "unverified" — never as `0`, which reads to a donor as "achieved nothing".
+- `/admin/metrics` is the registry; `/admin/impact-health` is unrelated (donor-update *delivery*), despite the name.
 
 ## NGO verification: ONE pass, then triage
 Registration used to fire three overlapping AI passes over the same three PDFs — `verifyNGODocuments` (awaited, so it blocked the response), `runAndStoreNgoScreening`, and `runAndStoreNgoExtraction`. They disagreed about what the files were and only extraction's answer ever reached a human. All three are now one:
