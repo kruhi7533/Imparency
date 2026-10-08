@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { hashBuffer } from "@/lib/proof-hash";
 import {
-  hashBuffer,
   classifyDuplicate,
   duplicateSeverity,
   buildDuplicateDescription,

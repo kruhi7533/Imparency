@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 /**
  * Content fingerprinting for milestone proof files — Week 7's duplicate-
  * evidence check, and the companion to the GPS provenance check in
@@ -25,12 +23,13 @@ import { createHash } from "node:crypto";
  * legitimately produces dozens of near-identical frames of the same wall.
  * `contentHashes` is the seam to upgrade through — revisit it with real data,
  * the same way LOCATION_MISMATCH_THRESHOLD_KM is documented as revisitable.
+ *
+ * THIS MODULE MUST STAY FREE OF NODE BUILTINS. `duplicateLabel` is rendered by
+ * ProofReviewClient.tsx, a "use client" component, so this file is bundled for
+ * the browser. The `node:crypto` hashing that used to sit at the top now lives
+ * in lib/proof-hash.ts — with it here, webpack could not build the page at all
+ * (UnhandledSchemeError) and /admin/proof-review served a 500.
  */
-
-/** SHA-256 of a file's bytes, hex-encoded. */
-export function hashBuffer(buffer: Buffer): string {
-  return createHash("sha256").update(buffer).digest("hex");
-}
 
 /**
  * Where a matching file was found. Evidence reaches the platform two ways —

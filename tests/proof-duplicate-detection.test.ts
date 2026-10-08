@@ -49,7 +49,7 @@ vi.mock("@/lib/gemini/validate-proof", () => ({
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { createFraudAlert } from "@/lib/fraud-alerts";
-import { hashBuffer } from "@/lib/proof-fingerprint";
+import { hashBuffer } from "@/lib/proof-hash";
 import { POST as SUBMIT_PROOF } from "@/app/api/ngo/submit-proof/route";
 
 const prismaMock = prisma as any;

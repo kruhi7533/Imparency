@@ -7,8 +7,8 @@ import { Role } from "@prisma/client";
 import { recalculateNGOHealthScore } from "@/lib/ngo-health";
 import { extractGpsFromImage, classifyProofLocation } from "@/lib/proof-location";
 import { findPriorEvidence } from "@/lib/evidence-duplicates";
+import { hashBuffer } from "@/lib/proof-hash";
 import {
-  hashBuffer,
   classifyDuplicate,
   duplicateSeverity,
   buildDuplicateDescription,
