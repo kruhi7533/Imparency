@@ -179,6 +179,12 @@ export const ADMIN_HUBS: Hub[] = [
         hint: "The money ledger, what does not reconcile against it, and when it was last checked.",
       },
       {
+        href: "/admin/ops",
+        label: "Scheduled jobs",
+        hint:
+          "Whether the platform's nine background jobs are actually running. A job that has never run shows as a failure, not as healthy.",
+      },
+      {
         href: "/admin/audit",
         label: "Audit trail",
         hint: "Every recorded admin decision, across every entity — searchable by actor, action, entity type, and date.",

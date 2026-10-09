@@ -3367,3 +3367,60 @@ model OutcomeClaimEvidence {
   @@index([evidenceId])
   @@index([feedbackId])
 }
+
+/// How a recorded job run ended.
+///
+/// SKIPPED is a NORMAL outcome, not a failure: it means another run of the same
+/// job was already in flight. Treating it as a failure would make a correctly
+/// working concurrency guard look like an incident.
+enum JobRunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+}
+
+/// One attempt at a scheduled job (Week 9 SPEC-2).
+///
+/// The platform had nine cron routes and no record that any of them ever ran,
+/// so "never scheduled" and "failing every night for a month" were
+/// indistinguishable. This table is what makes the difference observable, and
+/// what /admin/ops renders.
+///
+/// Written by lib/job-runner.ts. A failure to write a row never fails the job:
+/// an unrecorded run is a monitoring gap, whereas a job that refused to run
+/// because monitoring was down is an outage caused by the monitoring.
+model JobRun {
+  id String @id @default(uuid())
+
+  /// Registry key from lib/job-registry.ts, e.g. "deliver-impact". Not free
+  /// text: the ops console joins the ledger to the declared cadence on it.
+  job String
+
+  status JobRunStatus @default(RUNNING)
+
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  durationMs Int?
+
+  /// What the run actually did. Reported by the job, because only it knows.
+  /// Null means "did not say"; 0 means "ran and had nothing to do" — a healthy
+  /// answer that must stay distinguishable from a failure.
+  itemsProcessed Int?
+
+  /// CRON, MANUAL or BACKFILL. How the run was invoked.
+  trigger String
+
+  /// Ties the row to every log line the run emitted (Week 9 SPEC-1).
+  correlationId String?
+
+  /// Error class and a truncated message. No stack: stacks carry file paths
+  /// and occasionally payload fragments, and belong in logs, not a table that
+  /// outlives PII retention elsewhere (CLAUDE.md §Privacy).
+  errorName    String?
+  errorMessage String?
+
+  /// The ops console reads the latest run per job; the sweep reads failures.
+  @@index([job, startedAt])
+  @@index([status, startedAt])
+}

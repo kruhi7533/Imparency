@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { captureError } from "@/lib/observability";
+import { runJob, countOf } from "@/lib/job-runner";
 import { checkGeneralPlatformAlerts } from "@/lib/risk-agent";
 import { rateLimit } from "@/lib/rate-limiter";
 import crypto from "crypto";
@@ -41,10 +41,20 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    await checkGeneralPlatformAlerts();
-    return NextResponse.json({ ok: true });
+    const outcome = await runJob("risk-sweep", { req }, async (job) => {
+      await checkGeneralPlatformAlerts();
+      // Nothing countable: the sweep reports no total of its own.
+      return NextResponse.json({ ok: true });
+    });
+
+    // A skip is a normal outcome, not a failure: another run was already
+    // in flight. Reported as 200 so the scheduler does not retry it.
+    if (outcome.skipped) {
+      return NextResponse.json({ ok: true, skipped: true, reason: outcome.reason });
+    }
+    return outcome.value;
   } catch (err: any) {
-    captureError(err, { scope: "cron/risk-sweep", operation: "scheduled_run" });
+    // runJob already recorded the FAILED row and captured the error.
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

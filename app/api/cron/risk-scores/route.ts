@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { captureError } from "@/lib/observability";
+import { runJob, countOf } from "@/lib/job-runner";
 import { refreshAllNgoScores, refreshAllDonorScores } from "@/lib/risk-engine/store";
 import { evaluateVerifiedNgos } from "@/lib/verification-reversal";
 import { sweepUnbackedComplianceFlags } from "@/lib/compliance-evidence";
@@ -43,22 +43,33 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const ngos = await refreshAllNgoScores();
-    const donors = await refreshAllDonorScores();
+    const outcome = await runJob("risk-scores", { req }, async (job) => {
+      const ngos = await refreshAllNgoScores();
+      const donors = await refreshAllDonorScores();
 
-    // Catch approvals whose evidence failed before this sweep existed, or
-    // failed without extraction re-running since. Costs no model calls — it
-    // reads findings that are already stored.
-    const reverification = await evaluateVerifiedNgos();
+      // Catch approvals whose evidence failed before this sweep existed, or
+      // failed without extraction re-running since. Costs no model calls — it
+      // reads findings that are already stored.
+      const reverification = await evaluateVerifiedNgos();
 
-    // Retract compliance badges the platform cannot support. Runs every night
-    // because a flag with nothing behind it is a false statement to donors, and
-    // an unsupported claim should not wait for someone to notice it.
-    const flags = await sweepUnbackedComplianceFlags();
+      // Retract compliance badges the platform cannot support. Runs every night
+      // because a flag with nothing behind it is a false statement to donors, and
+      // an unsupported claim should not wait for someone to notice it.
+      const flags = await sweepUnbackedComplianceFlags();
 
-    return NextResponse.json({ ok: true, ngos, donors, reverification, flags });
+      // NGOs rescored is the headline number for this job.
+      job.recordItems(countOf(ngos));
+      return NextResponse.json({ ok: true, ngos, donors, reverification, flags });
+    });
+
+    // A skip is a normal outcome, not a failure: another run was already
+    // in flight. Reported as 200 so the scheduler does not retry it.
+    if (outcome.skipped) {
+      return NextResponse.json({ ok: true, skipped: true, reason: outcome.reason });
+    }
+    return outcome.value;
   } catch (err: any) {
-    captureError(err, { scope: "cron/risk-scores", operation: "scheduled_run" });
+    // runJob already recorded the FAILED row and captured the error.
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { captureError } from "@/lib/observability";
+import { runJob, countOf } from "@/lib/job-runner";
 import { enqueueFromScores, drainDispatches, DISPATCH_BUDGET } from "@/lib/risk-engine/dispatch";
 import { rateLimit } from "@/lib/rate-limiter";
 import crypto from "crypto";
@@ -50,11 +50,21 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const queued = await enqueueFromScores();
-    const drained = await drainDispatches();
-    return NextResponse.json({ ok: true, budget: DISPATCH_BUDGET, queued, drained });
+    const outcome = await runJob("risk-dispatch", { req }, async (job) => {
+      const queued = await enqueueFromScores();
+      const drained = await drainDispatches();
+      job.recordItems(countOf(drained));
+      return NextResponse.json({ ok: true, budget: DISPATCH_BUDGET, queued, drained });
+    });
+
+    // A skip is a normal outcome, not a failure: another run was already
+    // in flight. Reported as 200 so the scheduler does not retry it.
+    if (outcome.skipped) {
+      return NextResponse.json({ ok: true, skipped: true, reason: outcome.reason });
+    }
+    return outcome.value;
   } catch (err: any) {
-    captureError(err, { scope: "cron/risk-dispatch", operation: "scheduled_run" });
+    // runJob already recorded the FAILED row and captured the error.
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

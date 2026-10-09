@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { captureError } from "@/lib/observability";
+import { runJob, countOf } from "@/lib/job-runner";
 import { runAllAdminReminders } from "@/lib/reminders";
 import { rateLimit } from "@/lib/rate-limiter";
 import crypto from "crypto";
@@ -28,10 +28,20 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const results = await runAllAdminReminders();
-    return NextResponse.json({ ok: true, results });
+    const outcome = await runJob("reminders", { req }, async (job) => {
+      const results = await runAllAdminReminders();
+      job.recordItems(countOf(results));
+      return NextResponse.json({ ok: true, results });
+    });
+
+    // A skip is a normal outcome, not a failure: another run was already
+    // in flight. Reported as 200 so the scheduler does not retry it.
+    if (outcome.skipped) {
+      return NextResponse.json({ ok: true, skipped: true, reason: outcome.reason });
+    }
+    return outcome.value;
   } catch (err: any) {
-    captureError(err, { scope: "cron/reminders", operation: "scheduled_run" });
+    // runJob already recorded the FAILED row and captured the error.
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

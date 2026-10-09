@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { captureError } from "@/lib/observability";
+import { runJob, countOf } from "@/lib/job-runner";
 import { generateFcraQuarterlyReport } from "@/lib/fcra-quarterly";
 import { rateLimit } from "@/lib/rate-limiter";
 import crypto from "crypto";
@@ -28,10 +28,20 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const report = await generateFcraQuarterlyReport();
-    return NextResponse.json({ ok: true, quarter: report.quarter, totalNgos: report.totalNgos });
+    const outcome = await runJob("fcra-quarterly-report", { req }, async (job) => {
+      const report = await generateFcraQuarterlyReport();
+      job.recordItems(countOf(report));
+      return NextResponse.json({ ok: true, quarter: report.quarter, totalNgos: report.totalNgos });
+    });
+
+    // A skip is a normal outcome, not a failure: another run was already
+    // in flight. Reported as 200 so the scheduler does not retry it.
+    if (outcome.skipped) {
+      return NextResponse.json({ ok: true, skipped: true, reason: outcome.reason });
+    }
+    return outcome.value;
   } catch (err: any) {
-    captureError(err, { scope: "cron/fcra-quarterly-report", operation: "scheduled_run" });
+    // runJob already recorded the FAILED row and captured the error.
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

@@ -519,7 +519,7 @@ the page loads. Open it in a browser before calling it done.
 | Spec | State |
 |---|---|
 | **SPEC-1 correlation + logging** | **Built.** `lib/correlation.ts` (isomorphic: W3C traceparent generate/parse/derive, header names, the resolver seam), `lib/request-context.ts` (AsyncLocalStorage, `withRequestContext`/`withRouteContext`, `setContextUser`, `outboundTraceHeaders`), `lib/logger.ts` (single-line JSON, `logDuration`), `captureError` stamps the id, `middleware.ts` mints/continues it per page request, 6 cron routes moved off `console.error`, `app/api/media-proxy/route.ts` as the worked route example. `tests/request-context.test.ts` (26) + `tests/logger.test.ts` (14). |
-| **SPEC-2 job ledger + ops console** | Not started. |
+| **SPEC-2 job ledger + ops console** | **Built.** `JobRun` + `JobRunStatus` with hand-written additive migration `20261019090000_job_run_ledger` (**applied**), `lib/job-registry.ts` (nine jobs, per-job cadence/grace/runtime budget, `jobHealth`, `renderCrontab`), `lib/job-runner.ts` (`runJob`, ledger row per attempt, correlation id, concurrency back-off, `countOf`), all **nine** cron routes wrapped, `/admin/ops` + nav entry, `tests/job-runner.test.ts` (24). |
 | **SPEC-3 security suite** | Not started. |
 | **SPEC-4 backup/restore** | Not started. |
 
@@ -568,6 +568,54 @@ means hand-rolling the `withAuth` wrapper, i.e. editing the authentication
 path, for a request that has nothing to correlate with. Logged rather than
 done.
 
+### SPEC-2, verified against the real database and in the browser
+
+`runJob` was exercised directly against the dev database, not only through
+mocks:
+
+- a successful run recorded `SUCCEEDED`, `durationMs: 187`, `itemsProcessed: 3`;
+- a deliberate failure recorded `FAILED` with `errorName`, then **rethrew**, so
+  the route keeps its 500;
+- the `[capture]` line for that failure carries correlation id
+  `303a44d3…`, **the same id stored on the FAILED row** — SPEC-1 and SPEC-2
+  joined up, which is the whole point of doing them in this order.
+
+`/admin/ops` returns HTTP 200 with real content and renders the finding this
+week predicted: **seven jobs, including `deliver-impact`, show NEVER RUN in
+red**. That is the defect §2.2 argued was unknowable, now visible on a page.
+`reminders` shows FAILING with its error and correlation id; `risk-sweep`
+shows HEALTHY at 187ms / 3 items.
+
+Two things found by building it:
+
+**1. A display bug on a page about precision.** `Math.round(graceHours / 24)
+|| 1` rendered a 12-hour grace as "1d grace" — a false statement on the one
+page whose job is being exact about when something should have happened.
+Replaced with `humanHours()`; it now reads `1d+12h grace` and `92d+7d grace`.
+
+**2. A vitest hoisting trap.** Adding a static import of the module under
+test made `vi.mock`'s factory run before a plain `const prismaMock` was
+initialised, and the file failed to collect with no tests at all rather than
+with a failure. `vi.hoisted()` is the fix.
+
+### SPEC-2 decisions worth not re-litigating
+
+- **The concurrency guard is a back-off, not a lock.** Both contenders insert
+  and the later one marks itself `SKIPPED`; earliest `startedAt` wins, id
+  breaks a tie. A partial unique index on `(job) WHERE status = 'RUNNING'`
+  would be stricter, but Prisma cannot express a partial index, so the
+  database would carry an object `schema.prisma` does not declare — and CI's
+  "check schema and migrations agree" gate would fail on exactly that. That
+  gate caught four real defects this week; working around it for a guard the
+  jobs do not strictly need (every one is already replay-safe) is a poor
+  trade.
+- **The existing `rateLimit` duplicate-invocation lock stays outside
+  `runJob`.** A call that lock absorbs never ran, so it must not leave a
+  ledger row implying it did.
+- **Every default in the new migration matches `schema.prisma` exactly.** The
+  four-column mismatch that broke CI this week came from migrations adding
+  convenience defaults the models never declared; the migration file says so
+  in a comment so the next hand-written one does not repeat it.
 ### SPEC-1 scope boundaries, deliberate
 
 - **The nine cron routes get their context in SPEC-2, not here.** `runJob`
