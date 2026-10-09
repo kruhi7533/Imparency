@@ -344,7 +344,7 @@ modules' suites green (56 tests); `tests/admin-audit-coverage.test.ts` and
 | **SPEC-1 Metric Registry** | **Built and live.** Schema + hand-written additive migration `20261012090000_metric_registry_and_outcome_claims` (**applied** to the Neon dev DB), `lib/metric-registry.ts`, `tools/seed-metric-registry.ts` (idempotent — verified by re-running), `GET /api/metrics`, `POST /api/admin/metrics`, `PATCH /api/admin/metrics/[code]`, `/admin/metrics` with the registry-health panel, nav entry, `tests/metric-registry.test.ts`. Five metrics seeded and ACTIVE. |
 | **SPEC-2 claims workflow** | **Built.** `lib/outcome-workflow.ts` (CAS transitions, note rules), `POST /api/ngo/outcome-claims`, `PATCH /api/ngo/outcome-claims/[id]` (SUBMIT/WITHDRAW), `PATCH /api/admin/outcome-claims/[id]` (APPROVE/REQUEST_EVIDENCE/REJECT), `/admin/impact-review` queue, nav entry, `tests/outcome-workflow.test.ts` (32) + `tests/outcome-claim-routes.test.ts` (25). |
 | **SPEC-3 outcome triage** | **Built and wired.** `lib/outcome-triage.ts` + `lib/outcome-evidence.ts` (the DB-side gatherer). Findings render in the review queue; the approval gate reads the verdict. `tests/outcome-triage.test.ts` (29 tests, all ten findings plus the false-positive boundaries). |
-| **SPEC-4 quality dashboard** | Not started. |
+| **SPEC-4 quality dashboard** | **Built.** `lib/impact-quality.ts` (pure roll-up + `claimDisplay`), `approvedCitationIndex` / `incidentsFromIndex` in `lib/outcome-evidence.ts`, `/admin/impact-quality`, `"Impact Review"` SLA target, the Today queue (`today-sources.ts` / `today-inbox.ts`, icon `impact`), nav entry. `tests/impact-quality.test.ts` (32) + 3 added to `tests/today-inbox.test.ts`. W8 row added to `tests/weekly-acceptance.test.ts` and `docs/ACCEPTANCE-MATRIX.md`. |
 
 So Monday's and Wednesday's deliverables are complete, and the dependency owed
 to the NGO track (`GET /api/metrics`, five ACTIVE codes) is live. Friday's
@@ -370,11 +370,46 @@ rather than writing one by hand:
   CODES and a citation count — and no `@`, no method text, no decision-note
   text.
 
-`tests/weekly-acceptance.test.ts` has deliberately **not** gained a W8 row.
-That file is the regression guard for weeks that are actually finished, and a
-row asserting Week 8 acceptance while two of its four specs are unbuilt would
-make the guard lie — which is the failure mode the matrix exists to prevent.
+`tests/weekly-acceptance.test.ts` now carries its W8 row, added in the same
+change as SPEC-4 — the manifest is only allowed to assert a week that is
+actually finished, which is why the row was deliberately withheld while two
+specs were outstanding.
 
+### SPEC-4 decisions that departed from this document
+
+Written down because the spec above is wrong on both points, and the code is
+right:
+
+1. **"Backed value ÷ total claimed value, portfolio-wide" is not computable.**
+   Across metrics it adds unlike units — 400,000 meals plus 50 people trained —
+   and the larger magnitude swamps the ratio, so a million unbacked meals would
+   read as catastrophe and fifty fabricated training claims as noise. The
+   headline is therefore the share of asserted CLAIMS that are backed, which is
+   unit-free; value shares survive per metric, where the unit is constant.
+2. **Deep links to both claims in a double-count incident are not built.**
+   There is no per-claim admin page to link to — `/admin/impact-review` only
+   lists SUBMITTED claims, and an incident is by definition between two
+   APPROVED ones. The incident table shows both claim ids as text. A claim
+   detail route is the honest follow-up rather than a link that goes nowhere.
+
+Also still open from the §4 day plan: the **donor-facing read path**.
+`claimDisplay()` enforces "unverified, never 0" and is tested, but the only
+donor surface that renders impact (`app/donor/dashboard/page.tsx`) does not
+consume it yet. The contract is published; the donor track has to adopt it.
+
+Verified in a browser, signed in as ADMIN against the dev database — not just
+in tests, per the Week 7 lesson below:
+
+- `/admin/impact-quality` renders every panel. With one NEEDS_EVIDENCE claim it
+  reads "0 of 1 asserted numbers", one "cannot be approved", and — the rule
+  working in a real render — "Oldest waiting: —", not `0d`.
+- Registry hygiene shows zero ACTIVE metrics without an evidence rule, and the
+  four seeded metrics nobody has claimed against.
+- Flipping the claim to SUBMITTED (and back) exercised the SLA branch:
+  "0d / 3d left · 3-day target", and the Today card "IMPACT REVIEW · 40 —
+  Individuals trained ... waiting 0d" with the queue chip "Impact Review · 1".
+- `/admin/today` still renders all fourteen other queues; console clean apart
+  from a pre-existing CSP report-only warning.
 ### Found while building, fixed
 
 `/admin/proof-review` was returning **HTTP 500** on `main`'s Week 7 code:

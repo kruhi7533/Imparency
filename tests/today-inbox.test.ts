@@ -47,6 +47,7 @@ function sources(overrides: Partial<InboxSources> = {}): InboxSources {
     quietNgos: [],
     overdueMilestones: [],
     financeExceptions: [],
+    submittedClaims: [],
     ...overrides,
   };
 }
@@ -632,6 +633,107 @@ describe("what earns a place on Today", () => {
   });
 });
 
+/**
+ * The Impact Review queue (Week 8 SPEC-4).
+ *
+ * A reported number waiting on a decision is work the admin owes, so it has
+ * to land in "Waiting on you" rather than in Signals — a queue drifting into
+ * the wrong column silently breaks the page's one promise while still
+ * rendering perfectly.
+ */
+describe("impact review queue", () => {
+  it("puts a submitted claim in Waiting on you with its metric and figure", () => {
+    const items = buildInboxItems(
+      sources({
+        submittedClaims: [
+          {
+            id: "oc1",
+            value: "120.00",
+            metricCode: "IB-TRAINED-001",
+            metricName: "Individuals trained",
+            submittedAt: daysAgo(2),
+            createdAt: daysAgo(4),
+            project: { title: "Learning Centres", ngo: { orgName: "Kiran Welfare Society" } },
+          },
+        ],
+      }),
+      NOW
+    );
+
+    const item = items.find((i) => i.queue === "Impact Review")!;
+    expect(item).toBeDefined();
+    expect(item.category).toBe("Waiting on you");
+    expect(item.iconKey).toBe("impact");
+    expect(item.title).toContain("120.00");
+    expect(item.title).toContain("Individuals trained");
+    expect(item.subtitle).toContain("Kiran Welfare Society");
+    expect(item.href).toBe("/admin/impact-review");
+    // Age runs from submission, not creation: the wait the platform owes
+    // starts when the organisation handed the number over.
+    expect(item.age).toBe(2);
+  });
+
+  it("falls back to createdAt when submittedAt is somehow absent", () => {
+    // Nullable in the schema, so the card must not render NaN days.
+    const items = buildInboxItems(
+      sources({
+        submittedClaims: [
+          {
+            id: "oc2",
+            value: "5.00",
+            metricCode: "IB-MEALS-001",
+            metricName: "Meals served",
+            submittedAt: null,
+            createdAt: daysAgo(3),
+            project: { title: "P", ngo: { orgName: "X" } },
+          },
+        ],
+      }),
+      NOW
+    );
+    const item = items.find((i) => i.queue === "Impact Review")!;
+    expect(item.age).toBe(3);
+    expect(Number.isNaN(item.occurredAt.getTime())).toBe(false);
+  });
+
+  it("breaches the three-day target declared in lib/sla.ts", () => {
+    const [fresh] = buildInboxItems(
+      sources({
+        submittedClaims: [
+          {
+            id: "fresh",
+            value: "1.00",
+            metricCode: "M",
+            metricName: "M",
+            submittedAt: daysAgo(1),
+            createdAt: daysAgo(1),
+            project: { title: "P", ngo: { orgName: "X" } },
+          },
+        ],
+      }),
+      NOW
+    );
+    expect(isBreached(fresh)).toBe(false);
+
+    const [stale] = buildInboxItems(
+      sources({
+        submittedClaims: [
+          {
+            id: "stale",
+            value: "1.00",
+            metricCode: "M",
+            metricName: "M",
+            submittedAt: daysAgo(9),
+            createdAt: daysAgo(9),
+            project: { title: "P", ngo: { orgName: "X" } },
+          },
+        ],
+      }),
+      NOW
+    );
+    expect(isBreached(stale)).toBe(true);
+  });
+});
 describe("breaches", () => {
   it("flags an item past its queue's declared target", () => {
     // Proof Review's target is 3 days.

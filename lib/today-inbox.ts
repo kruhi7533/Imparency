@@ -56,7 +56,8 @@ export type IconKey =
   | "overdue"
   | "donor"
   | "grievance"
-  | "exception";
+  | "exception"
+  | "impact";
 
 export interface InboxItem {
   id: string;
@@ -102,6 +103,26 @@ export interface InboxSources {
     id: string;
     title: string;
     updatedAt: Date;
+    project: { title: string; ngo: { orgName: string } };
+  }[];
+  /**
+   * Outcome claims waiting on an impact-review decision.
+   *
+   * A number an organisation has reported against a governed metric, with its
+   * evidence already approved — the delay from here is entirely the platform's,
+   * which is why it carries the same three-day target as Proof Review.
+   *
+   * `method` is deliberately NOT selected. The card shows the figure and the
+   * metric; how the organisation counted is a paragraph that belongs in the
+   * review queue, not loaded into a page rendering fourteen others.
+   */
+  submittedClaims: {
+    id: string;
+    value: string;
+    metricCode: string;
+    metricName: string;
+    submittedAt: Date | null;
+    createdAt: Date;
     project: { title: string; ngo: { orgName: string } };
   }[];
   pendingFcra: { id: string; updatedAt: Date; ngo: { id: string; orgName: string } }[];
@@ -382,6 +403,24 @@ export function buildInboxItems(s: InboxSources, now: number = Date.now()): Inbo
       severity: age(m.updatedAt) > 3 ? "medium" : "low",
       href: "/admin/proof-review",
     })),
+    // Reported numbers waiting on a decision. The threshold matches the three
+    // days declared for "Impact Review" in lib/sla.ts — the severity rule and
+    // the published target must not be able to disagree.
+    ...s.submittedClaims.map((c): InboxItem => {
+      const since = c.submittedAt ?? c.createdAt;
+      return {
+        id: `claim-${c.id}`,
+        queue: "Impact Review",
+        category: "Waiting on you",
+        iconKey: "impact",
+        title: `${c.value} — ${c.metricName}`,
+        subtitle: `${c.project.ngo.orgName} · ${c.project.title} — waiting ${age(since)}d`,
+        occurredAt: since,
+        age: age(since),
+        severity: age(since) > 3 ? "medium" : "low",
+        href: "/admin/impact-review",
+      };
+    }),
     ...s.openGrievances.map((g): InboxItem => ({
       id: `grievance-${g.id}`,
       queue: "Grievances",

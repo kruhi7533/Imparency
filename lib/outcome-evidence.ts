@@ -190,3 +190,118 @@ export async function evidenceAlreadyCounted(
   }
   return refs;
 }
+
+export interface DoubleCountIncident {
+  metricCode: string;
+  evidenceRef: string;
+  /** Every APPROVED claim counting this evidence on this metric. Always >= 2. */
+  claimIds: string[];
+}
+
+/**
+ * metricCode -> evidenceRef -> the APPROVED claims citing it.
+ *
+ * One query that answers the double-counting question for the WHOLE portfolio,
+ * so a dashboard does not have to ask it per claim.
+ *
+ * This exists because the obvious implementation of /admin/impact-quality is
+ * unshippable: calling `evidenceAlreadyCounted` once per claim is two round
+ * trips each, and at ~340ms to Singapore (docs/ARCHITECTURE.md) a 300-claim
+ * portfolio would spend three minutes on a page load. Built once here, the
+ * per-claim sets below are derived in memory for free.
+ */
+export async function approvedCitationIndex(): Promise<Map<string, Map<string, Set<string>>>> {
+  const rows = await prisma.outcomeClaimEvidence.findMany({
+    where: { claim: { status: "APPROVED" } },
+    select: {
+      claimId: true,
+      proofId: true,
+      evidenceId: true,
+      feedbackId: true,
+      claim: { select: { metricCode: true } },
+    },
+  });
+
+  const index = new Map<string, Map<string, Set<string>>>();
+  for (const r of rows) {
+    const ref = r.proofId ?? r.evidenceId ?? r.feedbackId;
+    if (!ref) continue;
+    let byRef = index.get(r.claim.metricCode);
+    if (!byRef) {
+      byRef = new Map<string, Set<string>>();
+      index.set(r.claim.metricCode, byRef);
+    }
+    const existing = byRef.get(ref);
+    if (existing) existing.add(r.claimId);
+    else byRef.set(ref, new Set([r.claimId]));
+  }
+  return index;
+}
+
+/**
+ * The `evidenceCitedByApprovedClaims` set for one claim, read out of the index.
+ *
+ * Semantically identical to `evidenceAlreadyCounted` — same metric scope, same
+ * APPROVED-only rule, same self-exclusion — but with no query. The two must
+ * stay in step; tests/impact-quality.test.ts pins that they agree.
+ */
+export function alreadyCountedFrom(
+  index: Map<string, Map<string, Set<string>>>,
+  metricCode: string,
+  excludeClaimId: string
+): Set<string> {
+  const byRef = index.get(metricCode);
+  if (!byRef) return new Set<string>();
+
+  const refs = new Set<string>();
+  for (const [ref, claimIds] of Array.from(byRef.entries())) {
+    // Another approved claim, not this one, already counts this evidence.
+    if (Array.from(claimIds).some((id) => id !== excludeClaimId)) refs.add(ref);
+  }
+  return refs;
+}
+
+/**
+ * Evidence counted by more than one APPROVED claim on the SAME metric — the
+ * double-counting incidents, portfolio-wide, for /admin/impact-quality.
+ *
+ * These exist by design rather than by bug. DOUBLE_COUNTED is a HIGH finding,
+ * not a BLOCK, so an admin *can* approve over it — sometimes correctly, since
+ * one capture may genuinely document two separate distributions. Every row here
+ * is therefore a human override, which is what a defect dashboard should show:
+ * not "the system failed" but "a person decided this twice, and here are both
+ * claims".
+ *
+ * Scoped to the metric for the reason written up in `evidenceAlreadyCounted`:
+ * one photograph evidencing both "meals provided" and "sessions held" is two
+ * facts about one event, not a double count.
+ *
+ * Pure, over the index — `limit` caps only what is rendered, never what is
+ * counted, so the headline figure cannot be quietly truncated.
+ */
+export function incidentsFromIndex(
+  index: Map<string, Map<string, Set<string>>>,
+  limit = 50
+): DoubleCountIncident[] {
+  const incidents: DoubleCountIncident[] = [];
+  for (const [metricCode, byRef] of Array.from(index.entries())) {
+    for (const [evidenceRef, claimIds] of Array.from(byRef.entries())) {
+      if (claimIds.size < 2) continue;
+      incidents.push({ metricCode, evidenceRef, claimIds: Array.from(claimIds) });
+    }
+  }
+
+  return incidents
+    .sort(
+      (a, b) =>
+        b.claimIds.length - a.claimIds.length ||
+        a.metricCode.localeCompare(b.metricCode) ||
+        a.evidenceRef.localeCompare(b.evidenceRef)
+    )
+    .slice(0, limit);
+}
+
+/** The two steps above together, for a caller that needs nothing else. */
+export async function findDoubleCountIncidents(limit = 50): Promise<DoubleCountIncident[]> {
+  return incidentsFromIndex(await approvedCitationIndex(), limit);
+}

@@ -194,6 +194,28 @@ export const ACCEPTANCE: WeekContract[] = [
       "grievance-routes.test.ts",
     ],
   },
+  {
+    week: 8,
+    demo:
+      "Approved evidence maps to governed outcomes and a donor report without unsupported " +
+      "claims.",
+    routes: {
+      metrics: ["GET"],
+      "admin/metrics": ["POST"],
+      "admin/metrics/[code]": ["PATCH"],
+      "ngo/outcome-claims": ["POST"],
+      "ngo/outcome-claims/[id]": ["PATCH"],
+      "admin/outcome-claims/[id]": ["PATCH"],
+    },
+    pages: ["admin/metrics", "admin/impact-review", "admin/impact-quality"],
+    tests: [
+      "metric-registry.test.ts",
+      "outcome-workflow.test.ts",
+      "outcome-claim-routes.test.ts",
+      "outcome-triage.test.ts",
+      "impact-quality.test.ts",
+    ],
+  },
 ];
 
 const ROOT = join(__dirname, "..");

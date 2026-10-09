@@ -153,6 +153,12 @@ export const ADMIN_HUBS: Hub[] = [
         hint: "Numbers organisations reported, checked against the evidence cited for them.",
       },
       {
+        href: "/admin/impact-quality",
+        label: "Impact quality",
+        hint:
+          "How much of what the platform reports is actually backed by evidence. Not impact health, which is about update delivery.",
+      },
+      {
         href: "/admin/metrics",
         label: "Metric registry",
         hint: "The governed definition of every metric: what counts, in what unit, and what evidence can prove it.",

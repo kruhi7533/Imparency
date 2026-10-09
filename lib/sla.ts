@@ -73,6 +73,15 @@ export const SLA_TARGETS: Record<string, SlaTarget> = {
     days: 3,
     rationale: "Evidence is already submitted; the delay is entirely ours. Matches the old threshold.",
   },
+  "Impact Review": {
+    days: 3,
+    rationale:
+      "NEW TARGET. The number is already reported and its evidence already approved, so the " +
+      "delay here is entirely ours — the same reasoning as Proof Review, and the same three " +
+      "days. A claim waiting in this queue is a figure the organisation cannot publish and a " +
+      "donor report that cannot be completed, so the cost of sitting on it falls on someone " +
+      "else.",
+  },
   "NGO Verification": {
     days: 5,
     rationale: "Documents take real reading. Matches the old five-day escalation.",
