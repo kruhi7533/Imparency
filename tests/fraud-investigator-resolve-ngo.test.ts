@@ -99,5 +99,16 @@ describe("investigate() guard", () => {
     expect(result.summary).toMatch(/No NGO exists/);
     // Critically: no row was attempted, so no P2003 and no orphan record.
     expect(guardPrisma.fraudInvestigation.create).not.toHaveBeenCalled();
-  });
+    // 20s, not the 5s default. `vi.resetModules()` means the `await import`
+    // below cannot reuse the module cache, so this one test pays the full
+    // cold-start cost of lib/fraud-investigator/run and its AI-SDK dependency
+    // graph. In isolation that is ~1s; inside the full suite, competing for a
+    // loaded machine, it has been measured at 6.5s and at one point 60s+.
+    //
+    // The flakiness is entirely import cost, not the assertion: this test
+    // passes every time it is run alone. Raising the budget is the honest fix —
+    // the alternative is a suite that fails roughly half its runs for a reason
+    // unrelated to the code under test, which trains everyone to re-run red
+    // builds until they go green.
+  }, 20_000);
 });
