@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { captureError } from "@/lib/observability";
 import { generateFcraQuarterlyReport } from "@/lib/fcra-quarterly";
 import { rateLimit } from "@/lib/rate-limiter";
 import crypto from "crypto";
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
     const report = await generateFcraQuarterlyReport();
     return NextResponse.json({ ok: true, quarter: report.quarter, totalNgos: report.totalNgos });
   } catch (err: any) {
-    console.error("[cron/fcra-quarterly-report] error:", err);
+    captureError(err, { scope: "cron/fcra-quarterly-report", operation: "scheduled_run" });
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { captureError } from "@/lib/observability";
 import { refreshAllNgoScores, refreshAllDonorScores } from "@/lib/risk-engine/store";
 import { evaluateVerifiedNgos } from "@/lib/verification-reversal";
 import { sweepUnbackedComplianceFlags } from "@/lib/compliance-evidence";
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ok: true, ngos, donors, reverification, flags });
   } catch (err: any) {
-    console.error("[cron/risk-scores] error:", err);
+    captureError(err, { scope: "cron/risk-scores", operation: "scheduled_run" });
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

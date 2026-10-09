@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { captureError } from "@/lib/observability";
 import { enqueueFromScores, drainDispatches, DISPATCH_BUDGET } from "@/lib/risk-engine/dispatch";
 import { rateLimit } from "@/lib/rate-limiter";
 import crypto from "crypto";
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
     const drained = await drainDispatches();
     return NextResponse.json({ ok: true, budget: DISPATCH_BUDGET, queued, drained });
   } catch (err: any) {
-    console.error("[cron/risk-dispatch] error:", err);
+    captureError(err, { scope: "cron/risk-dispatch", operation: "scheduled_run" });
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

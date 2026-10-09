@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { captureError } from "@/lib/observability";
 import { runFcraExpiryMaintenance } from "@/lib/fcra-reminders";
 import { rateLimit } from "@/lib/rate-limiter";
 import crypto from "crypto";
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
     const results = await runFcraExpiryMaintenance();
     return NextResponse.json({ ok: true, results });
   } catch (err: any) {
-    console.error("[cron/fcra-expiry] error:", err);
+    captureError(err, { scope: "cron/fcra-expiry", operation: "scheduled_run" });
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

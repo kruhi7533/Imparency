@@ -18,6 +18,8 @@
  * `deliver()` — every call site stays exactly as it is.
  */
 
+import { currentCorrelationId } from "@/lib/correlation";
+
 export type Severity = "warning" | "error" | "fatal";
 
 export interface ErrorContext {
@@ -28,6 +30,16 @@ export interface ErrorContext {
   /** Entity the operation concerned. Ids only — never names, emails or amounts. */
   entityType?: string;
   entityId?: string;
+  /**
+   * Ties this capture to every other line from the same request.
+   *
+   * Normally omitted — it is read from the ambient request context, so the
+   * existing call sites gained it without being touched, exactly as this
+   * module's header promised. Pass it explicitly only when capturing
+   * outside the context that produced the failure (a queue worker handling
+   * a job enqueued by an earlier request).
+   */
+  correlationId?: string;
   /** Acting user's id. Never their email or name. */
   userId?: string;
   /**
@@ -115,11 +127,16 @@ export function captureError(
   try {
     const normalized = normalizeError(error);
 
+    // An explicit id wins; otherwise take whatever request is in flight.
+    // Absent is a normal answer: scripts and jobs have no request context.
+    const correlationId = context?.correlationId ?? currentCorrelationId();
+
     const payload = {
       severity,
       capturedAt: new Date().toISOString(),
       environment: process.env.NODE_ENV ?? "unknown",
       ...context,
+      ...(correlationId ? { correlationId } : {}),
       error: normalized,
     };
 

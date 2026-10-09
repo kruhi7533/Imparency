@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { captureError } from "@/lib/observability";
 import { checkGeneralPlatformAlerts } from "@/lib/risk-agent";
 import { rateLimit } from "@/lib/rate-limiter";
 import crypto from "crypto";
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
     await checkGeneralPlatformAlerts();
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("[cron/risk-sweep] error:", err);
+    captureError(err, { scope: "cron/risk-sweep", operation: "scheduled_run" });
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
