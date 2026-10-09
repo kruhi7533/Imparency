@@ -342,14 +342,33 @@ modules' suites green (56 tests); `tests/admin-audit-coverage.test.ts` and
 | Spec | State |
 |---|---|
 | **SPEC-1 Metric Registry** | **Built and live.** Schema + hand-written additive migration `20261012090000_metric_registry_and_outcome_claims` (**applied** to the Neon dev DB), `lib/metric-registry.ts`, `tools/seed-metric-registry.ts` (idempotent — verified by re-running), `GET /api/metrics`, `POST /api/admin/metrics`, `PATCH /api/admin/metrics/[code]`, `/admin/metrics` with the registry-health panel, nav entry, `tests/metric-registry.test.ts`. Five metrics seeded and ACTIVE. |
-| **SPEC-3 outcome triage** | **Logic built, not yet wired.** `lib/outcome-triage.ts` + `tests/outcome-triage.test.ts` (29 tests, all ten findings plus the false-positive boundaries). Nothing calls it yet — it needs SPEC-2's claim rows to judge. |
-| **SPEC-2 claims workflow** | **Schema only.** `OutcomeClaim` / `OutcomeClaimEvidence` tables and relations exist and are migrated; `lib/outcome-workflow.ts`, the claim routes and `/admin/impact-review` are not written. |
+| **SPEC-2 claims workflow** | **Built.** `lib/outcome-workflow.ts` (CAS transitions, note rules), `POST /api/ngo/outcome-claims`, `PATCH /api/ngo/outcome-claims/[id]` (SUBMIT/WITHDRAW), `PATCH /api/admin/outcome-claims/[id]` (APPROVE/REQUEST_EVIDENCE/REJECT), `/admin/impact-review` queue, nav entry, `tests/outcome-workflow.test.ts` (32) + `tests/outcome-claim-routes.test.ts` (25). |
+| **SPEC-3 outcome triage** | **Built and wired.** `lib/outcome-triage.ts` + `lib/outcome-evidence.ts` (the DB-side gatherer). Findings render in the review queue; the approval gate reads the verdict. `tests/outcome-triage.test.ts` (29 tests, all ten findings plus the false-positive boundaries). |
 | **SPEC-4 quality dashboard** | Not started. |
 
-So Monday's deliverable is complete and demonstrable, and the dependency owed
-to the NGO track (`GET /api/metrics`, five ACTIVE codes) is live. Wednesday's
-and Friday's are not: an admin cannot yet review a claim, because claims cannot
-yet be filed.
+So Monday's and Wednesday's deliverables are complete, and the dependency owed
+to the NGO track (`GET /api/metrics`, five ACTIVE codes) is live. Friday's
+portfolio quality dashboard is not built.
+
+Verified live against the dev database, not just in tests — with
+`tools/seed-week8-demo.ts`, which computes its verdict through the real triage
+rather than writing one by hand:
+
+- A claim citing a proof that proof review has not approved comes back
+  **BLOCKED** (`EVIDENCE_NOT_APPROVED` + `REQUIRED_KIND_MISSING`), and
+  `/admin/impact-review` renders "Cannot be approved" with no Approve button.
+- `PATCH` with `action: APPROVE`, sent directly and bypassing the UI entirely,
+  returns **422**. This is the week's load-bearing guarantee: the gate is in the
+  route, not the component.
+- An admin sending the organisation's own `WITHDRAW` gets **403**;
+  `action: "toString"` gets **400**; a rejection with a 2-character note gets
+  **400**.
+- `REQUEST_EVIDENCE` with a real note moves the claim to `NEEDS_EVIDENCE`
+  (200), and replaying the same call returns **409** with
+  "This action needs the claim to be submitted; it is needs evidence."
+- The `AdminActionLog` row carries status, metric code, triage verdict, finding
+  CODES and a citation count — and no `@`, no method text, no decision-note
+  text.
 
 `tests/weekly-acceptance.test.ts` has deliberately **not** gained a W8 row.
 That file is the regression guard for weeks that are actually finished, and a

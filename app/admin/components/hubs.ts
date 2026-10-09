@@ -148,6 +148,11 @@ export const ADMIN_HUBS: Hub[] = [
       // numbers in them are backed by evidence. The hints have to do the work
       // of telling them apart until impact-health is renamed.
       {
+        href: "/admin/impact-review",
+        label: "Impact review",
+        hint: "Numbers organisations reported, checked against the evidence cited for them.",
+      },
+      {
         href: "/admin/metrics",
         label: "Metric registry",
         hint: "The governed definition of every metric: what counts, in what unit, and what evidence can prove it.",

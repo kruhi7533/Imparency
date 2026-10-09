@@ -68,6 +68,14 @@ export type AdminAction =
   | "METRIC_UPDATED"
   | "METRIC_ACTIVATED"
   | "METRIC_DEPRECATED"
+  // A decided outcome claim. APPROVED carries the triage verdict and finding
+  // CODES in metadata — not the finding messages, which embed evidence ids and
+  // counts. An approval over a NEEDS_REVIEW verdict is the number worth
+  // watching: it is a human overriding a machine finding, the same signal
+  // `overrodeAi` carries on field validation.
+  | "OUTCOME_CLAIM_APPROVED"
+  | "OUTCOME_CLAIM_EVIDENCE_REQUESTED"
+  | "OUTCOME_CLAIM_REJECTED"
   // Verification caseworker. APPROVED carries `overrodeAgent` in metadata — the
   // mirror of `overrodeAi` on field validation, and the metric that decides
   // whether the agent ever earns a wider leash.
@@ -189,6 +197,7 @@ export const ADMIN_ENTITY_TYPES = [
   "GRIEVANCE",
   "FIELD_EVIDENCE",
   "METRIC",
+  "OUTCOME_CLAIM",
 ] as const;
 
 export type AdminEntityType = (typeof ADMIN_ENTITY_TYPES)[number];
