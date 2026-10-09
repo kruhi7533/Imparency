@@ -161,12 +161,12 @@ model User {
   contracts            Contract[]
 
   // Emergency Crisis Relief
-  crisisAlertsOptOut   Boolean                      @default(false)
+  crisisAlertsOptOut Boolean @default(false)
 
   /// Week 7: a funding donor can switch off milestone / verified-evidence
   /// updates for the projects they fund. The funded-project page still shows
   /// everything — this only stops the in-app + push messages.
-  projectUpdatesOptOut Boolean @default(false)
+  projectUpdatesOptOut Boolean                      @default(false)
   crisisEventsCreated  CrisisEvent[]                @relation("CrisisEventsCreated")
   initiativesSubmitted ReliefInitiative[]           @relation("InitiativesSubmitted")
   crisisDonations      CrisisDonation[]
@@ -407,6 +407,8 @@ model Project {
   isCrisisGeneralFund Boolean      @default(false)
 
   milestones              Milestone[]
+  /// Week 8: governed outcome numbers reported against this project.
+  outcomeClaims           OutcomeClaim[]
   donations               Donation[]
   projectReviews          ProjectReview[]
   crisisDonationsAsTarget CrisisDonation[]
@@ -471,6 +473,7 @@ model Milestone {
   proofs        MilestoneProof[]
   impactReports ImpactReport[]
   reviews       MilestoneReview[]
+  outcomeClaims OutcomeClaim[]
   fieldTasks    FieldTask[]
 
   @@index([projectId])
@@ -512,7 +515,10 @@ model MilestoneProof {
   // directly. Empty for proofs that predate the check — absence means
   // "unknown", never "unique", which is why the backfill in
   // tools/backfill-proof-hashes.ts exists.
-  contentHashes String[]
+  contentHashes String[] @default([])
+
+  /// Week 8: outcome claims citing this proof as evidence.
+  outcomeCitations OutcomeClaimEvidence[]
 
   submittedAt DateTime @default(now())
 
@@ -2997,16 +3003,16 @@ model Grievance {
   triagedBy   User?     @relation("GrievanceTriager", fields: [triagedById], references: [id])
   triagedAt   DateTime?
 
-  resolvedById String?
-  resolvedBy   User?     @relation("GrievanceResolver", fields: [resolvedById], references: [id])
-  resolvedAt   DateTime?
+  resolvedById   String?
+  resolvedBy     User?     @relation("GrievanceResolver", fields: [resolvedById], references: [id])
+  resolvedAt     DateTime?
   /// Required on BOTH outcomes. A complaint closed with no reason given is
   /// indistinguishable from one that was never read — and a dismissal with no
   /// reason is the specific failure a redress channel exists to prevent.
   resolutionNote String?
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   /// The admin queue and the "waiting on you" count.
   @@index([status])
@@ -3077,11 +3083,11 @@ model FieldEvidence {
   capturedById String
   clientId     String @unique
 
-  photoKey      String
-  photoMime     String
+  photoKey         String
+  photoMime        String
   /// SHA-256 of the photo bytes: the same image submitted twice is flagged.
-  photoSha256   String
-  duplicateOfId String?
+  photoSha256      String
+  duplicateOfId    String?
   /// NONE | RESUBMISSION | REUSED_IN_PROJECT | CROSS_PROJECT, from
   /// classifyDuplicate (lib/proof-fingerprint.ts) across BOTH field evidence
   /// and milestone proofs. Null on rows captured before 2026-10-08.
@@ -3109,7 +3115,8 @@ model FieldEvidence {
   reviewedAt   DateTime?
   reviewNote   String?
 
-  feedback BeneficiaryFeedback?
+  feedback         BeneficiaryFeedback?
+  outcomeCitations OutcomeClaimEvidence[]
 
   @@index([ngoId, status])
   @@index([projectId, status])
@@ -3150,10 +3157,213 @@ model BeneficiaryFeedback {
   rating       Int?
   feedbackText String?
 
-  capturedById String
-  capturedAt   DateTime
-  createdAt    DateTime @default(now())
+  capturedById     String
+  outcomeCitations OutcomeClaimEvidence[]
+  capturedAt       DateTime
+  createdAt        DateTime               @default(now())
 
   @@index([ngoId])
   @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// Week 8 — "Evidence -> outcome -> impact". See docs/WEEK8-BLUEPRINT.md.
+//
+// The rule these models exist to enforce: only an APPROVED claim, cited to
+// APPROVED evidence, may appear as a number in a donor-facing report. Before
+// this, ImpactReport.sdgTags/irisMetrics were free String[] arrays, so any
+// metric could be asserted against any project with nothing to contradict it.
+//
+// Additive only: no existing model's required fields or constraints change.
+// ---------------------------------------------------------------------------
+
+enum MetricStatus {
+  DRAFT
+  ACTIVE
+  DEPRECATED
+}
+
+/// Units are an ENUM, not free text, because the whole point of a registry is
+/// that "people" and "persons" and "nos." cannot be three different units for
+/// the same quantity. Adding a unit is a migration, deliberately.
+enum MetricUnit {
+  COUNT_PEOPLE
+  COUNT_ITEMS
+  COUNT_EVENTS
+  CURRENCY_INR
+  PERCENTAGE
+  HOURS
+  KILOGRAMS
+  LITRES
+  AREA_SQM
+}
+
+/// What kind of approved evidence can substantiate a claim.
+///
+/// The first three map onto tables that exist today (MilestoneProof,
+/// FieldEvidence, BeneficiaryFeedback). ATTENDANCE_RECORD and FINANCIAL_RECORD
+/// are declared but have no backing table yet: a metric requiring one of them
+/// can never be satisfied, which is the correct and visible behaviour — it
+/// blocks the claim rather than quietly approving an unprovable number.
+enum EvidenceKind {
+  MILESTONE_PROOF
+  FIELD_PHOTO
+  BENEFICIARY_FEEDBACK
+  ATTENDANCE_RECORD
+  FINANCIAL_RECORD
+}
+
+/// One governed metric definition — the Week 8 contract owed to the NGO track.
+model MetricDefinition {
+  /// The code IS the contract. It appears in donor reports and in the other
+  /// tracks' fixtures, so it is the primary key rather than a uuid: a stable
+  /// human-readable identifier that is deliberately hard to rename.
+  code String @id
+
+  name String
+  unit MetricUnit
+
+  /// What counts and what does not. This is the text an admin judges a claim
+  /// against, so it is required — a metric whose meaning is not written down
+  /// cannot be reviewed consistently by two different people.
+  definition String
+
+  status MetricStatus @default(DRAFT)
+
+  /// Optional crosswalk for reporting. A metric is valid WITHOUT either; these
+  /// are conveniences, not the identity of the metric. Display names still come
+  /// from SDG_MASTER / IRIS_MASTER in lib/impact-metrics.ts.
+  sdgGoals String[]
+  irisCode String?
+
+  /// At least one kind, or the metric cannot be ACTIVE (enforced in
+  /// lib/metric-registry.ts). A metric with no evidence rule could never fail
+  /// an evidence check, so it would be a permanent hole in the one rule this
+  /// module exists to enforce.
+  requiredEvidence EvidenceKind[]
+
+  /// Whether values may be summed across projects on a portfolio roll-up.
+  /// False for things like percentages and averages, where a sum is nonsense.
+  aggregatable Boolean @default(true)
+
+  /// Bumped when `definition` or `unit` changes materially. Approved claims
+  /// snapshot their own unit, so a bump never restates history.
+  version Int @default(1)
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  claims OutcomeClaim[]
+
+  @@index([status])
+}
+
+enum OutcomeClaimStatus {
+  DRAFT
+  SUBMITTED
+  NEEDS_EVIDENCE
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+/// A number an organisation reports against a governed metric.
+///
+/// Anchored to Project (and optionally Milestone) because Contract -> Project
+/// is the pilot's money->work source of truth, decided 2026-10-08. Allocation
+/// has no projectId, so allocation-funded work produces no claims — recorded as
+/// known debt in docs/WEEK8-BLUEPRINT.md §6 rather than papered over.
+model OutcomeClaim {
+  id String @id @default(uuid())
+
+  ngoId     String
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  milestoneId String?
+  milestone   Milestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+
+  metricCode String
+  metric     MetricDefinition @relation(fields: [metricCode], references: [code])
+
+  /// Decimal, never float — the same rule as money (CLAUDE.md §Finance).
+  /// A reported impact number is quoted to funders; binary rounding drift in it
+  /// is as unacceptable as it is in a rupee amount.
+  value Decimal @db.Decimal(14, 2)
+
+  /// Snapshotted from the metric at submission. If an admin later corrects the
+  /// metric's unit, every already-approved number must keep meaning what it
+  /// meant when a human approved it.
+  unit MetricUnit
+
+  periodStart DateTime
+  periodEnd   DateTime
+
+  /// How the organisation arrived at the number. Required: "120" with no
+  /// method is not reviewable, and the reviewer's first question otherwise.
+  method String
+
+  status OutcomeClaimStatus @default(DRAFT)
+
+  submittedById String?
+  submittedAt   DateTime?
+
+  decidedById  String?
+  decidedAt    DateTime?
+  /// Required on REJECTED and NEEDS_EVIDENCE, like a proposal rejection, an
+  /// allocation rejection, and a dismissed grievance.
+  decisionNote String?
+
+  /// Set when an APPROVED number is withdrawn and superseded. An approved claim
+  /// is never edited in place — a figure already shown to a donor changing
+  /// silently is the failure this whole module exists to prevent.
+  supersededById String?
+
+  citations OutcomeClaimEvidence[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  /// The admin review queue: everything SUBMITTED, oldest first.
+  @@index([status, submittedAt])
+  @@index([ngoId, status])
+  @@index([projectId])
+  @@index([metricCode, status])
+}
+
+/// A claim's citation to one piece of approved evidence.
+///
+/// An explicit join table rather than an array of ids, because the question
+/// that matters — "is this evidence already counted by another approved claim
+/// on this metric?" — is asked FROM the evidence side. That is the
+/// double-counting check (lib/outcome-triage.ts), and on an array column it
+/// would be a scan.
+model OutcomeClaimEvidence {
+  id String @id @default(uuid())
+
+  claimId String
+  claim   OutcomeClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  kind EvidenceKind
+
+  /// Exactly one of the three is set, per `kind`. Three nullable columns rather
+  /// than one polymorphic id because each is a real foreign key the database
+  /// can enforce, and a dangling citation is a silently inflated total.
+  proofId    String?
+  proof      MilestoneProof?      @relation(fields: [proofId], references: [id], onDelete: Cascade)
+  evidenceId String?
+  evidence   FieldEvidence?       @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  feedbackId String?
+  feedback   BeneficiaryFeedback? @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  /// The same evidence cannot be cited twice by one claim — that would inflate
+  /// what the citations "support" against its own claimed value.
+  @@unique([claimId, proofId, evidenceId, feedbackId])
+  /// The double-counting lookups, one index each.
+  @@index([proofId])
+  @@index([evidenceId])
+  @@index([feedbackId])
 }

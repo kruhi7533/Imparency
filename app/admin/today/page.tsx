@@ -19,6 +19,7 @@ import {
   Building2,
   Megaphone,
   Scale,
+  Sigma,
 } from "lucide-react";
 import {
   buildInboxItems,
@@ -60,6 +61,7 @@ const ICONS: Record<IconKey, React.ElementType> = {
   donor: Building2,
   grievance: Megaphone,
   exception: Scale,
+  impact: Sigma,
 };
 
 /** One row, identical in the main area and the sidebar. */

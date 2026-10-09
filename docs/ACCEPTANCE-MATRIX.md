@@ -31,7 +31,8 @@ The manifest must stay contiguous (1, 2, 3, …).
 | 4 | RFP → extraction → eligibility → ranked shortlist → human review | matching-eligibility, matching-engine, matching-job-runner, admin-matching-jobs, admin-matching-decision, requirements-agent, extraction-guardrails |
 | 5 | v1 → change request → v2 → gated, audited approval | ngo-proposal-workflow, ngo-proposal-submit, admin-proposal-lifecycle, response-change-requests, response-versioning, action-guard-prototype, admin-audit-coverage |
 | 6 | Commitment → payment → reconciliation → allocation → FUNDED; idempotent | ledger, reconciliation, allocation-rules, allocation-funding, admin-allocation-routes, contract-payments, donations-webhook, webhook-dedupe-key, finance-exceptions |
-| 7 | Money → field work → evidence → verification → donor visibility (consent, withdrawal, duplicates) | field-evidence, consent-withdrawal, donor-funded-view, donor-update-optout, evidence-duplicates, proof-fingerprint, proof-duplicate-detection, proof-location, admin-review-proof, grievance-workflow, grievance-routes |
+| 7 | Money → field work → evidence → verification → donor visibility (consent, withdrawal, duplicates) | field-evidence, consent-withdrawal, donor-funded-view, donor-update-optout, evidence-duplicates, proof-fingerprint, proof-duplicate-detection, proof-location, admin-review-proof, grievance-workflow, grievance-routes |
+| 8 | Approved evidence → governed outcome claim → gated approval → backed donor figure; a blocked claim cannot be approved and an unbacked one reads "unverified", never 0 | metric-registry, outcome-workflow, outcome-claim-routes, outcome-triage, impact-quality |
 
 **What this does not cover (yet).** It cannot catch a regression that keeps
 every route and test in place but breaks behaviour that no test asserts. That

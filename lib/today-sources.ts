@@ -94,6 +94,7 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
     pendingOrgRows,
     institutionalDonationRows,
     financeExceptionRows,
+    submittedClaimRows,
   ] = await Promise.all([
     prisma.nGOProfile.findMany({
       where: { verificationStatus: "PENDING" },
@@ -245,6 +246,31 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
         if (err?.code === "P2021" || err?.code === "P2022") return [];
         throw err;
       }),
+    // Reported numbers waiting on an impact-review decision (Week 8 SPEC-4).
+    //
+    // Guarded exactly like financeException above, and for the same reason:
+    // OutcomeClaim arrived in the Week 8 migration, this repo's migration state
+    // is uneven across environments, and a Today page that 500s because one
+    // table is absent would take the other fourteen queues down with it. A
+    // missing table reads as "no claims waiting", which is precisely what this
+    // page showed before the queue existed.
+    prisma.outcomeClaim
+      .findMany({
+        where: { status: "SUBMITTED" },
+        select: {
+          id: true,
+          value: true,
+          submittedAt: true,
+          createdAt: true,
+          metricCode: true,
+          metric: { select: { name: true } },
+          project: { select: { title: true, ngo: { select: { orgName: true } } } },
+        },
+      })
+      .catch((err: any) => {
+        if (err?.code === "P2021" || err?.code === "P2022") return [];
+        throw err;
+      }),
   ]);
 
   const alertNgos = await resolveAlertOrganisations(prisma, openAlerts);
@@ -272,6 +298,18 @@ export async function loadInboxSources(prisma: any): Promise<InboxSources> {
       createdAt: d.createdAt,
     })),
     financeExceptions: financeExceptionRows,
+    // Decimal -> string at the call site, never a number: a reported impact
+    // figure gets the same treatment as money (CLAUDE.md §Finance), and the
+    // inbox card only ever renders it.
+    submittedClaims: (submittedClaimRows as any[]).map((c) => ({
+      id: c.id,
+      value: c.value.toString(),
+      metricCode: c.metricCode,
+      metricName: c.metric.name,
+      submittedAt: c.submittedAt,
+      createdAt: c.createdAt,
+      project: c.project,
+    })),
     institutionalDonations: (institutionalDonationRows as any[]).map((d) => ({
       id: d.id,
       // Decimal -> number at the call site, per the repo convention.
