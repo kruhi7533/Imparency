@@ -14,6 +14,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/prisma", () => ({
   default: {
     contract: { findMany: vi.fn() },
+    user: { findUnique: vi.fn().mockResolvedValue({ projectUpdatesOptOut: false }), update: vi.fn() },
     project: { findUnique: vi.fn() },
     milestone: { findUnique: vi.fn() },
     fieldEvidence: { findMany: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn() },

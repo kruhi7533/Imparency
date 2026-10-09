@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isBudgetViolation, getBudgetVerdict, parseValidationResult } from "@/lib/budget-rule";
 import { classifyProofLocation } from "@/lib/proof-location";
+import { duplicateLabel } from "@/lib/proof-fingerprint";
 
 interface Proof {
   id: string;
@@ -19,6 +20,9 @@ interface Proof {
   proofLongitude: number | null;
   gpsSource: string | null;
   submittedAt: string;
+  /** Duplicate verdict across both evidence tables (SPEC-2.3). Absent when the
+   *  proof has no fingerprints yet — "not checked", never "clean". */
+  duplicate?: { verdict: string; ref: string | null; others: number } | null;
   submittedBy: {
     name: string;
     email: string;
@@ -509,7 +513,7 @@ export default function ProofReviewClient({
                                   Milestone Completion Score
                                 </div>
                                 <div className="text-[10px] text-gray-500 dark:text-gray-400">
-                                  threshold: 70+ for auto-completion
+                                  advisory only — a human decides
                                 </div>
                               </div>
                             </div>
@@ -543,6 +547,40 @@ export default function ProofReviewClient({
                               return (
                                 <span className={`inline-flex text-[10px] font-bold px-2 py-1 rounded-lg border ${style}`}>
                                   {label}
+                                </span>
+                              );
+                            })()}
+
+                            {/* Duplicate provenance (SPEC-2.3), next to GPS so a
+                                reviewer sees both signals in one place. */}
+                            {(() => {
+                              if (latestProof.duplicate === undefined || latestProof.duplicate === null) {
+                                return (
+                                  <span className="inline-flex text-[10px] font-bold px-2 py-1 rounded-lg border bg-gray-50 dark:bg-gray-800/40 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700">
+                                    Duplicate check: not fingerprinted
+                                  </span>
+                                );
+                              }
+                              const d = duplicateLabel(latestProof.duplicate.verdict);
+                              if (!d) {
+                                return (
+                                  <span className="inline-flex text-[10px] font-bold px-2 py-1 rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30">
+                                    No earlier use of these files found
+                                  </span>
+                                );
+                              }
+                              const style =
+                                d.tone === "bad"
+                                  ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-100 dark:border-red-900/30"
+                                  : d.tone === "warn"
+                                  ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/30"
+                                  : "bg-gray-50 dark:bg-gray-800/40 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700";
+                              const extra = latestProof.duplicate.others > 0 ? ` (+${latestProof.duplicate.others} more)` : "";
+                              return (
+                                <span className={`inline-flex text-[10px] font-bold px-2 py-1 rounded-lg border ${style}`}>
+                                  {d.text}
+                                  {latestProof.duplicate.ref ? ` — ${latestProof.duplicate.ref}` : ""}
+                                  {extra}
                                 </span>
                               );
                             })()}

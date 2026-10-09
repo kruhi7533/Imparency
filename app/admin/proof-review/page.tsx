@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma";
 import ProofReviewClient from "./ProofReviewClient";
+import { findEvidenceCandidates, verdictsForQueuedProofs } from "@/lib/evidence-duplicates";
+import type { DuplicateResult } from "@/lib/proof-fingerprint";
 
 export const runtime = "nodejs";
 
@@ -72,6 +74,27 @@ export default async function AdminProofReviewPage() {
     }
   });
 
+  // Duplicate verdicts for every queued proof (SPEC-2.3): one batched lookup
+  // over both evidence tables, classified per proof. Best-effort — if it
+  // fails, the queue still renders and every proof reads "not fingerprinted"
+  // rather than clean.
+  let verdicts: Record<string, DuplicateResult> = {};
+  try {
+    const queued = pendingMilestones.flatMap((m) =>
+      m.proofs.map((p) => ({
+        id: p.id,
+        milestoneId: m.id,
+        projectId: m.projectId,
+        ngoId: m.project.ngoId,
+        contentHashes: p.contentHashes ?? [],
+      })),
+    );
+    const candidates = await findEvidenceCandidates(queued.flatMap((q) => q.contentHashes));
+    verdicts = verdictsForQueuedProofs(queued, candidates);
+  } catch (err) {
+    console.error("[admin/proof-review] duplicate verdicts unavailable:", err);
+  }
+
   // Format the dates and decimals to prevent serialization warnings
   const serializedPending = pendingMilestones.map((m) => ({
     ...m,
@@ -91,10 +114,23 @@ export default async function AdminProofReviewPage() {
         ngoEmail: m.project.ngo.user.email,
       },
     },
-    proofs: m.proofs.map((p) => ({
-      ...p,
-      submittedAt: p.submittedAt.toISOString(),
-    })),
+    proofs: m.proofs.map((p) => {
+      const v = verdicts[p.id];
+      const first = v?.matches[0];
+      return {
+        ...p,
+        submittedAt: p.submittedAt.toISOString(),
+        duplicate: v
+          ? {
+              verdict: v.verdict,
+              ref: first
+                ? `${first.source === "FIELD_EVIDENCE" ? "field evidence" : "proof"} for "${first.milestoneTitle}"`
+                : null,
+              others: Math.max(0, v.matches.length - 1),
+            }
+          : null,
+      };
+    }),
   }));
 
   // The extra row fetched above is the "there is more" signal, not a row to

@@ -23,7 +23,7 @@ export interface PanelTask {
     capturedAt: string;
     syncedAt: string;
     reviewNote: string | null;
-    consent: null | { consentToRecord: boolean; consentToSharePhoto: boolean; withdrawn: boolean };
+    consent: null | { feedbackId: string; consentToRecord: boolean; consentToSharePhoto: boolean; withdrawn: boolean };
   }>;
 }
 
@@ -51,6 +51,24 @@ export default function FieldTasksPanel({
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Two-step confirm for consent withdrawal: it is one-way and erases feedback.
+  const [confirmWithdraw, setConfirmWithdraw] = useState<string | null>(null);
+
+  const withdrawConsent = async (feedbackId: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/field/feedback/${feedbackId}/withdraw`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to record withdrawal");
+      setConfirmWithdraw(null);
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
   const [form, setForm] = useState({ title: "", instructions: "", assignedToId: team[0]?.userId ?? "", milestoneId: "", dueDate: "" });
 
   const create = async (e: React.FormEvent) => {
@@ -169,7 +187,7 @@ export default function FieldTasksPanel({
                   <div className="text-xs space-y-1 min-w-0">
                     <div className="flex flex-wrap gap-1">
                       <span className={`px-2 py-0.5 rounded-full font-bold ${EVIDENCE_BADGE[e.status] ?? ""}`}>{e.status.replace("_", " ")}</span>
-                      <span className={`px-2 py-0.5 rounded-full font-bold ${e.locationStatus === "MATCH" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+                      <span className={`px-2 py-0.5 rounded-full font-bold ${e.locationStatus === "MATCH" ? "bg-emerald-50 text-emerald-700" : e.locationStatus === "MISMATCH" ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"}`}>
                         GPS {e.locationStatus.replace(/_/g, " ").toLowerCase()}
                         {e.distanceKm !== null ? ` (${e.distanceKm.toFixed(1)} km)` : ""}
                       </span>
@@ -183,6 +201,27 @@ export default function FieldTasksPanel({
                         </span>
                       )}
                     </div>
+                    {e.consent && !e.consent.withdrawn && (e.consent.consentToRecord || e.consent.consentToSharePhoto) && (
+                      confirmWithdraw === e.consent.feedbackId ? (
+                        <div className="flex flex-wrap items-center gap-2 text-red-700">
+                          <span>Withdraw consent? The photo is hidden from funders and the feedback is erased. This cannot be undone.</span>
+                          <button
+                            disabled={busy}
+                            onClick={() => withdrawConsent(e.consent!.feedbackId)}
+                            className="px-2 py-0.5 rounded-lg bg-red-600 text-white font-bold disabled:opacity-50"
+                          >
+                            {busy ? "Recording…" : "Yes, withdraw"}
+                          </button>
+                          <button onClick={() => setConfirmWithdraw(null)} className="font-bold text-gray-600">
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmWithdraw(e.consent!.feedbackId)} className="font-bold text-red-600 underline">
+                          Beneficiary withdrew consent
+                        </button>
+                      )
+                    )}
                     {e.note && <p className="text-gray-700 dark:text-gray-300">{e.note}</p>}
                     {e.reviewNote && <p className="text-orange-700">Reviewer: {e.reviewNote}</p>}
                     <p className="text-gray-400">Captured {new Date(e.capturedAt).toLocaleString("en-IN")}</p>
