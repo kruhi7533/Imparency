@@ -515,7 +515,7 @@ model MilestoneProof {
   // directly. Empty for proofs that predate the check — absence means
   // "unknown", never "unique", which is why the backfill in
   // tools/backfill-proof-hashes.ts exists.
-  contentHashes String[]
+  contentHashes String[] @default([])
 
   /// Week 8: outcome claims citing this proof as evidence.
   outcomeCitations OutcomeClaimEvidence[]
@@ -3012,7 +3012,7 @@ model Grievance {
   resolutionNote String?
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   /// The admin queue and the "waiting on you" count.
   @@index([status])
@@ -3252,7 +3252,7 @@ model MetricDefinition {
 
   createdById String?
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime @default(now()) @updatedAt
 
   claims OutcomeClaim[]
 
@@ -3323,7 +3323,7 @@ model OutcomeClaim {
   citations OutcomeClaimEvidence[]
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   /// The admin review queue: everything SUBMITTED, oldest first.
   @@index([status, submittedAt])
