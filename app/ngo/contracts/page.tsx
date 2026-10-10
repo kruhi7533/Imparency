@@ -127,7 +127,7 @@ export default async function NgoContractsPage() {
                     return (
                       <tr key={c.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition">
                         <td className="px-4 py-4">
-                          <Link href={`/donor/contracts/${c.id}`} className="font-bold text-gray-900 dark:text-white hover:text-emerald-600 transition block">
+                          <Link href={`/ngo/contracts/${c.id}`} className="font-bold text-gray-900 dark:text-white hover:text-emerald-600 transition block">
                             {c.title}
                           </Link>
                           <span className="text-xs font-mono text-gray-400 block mt-0.5">{c.contractNumber}</span>
@@ -162,7 +162,7 @@ export default async function NgoContractsPage() {
                         </td>
                         <td className="px-4 py-4 text-right">
                           <Link
-                            href={`/donor/contracts/${c.id}`}
+                            href={`/ngo/contracts/${c.id}`}
                             className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
                           >
                             Review & Sign →

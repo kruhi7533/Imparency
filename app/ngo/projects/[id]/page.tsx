@@ -182,7 +182,7 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
                     {c.contractNumber} · funded by {c.donor.companyName || c.donor.name} · {c.status}
                   </p>
                 </div>
-                <Link href={`/donor/contracts/${c.id}`} className="text-xs font-bold text-emerald-600 hover:underline">
+                <Link href={`/ngo/contracts/${c.id}`} className="text-xs font-bold text-emerald-600 hover:underline">
                   Full contract →
                 </Link>
               </div>
@@ -220,7 +220,7 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
           <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-2">
             <h2 className="text-sm font-bold text-gray-900 dark:text-white">Contracts awaiting signature</h2>
             {awaitingSignature.map((c) => (
-              <Link key={c.id} href={`/donor/contracts/${c.id}`} className="block text-xs text-emerald-600 hover:underline">
+              <Link key={c.id} href={`/ngo/contracts/${c.id}`} className="block text-xs text-emerald-600 hover:underline">
                 {c.title} ({c.status}) — {inr(c.totalGrantAmount)} →
               </Link>
             ))}
