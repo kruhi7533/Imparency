@@ -1,6 +1,8 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { headers } from "next/headers";
 import {
   deriveTraceContext,
+  parseTraceparent,
   formatTraceparent,
   setCorrelationResolver,
   TRACEPARENT_HEADER,
@@ -61,9 +63,59 @@ export function getRequestContext(): RequestContext | null {
   return storage.getStore() ?? null;
 }
 
-/** The current correlation id, or null. */
+/**
+ * The ambient id for a request nobody explicitly wrapped.
+ *
+ * Why this exists: SPEC-1 shipped `withRouteContext` and, after it, exactly
+ * **one of 169** API routes had opted in. The standard this week is judged
+ * against asks for correlation "across API/job/AI/integration", and a seam
+ * requiring 169 hand edits was never going to deliver that. So the id is put on
+ * every request by `middleware.ts` and simply READ here, which makes the whole
+ * API surface work with no route changes at all.
+ *
+ * An explicit `withRequestContext` still wins when there is one: it carries a
+ * real scope and the acting user, which a header cannot.
+ *
+ * **Measured, not assumed.** The first attempt generated an id here, memoised
+ * with React's `cache()`. A probe route showed three different ids inside a
+ * single request — `cache()` does not memoise across Route Handler calls in
+ * this Next version — so that version was discarded. Reading beats generating
+ * precisely because reading is stable.
+ */
+function ambientCorrelationId(): CorrelationId | null {
+  try {
+    // Throws outside a request scope: a script, a test, module-eval time. That
+    // is a normal state, not an error — the logger must keep working there.
+    const h = headers();
+
+    // READ ONLY — never generate here, and this is not a style preference.
+    // A generated id was measured returning THREE DIFFERENT VALUES inside one
+    // request: React's `cache()` does not memoise across Route Handler calls in
+    // this Next version, so each call site minted its own. Log lines stamped
+    // with ids that differ within a request are worse than no ids at all,
+    // because they look like evidence that unrelated requests were involved.
+    // The id is therefore always read from the header `middleware.ts` sets.
+    const parsed = parseTraceparent(h.get(TRACEPARENT_HEADER));
+    if (parsed) return parsed.traceId;
+
+    const bare = h.get(CORRELATION_HEADER);
+    return bare && /^[0-9a-f]{32}$/.test(bare) ? bare : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The current correlation id, or null.
+ *
+ * Prefers an explicitly opened context, falls back to the per-request ambient
+ * one. The explicit store wins because it carries a real scope and the acting
+ * user, which the fallback cannot know.
+ */
 export function getCorrelationId(): CorrelationId | null {
-  return storage.getStore()?.correlationId ?? null;
+  const explicit = storage.getStore();
+  if (explicit) return explicit.correlationId;
+  return ambientCorrelationId();
 }
 
 /**

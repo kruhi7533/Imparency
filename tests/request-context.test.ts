@@ -354,3 +354,76 @@ describe("captureError integration", () => {
     );
   });
 });
+
+/**
+ * The ambient fallback — SPEC-1's adoption fix.
+ *
+ * `withRouteContext` shipped and exactly ONE of 169 API routes opted in, so the
+ * id is now put on every request by middleware.ts and simply read back here.
+ * These pin the two properties that make that safe:
+ *
+ *  - it READS, never generates. A generated id was measured returning three
+ *    different values inside one request (React's `cache()` does not memoise
+ *    across Route Handler calls), and ids that differ within a request are
+ *    worse than none — they look like evidence of unrelated requests.
+ *  - an explicitly opened context always wins, because it carries a real scope
+ *    and the acting user, which a header cannot.
+ */
+describe("ambient correlation from request headers", () => {
+  const VALID_TP = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+  const TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736";
+
+  async function withHeaders(
+    init: Record<string, string>,
+    assert: (mod: typeof import("@/lib/request-context")) => void | Promise<void>
+  ) {
+    vi.resetModules();
+    vi.doMock("next/headers", () => ({ headers: () => new Headers(init) }));
+    const mod = await import("@/lib/request-context");
+    try {
+      await assert(mod);
+    } finally {
+      vi.doUnmock("next/headers");
+    }
+  }
+
+  it("reads the trace id from an inbound traceparent", async () => {
+    await withHeaders({ traceparent: VALID_TP }, (mod) => {
+      expect(mod.getCorrelationId()).toBe(TRACE_ID);
+    });
+  });
+
+  it("falls back to the bare x-correlation-id header", async () => {
+    await withHeaders({ "x-correlation-id": TRACE_ID }, (mod) => {
+      expect(mod.getCorrelationId()).toBe(TRACE_ID);
+    });
+  });
+
+  it("returns the SAME id on every call — the property the probe disproved for generation", async () => {
+    await withHeaders({ traceparent: VALID_TP }, (mod) => {
+      const ids = [mod.getCorrelationId(), mod.getCorrelationId(), mod.getCorrelationId()];
+      expect(new Set(ids).size).toBe(1);
+    });
+  });
+
+  it("returns null rather than inventing one when no header is present", async () => {
+    await withHeaders({}, (mod) => {
+      expect(mod.getCorrelationId()).toBeNull();
+    });
+  });
+
+  it("rejects a malformed header instead of propagating it", async () => {
+    await withHeaders({ traceparent: "garbage", "x-correlation-id": "not-hex" }, (mod) => {
+      expect(mod.getCorrelationId()).toBeNull();
+    });
+  });
+
+  it("lets an explicitly opened context win over the header", async () => {
+    await withHeaders({ traceparent: VALID_TP }, (mod) => {
+      mod.withRequestContext({ scope: "explicit" }, (ctx) => {
+        expect(mod.getCorrelationId()).toBe(ctx.correlationId);
+        expect(mod.getCorrelationId()).not.toBe(TRACE_ID);
+      });
+    });
+  });
+});
