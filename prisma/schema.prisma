@@ -1899,6 +1899,11 @@ model ContractPayment {
   confirmedAt   DateTime?
   /// Required when the NGO disputes the payment.
   disputeNote   String?
+  /// "NGO_CONFIRMATION" when the NGO clicked confirm, "BANK_STATEMENT" when a
+  /// line on the NGO's uploaded statement matched it. Null while unreconciled.
+  reconciledVia String?
+  /// The statement line that evidenced this payment, if any.
+  bankLine      BankStatementLine?
 
   @@index([contractId])
   @@index([contractMilestoneId])
@@ -2713,6 +2718,10 @@ enum FinanceExceptionType {
   /// for a different amount. The donor's word and the NGO's disagree about
   /// money, which only a human can settle.
   CONTRACT_PAYMENT_DISPUTED
+  /// A line on the NGO's bank statement carries a contract payment's
+  /// reference, but for a different amount than the donor recorded. The
+  /// statement is the stronger evidence; the record or the transfer is wrong.
+  BANK_LINE_AMOUNT_MISMATCH
 }
 
 enum FinanceExceptionStatus {
@@ -3366,4 +3375,79 @@ model OutcomeClaimEvidence {
   @@index([proofId])
   @@index([evidenceId])
   @@index([feedbackId])
+}
+
+/// What a bank-statement line was found to be when matched against the NGO's
+/// pending contract payments.
+enum BankStatementLineStatus {
+  /// Exactly one pending payment carries this reference, for this amount,
+  /// within the date window — and it is now RECONCILED through this line.
+  MATCHED
+  /// A pending payment's reference appears on the line but the amount differs.
+  AMOUNT_MISMATCH
+  /// More than one pending payment could be this line, or the dates are too far
+  /// apart to be sure. A human decides; nothing is reconciled automatically.
+  AMBIGUOUS
+  /// A credit no recorded contract payment accounts for (yet). Re-checked on
+  /// every later import, in case the donor records the payment afterwards.
+  UNMATCHED
+  /// Money going out. Kept for completeness, never matched.
+  DEBIT
+}
+
+/// One upload of an NGO's bank statement (CSV), for reconciling the contract
+/// payments donors recorded against what actually reached the account.
+model BankStatementImport {
+  id           String   @id @default(uuid())
+  ngoId        String
+  uploadedById String
+  fileName     String
+  /// Lines in the file, lines new to this NGO (re-uploads skip known lines),
+  /// and payments this import reconciled.
+  lineCount    Int
+  newLineCount Int
+  matchedCount Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  lines BankStatementLine[]
+
+  @@index([ngoId, createdAt])
+}
+
+/// A single statement line. Ids and amounts only — the description is the
+/// bank's narration, kept because it is the evidence a reviewer reads.
+model BankStatementLine {
+  id       String              @id @default(uuid())
+  importId String
+  import   BankStatementImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  ngoId    String
+
+  valueDate   DateTime
+  description String
+  /// The bank's reference column (UTR / cheque no.), when the CSV has one.
+  reference   String?
+  amount      Decimal  @db.Decimal(12, 2)
+  /// "CREDIT" | "DEBIT"
+  direction   String
+
+  /// sha256 of the line's content, scoped to the NGO: uploading the same
+  /// statement twice (or overlapping date ranges) never duplicates a line.
+  lineHash String
+
+  status BankStatementLineStatus @default(UNMATCHED)
+  /// Why the matcher decided what it did, for the reviewer.
+  note   String?
+
+  /// One line evidences at most one payment, and one payment at most one line.
+  matchedPaymentId    String?          @unique
+  matchedPayment      ContractPayment? @relation(fields: [matchedPaymentId], references: [id], onDelete: SetNull)
+  /// Payments the line could be, for AMBIGUOUS / AMOUNT_MISMATCH.
+  candidatePaymentIds String[]         @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ngoId, lineHash])
+  @@index([importId])
+  @@index([ngoId, status])
 }

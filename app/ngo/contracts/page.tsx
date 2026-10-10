@@ -67,6 +67,9 @@ export default async function NgoContractsPage() {
             <Link href="/ngo/dashboard" className="text-xs font-bold text-emerald-600 hover:underline">
               ← Back to NGO Dashboard
             </Link>
+            <Link href="/ngo/bank-reconciliation" className="ml-4 text-xs font-bold text-emerald-600 hover:underline">
+              Bank reconciliation →
+            </Link>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">Grant Contracts & Agreements</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Institutional grant agreements, counter-signing, and milestone tranche management.

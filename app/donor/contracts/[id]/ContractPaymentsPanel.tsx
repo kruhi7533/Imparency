@@ -20,6 +20,8 @@ export interface PanelPayment {
   status: "PENDING_CONFIRMATION" | "RECONCILED" | "DISPUTED";
   disputeNote: string | null;
   contractMilestoneId: string | null;
+  /** "NGO_CONFIRMATION" | "BANK_STATEMENT" once reconciled. */
+  reconciledVia?: string | null;
 }
 
 export interface PanelSummary {
@@ -331,6 +333,11 @@ export default function ContractPaymentsPanel({
                     <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{milestoneTitle(p.contractMilestoneId)}</td>
                     <td className="px-3 py-2">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${pb.cls}`}>{pb.label}</span>
+                      {p.status === "RECONCILED" && p.reconciledVia && (
+                        <p className="text-[11px] text-emerald-700 mt-1">
+                          {p.reconciledVia === "BANK_STATEMENT" ? "Matched on the NGO's bank statement" : "Confirmed by the NGO"}
+                        </p>
+                      )}
                       {p.disputeNote && <p className="text-[11px] text-red-600 mt-1">{p.disputeNote}</p>}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
