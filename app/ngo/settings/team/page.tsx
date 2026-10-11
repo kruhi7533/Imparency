@@ -12,7 +12,7 @@ export default async function TeamSettingsPage() {
   }
 
   // Fetch current user's role in this NGO
-  const currentUserMembership = await prisma.nGOTeamMember.findUnique({
+  let currentUserMembership = await prisma.nGOTeamMember.findUnique({
     where: {
       userId_ngoId: {
         userId: session.user.id,
@@ -20,6 +20,26 @@ export default async function TeamSettingsPage() {
       }
     }
   });
+
+  // Self-heal: If user is the primary owner on NGOProfile, ensure they have an OWNER team member row
+  if (!currentUserMembership) {
+    const isOwner = await prisma.nGOProfile.findFirst({
+      where: {
+        id: session.user.ngoProfileId,
+        userId: session.user.id,
+      },
+    });
+
+    if (isOwner) {
+      currentUserMembership = await prisma.nGOTeamMember.create({
+        data: {
+          userId: session.user.id,
+          ngoId: session.user.ngoProfileId,
+          role: "OWNER",
+        },
+      });
+    }
+  }
 
   if (!currentUserMembership) {
     redirect("/unauthorized");

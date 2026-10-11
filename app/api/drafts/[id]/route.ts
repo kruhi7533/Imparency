@@ -77,7 +77,7 @@ export async function PATCH(
 
     const { id } = params;
     const body = await request.json();
-    const { status, rejectionReason } = body;
+    const rejectionReason = body.rejectionReason || body.reason;
 
     if (status !== 'APPROVED' && status !== 'REJECTED') {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
@@ -105,9 +105,9 @@ export async function PATCH(
 
     const updatedDraft = await prisma.$transaction(async (tx) => {
       // 1. Update draft status
-      const d = await tx.draftProof.update({
+      const d: any = await tx.draftProof.update({
         where: { id },
-        data: { status },
+        data: { status: status as any, riskReason: status === 'REJECTED' ? rejectionReason : draft.riskReason },
         include: { fieldWorker: true }
       });
 
@@ -144,32 +144,38 @@ export async function PATCH(
         d.fieldWorker = await tx.fieldWorker.findUnique({ where: { id: draft.fieldWorkerId } });
       }
 
-      // ADDITION 2 — Milestone auto-completion trigger
+      // ADDITION 2 — Milestone proof submission trigger (guarded against cross-tenant milestone modification)
       if (status === 'APPROVED' && draft.predictedMilestoneId) {
-        // Count approved proofs for this milestone
-        const approvedProofCount = await tx.draftProof.count({
-          where: {
-            predictedMilestoneId: draft.predictedMilestoneId,
-            status: 'APPROVED'
-          }
-        });
-        
         const milestone = await tx.milestone.findUnique({
-          where: { id: draft.predictedMilestoneId }
+          where: { id: draft.predictedMilestoneId },
+          include: { project: { select: { ngoId: true } } },
         });
-        
-        // Auto-complete if required proof threshold met
-        // Using a hardcoded 1 here since requiredProofs does not exist in schema
-        const REQUIRED_PROOFS = 1; 
-        if (milestone && approvedProofCount >= REQUIRED_PROOFS) {
+
+        // Strictly verify that the AI-predicted milestone belongs to this NGO's own project
+        if (milestone && milestone.project.ngoId === draft.ngoId) {
+          // Create the official MilestoneProof record so admin review queue is populated
+          await tx.milestoneProof.create({
+            data: {
+              milestoneId: milestone.id,
+              submittedById: session.user.id,
+              description: draft.aiSummary || draft.rawMessage || "Verified WhatsApp Field Submission",
+              mediaUrls: draft.persistentPhotoUrls?.length ? draft.persistentPhotoUrls : draft.mediaUrls,
+              documentUrls: [],
+              theoryOfChangeAlignmentScore: 100,
+              theoryOfChangeReasoning: "Field report verified and approved by NGO administrator",
+            },
+          });
+
+          // Mark milestone as having proof submitted
           await tx.milestone.update({
-            where: { id: draft.predictedMilestoneId },
+            where: { id: milestone.id },
             data: {
               status: 'PROOF_SUBMITTED',
-              // Note: completedAt doesn't exist on Milestone model in schema, so we omit it
-            }
+            },
           });
-          console.log(`[approval] Milestone ${draft.predictedMilestoneId} auto-completed`);
+          console.log(`[approval] MilestoneProof created and milestone ${milestone.id} marked as PROOF_SUBMITTED`);
+        } else if (milestone) {
+          console.warn(`[security] AI predicted milestone ${draft.predictedMilestoneId} belongs to NGO ${milestone.project.ngoId}, not draft NGO ${draft.ngoId}. Milestone update blocked.`);
         }
       }
 
@@ -177,7 +183,8 @@ export async function PATCH(
     });
 
     // ADDITION 1 — WhatsApp reply loop
-    if (updatedDraft.fieldWorker) {
+    const worker = (updatedDraft as any)?.fieldWorker;
+    if (worker) {
       const milestoneLabel = updatedDraft.predictedMilestoneId 
         ? (await prisma.milestone.findUnique({ where: { id: updatedDraft.predictedMilestoneId } }))?.title ?? 'your recent submission'
         : 'your recent submission';
@@ -189,7 +196,7 @@ export async function PATCH(
       // Fire-and-forget
       twilioClient.messages.create({
         from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-        to: `whatsapp:${updatedDraft.fieldWorker.phone}`,
+        to: `whatsapp:${worker.phone}`,
         body: messageBody
       }).catch(err => console.error('[approval] WhatsApp reply failed:', err));
     }
