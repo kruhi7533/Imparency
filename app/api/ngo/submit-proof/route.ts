@@ -61,6 +61,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Combined file size exceeds the 20MB limit" }, { status: 400 });
     }
 
+    // Enforce strict file type allowlist (protect against stored-XSS and arbitrary file uploads)
+    const ALLOWED_MIME_TYPES = new Set([
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp",
+      "image/heic",
+      "image/heif",
+      "application/pdf",
+    ]);
+
+    const DANGEROUS_EXTENSIONS = /\.(html?|svg|xml|js|mjs|exe|bat|sh|php|py|jar|cgi)$/i;
+
+    for (const file of files) {
+      if (!ALLOWED_MIME_TYPES.has(file.type.toLowerCase())) {
+        return NextResponse.json(
+          { error: `File "${file.name}" has an unsupported format (${file.type || "unknown"}). Only JPEG, PNG, WebP, HEIC images and PDF documents are allowed.` },
+          { status: 400 }
+        );
+      }
+      if (DANGEROUS_EXTENSIONS.test(file.name)) {
+        return NextResponse.json(
+          { error: `File "${file.name}" has a disallowed extension for proof evidence.` },
+          { status: 400 }
+        );
+      }
+    }
+
     // Fetch user and NGO Profile
     const user = await prisma.user.findUnique({
       where: { id: userId },
