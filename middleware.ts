@@ -13,7 +13,14 @@ export default withAuth(
     if (path.startsWith("/admin") && token?.role !== "ADMIN") {
       return NextResponse.redirect(new URL("/unauthorized", req.url));
     }
-    if (path.startsWith("/donor") && token?.role !== "DONOR") {
+    // Shared contract routes: /donor/contracts/[id] is accessible by DONOR, NGO and ADMIN
+    if (path.startsWith("/donor/contracts/")) {
+      if (token?.role !== "DONOR" && token?.role !== "NGO" && token?.role !== "ADMIN") {
+        return NextResponse.redirect(new URL("/unauthorized", req.url));
+      }
+    } else if (path === "/donor/contracts" && token?.role === "NGO") {
+      return NextResponse.redirect(new URL("/ngo/contracts", req.url));
+    } else if (path.startsWith("/donor") && token?.role !== "DONOR") {
       return NextResponse.redirect(new URL("/unauthorized", req.url));
     }
   },
