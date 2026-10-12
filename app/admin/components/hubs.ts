@@ -141,6 +141,7 @@ export const ADMIN_HUBS: Hub[] = [
       // The dashboard's metrics belong here, not in front of the approvals
       // queue that used to sit underneath them.
       { href: "/admin/dashboard", label: "Overview", hint: "Donations, verification counts, and platform totals." },
+      { href: "/admin/notifications", label: "Notifications", hint: "All admin notifications, alerts, and activity. Filter by type and read status." },
       { href: "/admin/trust-trends", label: "Trust trends", hint: "How verification and compliance are moving over time." },
       { href: "/admin/impact-health", label: "Impact health", hint: "Whether funded work is actually reporting outcomes." },
       // Week 8. Deliberately next to "Impact health", which measures whether
