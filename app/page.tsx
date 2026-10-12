@@ -81,7 +81,7 @@ export default async function Home() {
               </Link>
               <Link
                 href="/ngo/register"
-                className="w-full sm:w-auto border border-gray-800 hover:border-gray-700 bg-gray-900/50 hover:bg-gray-900 text-white font-semibold px-8 py-4 rounded-lg text-base transition"
+                className="w-full sm:w-auto bg-trust-600 hover:bg-trust-500 text-white font-semibold px-8 py-4 rounded-lg text-base transition"
               >
                 Register your NGO
               </Link>
