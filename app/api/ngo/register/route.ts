@@ -262,6 +262,22 @@ export async function POST(request: Request) {
       });
     }
 
+    // Ensure the registering owner is created in NGOTeamMember as OWNER
+    await prisma.nGOTeamMember.upsert({
+      where: {
+        userId_ngoId: {
+          userId,
+          ngoId: profile.id,
+        },
+      },
+      update: { role: "OWNER" },
+      create: {
+        userId,
+        ngoId: profile.id,
+        role: "OWNER",
+      },
+    });
+
     // Record consent audit log
     await prisma.consentAudit.create({
       data: {
