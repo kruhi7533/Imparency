@@ -50,6 +50,29 @@ export default async function DonorDetailPage({ params }: { params: { id: string
   });
   if (!donor || donor.role !== "DONOR") notFound();
 
+  // CSR organisation (lib/donor-team.ts): the account's team, or the org this
+  // user belongs to, plus its requirements and contracts.
+  const [membership, teamMembers, requirements, contracts] = await Promise.all([
+    prisma.donorTeamMember.findUnique({ where: { userId: donor.id }, select: { accountId: true, role: true } }),
+    prisma.donorTeamMember.findMany({ where: { accountId: donor.id }, orderBy: { createdAt: "asc" }, select: { userId: true, role: true, createdAt: true } }),
+    prisma.sponsorRequirement.findMany({
+      where: { sponsorId: donor.id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: { id: true, fileName: true, status: true, createdAt: true },
+    }),
+    prisma.contract.findMany({
+      where: { donorId: donor.id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: { id: true, contractNumber: true, title: true, status: true, ngo: { select: { orgName: true } } },
+    }),
+  ]);
+  const [memberUsers, parentAccount] = await Promise.all([
+    teamMembers.length ? prisma.user.findMany({ where: { id: { in: teamMembers.map((m) => m.userId) } }, select: { id: true, name: true, email: true } }) : [],
+    membership ? prisma.user.findUnique({ where: { id: membership.accountId }, select: { id: true, name: true, companyName: true } }) : null,
+  ]);
+
   const [alerts, donorEvents, adminActions] = await Promise.all([
     prisma.fraudAlert.findMany({
       where: { entityType: "DONOR", entityId: donor.id },
@@ -434,6 +457,68 @@ export default async function DonorDetailPage({ params }: { params: { id: string
             )}
           </Section>
         </div>
+
+        <Section title="CSR organisation">
+          {membership && parentAccount ? (
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Member of{" "}
+              <a href={`/admin/donors/${parentAccount.id}`} className="font-bold text-emerald-600 hover:underline">
+                {parentAccount.companyName || parentAccount.name}
+              </a>{" "}
+              as <strong>{membership.role.toLowerCase()}</strong>. Requirements and contracts belong to that account.
+            </p>
+          ) : (
+            <div className="space-y-4 text-sm">
+              <div>
+                <p className="text-xs font-bold text-gray-400">Team ({teamMembers.length})</p>
+                {teamMembers.length === 0 ? (
+                  <p className="text-gray-500">No team members — a single-user account.</p>
+                ) : (
+                  <ul className="mt-1 space-y-1">
+                    {teamMembers.map((m) => {
+                      const u = memberUsers.find((x) => x.id === m.userId);
+                      return (
+                        <li key={m.userId} className="text-gray-700 dark:text-gray-300">
+                          <a href={`/admin/donors/${m.userId}`} className="hover:underline">{u?.name || u?.email || m.userId}</a> · {m.role.toLowerCase()} · since {fmt(m.createdAt)}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-400">CSR requirements ({requirements.length})</p>
+                {requirements.length === 0 ? (
+                  <p className="text-gray-500">None.</p>
+                ) : (
+                  <ul className="mt-1 space-y-1">
+                    {requirements.map((r) => (
+                      <li key={r.id}>
+                        <a href={`/admin/requirements/${r.id}`} className="hover:underline text-gray-700 dark:text-gray-300">{r.fileName || "Requirement"}</a>{" "}
+                        <span className="text-xs text-gray-500">· {r.status.replace(/_/g, " ").toLowerCase()} · {fmt(r.createdAt)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-400">Contracts ({contracts.length})</p>
+                {contracts.length === 0 ? (
+                  <p className="text-gray-500">None.</p>
+                ) : (
+                  <ul className="mt-1 space-y-1">
+                    {contracts.map((c) => (
+                      <li key={c.id}>
+                        <a href={`/admin/contracts/${c.id}`} className="hover:underline text-gray-700 dark:text-gray-300">{c.contractNumber} — {c.title}</a>{" "}
+                        <span className="text-xs text-gray-500">· {c.ngo.orgName} · {c.status.toLowerCase()}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+        </Section>
 
         {/* Timeline */}
         <Section title="Timeline">

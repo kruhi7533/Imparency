@@ -232,10 +232,10 @@ export default function ContractDetailClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <Link
-            href={isDonor ? "/donor/contracts" : "/ngo/contracts"}
+            href={isDonor ? "/donor/contracts" : isNgo ? "/ngo/contracts" : "/admin/donors"}
             className="text-xs font-bold text-emerald-600 hover:underline"
           >
-            ← Back to All Contracts
+            {isDonor || isNgo ? "← Back to All Contracts" : "← Back to donors"}
           </Link>
           <div className="flex items-center gap-3 mt-1">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{contract.title}</h1>
