@@ -155,7 +155,7 @@ export default function FieldTasksPanel({
         )}
       </div>
 
-      {error && <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>}
+      {error && <div role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>}
 
       {showForm && (
         <form onSubmit={create} className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40">
@@ -299,7 +299,7 @@ export default function FieldTasksPanel({
               {t.evidence.map((e) => (
                 <div key={e.id} className="flex gap-3 p-2 rounded-xl bg-gray-50 dark:bg-gray-800/40">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/api/field/evidence/${e.id}/photo`} alt="Field evidence" className="w-20 h-20 rounded-lg object-cover flex-shrink-0" />
+                  <img src={`/api/field/evidence/${e.id}/photo`} alt={`Field evidence for ${t.title}`} className="w-20 h-20 rounded-lg object-cover flex-shrink-0" />
                   <div className="text-xs space-y-1 min-w-0">
                     <div className="flex flex-wrap gap-1">
                       <span className={`px-2 py-0.5 rounded-full font-bold ${EVIDENCE_BADGE[e.status] ?? ""}`}>{e.status.replace("_", " ")}</span>
@@ -324,16 +324,16 @@ export default function FieldTasksPanel({
                           <button
                             disabled={busy}
                             onClick={() => withdrawConsent(e.consent!.feedbackId)}
-                            className="px-2 py-0.5 rounded-lg bg-red-600 text-white font-bold disabled:opacity-50"
+                            className="min-h-[40px] px-3 py-1 rounded-lg bg-red-600 text-white font-bold disabled:opacity-50"
                           >
                             {busy ? "Recording…" : "Yes, withdraw"}
                           </button>
-                          <button onClick={() => setConfirmWithdraw(null)} className="font-bold text-gray-600">
+                          <button onClick={() => setConfirmWithdraw(null)} className="min-h-[40px] px-2 font-bold text-gray-600">
                             Cancel
                           </button>
                         </div>
                       ) : (
-                        <button onClick={() => setConfirmWithdraw(e.consent!.feedbackId)} className="font-bold text-red-600 underline">
+                        <button onClick={() => setConfirmWithdraw(e.consent!.feedbackId)} className="min-h-[40px] font-bold text-red-700 underline">
                           Beneficiary withdrew consent
                         </button>
                       )

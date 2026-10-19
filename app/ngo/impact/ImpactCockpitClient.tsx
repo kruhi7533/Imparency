@@ -45,7 +45,7 @@ const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
   NEEDS_EVIDENCE: { label: "Needs evidence", cls: "bg-amber-500/15 text-amber-300 border-amber-500/30" },
   APPROVED: { label: "Approved", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" },
   REJECTED: { label: "Rejected", cls: "bg-red-500/15 text-red-300 border-red-500/30" },
-  WITHDRAWN: { label: "Withdrawn", cls: "bg-gray-800 text-gray-500 border-gray-700" },
+  WITHDRAWN: { label: "Withdrawn", cls: "bg-gray-800 text-gray-400 border-gray-700" },
 };
 const VERDICT: Record<string, { label: string; cls: string }> = {
   CLEAN: { label: "Evidence supports this figure", cls: "text-emerald-300" },
@@ -180,7 +180,7 @@ function ClaimForm({
     <div className="border border-emerald-500/30 bg-gray-900/60 rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold text-white">{editing ? "Edit claim" : "Report an outcome"}</p>
-        <button type="button" onClick={onDone} className="text-xs text-gray-400 hover:text-white">
+        <button type="button" onClick={onDone} className="min-h-[40px] px-3 rounded-lg text-xs text-gray-300 hover:text-white">
           Cancel
         </button>
       </div>
@@ -200,13 +200,13 @@ function ClaimForm({
               type="button"
               disabled={!!busy || !projectId}
               onClick={suggest}
-              className="px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-400 text-gray-950 text-xs font-bold disabled:opacity-40"
+              className="min-h-[40px] px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-400 text-gray-950 text-xs font-bold disabled:opacity-40"
             >
               {busy === "suggest" ? "Reading evidence…" : "Suggest from evidence (AI)"}
             </button>
           </div>
           {suggestions && (
-            <ul className="space-y-1.5">
+            <ul aria-live="polite" aria-label="AI suggestions" className="space-y-1.5">
               {suggestions.suggestions.map((sg) => {
                 const m = cockpit.metrics.find((x) => x.code === sg.metricCode);
                 return (
@@ -215,8 +215,13 @@ function ClaimForm({
                     {sg.status === "EXTRACTED" ? (
                       <>
                         <span className="text-emerald-300 font-bold">{fmtValue(sg.value, m?.unit ?? "")}</span>
-                        <span className="text-gray-500"> · &ldquo;{sg.quote}&rdquo; · {Math.round(sg.confidence * 100)}% sure</span>
-                        <button type="button" onClick={() => useSuggestion(sg)} className="ml-2 text-blue-300 underline">
+                        <span className="text-gray-400"> · &ldquo;{sg.quote}&rdquo; · {Math.round(sg.confidence * 100)}% sure</span>
+                        <button
+                          type="button"
+                          onClick={() => useSuggestion(sg)}
+                          aria-label={`Use this suggestion for ${m?.name ?? sg.metricCode}`}
+                          className="ml-1 min-h-[40px] px-2 text-blue-300 underline"
+                        >
                           Use this
                         </button>
                       </>
@@ -228,7 +233,7 @@ function ClaimForm({
               })}
             </ul>
           )}
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-gray-400">
             Suggestions only prefill the form. A figure with no word-for-word support in your evidence is never suggested, and every claim is
             still checked and approved by a reviewer.
           </p>
@@ -285,7 +290,7 @@ function ClaimForm({
             ))}
           </select>
           {metric && (
-            <span className="block mt-1 text-[11px] text-gray-500">
+            <span className="block mt-1 text-[11px] text-gray-400">
               {metric.definition} · Needs: {metric.requiredEvidence.map((k) => KIND_LABEL[k]).join(", ")}
             </span>
           )}
@@ -318,10 +323,10 @@ function ClaimForm({
 
       <div className="space-y-2">
         <p className="text-xs font-semibold text-gray-300">
-          Evidence to cite <span className="font-normal text-gray-500">— only approved evidence supports a figure</span>
+          Evidence to cite <span className="font-normal text-gray-400">— only approved evidence supports a figure</span>
         </p>
         {evidence.length === 0 ? (
-          <p className="text-xs text-gray-500">No evidence on this project yet. Submit milestone proof or capture field evidence first.</p>
+          <p className="text-xs text-gray-400">No evidence on this project yet. Submit milestone proof or capture field evidence first.</p>
         ) : (
           <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
             {evidence.map((e) => (
@@ -340,8 +345,8 @@ function ClaimForm({
                   }}
                 />
                 <span className="flex-1">
-                  <span className="text-gray-200">{e.label}</span> <span className="text-gray-500">· {day(e.date)}</span>
-                  {e.detail && <span className="block text-gray-500">{e.detail}</span>}
+                  <span className="text-gray-200">{e.label}</span> <span className="text-gray-400">· {day(e.date)}</span>
+                  {e.detail && <span className="block text-gray-400">{e.detail}</span>}
                   {e.approved ? (
                     <span className="block text-emerald-400">Approved</span>
                   ) : (
@@ -352,14 +357,14 @@ function ClaimForm({
             ))}
           </div>
         )}
-        {editing && <p className="text-[11px] text-gray-500">Saving replaces this claim&apos;s citations with the ones ticked here.</p>}
+        {editing && <p className="text-[11px] text-gray-400">Saving replaces this claim&apos;s citations with the ones ticked here.</p>}
         {metric && missingKinds.length > 0 && citations.length > 0 && (
           <p className="text-[11px] text-amber-300">This metric also needs: {missingKinds.map((k) => KIND_LABEL[k]).join(", ")}.</p>
         )}
       </div>
 
       {preview && (
-        <div className="rounded-xl border border-gray-800 bg-gray-950/60 p-3 space-y-2">
+        <div role="status" aria-live="polite" className="rounded-xl border border-gray-800 bg-gray-950/60 p-3 space-y-2">
           <Findings triage={preview.triage} />
           {preview.upperBound !== null ? (
             <p className="text-xs text-gray-300">
@@ -367,7 +372,7 @@ function ClaimForm({
               <span className="font-bold text-white">{preview.upperBound}</span> people.
             </p>
           ) : (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               {preview.approvedCitations} approved citation{preview.approvedCitations === 1 ? "" : "s"}. This metric has no automatic upper
               bound — the reviewer judges the number against your method and evidence.
             </p>
@@ -375,13 +380,13 @@ function ClaimForm({
         </div>
       )}
 
-      {error && <p className="text-xs text-red-300">{error}</p>}
+      {error && <p role="alert" className="text-xs text-red-300">{error}</p>}
       <div className="flex flex-wrap justify-end gap-2">
         <button
           type="button"
           disabled={!!busy || !metricCode || !value || !periodStart || !periodEnd}
           onClick={check}
-          className="px-4 py-2 rounded-lg border border-gray-700 text-gray-200 text-xs font-semibold disabled:opacity-40"
+          className="min-h-[44px] px-4 py-2 rounded-lg border border-gray-700 text-gray-200 text-xs font-semibold disabled:opacity-40"
         >
           {busy === "check" ? "Checking…" : "Check against review"}
         </button>
@@ -389,7 +394,7 @@ function ClaimForm({
           type="button"
           disabled={!!busy || method.trim().length < 10}
           onClick={save}
-          className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-bold disabled:opacity-40"
+          className="min-h-[44px] px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-bold disabled:opacity-40"
         >
           {busy === "save" ? "Saving…" : editing ? "Save changes" : "Save as draft"}
         </button>
@@ -427,7 +432,7 @@ function ClaimRow({ claim, projectTitle, canEdit, onEdit }: { claim: Claim; proj
           <p className="text-sm font-bold text-white">
             {fmtValue(claim.value, claim.unit)} <span className="font-normal text-gray-400">· {claim.metricName}</span>
           </p>
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-gray-400">
             {projectTitle} · {day(claim.periodStart)} – {day(claim.periodEnd)} · {claim.citationCount} citation{claim.citationCount === 1 ? "" : "s"}
           </p>
         </div>
@@ -445,7 +450,7 @@ function ClaimRow({ claim, projectTitle, canEdit, onEdit }: { claim: Claim; proj
         <div className="flex flex-wrap gap-2 pt-1">
           {(claim.status === "DRAFT" || claim.status === "NEEDS_EVIDENCE") && (
             <>
-              <button type="button" onClick={onEdit} className="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-200 text-xs font-semibold">
+              <button type="button" onClick={onEdit} className="min-h-[40px] px-3 py-1.5 rounded-lg border border-gray-700 text-gray-200 text-xs font-semibold">
                 Edit
               </button>
               <button
@@ -453,14 +458,14 @@ function ClaimRow({ claim, projectTitle, canEdit, onEdit }: { claim: Claim; proj
                 disabled={busy || claim.citationCount === 0}
                 title={claim.citationCount === 0 ? "Cite at least one piece of evidence first" : undefined}
                 onClick={() => act("SUBMIT")}
-                className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-bold disabled:opacity-40"
+                className="min-h-[40px] px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-bold disabled:opacity-40"
               >
                 {claim.status === "NEEDS_EVIDENCE" ? "Resubmit for review" : "Submit for review"}
               </button>
             </>
           )}
           {(claim.status === "SUBMITTED" || claim.status === "APPROVED") && !withdrawing && (
-            <button type="button" onClick={() => setWithdrawing(true)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-300 border border-red-500/30">
+            <button type="button" onClick={() => setWithdrawing(true)} className="min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-semibold text-red-300 border border-red-500/30">
               Withdraw
             </button>
           )}
@@ -469,6 +474,7 @@ function ClaimRow({ claim, projectTitle, canEdit, onEdit }: { claim: Claim; proj
       {withdrawing && (
         <div className="space-y-2">
           <textarea
+            aria-label="Reason for withdrawing this claim"
             className={input}
             rows={2}
             value={note}
@@ -476,10 +482,10 @@ function ClaimRow({ claim, projectTitle, canEdit, onEdit }: { claim: Claim; proj
             placeholder="Why are you withdrawing this figure? (at least 10 characters)"
           />
           <div className="flex gap-2">
-            <button type="button" disabled={busy || note.trim().length < 10} onClick={() => act("WITHDRAW")} className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-40">
+            <button type="button" disabled={busy || note.trim().length < 10} onClick={() => act("WITHDRAW")} className="min-h-[40px] px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-40">
               Withdraw claim
             </button>
-            <button type="button" onClick={() => setWithdrawing(false)} className="text-xs text-gray-400">
+            <button type="button" onClick={() => setWithdrawing(false)} className="min-h-[40px] px-3 text-xs text-gray-300">
               Cancel
             </button>
           </div>
@@ -535,7 +541,7 @@ export default function ImpactCockpitClient({ cockpit, canEdit, verified }: { co
         <div>
           <p className="text-sm font-bold text-white mb-2">Verified impact by metric</p>
           {cockpit.rollup.length === 0 ? (
-            <p className="text-xs text-gray-500">No outcomes reported yet.</p>
+            <p className="text-xs text-gray-400">No outcomes reported yet.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {cockpit.rollup.map((r) => (
@@ -544,7 +550,7 @@ export default function ImpactCockpitClient({ cockpit, canEdit, verified }: { co
                   <p className="text-2xl font-extrabold text-emerald-300 mt-1">
                     {r.verifiedCount > 0 ? fmtValue(r.verifiedTotal, r.unit) : "—"}
                   </p>
-                  <p className="text-[11px] text-gray-500 mt-1">
+                  <p className="text-[11px] text-gray-400 mt-1">
                     {r.verifiedCount} verified · {r.inReviewCount} in review · {r.draftCount} draft
                     {r.unverifiedApprovedCount > 0 && <span className="text-red-300"> · {r.unverifiedApprovedCount} approved but no longer backed</span>}
                   </p>
@@ -559,7 +565,7 @@ export default function ImpactCockpitClient({ cockpit, canEdit, verified }: { co
             <p className="text-sm font-bold text-white">
               Claims {needsAction > 0 && <span className="text-amber-300 font-normal text-xs">· {needsAction} need your action</span>}
             </p>
-            <select className="bg-gray-900 border border-gray-800 rounded-lg px-2 py-1 text-xs text-gray-200" value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
+            <select aria-label="Filter claims by project" className="min-h-[40px] bg-gray-900 border border-gray-800 rounded-lg px-2 py-1 text-xs text-gray-200" value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
               <option value="ALL">All projects</option>
               {cockpit.projects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -569,7 +575,7 @@ export default function ImpactCockpitClient({ cockpit, canEdit, verified }: { co
             </select>
           </div>
           {claims.length === 0 ? (
-            <p className="text-xs text-gray-500 border border-gray-800 rounded-2xl py-6 text-center">No claims here yet.</p>
+            <p className="text-xs text-gray-400 border border-gray-800 rounded-2xl py-6 text-center">No claims here yet.</p>
           ) : (
             claims.map((c) => (
               <ClaimRow

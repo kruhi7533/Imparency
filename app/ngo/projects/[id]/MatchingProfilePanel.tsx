@@ -101,7 +101,7 @@ export default function MatchingProfilePanel({
       )}
 
       {canEdit && !editing && (
-        <button type="button" onClick={() => setEditing(true)} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">
+        <button type="button" onClick={() => setEditing(true)} className="min-h-[44px] px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">
           Edit cohort & matching profile
         </button>
       )}
@@ -146,17 +146,17 @@ export default function MatchingProfilePanel({
             </select>
           </label>
           <div className="md:col-span-2 flex justify-end gap-2">
-            <button type="button" onClick={() => setEditing(false)} className="px-4 py-2 rounded-lg text-xs text-gray-500">
+            <button type="button" onClick={() => setEditing(false)} className="min-h-[44px] px-4 py-2 rounded-lg text-xs text-gray-600">
               Cancel
             </button>
-            <button type="button" disabled={busy} onClick={save} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50">
+            <button type="button" disabled={busy} onClick={save} className="min-h-[44px] px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50">
               {busy ? "Saving…" : "Save matching profile"}
             </button>
           </div>
         </div>
       )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      {saved && <p className="text-xs text-emerald-600">Saved. New matching runs will use it.</p>}
+      {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
+      <p role="status" aria-live="polite" className="text-xs text-emerald-700">{saved ? "Saved. New matching runs will use it." : ""}</p>
     </section>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { queue, shrinkPhoto, syncOutcome, toFormData, type QueuedCapture } from "@/lib/field-queue";
 
@@ -51,6 +51,12 @@ export default function FieldApp({ userName }: { userName: string }) {
 
   const [active, setActive] = useState<Task | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
+  // One object URL per photo, revoked when it changes — creating it in render
+  // leaked a new blob URL on every keystroke, which matters on low-memory phones.
+  const photoUrl = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo]);
+  useEffect(() => () => {
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+  }, [photoUrl]);
   const [gps, setGps] = useState<{ latitude: number; longitude: number; accuracyM: number } | null>(null);
   const [gpsState, setGpsState] = useState<"idle" | "locating" | "failed">("idle");
   const [form, setForm] = useState(blankForm);
@@ -204,38 +210,41 @@ export default function FieldApp({ userName }: { userName: string }) {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      <header className="sticky top-0 z-10 bg-emerald-700 text-white px-4 py-3 flex items-center justify-between">
+      {/* top-16: sits below the global sticky navbar instead of sliding under it. */}
+      <header className="sticky top-16 z-10 bg-emerald-700 text-white px-4 py-3 flex items-center justify-between">
         <div>
           <p className="text-xs opacity-80">Field app</p>
           <p className="font-bold">{userName}</p>
         </div>
-        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${online ? "bg-emerald-500" : "bg-amber-500"}`}>
+        <span role="status" aria-live="polite" className={`text-xs font-bold px-2.5 py-1 rounded-full ${online ? "bg-emerald-500" : "bg-amber-500 text-gray-900"}`}>
           {online ? "Online" : "Offline"}
         </span>
       </header>
 
       <main className="max-w-lg mx-auto p-4 space-y-4">
-        {message && <div className="p-3 rounded-xl bg-white border border-emerald-200 text-sm text-emerald-800">{message}</div>}
+        <div role="status" aria-live="polite">
+          {message && <div className="p-3 rounded-xl bg-white border border-emerald-200 text-sm text-emerald-800">{message}</div>}
+        </div>
 
         {/* Sync queue */}
         <section className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-sm font-bold">{pending.length} waiting to sync</p>
-            <p className="text-xs text-gray-500">Captures are saved on this phone first.</p>
+            <p className="text-xs text-gray-600">Captures are saved on this phone first.</p>
           </div>
           <button
             onClick={sync}
             disabled={syncing || pending.length === 0 || !online}
-            className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-40"
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-40"
           >
             {syncing ? "Syncing…" : "Sync now"}
           </button>
         </section>
         {failed.map((f) => (
-          <section key={f.clientId} className="bg-red-50 border border-red-200 rounded-2xl p-3 text-sm">
+          <section key={f.clientId} role="alert" className="bg-red-50 border border-red-200 rounded-2xl p-3 text-sm">
             <p className="font-bold text-red-800">{f.taskTitle}: not accepted</p>
             <p className="text-red-700 text-xs">{f.error}</p>
-            <button onClick={() => discard(f.clientId)} className="mt-1 text-xs font-bold text-red-700 underline">
+            <button onClick={() => discard(f.clientId)} className="mt-1 min-h-[44px] px-2 -ml-2 text-sm font-bold text-red-700 underline">
               Discard
             </button>
           </section>
@@ -262,18 +271,23 @@ export default function FieldApp({ userName }: { userName: string }) {
             </label>
             {photo && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={URL.createObjectURL(photo)} alt="Captured" className="rounded-xl max-h-60 w-full object-cover" />
+              <img src={photoUrl ?? undefined} alt="Preview of the photo you just took" className="rounded-xl max-h-60 w-full object-cover" />
             )}
 
             <div className="text-sm flex items-center justify-between gap-2 p-3 rounded-xl bg-gray-50">
-              <span>
+              <span aria-live="polite">
                 {gps
                   ? `📍 ${gps.latitude.toFixed(5)}, ${gps.longitude.toFixed(5)} (±${gps.accuracyM} m)`
                   : gpsState === "locating"
                   ? "📍 Getting location…"
                   : "📍 No location yet"}
               </span>
-              <button type="button" onClick={locate} className="text-xs font-bold text-emerald-700">
+              <button
+                type="button"
+                onClick={locate}
+                aria-label={gps ? "Refresh location" : "Retry getting location"}
+                className="min-h-[44px] px-3 rounded-lg text-sm font-bold text-emerald-800 hover:bg-emerald-50"
+              >
                 {gps ? "Refresh" : "Retry"}
               </button>
             </div>
@@ -289,7 +303,7 @@ export default function FieldApp({ userName }: { userName: string }) {
               />
             </label>
 
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-3 min-h-[44px] text-sm">
               <input
                 type="checkbox"
                 checked={form.containsPeople}
@@ -299,7 +313,7 @@ export default function FieldApp({ userName }: { userName: string }) {
               The photo shows people
             </label>
 
-            <label className="flex items-center gap-2 text-sm font-bold">
+            <label className="flex items-center gap-3 min-h-[44px] text-sm font-bold">
               <input
                 type="checkbox"
                 checked={form.withFeedback}
@@ -376,7 +390,7 @@ export default function FieldApp({ userName }: { userName: string }) {
                     </label>
                   </>
                 ) : (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-600">
                     Without consent to record, only the fact that consent was asked is saved — no feedback.
                   </p>
                 )}
@@ -396,7 +410,7 @@ export default function FieldApp({ userName }: { userName: string }) {
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-bold">My tasks</h2>
-              {tasksFromCache && <span className="text-xs text-amber-700">Showing saved list (offline)</span>}
+              {tasksFromCache && <span className="text-xs text-amber-800">Showing saved list (offline)</span>}
             </div>
             {tasks.length === 0 && <p className="text-sm text-gray-500">No tasks assigned to you.</p>}
             {tasks.map((t) => {
@@ -406,13 +420,14 @@ export default function FieldApp({ userName }: { userName: string }) {
                   key={t.id}
                   onClick={() => openTask(t)}
                   disabled={t.status === "COMPLETED"}
-                  className="w-full text-left bg-white rounded-2xl p-4 shadow-sm disabled:opacity-60"
+                  aria-label={`${t.title}, ${t.status.toLowerCase().replace(/_/g, " ")}${t.status === "COMPLETED" ? "" : ", open to capture evidence"}`}
+                  className="w-full text-left bg-white rounded-2xl p-4 shadow-sm disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
                 >
                   <div className="flex justify-between gap-2">
                     <p className="font-bold">{t.title}</p>
                     <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 h-fit">{t.status}</span>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-600">
                     {t.project.title}
                     {t.milestone ? ` · ${t.milestone.title}` : ""}
                     {t.dueDate ? ` · due ${new Date(t.dueDate).toLocaleDateString("en-IN")}` : ""}
@@ -426,7 +441,7 @@ export default function FieldApp({ userName }: { userName: string }) {
           </section>
         )}
 
-        <Link href="/ngo/dashboard" className="block text-center text-xs text-gray-500 underline">
+        <Link href="/ngo/dashboard" className="block text-center py-3 text-sm text-gray-600 underline">
           Back to dashboard
         </Link>
       </main>
