@@ -210,6 +210,13 @@ export default function Navbar() {
                           Team Settings
                         </Link>
                         <Link
+                          href="/ngo/activity"
+                          onClick={() => setDropdownOpen(false)}
+                          className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
+                        >
+                          Activity &amp; Audit
+                        </Link>
+                        <Link
                           href="/ngo/pitch-deck"
                           onClick={() => setDropdownOpen(false)}
                           className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center justify-between"
