@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { SECTOR_OPTIONS } from "@/lib/requirements/form-options";
 
 type PanStatus = "UNVERIFIED" | "VERIFIED" | "FAILED" | "PROVIDER_ERROR";
 
@@ -31,6 +32,8 @@ interface UserProfile {
   orgVerificationNote?: string;
   csrRegistrationNumber?: string;
   csrBudget?: number | null;
+  csrPolicySummary?: string;
+  csrFocusAreas?: string[];
   trustRegistrationId?: string;
   trust12a80gRegNo?: string;
   trustAnnualBudget?: number | null;
@@ -90,6 +93,8 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
   const [cin, setCin] = useState(user.cin || "");
   const [csrRegistrationNumber, setCsrRegistrationNumber] = useState(user.csrRegistrationNumber || "");
   const [csrBudget, setCsrBudget] = useState(user.csrBudget != null ? String(user.csrBudget) : "");
+  const [csrPolicySummary, setCsrPolicySummary] = useState(user.csrPolicySummary || "");
+  const [csrFocusAreas, setCsrFocusAreas] = useState<string[]>(user.csrFocusAreas || []);
 
   // Foundation states
   const [trustRegistrationId, setTrustRegistrationId] = useState(user.trustRegistrationId || "");
@@ -157,6 +162,8 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
           cin: persona === "CSR_OFFICER" ? cin : "",
           csrRegistrationNumber: persona === "CSR_OFFICER" ? csrRegistrationNumber : "",
           csrBudget: persona === "CSR_OFFICER" ? csrBudget : "",
+          csrPolicySummary: persona === "CSR_OFFICER" ? csrPolicySummary : "",
+          csrFocusAreas: persona === "CSR_OFFICER" ? csrFocusAreas : [],
           trustRegistrationId: persona === "FOUNDATION" ? trustRegistrationId : "",
           trust12a80gRegNo: persona === "FOUNDATION" ? trust12a80gRegNo : "",
           trustAnnualBudget: persona === "FOUNDATION" ? trustAnnualBudget : "",
@@ -601,6 +608,39 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         placeholder="e.g. 2000000"
                       />
                     </div>
+
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <label htmlFor="csrPolicySummary" className="block text-[10px] uppercase font-bold tracking-wider text-gray-400">
+                        CSR policy (summary)
+                      </label>
+                      <textarea
+                        id="csrPolicySummary"
+                        rows={4}
+                        maxLength={4000}
+                        value={csrPolicySummary}
+                        onChange={(e) => setCsrPolicySummary(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-xs dark:text-white placeholder-gray-400 focus:outline-none transition-all"
+                        placeholder="What your board-approved CSR policy commits to: focus areas, geographies, how projects are chosen and monitored."
+                      />
+                    </div>
+
+                    <fieldset className="sm:col-span-2 space-y-1.5">
+                      <legend className="block text-[10px] uppercase font-bold tracking-wider text-gray-400">CSR focus areas</legend>
+                      <div className="flex flex-wrap gap-2">
+                        {SECTOR_OPTIONS.map((area) => (
+                          <label key={area} className="inline-flex items-center gap-2 min-h-[40px] px-3 rounded-lg border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={csrFocusAreas.includes(area)}
+                              onChange={(e) =>
+                                setCsrFocusAreas((cur) => (e.target.checked ? [...cur, area] : cur.filter((x) => x !== area)))
+                              }
+                            />
+                            {area}
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
                   </div>
                 </div>
               )}

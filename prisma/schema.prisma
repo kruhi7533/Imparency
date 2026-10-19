@@ -113,6 +113,10 @@ model User {
   // CSR specific fields
   csrRegistrationNumber String?
   csrBudget             Decimal? @db.Decimal(12, 2)
+  /// The company's board-approved CSR policy, summarised (roadmap row 6, "CSR profile").
+  csrPolicySummary      String?
+  /// Focus areas from the same sector list matching uses (lib/requirements/form-options.ts).
+  csrFocusAreas         String[] @default([])
 
   // ── Donor organisation verification ────────────────────────────────────
   // Corporate Identity Number — the one value that identifies an Indian

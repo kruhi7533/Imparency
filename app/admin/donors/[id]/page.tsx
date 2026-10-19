@@ -282,6 +282,11 @@ export default async function DonorDetailPage({ params }: { params: { id: string
                     label="Annual CSR budget"
                     value={donor.csrBudget != null ? `₹${Number(donor.csrBudget).toLocaleString("en-IN")}` : null}
                   />
+                  <Field label="CSR focus areas" value={donor.csrFocusAreas.length ? donor.csrFocusAreas.join(", ") : null} />
+                  <Field
+                    label="CSR policy"
+                    value={donor.csrPolicySummary ? <span className="whitespace-pre-wrap">{donor.csrPolicySummary}</span> : null}
+                  />
                 </>
               )}
               {orgKind === "TRUST" && (

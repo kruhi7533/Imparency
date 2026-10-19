@@ -49,6 +49,8 @@ export default async function DonorProfilePage() {
     orgVerificationStatus: user.orgVerificationStatus,
     orgVerificationNote: user.orgVerificationNote || "",
     csrBudget: user.csrBudget ? Number(user.csrBudget) : null,
+    csrPolicySummary: user.csrPolicySummary ?? "",
+    csrFocusAreas: user.csrFocusAreas ?? [],
     trustRegistrationId: user.trustRegistrationId || "",
     trust12a80gRegNo: user.trust12a80gRegNo || "",
     trustAnnualBudget: user.trustAnnualBudget ? Number(user.trustAnnualBudget) : null,

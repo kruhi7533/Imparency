@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { DonorPersona } from "@prisma/client";
 import { decideOrgStatus, isFunderPersona, normalizeCin, type OrgStatus } from "@/lib/csr-verification";
+import { SECTOR_OPTIONS } from "@/lib/requirements/form-options";
 
 export async function PUT(request: Request) {
   try {
@@ -34,6 +35,8 @@ export async function PUT(request: Request) {
       hniAnnualBudget,
       csrRegistrationNumber,
       csrBudget,
+      csrPolicySummary,
+      csrFocusAreas,
       trustRegistrationId,
       trust12a80gRegNo,
       trustAnnualBudget,
@@ -45,6 +48,18 @@ export async function PUT(request: Request) {
     }
 
     const trimmedName = name.trim();
+
+    // CSR policy (roadmap row 6). Focus areas come from the matching sector list
+    // so they mean the same thing everywhere; anything else is refused, not dropped.
+    const policy = typeof csrPolicySummary === "string" ? csrPolicySummary.trim() : "";
+    if (policy.length > 4000) {
+      return NextResponse.json({ error: "Keep the CSR policy summary under 4,000 characters." }, { status: 400 });
+    }
+    const focusAreas: string[] = Array.isArray(csrFocusAreas) ? Array.from(new Set(csrFocusAreas.filter((a: unknown): a is string => typeof a === "string"))) : [];
+    const unknownArea = focusAreas.find((a) => !SECTOR_OPTIONS.includes(a));
+    if (unknownArea) {
+      return NextResponse.json({ error: `Unknown CSR focus area: ${unknownArea}` }, { status: 400 });
+    }
 
     // Validate donor persona if provided
     let verifiedPersona: DonorPersona | null = null;
@@ -220,6 +235,8 @@ export async function PUT(request: Request) {
         hniAnnualBudget: hniAnnualBudget != null && hniAnnualBudget !== "" ? Number(hniAnnualBudget) : null,
         csrRegistrationNumber: csrRegistrationNumber ? csrRegistrationNumber.trim() : null,
         csrBudget: csrBudget != null && csrBudget !== "" ? Number(csrBudget) : null,
+        csrPolicySummary: policy || null,
+        csrFocusAreas: focusAreas,
         trustRegistrationId: trustRegistrationId ? trustRegistrationId.trim() : null,
         trust12a80gRegNo: trust12a80gRegNo ? trust12a80gRegNo.trim() : null,
         trustAnnualBudget: trustAnnualBudget != null && trustAnnualBudget !== "" ? Number(trustAnnualBudget) : null,
@@ -322,6 +339,8 @@ export async function PUT(request: Request) {
         hniAnnualBudget: updatedUser.hniAnnualBudget ? Number(updatedUser.hniAnnualBudget) : null,
         csrRegistrationNumber: updatedUser.csrRegistrationNumber,
         csrBudget: updatedUser.csrBudget ? Number(updatedUser.csrBudget) : null,
+        csrPolicySummary: updatedUser.csrPolicySummary,
+        csrFocusAreas: updatedUser.csrFocusAreas,
         trustRegistrationId: updatedUser.trustRegistrationId,
         trust12a80gRegNo: updatedUser.trust12a80gRegNo,
         trustAnnualBudget: updatedUser.trustAnnualBudget ? Number(updatedUser.trustAnnualBudget) : null,
