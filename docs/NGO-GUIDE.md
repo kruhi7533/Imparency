@@ -28,7 +28,9 @@ Nothing you report reaches a donor unchecked. That is the product, not a delay.
 | **Finance** | Confirm or dispute payments |
 | **Field staff** | See and complete only their own field tasks, capture evidence and beneficiary feedback |
 
-Invite people from **Settings → Team** (`/ngo/settings/team`).
+Invite people from **Settings → Team** (`/ngo/settings/team`). Owners, Admins
+and Finance can see the organisation's full history under **Account menu →
+Activity & Audit** (`/ngo/activity`).
 
 ---
 
@@ -103,6 +105,15 @@ on a phone. It works offline, and captures sync when signal returns.
 An admin reviews each item and either approves it, asks for a resubmission,
 or rejects it.
 
+Owners and Admins can **edit or cancel** a task while it is open, from the
+project page. Once evidence has been sent for review, the task is locked until
+the reviewer decides.
+
+When you submit milestone proof (dashboard → *Submit proof*), you can **attach
+field evidence that has already been approved** instead of uploading the same
+photo again. Attached photos stay private: the reviewer sees them, and the
+public project page does not.
+
 ## 7. Report outcomes
 
 **Impact** (`/ngo/impact`) is where numbers come from.
@@ -167,4 +178,4 @@ also be run on a real phone with mobile data switched off and then on.
 - Payouts from the platform. The platform records money but moves none.
 - An in-app notifications list. Notifications are stored and pushed, but there
   is no bell or inbox yet.
-- Editing or cancelling a field task after it is assigned.
+- Bulk import of field tasks.

@@ -696,7 +696,7 @@ Tests: `tests/contract-payments.test.ts` (rules, tenant isolation, role gates, i
   - Compare-and-swap on PENDING_REVIEW. Decisions are terminal, and a reason is required for anything other than approval.
   - Approval completes the task; a resubmit reopens it. Logged as `FIELD_EVIDENCE_REVIEWED`.
   - There is a minimal queue at `/admin/field-evidence`, which Intern 1 owns from here.
-- **Not built**: consent withdrawal UI (the field exists), task cancel/edit, and conversion of approved field evidence into `MilestoneProof`.
+- **Since built** (2026-10-21, see §16.2): consent withdrawal in `FieldTasksPanel`, task edit/cancel, and approved field evidence attached to a `MilestoneProof` by reference.
 
 Tests: `tests/field-evidence.test.ts`.
 
@@ -759,4 +759,31 @@ The NGO half of roadmap rows 7, 10 and 12. Each piece reuses an existing rule ra
 
 Rules that hold across the table: every NGO-side transition is ownership-checked in its route; decisions are compare-and-swap (409 on a race); a figure or photo reaches a donor only after a human approval.
 
-Tests: `tests/outcome-cockpit.test.ts`, `tests/outcome-extraction.test.ts`, `tests/project-funding.test.ts`, `tests/project-readiness-and-cohort.test.ts`. Demo data: `npm run seed`, then `tools/seed-ngo-demo.ts`. Walkthrough: `docs/NGO-GUIDE.md`.
+Tests: `tests/outcome-cockpit.test.ts`, `tests/outcome-extraction.test.ts`, `tests/project-funding.test.ts`, `tests/project-readiness-and-cohort.test.ts`. Demo data: `npm run seed`, then `tools/seed-ngo-demo.ts`. Walkthrough: `docs/NGO-GUIDE.md`. Handover: `docs/NGO-HANDOVER.md`.
+
+### 16.2 NGO gap closure (2026-10-21)
+
+- **NGO contract route.** `/ngo/contracts/[id]` renders the shared `ContractPageContent`. Before this, every NGO contract link pointed at `/donor/contracts/[id]`, and the donor layout sends non-donors to login, so an NGO could never counter-sign, accept or confirm a payment from the UI. Access is decided in `ContractPageContent` via `resolveContractParty`, the same rule the payment API uses.
+- **Field task edit/cancel.** `PATCH /api/ngo/field-tasks/[id]` takes `EDIT` or `CANCEL`.
+  - OWNER/ADMIN only. Another NGO's task is a 404.
+  - Only an OPEN task changes (`EDITABLE_TASK_STATUS`), via a compare-and-swap on OPEN: evidence that syncs at the same moment wins, and the edit gets a 409.
+  - Reassignment and milestone changes are re-checked against the NGO's team and the task's project. `parseTaskEdit` lives in `lib/field-evidence.ts`.
+- **Field evidence as milestone proof** (`lib/proof-field-evidence.ts`, `MilestoneProof.fieldEvidenceIds`, migration `20261021110000_proof_field_evidence`).
+  - **Selection**: the proof modal lists the milestone's attachable evidence from `GET /api/ngo/milestones/[id]/field-evidence`. `submit-proof` accepts `fieldEvidenceIds`, through `checkAttachableEvidence`: this NGO, this project, unassigned or this milestone, APPROVED. Anything else is refused by id, never silently dropped.
+  - **Storage**: the ids are stored on the proof. The photo is **never** copied into `mediaUrls` (shown on the public project page) or `contentHashes` (it would self-flag as reuse).
+  - **AI**: the model is told evidence was attached but is not sent the consent-gated photos.
+  - **Review**: admin proof review renders the attached photos through the consent-gated photo route. The milestone still goes to human review.
+  - **Known limit**: an outcome claim citing both such a proof and the same field evidence is not caught by `DUPLICATE_SOURCE_EVIDENCE`, because the proof carries no hash for it.
+- **Activity & audit** (`/ngo/activity`, `lib/ngo-activity.ts`). This is a read model over existing logs: no new writes.
+  - **Who sees it**: OWNER/ADMIN/FINANCE.
+  - **What it hides**:
+    - Admin actions come only from `NGO_VISIBLE_ADMIN_ACTIONS`, so risk flags, trust-insight runs and screening never appear; they would tip off an organisation under investigation.
+    - Admin notes are never read.
+    - Platform staff show as "Platform reviewer".
+- **Bank-statement funding.** `rematchNgoStatements` stamps `fundedAt` in the same transaction as the reconcile (merged from `feat/week6-bank-matching`).
+- **Accessibility/mobile.**
+  - **Navbar**: below `xl` (NGO) or `md` (other roles) the centre nav is replaced by a named menu button and panel driven by one link list. Before, phones had no navigation at all.
+  - **Pages**: the field app, Impact page and project panels now have live regions, 40–44px targets and AA contrast.
+  - **Regression guard**: `tests/ngo-accessibility.test.ts` pins these fixes statically.
+
+Tests: `tests/field-task-edit.test.ts`, `tests/proof-field-evidence.test.ts`, `tests/ngo-activity.test.ts`, `tests/bank-statement.test.ts` (funding cases), `tests/ngo-accessibility.test.ts`.
