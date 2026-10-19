@@ -57,7 +57,7 @@ test.describe('Admin Portal Tests', () => {
     await expect(mainContent).toBeVisible();
 
     // Verify we can see queue statistics (counts, not necessarily a search box)
-    const content = await page.textContent();
+    const content = await page.textContent("body");
     expect(content).toBeTruthy();
   });
 
@@ -72,7 +72,7 @@ test.describe('Admin Portal Tests', () => {
     await expect(donorList).toBeVisible();
 
     // Check for donor entries - look for email text that indicates donors are present
-    const pageText = await page.textContent();
+    const pageText = await page.textContent("body");
 
     // If there are PENDING donors, they should be visible
     // Instead of checking for exact row count, check that the page has content
@@ -115,7 +115,7 @@ test.describe('Admin Portal Tests', () => {
     await expect(detailContent).toBeVisible();
 
     // Check for donor information - be flexible with what text might be present
-    const pageText = await page.textContent();
+    const pageText = await page.textContent("body");
     expect(pageText).toBeTruthy();
 
     // Check for either organization fields or a message about no org
@@ -139,7 +139,7 @@ test.describe('Admin Portal Tests', () => {
 
     // Check for key metric cards - these should be present even if values are 0
     // Use flexible selectors since exact structure may vary
-    const pageText = await page.textContent();
+    const pageText = await page.textContent("body");
 
     expect(pageText).toContain('Donations Today');
     expect(pageText).toContain('Financial Year Spend');
