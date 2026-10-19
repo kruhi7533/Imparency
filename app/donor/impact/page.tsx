@@ -55,6 +55,7 @@ export default async function DonorImpactPage() {
     <ImpactFeedClient
       events={events.map((e) => ({
         id: e.id,
+        projectId: e.projectId,
         type: e.type,
         title: e.title,
         body: e.body,

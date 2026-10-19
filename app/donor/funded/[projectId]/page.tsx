@@ -11,6 +11,7 @@ import { loadDonorProjectOutcomes } from "@/lib/outcome-cockpit";
 import { loadProjectFunding } from "@/lib/project-funding";
 import { ProjectFundingBadge } from "@/components/projects/ProjectFundingBadge";
 import { formatOutcome, inr } from "@/lib/outcome-format";
+import UpdateFeedback from "@/components/donor/UpdateFeedback";
 
 export const dynamic = "force-dynamic";
 
@@ -131,6 +132,12 @@ export default async function DonorFundedProjectPage({ params }: { params: { pro
               );
             })}
           </ol>
+        </section>
+
+        <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+          <h2 className="text-base font-bold text-gray-900 dark:text-white">Your feedback to the organisation</h2>
+          <p className="text-xs text-gray-500">Shared with the organisation without your name, so they know what to report on next.</p>
+          <UpdateFeedback projectId={params.projectId} prompt="How useful are this project's updates?" />
         </section>
 
         {/* Reported outcomes — through claimDisplay(): a figure only when approved AND still

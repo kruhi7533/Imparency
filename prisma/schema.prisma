@@ -3525,3 +3525,28 @@ model JobRun {
   @@index([job, startedAt])
   @@index([status, startedAt])
 }
+
+enum DonorFeedbackSignal {
+  HELPFUL
+  NEED_MORE_DETAIL
+}
+
+/// A donor's reaction to a project's updates (roadmap row 12, "feedback
+/// signal"). One per donor per project per update; `eventKey` is the
+/// ProjectImpactEvent id, or "" for feedback on the project's updates overall,
+/// so the unique key also covers project-level feedback (Postgres treats NULLs
+/// as distinct, which would allow duplicates). The NGO sees counts and notes,
+/// never the donor's identity.
+model DonorUpdateFeedback {
+  id        String              @id @default(uuid())
+  donorId   String
+  projectId String
+  eventKey  String              @default("")
+  signal    DonorFeedbackSignal
+  note      String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([donorId, projectId, eventKey])
+  @@index([projectId, createdAt])
+}

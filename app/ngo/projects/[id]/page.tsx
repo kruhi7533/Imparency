@@ -1,4 +1,5 @@
 import MatchingProfilePanel from "./MatchingProfilePanel";
+import { summariseFeedback } from "@/lib/donor-feedback";
 import { loadProjectFunding } from "@/lib/project-funding";
 import { ProjectFundingBadge } from "@/components/projects/ProjectFundingBadge";
 import React from "react";
@@ -59,7 +60,7 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
   // Tenant check: the caller must be on this project's NGO.
   const party = await resolveContractParty(user, { donorId: "", ngoId: project.ngoId });
   if (!party || party.party !== "NGO") notFound();
-  const funding = await loadProjectFunding([project.id]);
+  const [funding, donorFeedback] = await Promise.all([loadProjectFunding([project.id]), summariseFeedback(project.id)]);
 
   // Week 7: field tasks. Owners/admins see and assign all; others see their own.
   const canManage = CAN_ASSIGN.includes(party.teamRole);
@@ -152,6 +153,34 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
             reportingCadence: project.reportingCadence,
           }}
         />
+
+        {/* Donor feedback on updates (no donor identity — lib/donor-feedback.ts) */}
+        <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-3">
+          <div>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">What donors say about your updates</h2>
+            <p className="text-xs text-gray-500">Anonymous. Use it to decide what to report next.</p>
+          </div>
+          {donorFeedback.helpful + donorFeedback.needMoreDetail === 0 ? (
+            <p className="text-xs text-gray-500 italic">No donor feedback yet.</p>
+          ) : (
+            <>
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                <strong>{donorFeedback.helpful}</strong> found them helpful · <strong>{donorFeedback.needMoreDetail}</strong> asked for more
+                detail
+              </p>
+              {donorFeedback.notes.length > 0 && (
+                <ul className="space-y-2">
+                  {donorFeedback.notes.map((n, i) => (
+                    <li key={i} className="text-sm text-gray-700 dark:text-gray-300 border-l-2 border-amber-400 pl-3">
+                      &ldquo;{n.note}&rdquo;
+                      <span className="block text-xs text-gray-500">{new Date(n.at).toLocaleDateString("en-IN")}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </section>
 
         {/* Project milestones */}
         <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-3">
