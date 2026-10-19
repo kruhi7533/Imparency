@@ -711,3 +711,50 @@ Tests: `tests/field-evidence.test.ts`.
 - **Known gap, not fixed here**: the public `/projects/[id]` page and the impact feed still show the latest `MilestoneProof` media before admin review. That is the older proof track, separate from field evidence.
 
 Tests: `tests/donor-funded-view.test.ts`.
+
+## 16. NGO outcomes, funding and matching profile (2026-10-21)
+
+The NGO half of roadmap rows 7, 10 and 12. Each piece reuses an existing rule rather than adding a parallel one.
+
+- **Impact cockpit `/ngo/impact`** (`lib/outcome-cockpit.ts`, `ImpactCockpitClient.tsx`). Claims, per-metric rollups and citable evidence for the caller's NGO.
+  - The owner can edit; team members get a read-only view.
+  - Rollups are per metric in exact minor units. Only APPROVED-and-still-backed claims count as verified; never sum across metrics (see the impact-quality rule in CLAUDE.md).
+  - Citable evidence: milestone proofs whose milestone has an APPROVED review, `FieldEvidence` with status APPROVED, and consented feedback whose linked evidence is approved. `verifyCitationOwnership` (shared with the create route) rejects anything outside the caller's NGO.
+  - `POST /api/ngo/outcome-claims/preview` runs the real triage over an unsaved claim and writes nothing. That is the "check against review" button.
+  - `PUT /api/ngo/outcome-claims/[id]` edits a DRAFT or NEEDS_EVIDENCE claim (`isEditable`). It runs a compare-and-swap on `{id, status}` and returns 409 on a race; citations are replaced in the same transaction. Another org's claim → 404.
+- **Donor figures.** `loadDonorProjectOutcomes` renders "Reported outcomes" on `/donor/funded/[projectId]` through `claimDisplay()`. An unbacked claim reads "unverified", never 0.
+- **AI outcome extraction** (`lib/gemini/extract-outcomes.ts`, `POST /api/ngo/outcome-claims/extract`, rate-limited `outcome-extract` 10/300s). It suggests values only; the NGO still saves a draft and submits it to human review.
+  - **Hard rules**: the quote must appear verbatim in a cited source, and the value must appear in the quote. Below `MIN_CONFIDENCE` (0.6) the answer is downgraded. Unknown metrics are dropped. Every requested metric gets exactly one answer.
+  - **Failure handling**: no model, a model error or bad JSON all produce `INSUFFICIENT_DATA` for every metric — never a guessed number.
+  - **What the model sees**: milestone proof text and field notes only. Beneficiary feedback text is never sent to it.
+- **Project becomes FUNDED** (`lib/project-funding.ts`, `Project.fundedAt`, migration `20261021090000_project_funded_at`).
+  - **Rule**: funded when RECONCILED payments on ACTIVE/COMPLETED contracts cover every committed rupee. Pending or disputed payments, and draft or proposed contracts, never count.
+  - **Stamping**: `stampProjectFundedIfComplete` runs inside the CONFIRM transaction of `PATCH /api/contracts/[id]/payments/[paymentId]`. It is a compare-and-swap on `fundedAt: null`, so `PROJECT_FUNDED` notifications (NGO owner + contract donors) go out exactly once.
+  - **Shown by** `ProjectFundingBadge` on `/ngo/projects/[id]`, `/donor/funded/[projectId]` and `/admin/projects`.
+  - **Open**: the bank-statement reconcile path (`feat/week6-bank-matching`) must call the same stamp.
+- **Beneficiary cohort and matching profile** (`lib/project-readiness.ts`, `Project.beneficiaryGroup`, migration `20261021100000_project_beneficiary_group`).
+  - **Ready for matching** needs cause, state, cohort size ≥ `MIN_COHORT` (1), who the beneficiaries are, and duration. KPIs and reporting cadence are optional. Readiness is advisory and never hides a project from matching.
+  - **Saving** goes through `PATCH /api/ngo/projects/[id]/matching-profile` (OWNER/ADMIN, ownership-checked). It exists because `PATCH /api/ngo/projects/[id]` sends an ACTIVE project back to PENDING_APPROVAL on any edit. The new-project form also collects `beneficiaryGroup`.
+  - **Engine changes** (`matchingEngine.ts`):
+    - `compareBeneficiaries`: MATCH when the cohort covers the requirement, PARTIAL at ≥ half, INSUFFICIENT_DATA when undeclared.
+    - `compareReporting`: compares reports per year and understands the form's `BI_ANNUAL`-style values (`LEGACY_PROJECT_CADENCES`).
+    - Declared `primaryKPIs` are compared before the outcome-prose fallback. Both new rows stay **unscored**, so weights are unchanged.
+  - **Shown on** `MatchingProfilePanel` on `/ngo/projects/[id]`, and "Ready for matching" / "N missing" on `/admin/projects`.
+
+### 16.1 NGO-side state reference
+
+| Record | States | Who moves it | Where |
+|---|---|---|---|
+| `NGOProfile.verificationStatus` | PENDING → VERIFIED / REJECTED | Admin only | §3 Admin Verification |
+| `Project.status` | DRAFT → PENDING_APPROVAL → ACTIVE → COMPLETED; PAUSED | NGO submits; admin approves. Any edit through the main project PATCH returns ACTIVE → PENDING_APPROVAL | `app/api/ngo/projects/[id]` |
+| `Project.fundedAt` | null → timestamp, once | System, on the payment confirmation that completes funding | `lib/project-funding.ts` |
+| `Milestone.status` | PENDING → IN_PROGRESS → PROOF_SUBMITTED → VERIFIED / COMPLETED | NGO submits proof; admin reviews | `app/api/admin/review-proof` |
+| `Contract.status` | DRAFT → PROPOSED → UNDER_REVIEW → ACTIVE → COMPLETED; TERMINATED / REJECTED | Donor and NGO, then `ngoAcceptedAt` before any payment | §14.1 |
+| `ContractPayment.status` | PENDING_CONFIRMATION → RECONCILED / DISPUTED (terminal) | Donor records; NGO OWNER/ADMIN/FINANCE decides | §14.1 |
+| `FieldTask.status` | OPEN → SUBMITTED → COMPLETED; CANCELLED | OWNER/ADMIN assign; field staff submit; evidence approval completes | §15 |
+| `FieldEvidence.status` | PENDING_REVIEW → APPROVED / RESUBMIT_REQUESTED / REJECTED | Admin only | §15 |
+| `OutcomeClaim.status` | DRAFT / NEEDS_EVIDENCE →(submit) SUBMITTED →(admin) APPROVED / NEEDS_EVIDENCE / REJECTED; SUBMITTED / APPROVED →(withdraw) WITHDRAWN | NGO owner submits/withdraws; admin decides, BLOCKED triage refused server-side | `lib/outcome-workflow.ts` |
+
+Rules that hold across the table: every NGO-side transition is ownership-checked in its route; decisions are compare-and-swap (409 on a race); a figure or photo reaches a donor only after a human approval.
+
+Tests: `tests/outcome-cockpit.test.ts`, `tests/outcome-extraction.test.ts`, `tests/project-funding.test.ts`, `tests/project-readiness-and-cohort.test.ts`. Demo data: `npm run seed`, then `tools/seed-ngo-demo.ts`. Walkthrough: `docs/NGO-GUIDE.md`.
