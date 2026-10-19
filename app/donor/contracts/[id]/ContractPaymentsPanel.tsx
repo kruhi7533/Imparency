@@ -37,6 +37,8 @@ export interface PanelViewer {
   party: "DONOR" | "NGO" | "ADMIN";
   canAccept: boolean;
   canConfirm: boolean;
+  /** Donor side: may record a payment (not a VIEWER team member). */
+  canPay?: boolean;
 }
 
 const STATE_BADGE: Record<PanelSummary["state"], { cls: string; label: string }> = {
@@ -205,7 +207,7 @@ export default function ContractPaymentsPanel({
       )}
 
       {/* Donor: record a payment */}
-      {viewer.party === "DONOR" && isActive && accepted && (
+      {viewer.party === "DONOR" && viewer.canPay && isActive && accepted && (
         <div>
           {!showForm ? (
             <button

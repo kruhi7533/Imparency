@@ -3550,3 +3550,37 @@ model DonorUpdateFeedback {
   @@unique([donorId, projectId, eventKey])
   @@index([projectId, createdAt])
 }
+
+/// A donor organisation's sub-users (roadmap row 6, "team roles"). The CSR
+/// account is the owner's User row: requirements, contracts and verification
+/// stay keyed on that id, and a member acts FOR it (lib/donor-team.ts). A user
+/// belongs to at most one donor organisation.
+enum DonorTeamRole {
+  ADMIN
+  APPROVER
+  VIEWER
+}
+
+model DonorTeamMember {
+  id          String        @id @default(uuid())
+  accountId   String
+  userId      String        @unique
+  role        DonorTeamRole @default(VIEWER)
+  invitedById String
+  createdAt   DateTime      @default(now())
+
+  @@index([accountId])
+}
+
+model DonorTeamInvite {
+  id        String        @id @default(cuid())
+  accountId String
+  email     String
+  role      DonorTeamRole @default(VIEWER)
+  token     String        @unique @default(cuid())
+  accepted  Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  expiresAt DateTime
+
+  @@unique([email, accountId])
+}

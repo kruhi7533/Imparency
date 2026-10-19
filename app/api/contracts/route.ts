@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
+import { donorCan, resolveDonorAccount, ROLE_FORBIDDEN } from "@/lib/donor-team";
 import { createContract } from "@/lib/contract-service";
 
 export async function GET(request: Request) {
@@ -19,7 +20,8 @@ export async function GET(request: Request) {
     const where: any = {};
 
     if (userRole === "DONOR") {
-      where.donorId = userId;
+      // A donor team member sees their organisation's contracts (lib/donor-team.ts).
+      where.donorId = (await resolveDonorAccount(userId)).accountId;
     } else if (userRole === "NGO") {
       // Find NGO Profile for this user
       const ngoProfile = await prisma.nGOProfile.findUnique({
@@ -111,7 +113,10 @@ export async function POST(request: Request) {
     let ngoId: string = project.ngoId;
 
     if (userRole === "DONOR") {
-      donorId = userId;
+      // The contract belongs to the organisation's account, and drafting one is a decision.
+      const account = await resolveDonorAccount(userId);
+      if (!donorCan(account.role, "decide")) return NextResponse.json({ error: ROLE_FORBIDDEN }, { status: 403 });
+      donorId = account.accountId;
     } else if (userRole === "NGO") {
       // NGO proposing a contract to a donor
       const ngoProfile = await prisma.nGOProfile.findUnique({

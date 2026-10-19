@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
+import { resolveDonorAccount } from "@/lib/donor-team";
 import DonorContractsClient from "@/app/donor/contracts/DonorContractsClient";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,8 @@ export default async function DonorContractsPage({
   // email and then CREATE a user row during render when none was found: a
   // write in a GET, and a way for one session to resolve to another account's
   // contracts. Contracts are only ever listed for the signed-in user's id.
-  const userId = session.user.id;
+  // A donor team member lists their organisation's contracts.
+  const userId = (await resolveDonorAccount(session.user.id)).accountId;
   const statusFilter = searchParams.status;
   const q = searchParams.q?.trim() || "";
 

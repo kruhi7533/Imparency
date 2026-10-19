@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  */
 
 const db = vi.hoisted(() => ({
+  donorTeamMember: { findUnique: vi.fn() },
   contract: { findMany: vi.fn() },
   donation: { groupBy: vi.fn() },
   project: { findMany: vi.fn() },

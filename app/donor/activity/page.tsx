@@ -1,3 +1,4 @@
+import { resolveDonorAccount } from "@/lib/donor-team";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
@@ -22,7 +23,7 @@ export default async function DonorActivityPage({ searchParams }: { searchParams
   if (!session?.user) redirect("/login?callbackUrl=/donor/activity");
   if (session.user.role !== "DONOR") redirect("/unauthorized");
 
-  const all = await loadDonorActivity(session.user.id);
+  const all = await loadDonorActivity((await resolveDonorAccount(session.user.id)).accountId, 200, session.user.id);
   const kind = searchParams.kind && searchParams.kind in KIND_LABEL ? (searchParams.kind as DonorActivityKind) : null;
   const items = kind ? all.filter((i) => i.kind === kind) : all;
   const chip = (active: boolean) =>

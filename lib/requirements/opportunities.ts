@@ -333,7 +333,7 @@ export async function requestResponseChanges(requirementId: string, actor: Actor
     throw new RequirementWorkflowError("Choose the proposal to send back.", 400);
   }
   const req = await loadRequirementForActor(requirementId, actor);
-  const role = workflowRole(req, actor);
+  const role = workflowRole(req, actor, "decide");
 
   const text = typeof note === "string" ? note.trim() : "";
   if (text.length < CHANGE_NOTE_MIN) {

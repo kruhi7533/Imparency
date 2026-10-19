@@ -88,7 +88,7 @@ export async function loadCandidates(): Promise<CandidateProject[]> {
  */
 export async function runMatching(requirementId: string, actor: Actor) {
   const req = await loadRequirementForActor(requirementId, actor);
-  const role = workflowRole(req, actor);
+  const role = workflowRole(req, actor, "decide");
   // The gate follows the requirement's OWNER, not the caller: an admin re-running
   // matching for an offline funder is not blocked by their own lack of a donor
   // persona, but an unverified owner still is (WEEK5 SPEC-1).

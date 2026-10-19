@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const db = vi.hoisted(() => ({
+  donorTeamMember: { findUnique: vi.fn() },
   sponsorRequirement: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), updateMany: vi.fn(), count: vi.fn() },
   requirementRevision: { create: vi.fn() },
   requirementAuditLog: { create: vi.fn() },

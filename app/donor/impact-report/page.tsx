@@ -1,3 +1,4 @@
+import { resolveDonorAccount } from "@/lib/donor-team";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
@@ -19,7 +20,7 @@ export default async function DonorImpactReportPage() {
   if (!session?.user) redirect("/login?callbackUrl=/donor/impact-report");
   if (session.user.role !== "DONOR") redirect("/unauthorized");
 
-  const report = await loadDonorImpact(session.user.id);
+  const report = await loadDonorImpact((await resolveDonorAccount(session.user.id)).accountId);
   const generated = new Date(report.generatedAt).toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" });
   const verifiedClaims = report.projects.flatMap((p) => p.outcomes).filter((o) => o.display.kind === "verified").length;
   const allClaims = report.projects.flatMap((p) => p.outcomes).length;

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { checkFunderEligibility } from "@/lib/matching/funder";
 import { ERRORS, RequirementWorkflowError } from "./errors";
+import { donorCan, resolveDonorAccount, ROLE_FORBIDDEN, type DonorCapability, type DonorRole } from "@/lib/donor-team";
 
 /**
  * Identity + authorization for the CSR requirement workflow. Identity and role
@@ -18,13 +19,26 @@ export interface Actor {
   role: "DONOR" | "NGO" | "ADMIN";
   name: string | null;
   email: string | null;
+  /**
+   * The CSR account a donor acts for (lib/donor-team.ts): their own id, or the
+   * owner's id when they are a team member. Requirements are owned by this id.
+   * Absent for non-donors; treated as `id`.
+   */
+  accountId?: string;
+  donorRole?: DonorRole;
 }
 
 export async function getActor(): Promise<Actor | null> {
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!user?.id || !user?.role) return null;
-  return { id: user.id, role: user.role, name: user.name ?? null, email: user.email ?? null };
+  const actor: Actor = { id: user.id, role: user.role, name: user.name ?? null, email: user.email ?? null };
+  if (actor.role === "DONOR") {
+    const account = await resolveDonorAccount(actor.id);
+    actor.accountId = account.accountId;
+    actor.donorRole = account.role;
+  }
+  return actor;
 }
 
 export async function requireActor(): Promise<Actor> {
@@ -52,7 +66,7 @@ export async function requireVerifiedFunder(userId: string | null): Promise<void
 }
 
 export function isRequirementOwner(req: { sponsorId: string | null }, actor: Actor): boolean {
-  return !!req.sponsorId && req.sponsorId === actor.id;
+  return !!req.sponsorId && req.sponsorId === (actor.accountId ?? actor.id);
 }
 
 export function canViewRequirement(req: { sponsorId: string | null }, actor: Actor): boolean {
@@ -73,10 +87,25 @@ export function assertAdmin(actor: Actor): void {
  * The role an actor acts in for a given requirement: admins act as ADMIN; the
  * owner acts as DONOR (even if their session role differs); nobody else may act.
  */
-export function workflowRole(req: { sponsorId: string | null }, actor: Actor): "DONOR" | "ADMIN" {
+/**
+ * The workflow role for this actor on this requirement. For a donor it also
+ * checks their team role allows `cap` — a VIEWER member can read the
+ * requirement but every write path refuses them here.
+ */
+export function workflowRole(req: { sponsorId: string | null }, actor: Actor, cap: DonorCapability = "view"): "DONOR" | "ADMIN" {
   if (actor.role === "ADMIN") return "ADMIN";
-  if (isRequirementOwner(req, actor)) return "DONOR";
+  if (isRequirementOwner(req, actor)) {
+    if (!donorCan(actor.donorRole ?? "OWNER", cap)) throw new RequirementWorkflowError(ROLE_FORBIDDEN, 403);
+    return "DONOR";
+  }
   throw ERRORS.forbidden();
+}
+
+/** For creating a requirement: the account it will belong to, if this donor may create one. */
+export function donorAccountFor(actor: Actor, cap: DonorCapability): string {
+  if (actor.role !== "DONOR") throw ERRORS.forbidden();
+  if (!donorCan(actor.donorRole ?? "OWNER", cap)) throw new RequirementWorkflowError(ROLE_FORBIDDEN, 403);
+  return actor.accountId ?? actor.id;
 }
 
 /** Loads a requirement (404 if missing) and checks the actor may view it (403). */

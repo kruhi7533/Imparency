@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma';
 import { uploadPrivateFile, deletePrivateFile } from '@/lib/storage';
 import { SponsorRequirementRepository } from '@/src/agents/requirements-agent/repositories/requirement.repository';
 import { LlmUnavailableError } from '@/src/agents/requirements-agent/services/llm/llm.service';
-import { getActor, requireVerifiedFunder } from '@/lib/requirements/access';
+import { donorAccountFor, getActor, requireVerifiedFunder } from '@/lib/requirements/access';
 import { recordRequirementEvent, recordRequirementEventBestEffort } from '@/lib/requirements/audit';
 import { runExtraction } from '@/lib/requirements/extraction';
 import { serializeRequirement } from '@/lib/requirements/dto';
@@ -26,26 +26,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Only donor accounts can upload CSR documents.' }, { status: 403 });
   }
 
-  // Resolve the sponsor from the session (by id, falling back to email), auto-healing
-  // a missing user row after a DB re-sync — pre-existing behaviour, kept as is.
-  let user = await prisma.user.findFirst({
-    where: { OR: [{ id: actor.id }, ...(actor.email ? [{ email: actor.email }] : [])] },
-  });
-  if (!user && actor.email) {
-    user = await prisma.user.create({
-      data: {
-        id: actor.id,
-        email: actor.email,
-        name: actor.name || 'Donor User',
-        role: 'DONOR',
-        passwordHash: 'oauth-or-session-restored',
-      },
-    });
+  // The requirement belongs to the organisation's account: the donor's own id,
+  // or the owner's when they are a team member with editing rights
+  // (lib/donor-team.ts). The session id is the identity — this used to fall back
+  // to matching by email and create a User row during the upload.
+  let sponsorId: string;
+  try {
+    sponsorId = donorAccountFor(actor, 'editRequirements');
+  } catch (err) {
+    if (err instanceof RequirementWorkflowError) return NextResponse.json({ error: err.message }, { status: err.status });
+    throw err;
   }
-  if (!user) {
-    return NextResponse.json({ error: 'Your session is invalid. Please log out and log in again.' }, { status: 401 });
-  }
-  const sponsorId = user.id;
 
   // Funder gate (WEEK5 SPEC-1): an unverified organisation cannot start a
   // requirement. Checked before the file is read or written to storage.

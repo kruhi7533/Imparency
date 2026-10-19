@@ -49,7 +49,12 @@ const REVIEWER = "Platform reviewer";
 const humanise = (s: string) => s.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
 const inr = (v: { toString(): string }) => `₹${Number(v.toString()).toLocaleString("en-IN")}`;
 
-export async function loadDonorActivity(donorId: string, limit = 200): Promise<DonorActivityItem[]> {
+/**
+ * @param donorId  the CSR account (owner id) whose history this is
+ * @param viewerId who is looking — a team member sees the owner as "Account owner", not "You"
+ */
+export async function loadDonorActivity(donorId: string, limit = 200, viewerId: string = donorId): Promise<DonorActivityItem[]> {
+  const self = (id: string | null) => (id === viewerId ? "You" : id === donorId ? "Account owner" : null);
   const [reqLogs, contractLogs, donations, events] = await Promise.all([
     prisma.requirementAuditLog.findMany({
       where: { requirement: { sponsorId: donorId } },
@@ -96,7 +101,7 @@ export async function loadDonorActivity(donorId: string, limit = 200): Promise<D
   ]);
 
   const actorFor = (actorId: string | null, role: string, ngoName?: string) =>
-    actorId === donorId ? "You" : role === "ADMIN" ? REVIEWER : role === "NGO" ? ngoName ?? "The NGO" : role === "SYSTEM" ? "Platform" : humanise(role);
+    self(actorId) ?? (role === "ADMIN" ? REVIEWER : role === "NGO" ? ngoName ?? "The NGO" : role === "SYSTEM" ? "Platform" : role === "DONOR" ? "Your team" : humanise(role));
 
   return mergeActivity<DonorActivityItem>(
     [
@@ -125,7 +130,7 @@ export async function loadDonorActivity(donorId: string, limit = 200): Promise<D
         kind: "DONATION" as const,
         title: `Donation of ${inr(d.amount)} — ${d.project.title}`,
         detail: d.status === "SUCCESS" ? "Payment received" : d.status === "FAILED" ? "Payment failed" : humanise(d.status),
-        actor: "You",
+        actor: self(donorId) ?? "Account owner",
         href: d.status === "SUCCESS" ? null : `/donor/donations`,
       })),
       events.map((e) => ({
@@ -133,7 +138,7 @@ export async function loadDonorActivity(donorId: string, limit = 200): Promise<D
         kind: "ACCOUNT" as const,
         title: DONOR_VISIBLE_EVENTS[e.eventType],
         detail: null,
-        actor: e.source === "ADMIN" ? REVIEWER : e.source === "USER" ? "You" : "Platform",
+        actor: e.source === "ADMIN" ? REVIEWER : e.source === "USER" ? self(donorId) ?? "Account owner" : "Platform",
         href: "/donor/profile",
       })),
     ],

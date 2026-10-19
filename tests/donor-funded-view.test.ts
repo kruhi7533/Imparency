@@ -13,6 +13,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/prisma", () => ({
   default: {
+    donorTeamMember: { findUnique: vi.fn() },
     contract: { findMany: vi.fn() },
     user: { findUnique: vi.fn().mockResolvedValue({ projectUpdatesOptOut: false }), update: vi.fn() },
     project: { findUnique: vi.fn() },

@@ -1,3 +1,4 @@
+import { resolveDonorAccount } from "@/lib/donor-team";
 import { NextResponse } from "next/server";
 import { Role } from "@prisma/client";
 import { verifySessionRole } from "@/lib/auth-guards";
@@ -13,7 +14,7 @@ export const runtime = "nodejs";
 export async function GET() {
   const { authorized, response, session } = await verifySessionRole(Role.DONOR);
   if (!authorized) return response;
-  const csv = impactReportCsv(await loadDonorImpact(session.user.id));
+  const csv = impactReportCsv(await loadDonorImpact((await resolveDonorAccount(session.user.id)).accountId));
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

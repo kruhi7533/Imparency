@@ -17,6 +17,7 @@ import { Prisma } from "@prisma/client";
 
 vi.mock("@/lib/prisma", () => ({
   default: {
+    donorTeamMember: { findUnique: vi.fn() },
     nGOProfile: { findUnique: vi.fn() },
     nGOTeamMember: { findFirst: vi.fn() },
     // findMany: the confirm route checks whether the project is now fully

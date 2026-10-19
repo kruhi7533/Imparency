@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Role } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { donorCan, ROLE_FORBIDDEN } from "@/lib/donor-team";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { isUniqueConstraintError } from "@/lib/razorpay-webhook";
 import {
@@ -63,6 +64,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const party = await resolveContractParty(session.user, contract);
     if (!party || party.party !== "DONOR") {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+    if (!donorCan(party.donorRole, "pay")) {
+      return NextResponse.json({ error: ROLE_FORBIDDEN }, { status: 403 });
     }
 
     const body = await request.json().catch(() => ({}));
