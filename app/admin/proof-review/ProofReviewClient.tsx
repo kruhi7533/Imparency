@@ -14,6 +14,8 @@ interface Proof {
   description: string;
   mediaUrls: string[];
   documentUrls: string[];
+  /** Approved field evidence attached by reference (lib/proof-field-evidence.ts). */
+  fieldEvidenceIds?: string[];
   aiValidationResult: string | null;
   aiValidationScore: number | null;
   proofLatitude: number | null;
@@ -438,6 +440,32 @@ export default function ProofReviewClient({
                                   </button>
                                 );
                               })}
+                            </div>
+                          </div>
+                        )}
+
+                        {(latestProof.fieldEvidenceIds?.length ?? 0) > 0 && (
+                          <div className="space-y-1">
+                            <h5 className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                              Approved field evidence attached ({latestProof.fieldEvidenceIds!.length}) — already reviewed in Field Evidence:
+                            </h5>
+                            <div className="flex flex-wrap gap-2">
+                              {latestProof.fieldEvidenceIds!.map((id, index) => (
+                                <a
+                                  key={id}
+                                  href={`/api/field/evidence/${id}/photo`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={`/api/field/evidence/${id}/photo`}
+                                    alt={`Attached field evidence ${index + 1}`}
+                                    className="w-16 h-16 rounded-lg object-cover border border-emerald-200"
+                                  />
+                                </a>
+                              ))}
                             </div>
                           </div>
                         )}

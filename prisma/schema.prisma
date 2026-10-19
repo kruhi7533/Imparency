@@ -526,6 +526,12 @@ model MilestoneProof {
   // tools/backfill-proof-hashes.ts exists.
   contentHashes String[] @default([])
 
+  /// Approved FieldEvidence ids (same NGO + project) attached as part of this
+  /// proof. Referenced, never copied into mediaUrls: field photos are private
+  /// and consent-gated, and mediaUrls are shown on the public project page.
+  /// Served only through GET /api/field/evidence/[id]/photo.
+  fieldEvidenceIds String[] @default([])
+
   /// Week 8: outcome claims citing this proof as evidence.
   outcomeCitations OutcomeClaimEvidence[]
 
