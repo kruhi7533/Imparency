@@ -31,6 +31,7 @@ vi.mock("@/lib/gemini/validate-proof", () => ({
 
 import { getServerSession } from "next-auth/next";
 import { validateMilestoneProof } from "@/lib/gemini/validate-proof";
+import { emitProjectImpactEvent } from "@/lib/impact-events";
 import { checkAttachableEvidence, MAX_ATTACHED_EVIDENCE } from "@/lib/proof-field-evidence";
 import { POST as SUBMIT_PROOF } from "@/app/api/ngo/submit-proof/route";
 import { GET as LIST } from "@/app/api/ngo/milestones/[id]/field-evidence/route";
@@ -120,6 +121,13 @@ describe("POST /api/ngo/submit-proof with field evidence", () => {
 
   it("neither a file nor evidence is still a 400", async () => {
     expect((await SUBMIT_PROOF(proofRequest({}))).status).toBe(400);
+  });
+
+  it("the pre-review PROOF_SUBMITTED feed event carries no media — donors must not see unreviewed photos", async () => {
+    await SUBMIT_PROOF(proofRequest({ withFile: true }));
+    const event = (emitProjectImpactEvent as any).mock.calls[0][0];
+    expect(event.type).toBe("PROOF_SUBMITTED");
+    expect(event.payload).not.toHaveProperty("mediaUrls");
   });
 
   it("a plain file upload still works with no evidence attached", async () => {

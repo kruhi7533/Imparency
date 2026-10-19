@@ -61,7 +61,12 @@ export default async function DonorImpactPage() {
         createdAt: e.createdAt.toISOString(),
         projectTitle: projectMap.get(e.projectId)?.title ?? "Unknown project",
         ngoName: projectMap.get(e.projectId)?.ngo.orgName ?? "",
-        mediaUrls: Array.isArray((e.payload as any)?.mediaUrls) ? ((e.payload as any).mediaUrls as string[]) : [],
+        // Only an admin-approved completion may show proof photos. Older
+        // PROOF_SUBMITTED rows carried unreviewed media in their payload.
+        mediaUrls:
+          e.type === "MILESTONE_COMPLETED" && Array.isArray((e.payload as any)?.mediaUrls)
+            ? ((e.payload as any).mediaUrls as string[])
+            : [],
       }))}
       subscriptions={subscriptions.map((s) => ({
         projectId: s.projectId,
