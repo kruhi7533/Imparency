@@ -50,6 +50,7 @@ export default function NewProjectPage() {
   // Matching Fields (Week 5)
   const [durationMonths, setDurationMonths] = useState("");
   const [expectedBeneficiaries, setExpectedBeneficiaries] = useState("");
+  const [beneficiaryGroup, setBeneficiaryGroup] = useState("");
   const [reportingCadence, setReportingCadence] = useState("QUARTERLY");
   const [primaryKPIs, setPrimaryKPIs] = useState<string[]>([""]);
 
@@ -235,6 +236,7 @@ export default function NewProjectPage() {
       // Matching Fields
       formData.append("durationMonths", durationMonths);
       formData.append("expectedBeneficiaries", expectedBeneficiaries);
+      formData.append("beneficiaryGroup", beneficiaryGroup);
       formData.append("reportingCadence", reportingCadence);
       formData.append("primaryKPIs", JSON.stringify(primaryKPIs.filter(k => k.trim() !== "")));
 
@@ -453,6 +455,17 @@ export default function NewProjectPage() {
                     onChange={(e) => setExpectedBeneficiaries(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
                     placeholder="e.g. 500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Who the beneficiaries are</label>
+                  <input
+                    type="text"
+                    maxLength={200}
+                    value={beneficiaryGroup}
+                    onChange={(e) => setBeneficiaryGroup(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                    placeholder="e.g. Girls aged 14–18 in government schools"
                   />
                 </div>
                 <div>

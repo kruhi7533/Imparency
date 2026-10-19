@@ -33,6 +33,19 @@ export const INDIAN_STATES = [
 export const REPORTING_CADENCES = ["Monthly", "Quarterly", "Half-yearly", "Annually", "At each milestone"];
 
 /**
+ * The values the NGO "new project" form has always stored. Accepted alongside
+ * REPORTING_CADENCES so an existing project's cadence is never rejected or
+ * wiped when its matching profile is saved.
+ */
+export const LEGACY_PROJECT_CADENCES: Record<string, string> = {
+  MONTHLY: "Monthly",
+  QUARTERLY: "Quarterly",
+  BI_ANNUAL: "Bi-annually",
+  ANNUAL: "Annually",
+  END_OF_PROJECT: "End of project",
+};
+
+/**
  * Wording matters: lib/requirements/facts.ts detects "FCRA", "80G" and "12A"
  * in required documents to apply the hard eligibility rules in matching.
  */

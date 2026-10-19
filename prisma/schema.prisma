@@ -381,6 +381,10 @@ model Project {
 
   durationMonths        Int?
   expectedBeneficiaries Int?
+  /// Who the project serves, in the NGO's words ("Girls aged 14–18 in
+  /// government schools"). With expectedBeneficiaries this is the project's
+  /// beneficiary cohort, compared against the donor's expected reach in matching.
+  beneficiaryGroup      String?
   primaryKPIs           String[] @default([])
   reportingCadence      String?
 

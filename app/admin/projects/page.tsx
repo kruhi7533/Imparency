@@ -1,3 +1,4 @@
+import { matchingReadiness } from "@/lib/project-readiness";
 import { loadProjectFunding } from "@/lib/project-funding";
 import { ProjectFundingBadge } from "@/components/projects/ProjectFundingBadge";
 import prisma from "@/lib/prisma";
@@ -66,6 +67,11 @@ export default async function AdminProjectsPage({
       raisedAmount: true,
       createdAt: true,
       fundedAt: true,
+      causeCategory: true,
+      stateName: true,
+      expectedBeneficiaries: true,
+      beneficiaryGroup: true,
+      durationMonths: true,
       ngo: { select: { id: true, orgName: true } },
       milestones: { select: { status: true } },
     },
@@ -170,6 +176,16 @@ export default async function AdminProjectsPage({
                       <div className="mt-1">
                         <ProjectFundingBadge funding={funding.get(p.id)} fundedAt={p.fundedAt} />
                       </div>
+                      {(() => {
+                        const r = matchingReadiness(p);
+                        return r.ready ? (
+                          <p className="mt-1 text-[11px] text-emerald-600">Ready for matching</p>
+                        ) : (
+                          <p className="mt-1 text-[11px] text-amber-600" title={r.missing.join(", ")}>
+                            Matching profile: {r.missing.length} missing
+                          </p>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                       ₹{raised.toLocaleString("en-IN")} / ₹{target.toLocaleString("en-IN")}

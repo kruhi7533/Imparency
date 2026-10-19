@@ -1,3 +1,4 @@
+import MatchingProfilePanel from "./MatchingProfilePanel";
 import { loadProjectFunding } from "@/lib/project-funding";
 import { ProjectFundingBadge } from "@/components/projects/ProjectFundingBadge";
 import React from "react";
@@ -134,6 +135,20 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
           <Card label="Approved grant budget" value={inr(approvedBudget)} tone="text-emerald-600" />
           <Card label="Funded contracts" value={String(funded.length)} />
         </div>
+
+        <MatchingProfilePanel
+          projectId={project.id}
+          canEdit={canManage}
+          initial={{
+            causeCategory: project.causeCategory,
+            stateName: project.stateName,
+            expectedBeneficiaries: project.expectedBeneficiaries,
+            beneficiaryGroup: project.beneficiaryGroup,
+            durationMonths: project.durationMonths,
+            primaryKPIs: project.primaryKPIs,
+            reportingCadence: project.reportingCadence,
+          }}
+        />
 
         {/* Project milestones */}
         <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-3">
