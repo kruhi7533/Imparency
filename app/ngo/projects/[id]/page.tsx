@@ -87,6 +87,9 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
     dueDate: t.dueDate?.toISOString() ?? null,
     assigneeName: nameOf.get(t.assignedToId) ?? "Former member",
     milestoneTitle: t.milestone?.title ?? null,
+    instructions: t.instructions,
+    assignedToId: t.assignedToId,
+    milestoneId: t.milestoneId,
     evidence: t.evidence.map((e) => ({
       id: e.id,
       status: e.status,

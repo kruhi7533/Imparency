@@ -13,6 +13,9 @@ export interface PanelTask {
   dueDate: string | null;
   assigneeName: string;
   milestoneTitle: string | null;
+  instructions: string | null;
+  assignedToId: string;
+  milestoneId: string | null;
   evidence: Array<{
     id: string;
     status: string;
@@ -70,6 +73,43 @@ export default function FieldTasksPanel({
     }
   };
   const [form, setForm] = useState({ title: "", instructions: "", assignedToId: team[0]?.userId ?? "", milestoneId: "", dueDate: "" });
+  // Editing / cancelling an OPEN task (owners and admins only; the API enforces it).
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ title: "", instructions: "", assignedToId: "", milestoneId: "", dueDate: "" });
+  const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+
+  const startEdit = (t: PanelTask) => {
+    setEditingId(t.id);
+    setConfirmCancel(null);
+    setDraft({
+      title: t.title,
+      instructions: t.instructions ?? "",
+      assignedToId: t.assignedToId,
+      milestoneId: t.milestoneId ?? "",
+      dueDate: t.dueDate ? t.dueDate.slice(0, 10) : "",
+    });
+  };
+
+  const patchTask = async (taskId: string, body: object) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/ngo/field-tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to update task");
+      setEditingId(null);
+      setConfirmCancel(null);
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,8 +218,84 @@ export default function FieldTasksPanel({
                     {t.dueDate ? ` · due ${new Date(t.dueDate).toLocaleDateString("en-IN")}` : ""}
                   </p>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-gray-100 text-gray-700">{t.status}</span>
+                <div className="flex items-center gap-2">
+                  {canManage && t.status === "OPEN" && editingId !== t.id && (
+                    confirmCancel === t.id ? (
+                      <span className="flex items-center gap-2 text-xs">
+                        <span className="text-red-700">Cancel this task?</span>
+                        <button disabled={busy} onClick={() => patchTask(t.id, { action: "CANCEL" })} className="px-3 py-1.5 rounded-lg bg-red-600 text-white font-bold disabled:opacity-50">
+                          Yes, cancel
+                        </button>
+                        <button onClick={() => setConfirmCancel(null)} className="px-2 py-1.5 font-bold text-gray-600">
+                          Keep
+                        </button>
+                      </span>
+                    ) : (
+                      <>
+                        <button onClick={() => startEdit(t)} className="px-3 py-1.5 text-xs font-bold text-emerald-700 hover:underline">
+                          Edit
+                        </button>
+                        <button onClick={() => setConfirmCancel(t.id)} className="px-3 py-1.5 text-xs font-bold text-red-600 hover:underline">
+                          Cancel task
+                        </button>
+                      </>
+                    )
+                  )}
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-gray-100 text-gray-700">{t.status}</span>
+                </div>
               </div>
+              {editingId === t.id && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    patchTask(t.id, { action: "EDIT", ...draft, milestoneId: draft.milestoneId || null, dueDate: draft.dueDate || null });
+                  }}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40"
+                >
+                  <label className="text-xs font-bold sm:col-span-2">
+                    Task
+                    <input required minLength={3} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} className={input} />
+                  </label>
+                  <label className="text-xs font-bold">
+                    Assign to
+                    <select value={draft.assignedToId} onChange={(e) => setDraft({ ...draft, assignedToId: e.target.value })} className={input}>
+                      {!team.some((m) => m.userId === draft.assignedToId) && <option value={draft.assignedToId}>{t.assigneeName}</option>}
+                      {team.map((m) => (
+                        <option key={m.userId} value={m.userId}>
+                          {m.name} ({m.role.replace("_", " ").toLowerCase()})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-xs font-bold">
+                    Milestone
+                    <select value={draft.milestoneId} onChange={(e) => setDraft({ ...draft, milestoneId: e.target.value })} className={input}>
+                      <option value="">Not milestone-specific</option>
+                      {milestones.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-xs font-bold">
+                    Due date
+                    <input type="date" value={draft.dueDate} onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })} className={input} />
+                  </label>
+                  <label className="text-xs font-bold sm:col-span-2">
+                    Instructions
+                    <textarea rows={2} value={draft.instructions} onChange={(e) => setDraft({ ...draft, instructions: e.target.value })} className={input} />
+                  </label>
+                  <div className="sm:col-span-2 flex justify-end gap-2">
+                    <button type="button" onClick={() => setEditingId(null)} className="px-4 py-2 text-xs font-bold text-gray-600">
+                      Discard
+                    </button>
+                    <button disabled={busy} className="px-5 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl disabled:opacity-50">
+                      {busy ? "Saving…" : "Save task"}
+                    </button>
+                  </div>
+                </form>
+              )}
               {t.evidence.map((e) => (
                 <div key={e.id} className="flex gap-3 p-2 rounded-xl bg-gray-50 dark:bg-gray-800/40">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
