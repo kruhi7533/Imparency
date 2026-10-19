@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { acceptsNewClaims, claimRejectionReason } from "@/lib/metric-registry";
 import type { EvidenceKind } from "@prisma/client";
+import { verifyCitationOwnership } from "@/lib/outcome-cockpit";
 
 /**
  * POST /api/ngo/outcome-claims — file an outcome claim as a DRAFT.
@@ -193,48 +194,4 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({ claim }, { status: 201 });
-}
-
-/**
- * Every cited row must belong to the claiming organisation. Returns an error
- * message, or null when all citations check out.
- */
-async function verifyCitationOwnership(
-  citations: { proofId?: string; evidenceId?: string; feedbackId?: string }[],
-  ngoId: string
-): Promise<string | null> {
-  const proofIds = citations.map((c) => c.proofId).filter((v): v is string => !!v);
-  const evidenceIds = citations.map((c) => c.evidenceId).filter((v): v is string => !!v);
-  const feedbackIds = citations.map((c) => c.feedbackId).filter((v): v is string => !!v);
-
-  const [proofs, evidence, feedback] = await Promise.all([
-    proofIds.length
-      ? prisma.milestoneProof.findMany({
-          where: { id: { in: proofIds } },
-          select: { id: true, milestone: { select: { project: { select: { ngoId: true } } } } },
-        })
-      : Promise.resolve([]),
-    evidenceIds.length
-      ? prisma.fieldEvidence.findMany({ where: { id: { in: evidenceIds } }, select: { id: true, ngoId: true } })
-      : Promise.resolve([]),
-    feedbackIds.length
-      ? prisma.beneficiaryFeedback.findMany({ where: { id: { in: feedbackIds } }, select: { id: true, ngoId: true } })
-      : Promise.resolve([]),
-  ]);
-
-  if (proofs.length !== new Set(proofIds).size) return "A cited milestone proof does not exist.";
-  if (evidence.length !== new Set(evidenceIds).size) return "A cited field photo does not exist.";
-  if (feedback.length !== new Set(feedbackIds).size) return "A cited beneficiary record does not exist.";
-
-  if (proofs.some((p) => p.milestone.project.ngoId !== ngoId)) {
-    return "A cited milestone proof belongs to another organisation.";
-  }
-  if (evidence.some((e) => e.ngoId !== ngoId)) {
-    return "A cited field photo belongs to another organisation.";
-  }
-  if (feedback.some((f) => f.ngoId !== ngoId)) {
-    return "A cited beneficiary record belongs to another organisation.";
-  }
-
-  return null;
 }

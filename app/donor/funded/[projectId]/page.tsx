@@ -7,6 +7,7 @@ import prisma from "@/lib/prisma";
 import { fundingSummary } from "@/lib/contract-payments";
 import { DONOR_VISIBLE_EVIDENCE_WHERE } from "@/lib/field-evidence";
 import ProjectUpdatesToggle from "./ProjectUpdatesToggle";
+import { loadDonorProjectOutcomes } from "@/lib/outcome-cockpit";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,12 @@ const MILESTONE_STYLE: Record<string, { cls: string; label: string }> = {
 };
 const DONE = new Set(["VERIFIED", "COMPLETED"]);
 const inr = (v: { toString(): string } | number) => `₹${Number(v.toString()).toLocaleString("en-IN")}`;
+const OUTCOME_UNIT: Record<string, string> = {
+  COUNT_PEOPLE: "people", COUNT_ITEMS: "items", COUNT_EVENTS: "events", PERCENTAGE: "%",
+  HOURS: "hours", KILOGRAMS: "kg", LITRES: "litres", AREA_SQM: "m²",
+};
+const formatOutcome = (value: string, unit: string) =>
+  unit === "CURRENCY_INR" ? inr(value) : `${Number(value).toLocaleString("en-IN")} ${OUTCOME_UNIT[unit] ?? ""}`.trim();
 
 export default async function DonorFundedProjectPage({ params }: { params: { projectId: string } }) {
   const session = await getServerSession(authOptions);
@@ -41,7 +48,7 @@ export default async function DonorFundedProjectPage({ params }: { params: { pro
   });
   if (contracts.length === 0) notFound();
 
-  const [project, evidence, prefs] = await Promise.all([
+  const [project, evidence, prefs, outcomes] = await Promise.all([
     prisma.project.findUnique({
       where: { id: params.projectId },
       include: {
@@ -63,6 +70,7 @@ export default async function DonorFundedProjectPage({ params }: { params: { pro
       },
     }),
     prisma.user.findUnique({ where: { id: donorId }, select: { projectUpdatesOptOut: true } }),
+    loadDonorProjectOutcomes(params.projectId),
   ]);
   if (!project) notFound();
 
@@ -123,6 +131,59 @@ export default async function DonorFundedProjectPage({ params }: { params: { pro
               );
             })}
           </ol>
+        </section>
+
+        {/* Reported outcomes — through claimDisplay(): a figure only when approved AND still
+            backed by evidence; otherwise "unverified" with the reason, never 0. */}
+        <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
+          <div>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">Reported outcomes</h2>
+            <p className="text-xs text-gray-500">
+              Figures the organisation reported against the platform&apos;s governed metrics. A number is shown only after an
+              impact reviewer approved it and its evidence still supports it.
+            </p>
+          </div>
+          {outcomes.rows.length === 0 ? (
+            <p className="text-xs text-gray-400 italic">No outcomes reported for this project yet.</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {outcomes.rollup.map((r) => (
+                  <div key={r.metricCode} className="rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+                    <p className="text-xs text-gray-500">{r.metricName}</p>
+                    {r.verifiedCount > 0 ? (
+                      <p className="text-2xl font-extrabold text-emerald-600 mt-1">{formatOutcome(r.verifiedTotal, r.unit)}</p>
+                    ) : (
+                      <p className="text-sm font-bold text-amber-600 mt-2">Unverified</p>
+                    )}
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      {r.verifiedCount} verified{r.inReviewCount > 0 ? ` · ${r.inReviewCount} in review` : ""}
+                      {r.unverifiedApprovedCount > 0 ? ` · ${r.unverifiedApprovedCount} no longer backed` : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <ul className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+                {outcomes.rows.map((o) => (
+                  <li key={o.id} className="py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <span className="text-gray-700 dark:text-gray-300">
+                      {o.metricName}
+                      <span className="text-xs text-gray-400 ml-2">
+                        {new Date(o.periodStart).toLocaleDateString("en-IN")} – {new Date(o.periodEnd).toLocaleDateString("en-IN")}
+                      </span>
+                    </span>
+                    {o.display.kind === "verified" ? (
+                      <span className="font-bold text-emerald-600">{formatOutcome(o.display.value, o.display.unit)}</span>
+                    ) : (
+                      <span className="text-xs text-amber-600" title={o.display.reason}>
+                        Unverified — {o.display.reason}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </section>
 
         {/* Your funding */}
