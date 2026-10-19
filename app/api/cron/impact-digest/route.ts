@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { runJob, type JobHandle } from "@/lib/job-runner";
 import prisma from "@/lib/prisma";
 import { sendImpactUpdateEmail } from "@/lib/email";
 import crypto from "crypto";
@@ -27,6 +28,18 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const outcome = await runJob("impact-digest", { req }, (job) => sendImpactDigests(job));
+
+  // A skip is a normal outcome, not a failure: another run was already in
+  // flight. Reported as 200 so the scheduler does not retry it.
+  if (outcome.skipped) {
+    return NextResponse.json({ ok: true, skipped: true, reason: outcome.reason });
+  }
+  return outcome.value;
+}
+
+/** The job body. Extracted verbatim so runJob can record the run around it. */
+async function sendImpactDigests(job: JobHandle): Promise<NextResponse> {
   const isMonday = new Date().getDay() === 1;
 
   // Digest subscriptions whose donors have pending email deliveries
@@ -114,5 +127,6 @@ export async function GET(req: Request) {
     }
   }
 
+  job.recordItems(sentDonors);
   return NextResponse.json({ ok: true, donors: sentDonors, digested });
 }

@@ -215,8 +215,8 @@ export default async function ProjectPage({
                           <span>Deadline: {new Date(milestone.deadline).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                         </div>
 
-                        {/* Proof of Utilization Inspector */}
-                        {latestProof && (
+                        {/* Proof of Utilization Inspector — published on admin approval only */}
+                        {latestProof && milestone.status === "COMPLETED" && (
                           <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-150 dark:border-gray-800/80 rounded-xl space-y-3.5">
                             <div className="flex items-center justify-between border-b border-gray-200/60 dark:border-gray-800/60 pb-2">
                               <span className="text-[10px] font-extrabold text-gray-450 dark:text-gray-400 uppercase tracking-wider">

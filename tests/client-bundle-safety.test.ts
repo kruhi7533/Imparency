@@ -23,6 +23,12 @@ import path from "path";
  * objects, so only a check that reasons about the client boundary can catch
  * it. The hashing moved to lib/proof-hash.ts; this keeps it moved.
  *
+ * The builtin list was INCOMPLETE until Week 9. It had no entry for
+ * `async_hooks`, which is precisely the builtin SPEC-1 introduces in
+ * lib/request-context.ts — so this guard would have missed a second
+ * instance of the very bug it was written for. Keep the list exhaustive
+ * rather than only as long as past mistakes required.
+ *
  * Scope: the closure is followed through `@/lib/...` imports, which is where
  * shared helpers live and where the mistake is made. Type-only imports are
  * ignored — `import type` is erased before bundling and costs nothing.
@@ -33,10 +39,14 @@ const APP_DIR = path.join(REPO_ROOT, "app");
 
 /** Node builtins, bare and `node:`-prefixed. Bundling any of these is the bug. */
 const NODE_BUILTINS = [
-  "assert", "buffer", "child_process", "cluster", "crypto", "dgram", "dns",
-  "fs", "fs/promises", "http", "http2", "https", "inspector", "module", "net",
-  "os", "path", "perf_hooks", "process", "querystring", "readline", "stream",
-  "timers", "tls", "tty", "url", "util", "v8", "vm", "worker_threads", "zlib",
+  "assert", "async_hooks", "buffer", "child_process", "cluster", "console",
+  "constants", "crypto", "dgram", "diagnostics_channel", "dns", "dns/promises",
+  "domain", "events", "fs", "fs/promises", "http", "http2", "https",
+  "inspector", "module", "net", "os", "path", "path/posix", "path/win32",
+  "perf_hooks", "process", "punycode", "querystring", "readline",
+  "readline/promises", "repl", "stream", "stream/promises", "string_decoder",
+  "sys", "timers", "timers/promises", "tls", "trace_events", "tty", "url",
+  "util", "v8", "vm", "wasi", "worker_threads", "zlib",
 ];
 
 function walk(dir: string, out: string[] = []): string[] {

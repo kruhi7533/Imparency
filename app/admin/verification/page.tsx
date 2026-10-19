@@ -21,12 +21,22 @@ export default async function AdminVerificationPage() {
   let queue;
   try {
     queue = await loadVerificationQueue();
+
+    // Log queue status for debugging
+    if (queue.length === 0) {
+      console.log("Verification queue is empty - all NGOs have been processed");
+    }
   } catch (err: any) {
-    return <SchemaOutOfSync title="Verification queue failed to load" detail={err?.message ?? String(err)} />;
+    console.error("Failed to load verification queue:", err);
+    return <SchemaOutOfSync
+      title="Verification queue failed to load"
+      detail={`${err?.message ?? String(err)}. Please check database connection and migrations.`}
+    />;
   }
 
   const reDecisions = queue.filter((n: any) => n.reverificationRequiredAt).length;
   const blocked = queue.filter((n: any) => !n.hasDocuments || !n.hasExtraction).length;
+  const analyzed = queue.filter((n: any) => n.hasDocuments && n.hasExtraction && !n.hasIdentityContradiction).length;
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -39,23 +49,29 @@ export default async function AdminVerificationPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-6 flex-wrap">
           <div>
             <div className="text-2xl font-black tabular-nums text-gray-900 dark:text-white">{queue.length}</div>
             <div className="text-[11px] uppercase tracking-wide font-bold text-gray-400 dark:text-gray-600">
-              Awaiting you
+              In queue
             </div>
           </div>
           {reDecisions > 0 && (
-            <div>
+            <div className="border-l border-gray-200 dark:border-gray-700 pl-6">
               <div className="text-2xl font-black tabular-nums text-red-600 dark:text-red-400">{reDecisions}</div>
               <div className="text-[11px] uppercase tracking-wide font-bold text-red-500/70">Re-decisions</div>
             </div>
           )}
           {blocked > 0 && (
-            <div>
+            <div className="border-l border-gray-200 dark:border-gray-700 pl-6">
               <div className="text-2xl font-black tabular-nums text-amber-600 dark:text-amber-400">{blocked}</div>
               <div className="text-[11px] uppercase tracking-wide font-bold text-amber-500/70">Missing evidence</div>
+            </div>
+          )}
+          {analyzed > 0 && (
+            <div className="border-l border-gray-200 dark:border-gray-700 pl-6">
+              <div className="text-2xl font-black tabular-nums text-emerald-600 dark:text-emerald-400">{analyzed}</div>
+              <div className="text-[11px] uppercase tracking-wide font-bold text-emerald-500/70">Ready to approve</div>
             </div>
           )}
         </div>

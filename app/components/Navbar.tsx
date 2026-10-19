@@ -33,7 +33,7 @@ export default function Navbar() {
   return (
     <header className="border-b border-gray-900 bg-gray-950/95 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        
+
         {/* Left: Branding Logo — shrink-0 + whitespace-nowrap so it can never
             be squeezed by the center nav on medium widths */}
         <div className="flex items-center gap-3 shrink-0">
@@ -129,7 +129,7 @@ export default function Navbar() {
                   </Link>
                 </>
               )}
-              
+
               {/* Guests get real parity: a path to give AND a path to raise —
                   not just the NGO side of the platform */}
               {!session?.user && (
@@ -158,7 +158,7 @@ export default function Navbar() {
                 <div className="text-xs font-extrabold text-white truncate max-w-[150px]">{session.user.name}</div>
                 <div className="text-[10px] text-gray-500 truncate max-w-[150px]">{session.user.email}</div>
               </div>
-              
+
               {/* Profile Avatar Initials Trigger */}
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -223,13 +223,16 @@ export default function Navbar() {
                       </>
                     )}
                     {session.user.role === "ADMIN" && (
-                      <Link
-                        href="/admin/today"
-                        onClick={() => setDropdownOpen(false)}
-                        className="block px-4 py-2 text-xs font-bold text-red-300 hover:text-red-200 hover:bg-gray-900 transition"
-                      >
-                        Admin Console
-                      </Link>
+                      <>
+                        <Link
+                          href="/admin/today"
+                          onClick={() => setDropdownOpen(false)}
+                          className="block px-4 py-2 text-xs font-bold text-red-300 hover:text-red-200 hover:bg-gray-900 transition"
+                        >
+                          Go to Admin Panel
+                        </Link>
+                        <div className="border-t border-gray-900 my-1"></div>
+                      </>
                     )}
                     <Link
                       href="/help"

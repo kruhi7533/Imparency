@@ -4,11 +4,12 @@ import { uploadFile } from "@/lib/storage";
 import { verifySessionRole } from "@/lib/auth-guards";
 
 interface MilestoneInput {
+  id?: string;
   title: string;
   description: string;
   targetAmount: string;
   deadline: string;
-  proofType: string;
+  proofType?: string;
 }
 
 export async function PATCH(
@@ -96,6 +97,7 @@ export async function PATCH(
 
     // 6. Handle budget and milestones if the project is NOT locked
     let validatedMilestones: {
+      id?: string;
       title: string;
       description: string;
       targetAmount: number;
@@ -146,6 +148,7 @@ export async function PATCH(
           milestonesTotal += mTarget;
 
           validatedMilestones.push({
+            id: m.id || undefined,
             title: m.title.trim(),
             description: m.description.trim(),
             targetAmount: mTarget,
@@ -164,8 +167,8 @@ export async function PATCH(
       }
     }
 
-    // A DRAFT project being edited is a resubmission into the approval queue.
-    const isResubmission = project.status === "DRAFT";
+    // Material edits to a DRAFT or ACTIVE project return it to the admin review queue.
+    const isResubmission = project.status === "DRAFT" || project.status === "ACTIVE";
 
     // 7. DB Transaction: save modifications
     const currentVersion = (project as any).version || 1;
@@ -200,35 +203,54 @@ export async function PATCH(
           coverImage: coverImageUrl,
           targetAmount: !isLocked ? targetAmount : undefined,
           version: currentVersion + 1,
-          // A rejected project sits in DRAFT. Editing it is a resubmission, so
-          // send it back into the admin approval queue and clear the old note.
-          // The previous AI screening is now stale, so clear it too — the admin
-          // re-runs screening on demand from the review queue.
+          // If editing a DRAFT or modifying an ACTIVE project, return it to review
           ...(isResubmission
             ? { status: "PENDING_APPROVAL", reviewNote: null, aiScreeningScore: null, aiScreeningResult: null }
             : {}),
         } as any,
       });
 
-      // Update milestones if they were edited
+      // Diff-update milestones if they were edited (prevents breaking linked proofs and contracts)
       if (!isLocked && validatedMilestones.length > 0) {
-        // Delete all old milestones
-        await tx.milestone.deleteMany({
-          where: { projectId },
-        });
+        const incomingIds = validatedMilestones.map((m) => m.id).filter(Boolean) as string[];
 
-        // Create the new ones
-        await tx.milestone.createMany({
-          data: validatedMilestones.map((m) => ({
-            projectId,
-            title: m.title,
-            description: m.description,
-            targetAmount: m.targetAmount,
-            deadline: m.deadline,
-            sequenceOrder: m.sequenceOrder,
-            status: m.status,
-          })),
-        });
+        // 1. Delete removed milestones if they have no proofs
+        const toDelete = project.milestones.filter((m: any) => !incomingIds.includes(m.id));
+        for (const m of toDelete) {
+          const proofCount = await tx.milestoneProof.count({ where: { milestoneId: m.id } });
+          if (proofCount > 0) {
+            throw new Error(`Cannot delete milestone "${m.title}" because it already has submitted proofs.`);
+          }
+          await tx.milestone.delete({ where: { id: m.id } });
+        }
+
+        // 2. Update existing milestones in place or create new ones
+        for (const m of validatedMilestones) {
+          if (m.id && project.milestones.some((existing: any) => existing.id === m.id)) {
+            await tx.milestone.update({
+              where: { id: m.id },
+              data: {
+                title: m.title,
+                description: m.description,
+                targetAmount: m.targetAmount,
+                deadline: m.deadline,
+                sequenceOrder: m.sequenceOrder,
+              },
+            });
+          } else {
+            await tx.milestone.create({
+              data: {
+                projectId,
+                title: m.title,
+                description: m.description,
+                targetAmount: m.targetAmount,
+                deadline: m.deadline,
+                sequenceOrder: m.sequenceOrder,
+                status: m.status,
+              },
+            });
+          }
+        }
       }
     });
 

@@ -44,14 +44,23 @@ export async function POST(request: Request) {
 
     // ── Auto-accept team invite if one exists for this email ──────────────
     try {
-      // Check by token first (from invite link), then by email (catch-all)
+      const now = new Date();
+      const normalizedEmail = email.trim().toLowerCase();
+      // Check by token (matching email and non-expired), or by email fallback
       const invite = inviteToken
-        ? await prisma.teamInvite.findUnique({ where: { token: inviteToken } })
+        ? await prisma.teamInvite.findFirst({
+            where: {
+              token: inviteToken,
+              email: normalizedEmail,
+              accepted: false,
+              expiresAt: { gt: now },
+            },
+          })
         : await prisma.teamInvite.findFirst({
             where: {
-              email: email.trim().toLowerCase(),
+              email: normalizedEmail,
               accepted: false,
-              expiresAt: { gt: new Date() },
+              expiresAt: { gt: now },
             },
           });
 
