@@ -1515,6 +1515,8 @@ enum RequirementStatus {
   CONTRACTED
   REJECTED
   FAILED
+  /// The donor withdrew it before selecting a proposal. Terminal.
+  WITHDRAWN
 }
 
 enum OpportunityResponseStatus {

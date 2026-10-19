@@ -15,6 +15,7 @@ const STATUS_STYLES: Record<string, string> = {
   CONTRACTED: "bg-emerald-600/20 text-emerald-100 border-emerald-400/50",
   REJECTED: "bg-red-500/10 text-red-300 border-red-500/30",
   FAILED: "bg-red-500/10 text-red-300 border-red-500/30",
+  WITHDRAWN: "bg-gray-800 text-gray-400 border-gray-700",
 };
 
 export function StatusBadge({ status, className = "" }: { status: string; className?: string }) {

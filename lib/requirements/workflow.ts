@@ -443,4 +443,53 @@ export async function selectResponse(id: string, actor: Actor, responseId: unkno
   });
 }
 
+/**
+ * The owning donor withdraws a requirement (allowed stages: lib/requirements/status.ts).
+ * Every NGO response still open on it is closed and that NGO is told why — a
+ * proposal must never be left waiting on a requirement that no longer exists.
+ */
+export async function withdrawRequirement(id: string, actor: Actor, reason: unknown) {
+  const text = requireText(reason, "A reason for withdrawing", 10);
+  const req = await loadRequirementForActor(id, actor);
+  const role = workflowRole(req, actor);
+  if (role !== "DONOR") throw new RequirementWorkflowError("Only the requirement's owner can withdraw it.", 403);
+
+  const now = new Date();
+  const { updated, closed } = await prisma.$transaction(async (tx) => {
+    const updated = await commitRequirementChange(tx, req, {
+      actorId: actor.id,
+      actorRole: "DONOR",
+      toStatus: "WITHDRAWN",
+      audit: { action: "REQUIREMENT_WITHDRAWN", detail: text },
+    });
+    const open = await tx.opportunityResponse.findMany({
+      where: { requirementId: id, status: { notIn: ["REJECTED", "SELECTED"] } },
+      select: { id: true, ngo: { select: { userId: true } } },
+    });
+    if (open.length > 0) {
+      await tx.opportunityResponse.updateMany({
+        where: { id: { in: open.map((o) => o.id) } },
+        data: { status: "REJECTED", reviewedAt: now, reviewedById: actor.id },
+      });
+    }
+    return { updated, closed: open };
+  });
+
+  if (closed.length > 0) {
+    try {
+      await prisma.notification.createMany({
+        data: closed.map((o) => ({
+          userId: o.ngo.userId,
+          type: "CSR_REQUIREMENT_WITHDRAWN",
+          title: "A CSR opportunity was withdrawn",
+          body: "The funder withdrew a CSR requirement you responded to, so your response has been closed. This is not a judgement on your proposal.",
+        })),
+      });
+    } catch (err) {
+      console.error("[requirements] withdrawal notification failed:", err);
+    }
+  }
+  return updated;
+}
+
 export { ERRORS };

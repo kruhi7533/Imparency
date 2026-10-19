@@ -16,6 +16,7 @@ const FILTERS: Array<{ key: string; label: string; statuses: string[] | null }> 
   { key: "matching", label: "Matching", statuses: ["MATCHING"] },
   { key: "shortlisted", label: "Shortlisted", statuses: ["SHORTLISTED", "NGO_RESPONSE", "SELECTED"] },
   { key: "contracted", label: "Contracted", statuses: ["CONTRACTED"] },
+  { key: "closed", label: "Closed", statuses: ["REJECTED", "WITHDRAWN"] },
 ];
 
 const PREVIEWABLE = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);

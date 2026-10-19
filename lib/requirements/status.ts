@@ -12,30 +12,38 @@ export type ActorRole = "DONOR" | "NGO" | "ADMIN" | "SYSTEM";
 
 export type { RequirementStatus };
 
+// The owning donor may withdraw a requirement at any settled stage before a
+// proposal is selected. Not while the system is mid-run (UPLOADED, PROCESSING,
+// MATCHING — wait for it to settle), and not once SELECTED: an NGO has been
+// told it won, and unwinding that is a conversation, not a button.
+const WITHDRAW = { WITHDRAWN: ["DONOR"] as ActorRole[] };
+
 const TRANSITIONS: Record<RequirementStatus, Partial<Record<RequirementStatus, ActorRole[]>>> = {
   UPLOADED: { PROCESSING: ["SYSTEM"], FAILED: ["SYSTEM"] },
   PROCESSING: { AI_EXTRACTED: ["SYSTEM"], FAILED: ["SYSTEM"] },
   // Re-running extraction (→ PROCESSING) is an admin tool at every review stage.
-  AI_EXTRACTED: { DONOR_REVIEW: ["DONOR"], PROCESSING: ["ADMIN"] },
-  DONOR_REVIEW: { PENDING_ADMIN_REVIEW: ["DONOR"], NEEDS_CORRECTION: ["ADMIN"], PROCESSING: ["ADMIN"] },
+  AI_EXTRACTED: { DONOR_REVIEW: ["DONOR"], PROCESSING: ["ADMIN"], ...WITHDRAW },
+  DONOR_REVIEW: { PENDING_ADMIN_REVIEW: ["DONOR"], NEEDS_CORRECTION: ["ADMIN"], PROCESSING: ["ADMIN"], ...WITHDRAW },
   PENDING_ADMIN_REVIEW: {
     VALIDATED: ["ADMIN"],
     NEEDS_CORRECTION: ["ADMIN"],
     REJECTED: ["ADMIN"],
     PROCESSING: ["ADMIN"],
+    ...WITHDRAW,
   },
-  NEEDS_CORRECTION: { PENDING_ADMIN_REVIEW: ["DONOR"], PROCESSING: ["ADMIN"] },
-  VALIDATED: { MATCHING: ["DONOR", "ADMIN"] },
+  NEEDS_CORRECTION: { PENDING_ADMIN_REVIEW: ["DONOR"], PROCESSING: ["ADMIN"], ...WITHDRAW },
+  VALIDATED: { MATCHING: ["DONOR", "ADMIN"], ...WITHDRAW },
   // A run with no eligible candidates (or a crash) returns the requirement to VALIDATED.
   MATCHING: { SHORTLISTED: ["SYSTEM"], VALIDATED: ["SYSTEM"] },
   // Re-matching is only allowed before any NGO has been invited (checked in the service).
-  SHORTLISTED: { NGO_RESPONSE: ["NGO"], MATCHING: ["DONOR", "ADMIN"] },
-  NGO_RESPONSE: { SELECTED: ["DONOR", "ADMIN"] },
+  SHORTLISTED: { NGO_RESPONSE: ["NGO"], MATCHING: ["DONOR", "ADMIN"], ...WITHDRAW },
+  NGO_RESPONSE: { SELECTED: ["DONOR", "ADMIN"], ...WITHDRAW },
   SELECTED: { CONTRACTED: ["DONOR", "NGO", "ADMIN"] },
   CONTRACTED: {},
   REJECTED: {},
   // A failed extraction can be retried by the owner or an admin.
-  FAILED: { PROCESSING: ["DONOR", "ADMIN"] },
+  FAILED: { PROCESSING: ["DONOR", "ADMIN"], ...WITHDRAW },
+  WITHDRAWN: {},
 };
 
 export function canTransition(from: RequirementStatus, to: RequirementStatus, role: ActorRole): boolean {
@@ -85,4 +93,10 @@ export const STATUS_LABELS: Record<RequirementStatus, string> = {
   CONTRACTED: "Contracted",
   REJECTED: "Rejected",
   FAILED: "Processing failed",
+  WITHDRAWN: "Withdrawn",
 };
+
+/** Statuses from which the owning donor may withdraw — derived from TRANSITIONS so the UI cannot drift from the rule. */
+export const DONOR_WITHDRAWABLE = (Object.keys(TRANSITIONS) as RequirementStatus[]).filter((s) =>
+  TRANSITIONS[s].WITHDRAWN?.includes("DONOR")
+);
