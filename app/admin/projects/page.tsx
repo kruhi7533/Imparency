@@ -1,3 +1,5 @@
+import { loadProjectFunding } from "@/lib/project-funding";
+import { ProjectFundingBadge } from "@/components/projects/ProjectFundingBadge";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import AutoSubmitSelect from "@/app/admin/components/AutoSubmitSelect";
@@ -63,10 +65,12 @@ export default async function AdminProjectsPage({
       targetAmount: true,
       raisedAmount: true,
       createdAt: true,
+      fundedAt: true,
       ngo: { select: { id: true, orgName: true } },
       milestones: { select: { status: true } },
     },
   });
+  const funding = await loadProjectFunding(projects.map((p) => p.id));
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
@@ -163,6 +167,9 @@ export default async function AdminProjectsPage({
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_BADGE[p.status] ?? ""}`}>
                         {p.status.replace(/_/g, " ")}
                       </span>
+                      <div className="mt-1">
+                        <ProjectFundingBadge funding={funding.get(p.id)} fundedAt={p.fundedAt} />
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                       ₹{raised.toLocaleString("en-IN")} / ₹{target.toLocaleString("en-IN")}

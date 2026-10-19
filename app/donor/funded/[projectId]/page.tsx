@@ -8,6 +8,8 @@ import { fundingSummary } from "@/lib/contract-payments";
 import { DONOR_VISIBLE_EVIDENCE_WHERE } from "@/lib/field-evidence";
 import ProjectUpdatesToggle from "./ProjectUpdatesToggle";
 import { loadDonorProjectOutcomes } from "@/lib/outcome-cockpit";
+import { loadProjectFunding } from "@/lib/project-funding";
+import { ProjectFundingBadge } from "@/components/projects/ProjectFundingBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +50,7 @@ export default async function DonorFundedProjectPage({ params }: { params: { pro
   });
   if (contracts.length === 0) notFound();
 
-  const [project, evidence, prefs, outcomes] = await Promise.all([
+  const [project, evidence, prefs, outcomes, funding] = await Promise.all([
     prisma.project.findUnique({
       where: { id: params.projectId },
       include: {
@@ -71,6 +73,7 @@ export default async function DonorFundedProjectPage({ params }: { params: { pro
     }),
     prisma.user.findUnique({ where: { id: donorId }, select: { projectUpdatesOptOut: true } }),
     loadDonorProjectOutcomes(params.projectId),
+    loadProjectFunding([params.projectId]),
   ]);
   if (!project) notFound();
 
@@ -96,7 +99,10 @@ export default async function DonorFundedProjectPage({ params }: { params: { pro
           <Link href="/donor/contracts" className="text-xs font-bold text-emerald-600 hover:underline">
             ← Back to contracts
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{project.title}</h1>
+          <div className="flex flex-wrap items-center gap-3 mt-1">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{project.title}</h1>
+            <ProjectFundingBadge funding={funding.get(project.id)} fundedAt={project.fundedAt} />
+          </div>
           <p className="text-sm text-gray-500">
             {project.ngo.orgName} · {project.location}
           </p>

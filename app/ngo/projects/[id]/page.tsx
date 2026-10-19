@@ -1,3 +1,5 @@
+import { loadProjectFunding } from "@/lib/project-funding";
+import { ProjectFundingBadge } from "@/components/projects/ProjectFundingBadge";
 import React from "react";
 import Link from "next/link";
 import { getServerSession } from "next-auth/next";
@@ -56,6 +58,7 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
   // Tenant check: the caller must be on this project's NGO.
   const party = await resolveContractParty(user, { donorId: "", ngoId: project.ngoId });
   if (!party || party.party !== "NGO") notFound();
+  const funding = await loadProjectFunding([project.id]);
 
   // Week 7: field tasks. Owners/admins see and assign all; others see their own.
   const canManage = CAN_ASSIGN.includes(party.teamRole);
@@ -119,6 +122,7 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
           <div className="flex flex-wrap items-center gap-3 mt-1">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{project.title}</h1>
             <span className="px-3 py-0.5 rounded-full text-xs font-extrabold bg-gray-100 text-gray-700">{project.status}</span>
+            <ProjectFundingBadge funding={funding.get(project.id)} fundedAt={project.fundedAt} />
           </div>
           <p className="text-sm text-gray-500 mt-1">
             {project.location} · {project.causeCategory}

@@ -384,9 +384,14 @@ model Project {
   primaryKPIs           String[] @default([])
   reportingCadence      String?
 
-  isDeleted Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  /// When every committed contract rupee for this project was first reconciled
+  /// (lib/project-funding.ts) — the moment the project "becomes FUNDED".
+  /// Records the EVENT, set once and never cleared; the current funding state is
+  /// always derived live from the payment rows, never read from here.
+  fundedAt  DateTime?
+  isDeleted Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   // Admin approval gate
   reviewNote   String?
