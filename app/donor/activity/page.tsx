@@ -1,0 +1,83 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { loadDonorActivity, type DonorActivityKind } from "@/lib/donor-activity";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * The donor's own activity history: CSR requirements, contracts and payments,
+ * donations, and account verification — one timeline (lib/donor-activity.ts).
+ */
+const KIND_LABEL: Record<DonorActivityKind, { label: string; cls: string }> = {
+  REQUIREMENT: { label: "CSR requirement", cls: "bg-blue-500/15 text-blue-300" },
+  CONTRACT: { label: "Contract", cls: "bg-amber-500/15 text-amber-300" },
+  DONATION: { label: "Donation", cls: "bg-emerald-500/15 text-emerald-300" },
+  ACCOUNT: { label: "Account", cls: "bg-purple-500/15 text-purple-300" },
+};
+
+export default async function DonorActivityPage({ searchParams }: { searchParams: { kind?: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) redirect("/login?callbackUrl=/donor/activity");
+  if (session.user.role !== "DONOR") redirect("/unauthorized");
+
+  const all = await loadDonorActivity(session.user.id);
+  const kind = searchParams.kind && searchParams.kind in KIND_LABEL ? (searchParams.kind as DonorActivityKind) : null;
+  const items = kind ? all.filter((i) => i.kind === kind) : all;
+  const chip = (active: boolean) =>
+    `min-h-[40px] inline-flex items-center px-3 rounded-full text-xs font-bold ${active ? "bg-white text-gray-900" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`;
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+      <h1 className="text-2xl font-extrabold text-white">Activity</h1>
+      <p className="mt-1 text-sm text-gray-400">
+        Everything that happened on your account — requirements, contracts and payments, donations and verification — newest
+        first.
+      </p>
+
+      <nav aria-label="Filter activity" className="mt-6 flex flex-wrap gap-2">
+        <Link href="/donor/activity" aria-current={kind === null ? "page" : undefined} className={chip(kind === null)}>
+          All ({all.length})
+        </Link>
+        {(Object.keys(KIND_LABEL) as DonorActivityKind[]).map((k) => {
+          const n = all.filter((i) => i.kind === k).length;
+          if (n === 0) return null;
+          return (
+            <Link key={k} href={`/donor/activity?kind=${k}`} aria-current={kind === k ? "page" : undefined} className={chip(kind === k)}>
+              {KIND_LABEL[k].label} ({n})
+            </Link>
+          );
+        })}
+      </nav>
+
+      {items.length === 0 ? (
+        <p className="mt-10 text-sm text-gray-400">No activity yet.</p>
+      ) : (
+        <ol className="mt-6 space-y-3">
+          {items.map((i, idx) => (
+            <li key={idx} className="rounded-xl border border-gray-800 bg-gray-900/60 p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${KIND_LABEL[i.kind].cls}`}>{KIND_LABEL[i.kind].label}</span>
+                <time dateTime={i.at.toISOString()} className="text-xs text-gray-400">
+                  {i.at.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                </time>
+                <span className="text-xs text-gray-400">· {i.actor}</span>
+              </div>
+              <p className="mt-1 text-sm font-bold text-white">
+                {i.href ? (
+                  <Link href={i.href} className="hover:underline">
+                    {i.title}
+                  </Link>
+                ) : (
+                  i.title
+                )}
+              </p>
+              {i.detail && <p className="mt-1 text-sm text-gray-300 break-words">{i.detail}</p>}
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}

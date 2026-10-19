@@ -41,7 +41,7 @@ export const REVIEWER = "Platform reviewer";
 const humanise = (s: string) => s.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
 
 /** Newest first, capped. Ties keep source order so the output is deterministic. */
-export function mergeActivity(sources: ActivityItem[][], limit = 200): ActivityItem[] {
+export function mergeActivity<T extends { at: Date }>(sources: T[][], limit = 200): T[] {
   return sources
     .flat()
     .map((item, i) => ({ item, i }))
