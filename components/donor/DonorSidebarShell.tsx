@@ -74,15 +74,42 @@ export function DonorSidebarShell({
       return true;
     }
 
-    if (routePath === "/donor/portfolio") {
-      return pathname === "/donor/portfolio" || pathname === "/donor/dashboard";
-    }
 
     // Nested pages (e.g. /donor/requirements/[id]) keep their section highlighted.
     return pathname === routePath || pathname.startsWith(routePath + "/");
   };
 
   const navItems = [
+    {
+      label: "Dashboard",
+      subtitle: "What needs you now",
+      route: "/donor/dashboard",
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" />
+        </svg>
+      )
+    },
+    {
+      label: "Impact Report",
+      subtitle: "Verified outcomes · PDF/CSV",
+      route: "/donor/impact-report",
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-6m4 6V7m4 10v-3M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+      )
+    },
+    {
+      label: "Impact Feed",
+      subtitle: "Updates from projects",
+      route: "/donor/impact",
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l4 4v10a2 2 0 01-2 2zM7 8h5m-5 4h10m-10 4h10" />
+        </svg>
+      )
+    },
     {
       label: "Impact Portfolio",
       subtitle: "Your giving story",
@@ -134,6 +161,36 @@ export function DonorSidebarShell({
       )
     },
     {
+      label: "Team",
+      subtitle: "Who acts for your organisation",
+      route: "/donor/team",
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-5-3.87M9 20H4v-2a4 4 0 015-3.87m8-4.13a3 3 0 11-6 0 3 3 0 016 0zM7 10a3 3 0 100-6 3 3 0 000 6z" />
+        </svg>
+      )
+    },
+    {
+      label: "Activity",
+      subtitle: "Audit trail",
+      route: "/donor/activity",
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      )
+    },
+    {
+      label: "Notifications",
+      subtitle: "Everything we told you",
+      route: "/notifications",
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0" />
+        </svg>
+      )
+    },
+    {
       label: "My Profile",
       subtitle: "Account & preferences",
       route: "/donor/profile",
@@ -160,8 +217,13 @@ export function DonorSidebarShell({
   return (
     <>
       {/* Mobile Hamburger Button */}
+      {/* Sits below the global sticky navbar (h-16), not on top of its logo. */}
       <button
-        className="mobile-hamburger-btn fixed top-4 left-4 z-50 lg:hidden w-9 h-9 bg-gray-900 border border-gray-800 rounded-xl flex items-center justify-center text-white focus:outline-none transition active:scale-95 shadow-sm"
+        type="button"
+        aria-label="Open donor menu"
+        aria-expanded={mobileOpen}
+        aria-controls="donor-sidebar"
+        className="mobile-hamburger-btn fixed top-20 left-4 z-40 lg:hidden w-11 h-11 bg-gray-900 border border-gray-800 rounded-xl flex items-center justify-center text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition active:scale-95 shadow-sm print:hidden"
         onClick={() => setMobileOpen(true)}
       >
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
@@ -179,8 +241,10 @@ export function DonorSidebarShell({
 
       {/* Sidebar Panel Drawer */}
       <aside
+        id="donor-sidebar"
+        aria-label="Donor portal"
         ref={sidebarRef}
-        className={`fixed top-0 left-0 h-screen z-40 bg-gray-900 border-r border-gray-800 w-[240px] flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto ${
+        className={`print:hidden fixed top-16 left-0 h-[calc(100vh-4rem)] lg:h-screen z-40 bg-gray-900 border-r border-gray-800 w-[240px] flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto ${
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
