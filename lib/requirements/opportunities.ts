@@ -197,6 +197,16 @@ export async function submitInterest(requirementId: string, actor: Actor, body: 
 
   const proposedBudget = optionalNumber(body.proposedBudget, "Proposed budget", { min: 1 });
   const implementationPlan = optionalText(body.implementationPlan, "Implementation plan");
+  const milestones = parseMilestones(body.milestones);
+  // The milestones are how the budget is spent: together they cannot ask for
+  // more than the proposal does, or the sponsor is approving two numbers.
+  const milestoneTotal = (milestones ?? []).reduce((sum, m) => sum + (m.amount ?? 0), 0);
+  if (proposedBudget !== null && milestoneTotal > proposedBudget) {
+    throw new RequirementWorkflowError(
+      `Milestone amounts add up to ₹${milestoneTotal.toLocaleString("en-IN")}, more than the proposed budget of ₹${proposedBudget.toLocaleString("en-IN")}.`,
+      400
+    );
+  }
   const payload = {
     projectId,
     proposedBudget,
@@ -204,7 +214,7 @@ export async function submitInterest(requirementId: string, actor: Actor, body: 
     implementationPlan,
     expectedOutcomes: optionalText(body.expectedOutcomes, "Expected outcomes"),
     complianceNotes: optionalText(body.complianceNotes, "Compliance notes", 4000),
-    milestones: parseMilestones(body.milestones) as any,
+    milestones: milestones as any,
     status: (proposedBudget && implementationPlan ? "PROPOSAL_SUBMITTED" : "INTERESTED") as "PROPOSAL_SUBMITTED" | "INTERESTED",
     respondedById: actor.id,
   };

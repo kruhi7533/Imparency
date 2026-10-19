@@ -56,7 +56,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       // Only a still-pending payment moves. A concurrent decision loses here.
       const { count } = await tx.contractPayment.updateMany({
         where: { id: payment.id, status: "PENDING_CONFIRMATION" },
-        data: { status: check.target, confirmedById: session.user.id, confirmedAt: now, disputeNote: note },
+        data: {
+          status: check.target,
+          confirmedById: session.user.id,
+          confirmedAt: now,
+          disputeNote: note,
+          reconciledVia: body.decision === "CONFIRM" ? "NGO_CONFIRMATION" : null,
+        },
       });
       if (count === 0) return null;
       await tx.contractAuditLog.create({

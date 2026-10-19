@@ -13,6 +13,7 @@ import { VersionHistory } from "@/components/requirements/VersionHistory";
 import { DocumentPreview } from "@/components/requirements/DocumentPreview";
 import { MatchResults } from "@/components/requirements/MatchResults";
 import { ResponsesPanel } from "@/components/requirements/ResponsesPanel";
+import { ProposalAssistant } from "@/components/requirements/ProposalAssistant";
 import { requirementApi } from "@/components/requirements/api";
 
 type Tab = "requirements" | "document" | "history" | "matches" | "responses";
@@ -344,6 +345,7 @@ export default function RequirementDetailClient({
         </div>
       )}
 
+      {tab === "responses" && responses.length > 0 && <ProposalAssistant requirementId={id} />}
       {tab === "responses" && (
         <ResponsesPanel
           responses={responses}
