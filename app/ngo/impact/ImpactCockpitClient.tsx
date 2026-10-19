@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { NgoImpactCockpit } from "@/lib/outcome-cockpit";
+import type { OutcomeSuggestion } from "@/lib/gemini/extract-outcomes";
 
 /**
  * The NGO impact cockpit. Every rule is enforced server-side; this screen only
@@ -104,7 +105,12 @@ function ClaimForm({
   const [method, setMethod] = useState(editing?.method ?? "");
   const [cited, setCited] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<Preview | null>(null);
-  const [busy, setBusy] = useState<null | "check" | "save">(null);
+  const [busy, setBusy] = useState<null | "check" | "save" | "suggest">(null);
+  const [suggestions, setSuggestions] = useState<null | {
+    usedModel: boolean;
+    suggestions: OutcomeSuggestion[];
+    sources: Array<{ id: string; kind: "MILESTONE_PROOF" | "FIELD_PHOTO"; evidenceId: string; approved: boolean }>;
+  }>(null);
   const [error, setError] = useState<string | null>(null);
 
   const project = cockpit.projects.find((p) => p.id === projectId);
@@ -125,6 +131,34 @@ function ClaimForm({
     } finally {
       setBusy(null);
     }
+  }
+
+  /** AI suggestions from this project's own evidence text. Prefills only — the NGO decides. */
+  async function suggest() {
+    setBusy("suggest");
+    setError(null);
+    try {
+      setSuggestions(await call("/api/ngo/outcome-claims/extract", { method: "POST", body: JSON.stringify({ projectId }) }));
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function useSuggestion(s: Extract<OutcomeSuggestion, { status: "EXTRACTED" }>) {
+    setMetricCode(s.metricCode);
+    setValue(s.value);
+    if (s.periodStart) setPeriodStart(s.periodStart);
+    if (s.periodEnd) setPeriodEnd(s.periodEnd);
+    setMethod(`Stated in our evidence: "${s.quote}" (AI-suggested, checked by us before submitting).`);
+    const cite = new Set<string>();
+    for (const id of s.sourceIds) {
+      const src = suggestions?.sources.find((x) => x.id === id);
+      if (src) cite.add(`${src.kind}:${src.evidenceId}`);
+    }
+    setCited(cite);
+    setPreview(null);
   }
 
   async function save() {
@@ -154,6 +188,51 @@ function ClaimForm({
         <p className="text-xs text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 whitespace-pre-wrap">
           Reviewer: {editing.decisionNote}
         </p>
+      )}
+
+      {!editing && (
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/5 p-3 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-blue-200">
+              Let AI read this project&apos;s proof descriptions and field notes and suggest figures they actually state.
+            </p>
+            <button
+              type="button"
+              disabled={!!busy || !projectId}
+              onClick={suggest}
+              className="px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-400 text-gray-950 text-xs font-bold disabled:opacity-40"
+            >
+              {busy === "suggest" ? "Reading evidence…" : "Suggest from evidence (AI)"}
+            </button>
+          </div>
+          {suggestions && (
+            <ul className="space-y-1.5">
+              {suggestions.suggestions.map((sg) => {
+                const m = cockpit.metrics.find((x) => x.code === sg.metricCode);
+                return (
+                  <li key={sg.metricCode} className="text-xs rounded-lg bg-gray-950/50 border border-gray-800 px-3 py-2">
+                    <span className="text-gray-300 font-semibold">{m?.name ?? sg.metricCode}: </span>
+                    {sg.status === "EXTRACTED" ? (
+                      <>
+                        <span className="text-emerald-300 font-bold">{fmtValue(sg.value, m?.unit ?? "")}</span>
+                        <span className="text-gray-500"> · &ldquo;{sg.quote}&rdquo; · {Math.round(sg.confidence * 100)}% sure</span>
+                        <button type="button" onClick={() => useSuggestion(sg)} className="ml-2 text-blue-300 underline">
+                          Use this
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-amber-300">Insufficient data — {sg.reason}</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <p className="text-[11px] text-gray-500">
+            Suggestions only prefill the form. A figure with no word-for-word support in your evidence is never suggested, and every claim is
+            still checked and approved by a reviewer.
+          </p>
+        </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
