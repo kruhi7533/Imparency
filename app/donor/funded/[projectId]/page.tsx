@@ -10,6 +10,7 @@ import ProjectUpdatesToggle from "./ProjectUpdatesToggle";
 import { loadDonorProjectOutcomes } from "@/lib/outcome-cockpit";
 import { loadProjectFunding } from "@/lib/project-funding";
 import { ProjectFundingBadge } from "@/components/projects/ProjectFundingBadge";
+import { formatOutcome, inr } from "@/lib/outcome-format";
 
 export const dynamic = "force-dynamic";
 
@@ -30,13 +31,6 @@ const MILESTONE_STYLE: Record<string, { cls: string; label: string }> = {
   COMPLETED: { cls: "bg-emerald-100 text-emerald-700", label: "Completed" },
 };
 const DONE = new Set(["VERIFIED", "COMPLETED"]);
-const inr = (v: { toString(): string } | number) => `₹${Number(v.toString()).toLocaleString("en-IN")}`;
-const OUTCOME_UNIT: Record<string, string> = {
-  COUNT_PEOPLE: "people", COUNT_ITEMS: "items", COUNT_EVENTS: "events", PERCENTAGE: "%",
-  HOURS: "hours", KILOGRAMS: "kg", LITRES: "litres", AREA_SQM: "m²",
-};
-const formatOutcome = (value: string, unit: string) =>
-  unit === "CURRENCY_INR" ? inr(value) : `${Number(value).toLocaleString("en-IN")} ${OUTCOME_UNIT[unit] ?? ""}`.trim();
 
 export default async function DonorFundedProjectPage({ params }: { params: { projectId: string } }) {
   const session = await getServerSession(authOptions);
