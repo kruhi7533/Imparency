@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Bell } from "lucide-react";
 
 interface NotificationItem {
@@ -128,6 +129,13 @@ export default function NotificationBell() {
                 ))
               )}
             </div>
+            <Link
+              href="/notifications"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-3 text-center text-xs font-bold text-emerald-400 border-t border-gray-900 hover:bg-gray-900"
+            >
+              See all notifications
+            </Link>
           </div>
         </>
       )}
