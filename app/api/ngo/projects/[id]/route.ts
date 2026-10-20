@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/storage";
@@ -16,6 +17,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const rl = await checkRateLimit(request, "ngo/projects-edit", 30, 60);
+  if (rl.isBlocked) return rl.response;
   try {
     const projectId = params.id;
 

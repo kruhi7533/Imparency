@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import { Role } from "@prisma/client";
 import { verifySessionRole } from "@/lib/auth-guards";
@@ -14,6 +15,8 @@ export async function GET() {
 
 /** POST { email, role }: invite or add a member. OWNER/ADMIN only. */
 export async function POST(request: Request) {
+  const rl = await checkRateLimit(request, "donor/team-invite", 20, 3600);
+  if (rl.isBlocked) return rl.response;
   const { authorized, response, session } = await verifySessionRole(Role.DONOR);
   if (!authorized) return response;
   const body = await request.json().catch(() => ({}));

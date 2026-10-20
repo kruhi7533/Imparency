@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
@@ -19,6 +20,8 @@ import {
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const rl = await checkRateLimit(request, "ngo/submit-proof", 20, 600);
+  if (rl.isBlocked) return rl.response;
   const auth = await verifySessionRole(Role.NGO);
   if (!auth.authorized) {
     return auth.response;

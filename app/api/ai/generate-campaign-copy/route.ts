@@ -1,8 +1,11 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { verifySessionRole } from "@/lib/auth-guards";
 
 export async function POST(request: Request) {
+  const rl = await checkRateLimit(request, "ai/campaign-copy", 10, 60);
+  if (rl.isBlocked) return rl.response;
   try {
     // 1. Guard check: only NGO users can access
     const { authorized, response: authResponse } = await verifySessionRole("NGO");

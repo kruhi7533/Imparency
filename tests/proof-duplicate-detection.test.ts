@@ -17,6 +17,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  *     submission, the same contract the GPS read has.
  */
 
+vi.mock("@/lib/rate-limiter", () => ({ checkRateLimit: vi.fn(async () => ({ isBlocked: false, response: null })) }));
 vi.mock("@/lib/prisma", () => ({
   default: {
     user: { findUnique: vi.fn() },

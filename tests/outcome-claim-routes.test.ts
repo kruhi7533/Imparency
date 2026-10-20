@@ -17,6 +17,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  *     actions explicitly, not merely by living on a different path.
  */
 
+vi.mock("@/lib/rate-limiter", () => ({ checkRateLimit: vi.fn(async () => ({ isBlocked: false, response: null })) }));
 vi.mock("@/lib/prisma", () => ({
   default: {
     nGOProfile: { findUnique: vi.fn() },

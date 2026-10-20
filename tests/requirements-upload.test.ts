@@ -11,6 +11,7 @@ const db = vi.hoisted(() => ({
 
 vi.mock("next-auth/next", () => ({ getServerSession: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
+vi.mock("@/lib/rate-limiter", () => ({ checkRateLimit: vi.fn(async () => ({ isBlocked: false, response: null })) }));
 vi.mock("@/lib/prisma", () => ({ default: db }));
 vi.mock("@/lib/storage", () => ({
   uploadPrivateFile: vi.fn(async () => "requirements/1b4e28ba-2fa1-11d2-883f-0016d3cca427.pdf"),

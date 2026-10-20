@@ -23,6 +23,7 @@ const db = vi.hoisted(() => ({
 }));
 const evidence = vi.hoisted(() => ({ resolveCitations: vi.fn(), evidenceAlreadyCounted: vi.fn() }));
 
+vi.mock("@/lib/rate-limiter", () => ({ checkRateLimit: vi.fn(async () => ({ isBlocked: false, response: null })) }));
 vi.mock("@/lib/prisma", () => ({ default: db }));
 vi.mock("@/lib/outcome-evidence", () => evidence);
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));

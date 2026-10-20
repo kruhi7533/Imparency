@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -8,6 +9,8 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const rl = await checkRateLimit(request, "ngo/toc-check", 10, 60);
+  if (rl.isBlocked) return rl.response;
   try {
     const session = await getServerSession(authOptions);
 
