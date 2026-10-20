@@ -53,6 +53,11 @@ export const ADMIN_HUBS: Hub[] = [
         hint: "Approve or reject organisations. Approval requires evidence — no documents or unread documents means no Approve button.",
       },
       {
+        href: "/admin/donor-orgs",
+        label: "Donor organisations",
+        hint: "Companies and foundations waiting for verification. Until verified they cannot put a CSR requirement in front of NGOs.",
+      },
+      {
         href: "/admin/document-review",
         label: "Documents",
         hint: "The human gate on extracted fields. Only a validated field earns its compliance flag.",
@@ -183,7 +188,7 @@ export const ADMIN_HUBS: Hub[] = [
         href: "/admin/ops",
         label: "Scheduled jobs",
         hint:
-          "Whether the platform's nine background jobs are actually running. A job that has never run shows as a failure, not as healthy.",
+          "Whether the platform's background jobs are actually running, and Run now for any of them. A job that has never run shows as a failure, not as healthy.",
       },
       {
         href: "/admin/audit",
