@@ -9,7 +9,7 @@ export const runtime = "nodejs";
  * Notifications are created all over the API surface (proof reviews, admin
  * inquiries, project decisions…) — this is the single read side for the bell.
  */
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   const auth = await verifySessionRole();
   if (!auth.authorized) return auth.response;
 
@@ -17,7 +17,7 @@ export async function GET(request?: Request) {
     const userId = auth.session.user.id;
     // Paging for the full /notifications page. With no parameters this is the
     // bell's original query: the latest 20.
-    const params = request ? new URL(request.url).searchParams : new URLSearchParams();
+    const params = new URL(request.url).searchParams;
     const limit = Math.min(Math.max(parseInt(params.get("limit") ?? "20", 10) || 20, 1), 50);
     // Keyset cursor "<ISO createdAt>|<id>": a position, not a row lookup, so it
     // can never reach another user's notifications — every page is filtered

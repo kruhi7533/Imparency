@@ -127,6 +127,15 @@ export const JOBS: JobDefinition[] = [
     maxRuntimeMinutes: 30,
   },
   {
+    name: "re-engagement",
+    label: "Donor re-engagement",
+    purpose: "Suggests a next step to donors 48h after an impact report (idempotent, opt-out aware).",
+    schedule: "30 4 * * *",
+    everyHours: 24,
+    graceHours: 12,
+    maxRuntimeMinutes: 15,
+  },
+  {
     name: "risk-dispatch",
     label: "Risk dispatch",
     purpose: "Queues and drains risk-driven follow-up actions.",

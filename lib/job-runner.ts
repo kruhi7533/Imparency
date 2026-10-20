@@ -95,7 +95,11 @@ export async function runJob<T>(
   options: { req?: Request; trigger?: JobTrigger; inboundTraceparent?: string | null },
   body: (job: JobHandle) => Promise<T>
 ): Promise<JobOutcome<T>> {
-  const trigger: JobTrigger = options.trigger ?? "CRON";
+  // A run started from /admin/ops ("Run now") reaches the cron route like the
+  // scheduler does, with CRON_SECRET, and says so in this header. Only a caller
+  // holding the secret gets this far, so the header is trusted for labelling.
+  const headerTrigger = options.req?.headers.get("x-job-trigger");
+  const trigger: JobTrigger = options.trigger ?? (headerTrigger === "MANUAL" ? "MANUAL" : "CRON");
   const inbound =
     options.inboundTraceparent ?? options.req?.headers.get("traceparent") ?? null;
 

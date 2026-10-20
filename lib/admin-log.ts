@@ -157,7 +157,9 @@ export type AdminAction =
   | "GRIEVANCE_DISMISSED"
   // Week 7: a reviewer's decision on a field photo. It decides whether a
   // donor can ever see the photo, so it is logged like any approval.
-  | "FIELD_EVIDENCE_REVIEWED";
+  | "FIELD_EVIDENCE_REVIEWED"
+  // An admin ran a scheduled job by hand from /admin/ops.
+  | "JOB_RUN_MANUALLY";
 
 /**
  * Every entity an admin action can be recorded against.
@@ -198,6 +200,7 @@ export const ADMIN_ENTITY_TYPES = [
   "FIELD_EVIDENCE",
   "METRIC",
   "OUTCOME_CLAIM",
+  "JOB",
 ] as const;
 
 export type AdminEntityType = (typeof ADMIN_ENTITY_TYPES)[number];
