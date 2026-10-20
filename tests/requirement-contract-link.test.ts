@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const tx = vi.hoisted(() => ({
@@ -30,9 +31,9 @@ const params = (over: Record<string, unknown> = {}) => ({
   projectId: "proj-1",
   requirementId: "req-1",
   title: "CSR Grant Agreement — Education, Assam",
-  totalGrantAmount: 8000000,
+  totalGrantAmount: new Prisma.Decimal(8000000),
   termsAndConditions: "Terms",
-  milestones: [{ title: "Labs", description: "", allocatedAmount: 8000000 }],
+  milestones: [{ title: "Labs", description: "", allocatedAmount: new Prisma.Decimal(8000000) }],
   actorId: "donor-1",
   actorRole: "DONOR" as const,
   ...over,

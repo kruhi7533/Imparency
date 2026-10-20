@@ -68,8 +68,8 @@ schema difference rather than replaying migrations (see that file).
 | # | Item | Why it matters |
 |---|---|---|
 | 1 | Run `DONOR-GUIDE.md` UAT with a real CSR team; run `e2e-tests/donor.spec.ts` against a migrated, seeded DB | Nothing here has been clicked through by a user yet |
-| 2 | Rate-limit donation and contract-payment routes | Still the largest gap in `lib/rate-limiter.ts` coverage |
-| 3 | `api/contracts` POST converts `totalGrantAmount` with `Number(...)` | Money through a float — move to `Prisma.Decimal` |
+| 2 | ~~Rate-limit donation and contract-payment routes~~ | Done: every contract write route is limited (`tests/contract-rate-limits.test.ts`); donation routes already were |
+| 3 | ~~Contract amounts through a float~~ | Done: `parseRupees` + exact Decimal sum, no tolerance (`tests/contract-amounts.test.ts`) |
 | 4 | Notification deep links (`link` column) | Notifications cannot take you to the thing they mention |
 | 5 | Team members' personal profile still shows the CSR-officer org form | Harmless (it edits their own row, not the account) but confusing |
 | 6 | Server-rendered PDF report | Browser print works; some funders want a file |

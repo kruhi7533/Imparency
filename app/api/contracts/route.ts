@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { donorCan, resolveDonorAccount, ROLE_FORBIDDEN } from "@/lib/donor-team";
-import { createContract } from "@/lib/contract-service";
+import { createContract, parseRupees } from "@/lib/contract-service";
 
 export async function GET(request: Request) {
   try {
@@ -143,6 +143,14 @@ export async function POST(request: Request) {
       ngoId = inputNgoId || project.ngoId;
     }
 
+    // Amounts are parsed to exact Decimals here; a malformed one is a 400, never a NaN.
+    const grant = parseRupees(totalGrantAmount);
+    if (!grant) return NextResponse.json({ error: "totalGrantAmount must be a rupee amount with at most two decimals." }, { status: 400 });
+    const allocations = milestones.map((m: any) => parseRupees(m?.allocatedAmount));
+    if (allocations.some((a: unknown) => a === null)) {
+      return NextResponse.json({ error: "Every milestone needs an allocatedAmount: a rupee amount with at most two decimals." }, { status: 400 });
+    }
+
     const contract = await createContract({
       donorId,
       ngoId,
@@ -150,7 +158,7 @@ export async function POST(request: Request) {
       requirementId,
       title,
       description,
-      totalGrantAmount: Number(totalGrantAmount),
+      totalGrantAmount: grant,
       currency: currency || "INR",
       startDate: startDate ? new Date(startDate) : null,
       endDate: endDate ? new Date(endDate) : null,
@@ -160,7 +168,7 @@ export async function POST(request: Request) {
       milestones: milestones.map((m: any, idx: number) => ({
         title: m.title,
         description: m.description || "",
-        allocatedAmount: Number(m.allocatedAmount),
+        allocatedAmount: allocations[idx]!,
         deliverables: m.deliverables || [],
         dueDate: m.dueDate ? new Date(m.dueDate) : null,
         projectMilestoneId: m.projectMilestoneId || null,

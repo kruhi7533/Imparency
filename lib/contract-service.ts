@@ -1,5 +1,18 @@
 import prisma from "@/lib/prisma";
-import { ContractStatus, ContractMilestoneStatus } from "@prisma/client";
+import { ContractStatus, ContractMilestoneStatus, Prisma } from "@prisma/client";
+
+/**
+ * A rupee amount from a request: a plain non-negative number with at most two
+ * decimal places, as a number or a string ("120000", "1,20,000.50").
+ * Returns an exact Decimal, or null when it is not a valid amount. Money never
+ * goes through a float here — 0.1 + 0.2 must not decide whether milestones add
+ * up to a grant.
+ */
+export function parseRupees(v: unknown): Prisma.Decimal | null {
+  const raw = typeof v === "number" ? (Number.isFinite(v) ? String(v) : "") : typeof v === "string" ? v.trim().replace(/,/g, "") : "";
+  if (!/^\d{1,12}(\.\d{1,2})?$/.test(raw)) return null;
+  return new Prisma.Decimal(raw);
+}
 import { commitRequirementChange } from "@/lib/requirements/commit";
 
 export function generateContractNumber(): string {
@@ -16,7 +29,7 @@ export interface CreateContractParams {
   requirementId?: string | null;
   title: string;
   description?: string | null;
-  totalGrantAmount: number;
+  totalGrantAmount: Prisma.Decimal;
   currency?: string;
   startDate?: Date | null;
   endDate?: Date | null;
@@ -26,7 +39,7 @@ export interface CreateContractParams {
   milestones: Array<{
     title: string;
     description: string;
-    allocatedAmount: number;
+    allocatedAmount: Prisma.Decimal;
     deliverables?: string[];
     dueDate?: Date | null;
     projectMilestoneId?: string | null;
@@ -39,11 +52,12 @@ export interface CreateContractParams {
 export async function createContract(params: CreateContractParams) {
   const contractNumber = generateContractNumber();
 
-  // Validate milestones sum against totalGrantAmount
-  const milestoneSum = params.milestones.reduce((acc, m) => acc + m.allocatedAmount, 0);
-  if (Math.abs(milestoneSum - params.totalGrantAmount) > 0.01) {
+  // Milestone allocations must add up to the grant exactly, to the paisa.
+  if (params.totalGrantAmount.lte(0)) throw new Error("The total grant amount must be greater than zero.");
+  const milestoneSum = params.milestones.reduce((acc, m) => acc.plus(m.allocatedAmount), new Prisma.Decimal(0));
+  if (!milestoneSum.equals(params.totalGrantAmount)) {
     throw new Error(
-      `Sum of milestone allocations (${milestoneSum}) must equal the total grant amount (${params.totalGrantAmount}).`
+      `Sum of milestone allocations (${milestoneSum.toFixed(2)}) must equal the total grant amount (${params.totalGrantAmount.toFixed(2)}).`
     );
   }
 
@@ -103,7 +117,7 @@ export async function createContract(params: CreateContractParams) {
             action: "CREATED",
             actorId: params.actorId,
             actorRole: params.actorRole,
-            detail: `Contract draft ${contractNumber} created with total grant of ₹${params.totalGrantAmount.toLocaleString("en-IN")}.`,
+            detail: `Contract draft ${contractNumber} created with total grant of ₹${Number(params.totalGrantAmount.toFixed(2)).toLocaleString("en-IN")}.`,
           },
         },
       },
