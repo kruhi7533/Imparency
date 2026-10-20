@@ -9,7 +9,7 @@ Comprehensive end-to-end test suite using Playwright covering all major user flo
 | File | Tests | Coverage |
 |------|-------|----------|
 | `admin.spec.ts` | 20 tests (ADM-001 to ADM-020) | Admin portal: verification, donors, dashboards, audit |
-| `donor.spec.ts` | 18 tests (DON-001 to DON-018) | Donor portal: onboarding, campaigns, proposals, impact |
+| `donor.spec.ts` | 10 tests (DON-001 to DON-010) | Donor portal: navigation, CSR workspace, withdrawal, team roles, impact report + CSV, activity, notifications, tenant isolation, phone menu |
 | `ngo.spec.ts` | 25 tests (NGO-001 to NGO-025) | NGO portal: registration, projects, milestones, reporting |
 | `cross-portal-e2e.spec.ts` | 8 tests (E2E-001 to E2E-008) | Golden path flows across all portals |
 | `security.spec.ts` | 15+ tests (SEC-001+) | Security, validation, access control |
@@ -20,37 +20,28 @@ Comprehensive end-to-end test suite using Playwright covering all major user flo
 
 ### Test Credentials
 
-All credentials are seeded via `npm run seed:csr` and should be ready:
+Seed the data first (see Environment Setup). Every seeded password is
+`demoPassword123`; the admin is `admin@impactbridge.com` / `adminpassword123`.
 
-```
-ADMIN:
-  Email: admin@impactbridge.com
-  Password: adminpassword123
-
-DONOR (CSR):
-  Email: csr.manager@example.test
-  Password: TestPass123!
-
-DONOR (Failing Case):
-  Email: csr.halfway@example.test
-  Password: TestPass123!
-
-DONOR (Foundation):
-  Email: grants.foundation@example.test
-  Password: TestPass123!
-```
+| Account | Seeded by | Used for |
+|---|---|---|
+| `csr.acme@demo.com` | `npm run seed:csr -- --apply` | CSR company owner (Acme Industries, verification PENDING) |
+| `approver.acme@demo.com` | `npm run seed:csr -- --apply` | Acme team member, APPROVER |
+| `viewer.acme@demo.com` | `npm run seed:csr -- --apply` | Acme team member, VIEWER (read-only) |
+| `priya.sharma@demo.com` | `npm run seed` | Individual donor (tenant-isolation checks) |
+| `akshar@demo.org` | `npm run seed` | NGO owner |
 
 ### Environment Setup
 
-1. Ensure dev server is running:
+1. Apply migrations and seed:
    ```bash
-   npm run dev
+   npx prisma migrate deploy
+   npm run seed
+   npm run seed:csr -- --apply
+   npm run seed:ngo -- --apply
    ```
 
-2. Ensure database is seeded:
-   ```bash
-   npm run seed:csr
-   ```
+2. Ensure dev server is running (`npm run dev`), or let Playwright start it.
 
 3. Install Playwright (if not already installed):
    ```bash

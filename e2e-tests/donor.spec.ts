@@ -1,192 +1,144 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
-const DONOR_EMAIL = 'csr.manager@example.test';
-const DONOR_PASSWORD = 'TestPass123!';
-const BASE_URL = 'http://localhost:3000';
+/**
+ * Donor / CSR journeys (roadmap row 13, ">= 8 donor E2E").
+ *
+ * The previous version visited routes that do not exist (/donor/opportunities,
+ * /donor/proposals, /donor/payments ...) and asserted `expect(locator).toBeDefined()`,
+ * which is always true — every test passed whatever the app did. Each test here
+ * hits a real route and asserts something that fails when the feature breaks.
+ *
+ * Data: `npm run seed`, then `npm run seed:csr -- --apply` (tools/seed-csr-donor.ts).
+ * Password for every seeded account: demoPassword123.
+ */
 
-test.describe('Donor/CSR Portal Tests', () => {
-  let page: Page;
+const PASSWORD = 'demoPassword123';
+const OWNER = 'csr.acme@demo.com';
+const VIEWER = 'viewer.acme@demo.com';
+const INDIVIDUAL = 'priya.sharma@demo.com';
+const NGO = 'akshar@demo.org';
+const SEEDED_TITLE = 'FY 2026-27 — Digital learning in Karnataka government schools';
 
-  test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
-    page = await context.newPage();
-  });
+async function login(page: Page, email: string) {
+  await page.goto('/login');
+  await page.fill('input[type="email"]', email);
+  await page.fill('input[type="password"]', PASSWORD);
+  await page.click('button[type="submit"]');
+  await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 30_000 });
+}
 
-  test('DON-001: CSR onboarding & login', async () => {
-    // Navigate to login
-    await page.goto(`${BASE_URL}/login`);
+async function seededRequirementId(page: Page): Promise<string> {
+  const res = await page.request.get('/api/requirements');
+  expect(res.ok()).toBeTruthy();
+  const { requirements } = await res.json();
+  const req = requirements.find((r: any) => r.fileName === SEEDED_TITLE);
+  expect(req, 'seeded requirement — run `npm run seed:csr -- --apply`').toBeTruthy();
+  return req.id;
+}
 
-    // Fill login form
-    await page.fill('input[type="email"]', DONOR_EMAIL);
-    await page.fill('input[type="password"]', DONOR_PASSWORD);
-
-    // Submit login
-    await page.click('button[type="submit"]');
-
-    // Wait for redirect (should go to donor dashboard or home)
-    await page.waitForURL(`${BASE_URL}/**`);
-
-    // Verify logged in (should not be on login page)
-    expect(page.url()).not.toContain('/login');
-  });
-
-  test('DON-002: Donor profile view', async () => {
-    await page.goto(`${BASE_URL}/donor`);
-
-    // Verify donor page loads or redirects appropriately
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
-  });
-
-  test('DON-003: Browse campaigns', async () => {
-    await page.goto(`${BASE_URL}/discover`);
-
-    // Verify campaigns displayed
-    await page.waitForSelector('[role="main"]');
-    const campaigns = await page.locator('a[href*="/projects/"]').count();
-    expect(campaigns).toBeGreaterThan(0);
-  });
-
-  test('DON-004: Campaign detail view', async () => {
-    // Get first campaign link
-    const firstCampaign = page.locator('a[href*="/projects/"]').first();
-    const campaignHref = await firstCampaign.getAttribute('href');
-
-    if (campaignHref) {
-      await page.goto(`${BASE_URL}${campaignHref}`);
-
-      // Verify campaign details displayed
-      await expect(page.locator('heading')).toBeDefined();
-
-      // Verify milestones visible
-      const milestoneCount = await page.locator('[*="Milestone"], [*="milestone"]').count();
-      expect(milestoneCount).toBeGreaterThanOrEqual(0);
+test.describe('Donor / CSR portal', () => {
+  test('DON-001: CSR owner signs in and the portal navigation lists every donor area', async ({ page }) => {
+    await login(page, OWNER);
+    await page.goto('/donor/requirements');
+    const nav = page.getByRole('complementary', { name: 'Donor portal' });
+    for (const label of ['Dashboard', 'Impact Report', 'CSR Requirements', 'Contracts & Grants', 'Team', 'Activity', 'Notifications']) {
+      await expect(nav.getByRole('link', { name: new RegExp(label) })).toBeVisible();
     }
   });
 
-  test('DON-005: RFP/Opportunity creation (if applicable)', async () => {
-    await page.goto(`${BASE_URL}/donor/opportunities`);
-
-    // Verify page loads
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
+  test('DON-002: the CSR workspace lists the organisation\'s requirement', async ({ page }) => {
+    await login(page, OWNER);
+    await page.goto('/donor/requirements');
+    await expect(page.getByText(SEEDED_TITLE)).toBeVisible();
   });
 
-  test('DON-006: Proposal review workflow', async () => {
-    await page.goto(`${BASE_URL}/donor/proposals`);
-
-    // Verify proposals page loads
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
+  test('DON-003: a draft requirement can be withdrawn only with a reason', async ({ page }) => {
+    await login(page, OWNER);
+    const id = await seededRequirementId(page);
+    await page.goto(`/donor/requirements/${id}`);
+    await page.getByRole('button', { name: /Withdraw this requirement/ }).click();
+    const confirm = page.getByRole('button', { name: 'Withdraw requirement' });
+    await expect(confirm).toBeDisabled();
+    await page.getByLabel(/Why are you withdrawing it/).fill('short');
+    await expect(confirm).toBeDisabled();
+    // Not submitted: the seeded draft stays usable for the rest of the UAT.
   });
 
-  test('DON-007: Contract management', async () => {
-    await page.goto(`${BASE_URL}/donor/contracts`);
-
-    // Verify contracts page loads
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
+  test('DON-004: the team page shows the owner, the approver and the viewer, and the owner can add people', async ({ page }) => {
+    await login(page, OWNER);
+    await page.goto('/donor/team');
+    await expect(page.getByRole('heading', { name: 'Team', level: 1 })).toBeVisible();
+    await expect(page.getByText('approver.acme@demo.com')).toBeVisible();
+    await expect(page.getByText('viewer.acme@demo.com')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Add someone' })).toBeVisible();
   });
 
-  test('DON-008: Dashboard view', async () => {
-    await page.goto(`${BASE_URL}/donor/dashboard`);
+  test('DON-005: a VIEWER member sees the organisation\'s work read-only', async ({ page }) => {
+    await login(page, VIEWER);
+    await page.goto('/donor/team');
+    await expect(page.getByRole('heading', { name: 'Add someone' })).toHaveCount(0);
 
-    // Verify dashboard loads
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
+    const id = await seededRequirementId(page); // a member lists the org's requirements
+    await page.goto(`/donor/requirements/${id}`);
+    await expect(page.getByText(/view-only access/)).toBeVisible();
+    // The API refuses a write regardless of the UI.
+    const res = await page.request.post(`/api/requirements/${id}/withdraw`, { data: { reason: 'Trying as a viewer member.' } });
+    expect(res.status()).toBe(403);
   });
 
-  test('DON-009: Matching review', async () => {
-    await page.goto(`${BASE_URL}/donor/matching`);
-
-    // Verify matching page loads
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
-  });
-
-  test('DON-010: Payment tracking', async () => {
-    await page.goto(`${BASE_URL}/donor/payments`);
-
-    // Verify payments page loads
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
-  });
-
-  test('DON-011: Impact monitoring', async () => {
-    await page.goto(`${BASE_URL}/donor/impact`);
-
-    // Verify impact page loads
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
-  });
-
-  test('DON-012: Notifications', async () => {
-    await page.goto(`${BASE_URL}/donor/notifications`);
-
-    // Verify notifications page loads
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
-  });
-
-  test('DON-013: Impact stories', async () => {
-    await page.goto(`${BASE_URL}/donor/stories`);
-
-    // Verify stories page loads
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
-  });
-
-  test('DON-014: NGO feedback', async () => {
-    await page.goto(`${BASE_URL}/donor/feedback`);
-
-    // Verify feedback page loads
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
-  });
-
-  test('DON-015: Team management', async () => {
-    await page.goto(`${BASE_URL}/donor/team`);
-
-    // Verify team page loads
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
-  });
-
-  test('DON-016: Settings & preferences', async () => {
-    await page.goto(`${BASE_URL}/donor/settings`);
-
-    // Verify settings page loads
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
-  });
-
-  test('DON-017: Privacy & consent', async () => {
-    await page.goto(`${BASE_URL}/donor/privacy`);
-
-    // Verify privacy page loads
-    const pageContent = page.locator('main');
-    expect(pageContent).toBeDefined();
-  });
-
-  test('DON-018: Donor logout', async () => {
-    // Navigate to a page that should have logout
-    await page.goto(`${BASE_URL}/donor`);
-
-    // Look for logout/profile menu
-    const profileButton = page.locator('button[aria-label*="profile"], button[*="user"]').first();
-
-    if (await profileButton.isVisible()) {
-      await profileButton.click();
-
-      // Click logout if menu appears
-      const logoutOption = page.locator('text=Logout, text=Sign out, text=Exit');
-      if (await logoutOption.first().isVisible()) {
-        await logoutOption.first().click();
-
-        // Verify redirected away from donor section
-        await page.waitForURL(`${BASE_URL}/**`);
-        expect(page.url()).not.toContain('/donor');
-      }
+  test('DON-006: impact report renders and the CSV export is a CSV with "unverified", never a blank figure', async ({ page }) => {
+    await login(page, OWNER);
+    await page.goto('/donor/impact-report');
+    await expect(page.getByRole('heading', { name: 'Impact report', level: 1 })).toBeVisible();
+    const csv = await page.request.get('/api/donor/impact-report');
+    expect(csv.status()).toBe(200);
+    expect(csv.headers()['content-type']).toContain('text/csv');
+    const body = await csv.text();
+    expect(body.split('\n')[0]).toBe('project,organisation,metric,value,unit,period_start,period_end,status');
+    for (const line of body.trim().split('\n').slice(1)) {
+      // value is column 4 (after project, organisation, metric); status is last.
+      const cols = line.split(',');
+      const status = cols[cols.length - 1];
+      const value = cols[cols.length - 5];
+      expect(['verified', 'unverified']).toContain(status);
+      expect(value).not.toBe('');
+      if (status === 'unverified') expect(value).toBe('unverified');
     }
+  });
+
+  test('DON-007: activity and notifications pages load for the donor', async ({ page }) => {
+    await login(page, OWNER);
+    await page.goto('/donor/activity');
+    await expect(page.getByRole('heading', { name: 'Activity', level: 1 })).toBeVisible();
+    await expect(page.getByRole('link', { name: /^All \(/ })).toBeVisible();
+    await page.goto('/notifications');
+    await expect(page.getByRole('heading', { name: 'Notifications', level: 1 })).toBeVisible();
+    await expect(page.getByText(/\d+ unread/)).toBeVisible();
+  });
+
+  test('DON-008: tenant isolation — another donor cannot read Acme\'s requirement', async ({ page }) => {
+    await login(page, OWNER);
+    const id = await seededRequirementId(page);
+    await page.context().clearCookies();
+    await login(page, INDIVIDUAL);
+    const res = await page.request.get(`/api/requirements/${id}`);
+    expect([403, 404]).toContain(res.status());
+  });
+
+  test('DON-009: a non-donor cannot open the donor portal', async ({ page }) => {
+    await login(page, NGO);
+    await page.goto('/donor/impact-report');
+    await expect(page).not.toHaveURL(/\/donor\/impact-report/);
+    const res = await page.request.get('/api/donor/impact-report');
+    expect(res.status()).toBe(403);
+  });
+
+  test('DON-010: on a phone the donor menu opens and reaches the impact report', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await login(page, OWNER);
+    await page.goto('/donor/requirements');
+    await page.getByRole('button', { name: 'Open donor menu' }).click();
+    await page.getByRole('complementary', { name: 'Donor portal' }).getByRole('link', { name: /Impact Report/ }).click();
+    await expect(page).toHaveURL(/\/donor\/impact-report/);
   });
 });
