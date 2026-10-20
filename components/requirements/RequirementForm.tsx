@@ -79,7 +79,8 @@ export function RequirementForm() {
   const toggleDoc = (doc: string) =>
     setDocs((prev) => {
       const next = new Set(prev);
-      next.has(doc) ? next.delete(doc) : next.add(doc);
+      if (next.has(doc)) next.delete(doc);
+      else next.add(doc);
       return next;
     });
 
