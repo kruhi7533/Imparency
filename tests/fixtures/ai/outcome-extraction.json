@@ -1,0 +1,68 @@
+{
+  "description": "Raw model outputs for outcome extraction (lib/gemini/extract-outcomes.ts guardOutcomeExtraction). What a donor eventually sees as a reported figure starts here, so every hallucination shape the guard must refuse is pinned.",
+  "metrics": [
+    { "code": "STUDENTS_REACHED", "name": "Students reached", "unit": "COUNT_PEOPLE", "definition": "Distinct students who attended at least one session." },
+    { "code": "TEACHERS_TRAINED", "name": "Teachers trained", "unit": "COUNT_PEOPLE", "definition": "Teachers who completed the training." }
+  ],
+  "sources": [
+    { "id": "S1", "kind": "MILESTONE_PROOF", "evidenceId": "proof-1", "approved": true, "date": "2026-09-30", "text": "Digital lessons ran in 5 schools; 1,200 students attended at least one session this term." },
+    { "id": "S2", "kind": "FIELD_PHOTO", "evidenceId": "ev-1", "approved": true, "date": "2026-09-12", "text": "Training day 2 — 18 teachers completed the module." }
+  ],
+  "cases": [
+    {
+      "name": "both figures quoted verbatim from cited sources",
+      "output": { "outcomes": [
+        { "metricCode": "STUDENTS_REACHED", "status": "EXTRACTED", "value": "1200", "quote": "1,200 students attended at least one session", "sourceIds": ["S1"], "confidence": 0.9 },
+        { "metricCode": "TEACHERS_TRAINED", "status": "EXTRACTED", "value": 18, "quote": "18 teachers completed the module", "sourceIds": ["S2"], "confidence": 0.85 }
+      ] },
+      "expect": { "STUDENTS_REACHED": "EXTRACTED:1200", "TEACHERS_TRAINED": "EXTRACTED:18" }
+    },
+    {
+      "name": "hallucinated quote not present in the source",
+      "output": { "outcomes": [
+        { "metricCode": "STUDENTS_REACHED", "status": "EXTRACTED", "value": "1500", "quote": "1,500 students were reached", "sourceIds": ["S1"], "confidence": 0.95 }
+      ] },
+      "expect": { "STUDENTS_REACHED": "INSUFFICIENT_DATA", "TEACHERS_TRAINED": "INSUFFICIENT_DATA" }
+    },
+    {
+      "name": "real quote, but the value is not in it (inflated)",
+      "output": { "outcomes": [
+        { "metricCode": "STUDENTS_REACHED", "status": "EXTRACTED", "value": "2000", "quote": "1,200 students attended at least one session", "sourceIds": ["S1"], "confidence": 0.9 }
+      ] },
+      "expect": { "STUDENTS_REACHED": "INSUFFICIENT_DATA", "TEACHERS_TRAINED": "INSUFFICIENT_DATA" }
+    },
+    {
+      "name": "cites a source that does not exist",
+      "output": { "outcomes": [
+        { "metricCode": "TEACHERS_TRAINED", "status": "EXTRACTED", "value": "18", "quote": "18 teachers completed the module", "sourceIds": ["S9"], "confidence": 0.9 }
+      ] },
+      "expect": { "STUDENTS_REACHED": "INSUFFICIENT_DATA", "TEACHERS_TRAINED": "INSUFFICIENT_DATA" }
+    },
+    {
+      "name": "low confidence is not suggested",
+      "output": { "outcomes": [
+        { "metricCode": "TEACHERS_TRAINED", "status": "EXTRACTED", "value": "18", "quote": "18 teachers completed the module", "sourceIds": ["S2"], "confidence": 0.4 }
+      ] },
+      "expect": { "STUDENTS_REACHED": "INSUFFICIENT_DATA", "TEACHERS_TRAINED": "INSUFFICIENT_DATA" }
+    },
+    {
+      "name": "a metric the request did not ask for is dropped; asked-for metrics are always answered",
+      "output": { "outcomes": [
+        { "metricCode": "TREES_PLANTED", "status": "EXTRACTED", "value": "5", "quote": "5 schools", "sourceIds": ["S1"], "confidence": 0.9 }
+      ] },
+      "expect": { "STUDENTS_REACHED": "INSUFFICIENT_DATA", "TEACHERS_TRAINED": "INSUFFICIENT_DATA" }
+    },
+    {
+      "name": "negative or non-numeric value",
+      "output": { "outcomes": [
+        { "metricCode": "STUDENTS_REACHED", "status": "EXTRACTED", "value": "about 1200", "quote": "1,200 students attended at least one session", "sourceIds": ["S1"], "confidence": 0.9 }
+      ] },
+      "expect": { "STUDENTS_REACHED": "INSUFFICIENT_DATA", "TEACHERS_TRAINED": "INSUFFICIENT_DATA" }
+    },
+    {
+      "name": "malformed output (not an object with outcomes)",
+      "output": "Sure! Here are the outcomes: 1200 students.",
+      "expect": { "STUDENTS_REACHED": "INSUFFICIENT_DATA", "TEACHERS_TRAINED": "INSUFFICIENT_DATA" }
+    }
+  ]
+}
