@@ -200,6 +200,11 @@ export const ADMIN_HUBS: Hub[] = [
         label: "Audit trail",
         hint: "Every recorded admin decision, across every entity — searchable by actor, action, entity type, and date.",
       },
+      {
+        href: "/admin/platform-trail",
+        label: "Platform trail",
+        hint: "Everything donors, NGOs and the platform recorded — contracts and payments, CSR requirements, compliance, donor accounts — in one timeline.",
+      },
     ],
   },
 ];
