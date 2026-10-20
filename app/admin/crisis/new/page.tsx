@@ -69,7 +69,7 @@ export default function NewCrisisEventPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="mb-8">
           <a href="/admin/crisis" className="text-xs text-gray-400 hover:text-emerald-600 font-semibold">← Back to Crisis Events</a>
           <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight mt-2">New Crisis Event</h1>
@@ -172,7 +172,7 @@ export default function NewCrisisEventPage() {
             {loading ? "Creating…" : "Create Crisis Event"}
           </button>
         </form>
-      </main>
+      </div>
     </div>
   );
 }

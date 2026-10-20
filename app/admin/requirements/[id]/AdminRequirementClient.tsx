@@ -219,7 +219,7 @@ export default function AdminRequirementClient({
             )}
           </aside>
 
-          <main className="lg:col-span-8 space-y-4">
+          <div className="lg:col-span-8 space-y-4">
             <div className="flex flex-wrap gap-2 border-b border-gray-800">
               {tabs.map((t) => (
                 <button
@@ -330,7 +330,7 @@ export default function AdminRequirementClient({
             )}
 
             {tab === "audit" && <AuditTrail events={events} />}
-          </main>
+          </div>
         </div>
       </div>
     </div>

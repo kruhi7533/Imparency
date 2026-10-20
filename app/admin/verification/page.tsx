@@ -39,7 +39,7 @@ export default async function AdminVerificationPage() {
   const analyzed = queue.filter((n: any) => n.hasDocuments && n.hasExtraction && !n.hasIdentityContradiction).length;
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Approvals</h1>
@@ -80,6 +80,6 @@ export default async function AdminVerificationPage() {
       <div className="mt-6">
         <AdminClient initialPendingNGOs={queue as any} />
       </div>
-    </main>
+    </div>
   );
 }

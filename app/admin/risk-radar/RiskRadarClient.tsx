@@ -286,7 +286,7 @@ export default function RiskRadarClient({
   const needsAttention = laneRows.filter((r) => r.band === "HIGH" || r.band === "UNKNOWN").length;
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-8">
+    <div className="max-w-5xl mx-auto px-6 py-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Risk Radar</h1>
@@ -399,6 +399,6 @@ export default function RiskRadarClient({
           </p>
         </div>
       )}
-    </main>
+    </div>
   );
 }

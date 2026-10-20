@@ -67,7 +67,7 @@ export default function AdminInitiativeDetailPage({ params }: { params: { id: st
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <a href="/admin/initiatives" className="text-xs text-gray-400 hover:text-emerald-600 font-semibold">← Back to Initiatives</a>
 
         {error && (
@@ -184,7 +184,7 @@ export default function AdminInitiativeDetailPage({ params }: { params: { id: st
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -77,7 +77,7 @@ export default async function AdminDocumentReviewPage() {
   serialized.sort((a, b) => Number(a.hasExtraction) - Number(b.hasExtraction));
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
           Document Review
@@ -91,6 +91,6 @@ export default async function AdminDocumentReviewPage() {
       </div>
 
       <DocumentReviewClient initialNgos={serialized} />
-    </main>
+    </div>
   );
 }
