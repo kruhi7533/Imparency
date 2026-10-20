@@ -136,6 +136,15 @@ export const JOBS: JobDefinition[] = [
     maxRuntimeMinutes: 15,
   },
   {
+    name: "sla-escalation",
+    label: "SLA breach digest",
+    purpose: "Once a day, tells every admin which queues are past their response target.",
+    schedule: "0 8 * * *",
+    everyHours: 24,
+    graceHours: 12,
+    maxRuntimeMinutes: 10,
+  },
+  {
     name: "risk-dispatch",
     label: "Risk dispatch",
     purpose: "Queues and drains risk-driven follow-up actions.",
