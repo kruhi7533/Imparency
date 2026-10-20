@@ -58,3 +58,7 @@ public/downloads/*.pdf
 
 # Private uploads — sensitive documents served only via /api/documents
 private-uploads/
+
+# Database backups contain personal data (tools/db-backup.mjs)
+backups/
+*.dump
