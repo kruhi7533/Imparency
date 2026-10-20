@@ -14,7 +14,10 @@ describe("security headers", () => {
   it("allows geolocation and camera for our own origin only", () => {
     expect(cfg).toMatch(/geolocation=\(self\)/);
     expect(cfg).toMatch(/camera=\(self\)/);
-    expect(cfg).not.toMatch(/geolocation=\(\)/);
+    // Check the header VALUE: the comment above it quotes the old, broken value.
+    const value = cfg.match(/key: "Permissions-Policy",\s*value:\s*'([^']+)'/)?.[1] ?? "";
+    expect(value).toContain("geolocation=(self)");
+    expect(value).not.toContain("geolocation=()");
   });
 
   it("enforces a CSP, and only the directives that cannot break pages", () => {
