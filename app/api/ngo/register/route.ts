@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/storage";
@@ -14,6 +15,8 @@ function generateJoinCode(orgName: string): string {
 }
 
 export async function POST(request: Request) {
+  const rl = await checkRateLimit(request, "ngo/register", 5, 3600);
+  if (rl.isBlocked) return rl.response;
   try {
     // 1. Guard check: only NGO users can register
     const { authorized, response, session } = await verifySessionRole("NGO");

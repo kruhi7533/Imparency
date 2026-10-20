@@ -53,6 +53,11 @@ export const ADMIN_HUBS: Hub[] = [
         hint: "Approve or reject organisations. Approval requires evidence — no documents or unread documents means no Approve button.",
       },
       {
+        href: "/admin/donor-orgs",
+        label: "Donor organisations",
+        hint: "Companies and foundations waiting for verification. Until verified they cannot put a CSR requirement in front of NGOs.",
+      },
+      {
         href: "/admin/document-review",
         label: "Documents",
         hint: "The human gate on extracted fields. Only a validated field earns its compliance flag.",
@@ -131,6 +136,7 @@ export const ADMIN_HUBS: Hub[] = [
         hint: "Every organisation on the platform, searchable. Verified ones live here too — the verification queue only ever shows those still pending.",
       },
       { href: "/admin/inquiries", label: "Inquiries", hint: "Donor questions waiting on an answer." },
+      { href: "/admin/search", label: "Search", hint: "One search across organisations, donors, projects, CSR requirements and contracts." },
     ],
   },
   {
@@ -141,6 +147,11 @@ export const ADMIN_HUBS: Hub[] = [
       // The dashboard's metrics belong here, not in front of the approvals
       // queue that used to sit underneath them.
       { href: "/admin/dashboard", label: "Overview", hint: "Donations, verification counts, and platform totals." },
+      {
+        href: "/admin/pilot-health",
+        label: "Pilot health",
+        hint: "Is the pilot OK right now? Jobs, response targets, fraud, finance and payments on one screen, each linking to where you act.",
+      },
       { href: "/admin/notifications", label: "Notifications", hint: "All admin notifications, alerts, and activity. Filter by type and read status." },
       { href: "/admin/trust-trends", label: "Trust trends", hint: "How verification and compliance are moving over time." },
       { href: "/admin/impact-health", label: "Impact health", hint: "Whether funded work is actually reporting outcomes." },
@@ -183,12 +194,17 @@ export const ADMIN_HUBS: Hub[] = [
         href: "/admin/ops",
         label: "Scheduled jobs",
         hint:
-          "Whether the platform's nine background jobs are actually running. A job that has never run shows as a failure, not as healthy.",
+          "Whether the platform's background jobs are actually running, and Run now for any of them. A job that has never run shows as a failure, not as healthy.",
       },
       {
         href: "/admin/audit",
         label: "Audit trail",
         hint: "Every recorded admin decision, across every entity — searchable by actor, action, entity type, and date.",
+      },
+      {
+        href: "/admin/platform-trail",
+        label: "Platform trail",
+        hint: "Everything donors, NGOs and the platform recorded — contracts and payments, CSR requirements, compliance, donor accounts — in one timeline.",
       },
     ],
   },

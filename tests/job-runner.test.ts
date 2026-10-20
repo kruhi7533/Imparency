@@ -46,9 +46,15 @@ const facts = (over: Partial<LastRunFacts> = {}): LastRunFacts => ({
 });
 
 describe("the registry", () => {
-  it("registers every cron route exactly once", () => {
+  it("registers every cron route exactly once — compared with the real app/api/cron folders", () => {
     expect(new Set(JOB_NAMES).size).toBe(JOBS.length);
-    expect(JOBS.length).toBe(9);
+    const { readdirSync } = require("node:fs") as typeof import("node:fs");
+    const { join } = require("node:path") as typeof import("node:path");
+    const routes = readdirSync(join(process.cwd(), "app", "api", "cron"), { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .sort();
+    expect([...JOB_NAMES].sort()).toEqual(routes);
   });
 
   it("gives every job a cadence, a grace and a runtime budget", () => {

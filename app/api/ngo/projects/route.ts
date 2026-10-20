@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/storage";
@@ -13,6 +14,8 @@ interface MilestoneInput {
 }
 
 export async function POST(request: Request) {
+  const rl = await checkRateLimit(request, "ngo/projects-create", 20, 3600);
+  if (rl.isBlocked) return rl.response;
   try {
     // 1. Guard check: only NGO users can access
     const { authorized, response, session } = await verifySessionRole("NGO");

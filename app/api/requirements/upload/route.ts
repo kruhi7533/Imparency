@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import prisma from '@/lib/prisma';
@@ -20,6 +21,8 @@ export const runtime = 'nodejs';
  *   → Requirements Analyst Agent → AI_EXTRACTED (or FAILED, retryable).
  */
 export async function POST(request: Request) {
+  const rl = await checkRateLimit(request, "requirements/upload", 10, 600);
+  if (rl.isBlocked) return rl.response;
   const actor = await getActor();
   if (!actor) return NextResponse.json({ error: 'Please sign in to continue.' }, { status: 401 });
   if (actor.role !== 'DONOR') {

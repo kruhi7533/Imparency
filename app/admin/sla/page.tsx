@@ -19,9 +19,8 @@ export const dynamic = "force-dynamic";
  * in which queue. Same items, judged against the targets in lib/sla.ts rather
  * than against recency.
  *
- * Detection and visibility only. Nothing here escalates or notifies — the
- * targets are stated so they can be measured and argued with, not enforced by
- * machinery that does not exist.
+ * This page is detection and visibility. Escalation is the daily breach digest
+ * (lib/sla-escalation.ts), which uses the same computation so the two agree.
  */
 export default async function AdminSlaPage() {
   const session = await getServerSession(authOptions);
@@ -49,9 +48,9 @@ export default async function AdminSlaPage() {
           <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Response targets</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
             How long each queue is allowed to keep someone waiting, and what is currently past that.
-            These targets are measured, not enforced — nothing here escalates or sends a
-            notification, so a breach is surfaced to whoever is looking, not pushed to whoever
-            is not.
+            These targets are measured, not enforced. Once a day, if anything is past target, every
+            admin gets one notification listing the queues (the &ldquo;SLA breach digest&rdquo; job in
+            Ops); nothing is reassigned automatically.
           </p>
         </div>
 

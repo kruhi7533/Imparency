@@ -37,6 +37,16 @@ const CSP_REPORT_ONLY = [
   "upgrade-insecure-requests",
 ].join("; ");
 
+/**
+ * The part of the CSP that is ENFORCED now. These directives cannot break a
+ * page that works: nothing here embeds plugins, rewrites <base>, or wants to be
+ * framed. The full policy above stays Report-Only until it has been watched in
+ * a browser (see the note above). `form-action` is deliberately not enforced:
+ * Chrome applies it to redirects after a form post, which would break the
+ * Google sign-in hand-off.
+ */
+const CSP_ENFORCED = ["object-src 'none'", "base-uri 'self'", "frame-ancestors 'none'"].join("; ");
+
 const securityHeaders = [
   // Force HTTPS for two years, including subdomains. Safe here because the app
   // is only ever served over TLS (Vercel).
@@ -47,9 +57,17 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   // Don't leak donation/project URLs (which contain ids) to third-party sites.
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // The app needs none of these; denying them limits the blast radius of XSS.
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()" },
+  // Deny what the app does not use; allow only our own origin for what it does.
+  // geolocation=() used to block the field app's GPS on our OWN origin, so every
+  // capture was recorded as NO_GPS_DATA and failed the location check. Camera is
+  // for field capture; payment for Razorpay checkout (which runs in its frame).
+  {
+    key: "Permissions-Policy",
+    value:
+      'camera=(self), microphone=(), geolocation=(self), payment=(self "https://api.razorpay.com" "https://checkout.razorpay.com"), usb=(), interest-cohort=()',
+  },
   { key: "X-DNS-Prefetch-Control", value: "on" },
+  { key: "Content-Security-Policy", value: CSP_ENFORCED },
   { key: "Content-Security-Policy-Report-Only", value: CSP_REPORT_ONLY },
 ];
 

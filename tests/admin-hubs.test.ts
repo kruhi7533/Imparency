@@ -66,3 +66,9 @@ describe("admin hubs", () => {
     expect(hubForPath(null)).toBeNull();
   });
 });
+
+describe("donor organisation verification queue", () => {
+  it("lives in the Verification hub, next to NGO approvals", () => {
+    expect(hubForPath("/admin/donor-orgs")?.key).toBe("verification");
+  });
+});

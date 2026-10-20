@@ -82,7 +82,7 @@ export default async function AdminProjectReviewPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Project Approval</h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -94,7 +94,7 @@ export default async function AdminProjectReviewPage() {
           initialPending={serializedPending}
           initialAudit={serializedAudit}
         />
-      </main>
+      </div>
     </div>
   );
 }

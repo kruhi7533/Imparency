@@ -146,7 +146,7 @@ function ClaimForm({
     }
   }
 
-  function useSuggestion(s: Extract<OutcomeSuggestion, { status: "EXTRACTED" }>) {
+  function applySuggestion(s: Extract<OutcomeSuggestion, { status: "EXTRACTED" }>) {
     setMetricCode(s.metricCode);
     setValue(s.value);
     if (s.periodStart) setPeriodStart(s.periodStart);
@@ -218,7 +218,7 @@ function ClaimForm({
                         <span className="text-gray-400"> · &ldquo;{sg.quote}&rdquo; · {Math.round(sg.confidence * 100)}% sure</span>
                         <button
                           type="button"
-                          onClick={() => useSuggestion(sg)}
+                          onClick={() => applySuggestion(sg)}
                           aria-label={`Use this suggestion for ${m?.name ?? sg.metricCode}`}
                           className="ml-1 min-h-[40px] px-2 text-blue-300 underline"
                         >
@@ -339,7 +339,8 @@ function ClaimForm({
                     setPreview(null);
                     setCited((prev) => {
                       const next = new Set(prev);
-                      next.has(key(e)) ? next.delete(key(e)) : next.add(key(e));
+                      if (next.has(key(e))) next.delete(key(e));
+                      else next.add(key(e));
                       return next;
                     });
                   }}

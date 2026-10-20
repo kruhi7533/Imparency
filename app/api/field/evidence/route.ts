@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { Role } from "@prisma/client";
@@ -28,6 +29,8 @@ export const runtime = "nodejs";
  * second call gets the first result back.
  */
 export async function POST(request: Request) {
+  const rl = await checkRateLimit(request, "field/evidence", 200, 300);
+  if (rl.isBlocked) return rl.response;
   let uploadedKey: string | null = null;
   try {
     const { authorized, response, session } = await verifySessionRole(Role.NGO);

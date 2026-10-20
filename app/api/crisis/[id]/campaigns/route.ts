@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/storage";
@@ -18,6 +19,8 @@ async function requireParticipant(crisisEventId: string, ngoId: string) {
 }
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
+  const rl = await checkRateLimit(request, "crisis/campaigns", 10, 3600);
+  if (rl.isBlocked) return rl.response;
   try {
     const { authorized, response, session } = await verifySessionRole("NGO");
     if (!authorized) return response;

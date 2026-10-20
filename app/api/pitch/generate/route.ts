@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -135,6 +136,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const rl = await checkRateLimit(request, "pitch/generate", 5, 60);
+  if (rl.isBlocked) return rl.response;
   try {
     const session = await getServerSession(authOptions);
     

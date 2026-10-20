@@ -2,8 +2,9 @@ import { test, expect, Page, BrowserContext } from '@playwright/test';
 
 const ADMIN_EMAIL = 'admin@impactbridge.com';
 const ADMIN_PASSWORD = 'adminpassword123';
-const DONOR_EMAIL = 'csr.manager@example.test';
-const DONOR_PASSWORD = 'TestPass123!';
+// Seeded by tools/seed-csr-donor.ts (npm run seed:csr -- --apply).
+const DONOR_EMAIL = 'csr.acme@demo.com';
+const DONOR_PASSWORD = 'demoPassword123';
 const BASE_URL = 'http://localhost:3000';
 
 test.describe('Cross-Portal E2E Tests', () => {
@@ -43,7 +44,8 @@ test.describe('Cross-Portal E2E Tests', () => {
     await donorPage.fill('input[type="email"]', DONOR_EMAIL);
     await donorPage.fill('input[type="password"]', DONOR_PASSWORD);
     await donorPage.click('button[type="submit"]');
-    await donorPage.waitForURL(`${BASE_URL}/**`);
+    // Wait until we have LEFT /login — "**" also matches the login URL itself.
+    await donorPage.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 60000 });
 
     // Verify donor can browse campaigns (proxy for opportunity creation)
     await donorPage.goto(`${BASE_URL}/discover`);
@@ -65,7 +67,8 @@ test.describe('Cross-Portal E2E Tests', () => {
     await donorPage.fill('input[type="email"]', DONOR_EMAIL);
     await donorPage.fill('input[type="password"]', DONOR_PASSWORD);
     await donorPage.click('button[type="submit"]');
-    await donorPage.waitForURL(`${BASE_URL}/**`);
+    // Wait until we have LEFT /login — "**" also matches the login URL itself.
+    await donorPage.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 60000 });
 
     // Navigate to proposals section
     await donorPage.goto(`${BASE_URL}/donor/proposals`);
@@ -114,7 +117,8 @@ test.describe('Cross-Portal E2E Tests', () => {
     await donorPage.fill('input[type="email"]', DONOR_EMAIL);
     await donorPage.fill('input[type="password"]', DONOR_PASSWORD);
     await donorPage.click('button[type="submit"]');
-    await donorPage.waitForURL(`${BASE_URL}/**`);
+    // Wait until we have LEFT /login — "**" also matches the login URL itself.
+    await donorPage.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 60000 });
 
     // Check donor impact monitoring
     await donorPage.goto(`${BASE_URL}/donor/impact`);
@@ -159,7 +163,8 @@ test.describe('Cross-Portal E2E Tests', () => {
     await donorPage.fill('input[type="email"]', DONOR_EMAIL);
     await donorPage.fill('input[type="password"]', DONOR_PASSWORD);
     await donorPage.click('button[type="submit"]');
-    await donorPage.waitForURL(`${BASE_URL}/**`);
+    // Wait until we have LEFT /login — "**" also matches the login URL itself.
+    await donorPage.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 60000 });
 
     // Check feedback section
     await donorPage.goto(`${BASE_URL}/donor/feedback`);
@@ -174,7 +179,7 @@ test.describe('Cross-Portal E2E Tests', () => {
     // Public access
     const publicPage = await browser.newPage();
     await publicPage.goto(`${BASE_URL}`);
-    await expect(publicPage.locator('heading')).toContainText(/transparency|impact/i);
+    await expect(publicPage.getByRole('heading').first()).toContainText(/transparency|impact/i);
     await publicPage.close();
 
     // Admin access
@@ -195,7 +200,8 @@ test.describe('Cross-Portal E2E Tests', () => {
     await donorPage.fill('input[type="email"]', DONOR_EMAIL);
     await donorPage.fill('input[type="password"]', DONOR_PASSWORD);
     await donorPage.click('button[type="submit"]');
-    await donorPage.waitForURL(`${BASE_URL}/**`);
+    // Wait until we have LEFT /login — "**" also matches the login URL itself.
+    await donorPage.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 60000 });
     expect(donorPage.url()).not.toContain('/login');
     await donorContext.close();
   });

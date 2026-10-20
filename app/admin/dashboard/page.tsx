@@ -183,7 +183,7 @@ export default async function AdminDashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Verification Panel</h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -322,7 +322,7 @@ export default async function AdminDashboardPage() {
             section of this page, under four rows of metrics and two
             leaderboards — a full screen of scrolling before an admin reached
             the work. It is the console's primary job and now has its own page. */}
-      </main>
+      </div>
     </div>
   );
 }

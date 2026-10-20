@@ -87,8 +87,10 @@ jobs:
         env:
           DIRECT_URL: ${{ secrets.CI_DIRECT_URL }}
 
-      # Not `npm run build` — that script is
-      # `prisma generate && prisma migrate deploy && next build`, and the
+      # Not `npm run build` — that script is currently
+      # `prisma generate && prisma db push --accept-data-loss && next build`
+      # (the open P0 in docs/RUNBOOK.md §5), and even once it is back to
+      # `migrate deploy` the
       # migrate step is already run above against the CI database.
       #
       # This needs a real database because `app/page.tsx` is ISR

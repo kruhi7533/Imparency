@@ -851,3 +851,42 @@ Tests:
 - `donor-team`, `donor-impact`, `donor-activity`, `requirement-withdraw`, `notifications-route`;
 - `donor-feedback`, `re-engagement`, `donor-csr-policy`, `ai-regression` (golden fixtures in `tests/fixtures/ai/`);
 - `e2e-tests/donor.spec.ts` (10 real journeys).
+
+## 18. Admin and platform hardening (2026-10-21)
+
+The admin/platform column of the roadmap (rows 5–16). Procedures are in `docs/RUNBOOK.md`; what still blocks the pilot is in `docs/PILOT-READINESS.md`; the console map is in `docs/ADMIN-HANDOVER.md`.
+
+- **Correlation restored.** WEEK9 SPEC-1 (`b563515`) put an id on every request from `middleware.ts`. Merge `db5ee0b` took the older file and silently reverted it.
+  - **Restored shape**: a plain middleware stamps every matched request, `/api` included, and only the protected page prefixes go through `withAuth`. Webhooks and cron carry no session and must never be auth-gated by middleware.
+  - **Checked on the running app**: cron 401 (not a redirect), public API 200, protected page 307, `x-correlation-id` on all, inbound `traceparent` continued.
+  - **Regression guard**: `tests/middleware-correlation.test.ts` pins the shape.
+- **CSRF** (`lib/csrf.ts`, in middleware).
+  - **What's refused**: POST/PUT/PATCH/DELETE to `/api` whose browser `Origin` is another site (or opaque, or a cross-site fetch with no Origin) gets a 403.
+  - **Allowed origins**: the own host (`x-forwarded-host`), `NEXTAUTH_URL`, `ALLOWED_ORIGINS`.
+  - **Non-browser callers** with no Origin go on to the route's own auth.
+  - **Exempt**: webhooks, WhatsApp, cron and NextAuth.
+- **Rate limiting** now also covers:
+  - every contract write route (`tests/contract-rate-limits.test.ts` fails on a new unlimited one);
+  - 16 AI, upload and messaging routes (`tests/costly-route-rate-limits.test.ts`).
+  - The Razorpay webhook is deliberately unlimited, because it is signature-verified.
+- **Headers** (`next.config.mjs`).
+  - **Permissions-Policy**: `geolocation=()` had blocked the field app's GPS on our own origin. It is now `geolocation=(self)`, `camera=(self)`, and `payment` for our origin plus Razorpay.
+  - **CSP**: `object-src`, `base-uri` and `frame-ancestors` are enforced; the full policy stays report-only. `form-action` is not enforced because Chrome applies it to the Google sign-in redirect.
+- **Four-eyes** (`lib/four-eyes.ts`). The proposer of an allocation cannot approve it. It is on unless `FOUR_EYES=off`, and it is built on the `proposedById` / `decidedById` the allocation already stores.
+- **Jobs.**
+  - **Registry**: `lib/job-registry.ts` now has 11 jobs (`re-engagement` and `sla-escalation` added), and its test compares it with the real `app/api/cron` folders.
+  - **Run now**: `POST /api/admin/ops/[job]/run` calls the real cron route with `CRON_SECRET` and `x-job-trigger: MANUAL` (read by `runJob`), so a manual run uses the same ledger and lock. It is logged `JOB_RUN_MANUALLY` / entity `JOB`.
+- **SLA escalation** (`lib/sla-escalation.ts`).
+  - **What it sends**: one daily `SLA_BREACH_DIGEST` notification per admin when any queue is past target.
+  - **Shared logic**: the same computation as `/admin/sla`.
+  - **Idempotent** per admin per day, and silent when nothing is breached.
+- **Health.**
+  - **`GET /api/health`** (public): 200 when the database answers, 503 when it does not, and never returns error text.
+  - **`/admin/pilot-health`** (`lib/pilot-health.ts`): `judgeSignals` covers jobs, SLA, HIGH fraud, finance exceptions, 24h payment failure rate and the last webhook. An unreadable signal shows as amber.
+- **Admin surfaces.**
+  - `/admin/donor-orgs`: the donor organisation verification queue.
+  - `/admin/search`: global search; the query is POSTed, so no PII in URLs; `EXEMPT` from audit, with the reason recorded.
+  - `/admin/platform-trail` (`lib/platform-trail.ts`): contract, requirement, compliance and donor-event logs merged; donor-event values are never selected.
+- **Isolation tests**: `tests/tenant-isolation-donor-admin.test.ts` covers donor↔donor, CSR team, NGO↔contract, and the admin-negative cases (403 for donor and NGO sessions, 401 for no session).
+- **Backup**: `tools/db-backup.mjs` / `tools/db-restore.mjs`. Restore refuses the live database. The restore drill has not been run yet (no PostgreSQL client tools on the dev machine).
+- **Lint**: the two errors that could hide bugs are fixed (`rules-of-hooks`: a function misnamed `use…`; side-effect ternaries). The ~70-error backlog remains, and lint stays non-blocking.

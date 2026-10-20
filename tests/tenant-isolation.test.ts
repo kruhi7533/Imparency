@@ -30,6 +30,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  * check and not from a mock that simply returned nothing.
  */
 
+vi.mock("@/lib/rate-limiter", () => ({ checkRateLimit: vi.fn(async () => ({ isBlocked: false, response: null })) }));
 vi.mock("@/lib/prisma", () => ({
   default: {
     nGOProfile: { findUnique: vi.fn() },

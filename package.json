@@ -17,6 +17,7 @@
     "e2e:ngo": "playwright test ngo",
     "e2e:e2e": "playwright test cross-portal-e2e",
     "e2e:security": "playwright test security",
+    "e2e:golden": "playwright test golden-path.spec.ts && playwright test golden-path-impact.spec.ts",
     "e2e:report": "playwright show-report",
     "db:sync": "prisma migrate deploy",
     "db:migrate": "prisma migrate dev",

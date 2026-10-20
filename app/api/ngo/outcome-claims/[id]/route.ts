@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
@@ -26,6 +27,8 @@ import { verifyCitationOwnership } from "@/lib/outcome-cockpit";
 export const runtime = "nodejs";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  const rl = await checkRateLimit(request, "ngo/outcome-claim", 30, 60);
+  if (rl.isBlocked) return rl.response;
   const { authorized, response, session } = await verifySessionRole("NGO");
   if (!authorized) return response;
 
@@ -129,6 +132,8 @@ const CITABLE_COLUMN: Record<string, "proofId" | "evidenceId" | "feedbackId" | u
  * asked for. Guarded on the status read, so a concurrent submit wins cleanly.
  */
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
+  const rl = await checkRateLimit(request, "ngo/outcome-claim", 30, 60);
+  if (rl.isBlocked) return rl.response;
   const { authorized, response, session } = await verifySessionRole("NGO");
   if (!authorized) return response;
   const profile = await prisma.nGOProfile.findUnique({ where: { userId: session.user.id }, select: { id: true } });

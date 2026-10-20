@@ -11,11 +11,11 @@
  * reviews and fraud alerts were ranked purely by their own severity), a target
  * is declared here for the first time and is marked as such.
  *
- * This is detection and visibility only. There is no automatic escalation and
- * no breach notification — a breach is surfaced to a human who is already
- * looking, not pushed to one who is not. Saying so plainly matters: an "SLA"
- * that silently fails to escalate is worse than none, because it implies a
- * safety net that is not there.
+ * Escalation is one daily digest (lib/sla-escalation.ts, cron sla-escalation):
+ * when any queue is past target, every admin gets one in-app notification
+ * saying which queues and by how much. Nothing reassigns work or emails anyone
+ * outside the admin team — said plainly, because an "SLA" that implies a
+ * safety net that is not there is worse than none.
  */
 
 export interface SlaTarget {

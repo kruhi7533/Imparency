@@ -12,7 +12,7 @@ export default function AdminProjectReviewLoading() {
         <div className="h-5 w-24 bg-gray-200 dark:bg-gray-800 rounded"></div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6 animate-pulse">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6 animate-pulse">
         <div className="h-8 w-56 bg-gray-200 dark:bg-gray-800 rounded"></div>
 
         {[1, 2, 3].map((i) => (
@@ -29,7 +29,7 @@ export default function AdminProjectReviewLoading() {
             </div>
           </div>
         ))}
-      </main>
+      </div>
     </div>
   );
 }

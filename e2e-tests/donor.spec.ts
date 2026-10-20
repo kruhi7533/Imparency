@@ -116,13 +116,17 @@ test.describe('Donor / CSR portal', () => {
     await expect(page.getByText(/\d+ unread/)).toBeVisible();
   });
 
-  test('DON-008: tenant isolation — another donor cannot read Acme\'s requirement', async ({ page }) => {
+  test('DON-008: tenant isolation — another donor cannot read Acme\'s requirement', async ({ page, browser }) => {
     await login(page, OWNER);
     const id = await seededRequirementId(page);
-    await page.context().clearCookies();
-    await login(page, INDIVIDUAL);
-    const res = await page.request.get(`/api/requirements/${id}`);
+    // A separate browser context, not clearCookies(): the open page keeps the
+    // first session alive client-side and /login would redirect straight away.
+    const other = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+    const otherPage = await other.newPage();
+    await login(otherPage, INDIVIDUAL);
+    const res = await otherPage.request.get(`/api/requirements/${id}`);
     expect([403, 404]).toContain(res.status());
+    await other.close();
   });
 
   test('DON-009: a non-donor cannot open the donor portal', async ({ page }) => {

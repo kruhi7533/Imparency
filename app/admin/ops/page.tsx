@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import RunJobButton from "./RunJobButton";
 import { Activity, CircleSlash, Clock } from "lucide-react";
 import {
   JOBS,
@@ -202,6 +203,7 @@ export default async function OpsPage() {
                         {last.correlationId}
                       </p>
                     )}
+                    <RunJobButton job={def.name} label={def.label} />
                   </td>
                   <td className={TD}>
                     <span

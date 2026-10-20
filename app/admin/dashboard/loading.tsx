@@ -13,7 +13,7 @@ export default function AdminDashboardLoading() {
       </nav>
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 animate-pulse">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 animate-pulse">
         {/* Page Title */}
         <div className="h-8 w-48 bg-gray-250 dark:bg-gray-800 rounded"></div>
 
@@ -45,7 +45,7 @@ export default function AdminDashboardLoading() {
             ))}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

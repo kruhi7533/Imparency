@@ -61,6 +61,9 @@ async function main() {
       companyName: "Acme Industries Ltd",
       // A syntactically valid, fictional CIN.
       cin: "U29100MH2004PLC123456",
+      // Fictional, format-valid company PAN (4th letter C). Left UNVERIFIED:
+      // the funder gate refuses matching until an admin verifies it.
+      panNumber: "AAACA1234Q",
       csrRegistrationNumber: "CSR00012345",
       csrBudget: 2500000,
       csrPolicySummary:
@@ -69,8 +72,10 @@ async function main() {
       orgVerificationStatus: "PENDING",
       orgSubmittedAt: new Date(),
     },
-    select: { id: true },
+    select: { id: true, panNumber: true },
   });
+  // Accounts seeded before the PAN was added get it now (only if empty).
+  if (!owner.panNumber) await prisma.user.update({ where: { id: owner.id }, data: { panNumber: "AAACA1234Q" } });
 
   for (const t of TEAM) {
     const user = await prisma.user.upsert({

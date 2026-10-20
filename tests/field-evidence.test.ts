@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  *  - idempotency: an offline capture synced twice is stored once.
  */
 
+vi.mock("@/lib/rate-limiter", () => ({ checkRateLimit: vi.fn(async () => ({ isBlocked: false, response: null })) }));
 vi.mock("@/lib/prisma", () => ({
   default: {
     donorTeamMember: { findUnique: vi.fn() },

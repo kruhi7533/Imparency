@@ -51,6 +51,9 @@ const EXEMPT: Record<string, string> = {
     "Read-only list. The detail route is the one that discloses bank details, and it logs.",
   threads:
     "Read-only list of review threads. Replying and resolving are separate routes, and both log.",
+  search:
+    "Read-only lookup across the catalogue. Searching changes nothing, and logging each query would copy " +
+    "what admins typed (emails, PANs) into the audit log, which outlives PII retention.",
   "today/visit":
     "Writes AdminInboxVisit, but that is the admin's own marker for when they last looked at " +
     "Today — per-admin UI bookkeeping, not a platform state change. Logging every page view " +

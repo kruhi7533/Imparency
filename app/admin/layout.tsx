@@ -50,7 +50,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Second level. Renders itself only inside a hub — it works out which one
           from the path, so pages do not each have to declare their own tabs. */}
       <AdminTabs />
-      {children}
+      {/* The one <main> landmark for every admin page; pages use <div>. */}
+      <main id="admin-main">{children}</main>
     </div>
   );
 }

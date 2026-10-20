@@ -12,6 +12,7 @@ import {
 } from "@/lib/allocation";
 import { allocationCommittedEntry } from "@/lib/ledger";
 import { isUniqueConstraintError } from "@/lib/razorpay-webhook";
+import { checkFourEyes } from "@/lib/four-eyes";
 
 export const runtime = "nodejs";
 
@@ -62,6 +63,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       amount: true,
       ngoId: true,
       opportunityId: true,
+      proposedById: true,
       proposalId: true,
       // The budget is read through the proposal: Allocation.opportunityId is a
       // denormalised id with no relation of its own, kept that way so the
@@ -86,6 +88,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       { error: `This allocation is already ${allocation.status.toLowerCase()}.` },
       { status: 409 },
     );
+  }
+
+  // Four-eyes: the admin who proposed an allocation cannot be the one who
+  // commits the money (lib/four-eyes.ts). Rejecting your own is allowed.
+  if (action === "APPROVE") {
+    const fourEyes = checkFourEyes({ makerId: allocation.proposedById, checkerId: adminId, what: "allocation" });
+    if (!fourEyes.ok) return NextResponse.json({ error: fourEyes.error }, { status: fourEyes.status });
   }
 
   if (action === "REJECT") {

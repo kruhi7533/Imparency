@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
@@ -7,6 +8,8 @@ export async function POST(
   request: Request,
   { params }: { params: { threadId: string } }
 ) {
+  const rl = await checkRateLimit(request, "ngo/inquiry-reply", 30, 60);
+  if (rl.isBlocked) return rl.response;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
