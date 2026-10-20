@@ -15,7 +15,7 @@ import {
   REQUIREMENT_FIELDS,
   type RequirementFieldKey,
 } from "./provenance";
-import { assertAdmin, loadRequirementForActor, requireVerifiedFunder, workflowRole, type Actor } from "./access";
+import { assertAdmin, donorAccountFor, loadRequirementForActor, requireVerifiedFunder, workflowRole, type Actor } from "./access";
 import { SECTOR_OPTIONS, INDIAN_STATES, namesKnownOption } from "./form-options";
 import { runExtraction } from "./extraction";
 import { assertResponseTransition } from "./response-status";
@@ -66,7 +66,9 @@ const FORM_REQUIRED: RequirementFieldKey[] = ["summary", "sector", "state"];
  */
 export async function createRequirementFromForm(actor: Actor, body: unknown) {
   if (actor.role !== "DONOR") throw new RequirementWorkflowError("Only donor accounts can create CSR requirements.", 403);
-  await requireVerifiedFunder(actor.id);
+  // A team member creates it for their organisation's account (lib/donor-team.ts).
+  const sponsorId = donorAccountFor(actor, "editRequirements");
+  await requireVerifiedFunder(sponsorId);
   const input = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
 
   const title = typeof input.title === "string" ? input.title.trim() : "";
@@ -95,7 +97,7 @@ export async function createRequirementFromForm(actor: Actor, body: unknown) {
   return prisma.$transaction(async (tx) => {
     const created = await tx.sponsorRequirement.create({
       data: {
-        sponsorId: actor.id,
+        sponsorId,
         fileName: title,
         status: "DONOR_REVIEW",
         extractedFields: fields as any,
@@ -122,7 +124,7 @@ export async function createRequirementFromForm(actor: Actor, body: unknown) {
 /** Donor corrections (AI_EXTRACTED / DONOR_REVIEW / NEEDS_CORRECTION) or admin edits (PENDING_ADMIN_REVIEW). */
 export async function editRequirementFields(id: string, actor: Actor, edits: unknown, request?: Request) {
   const req = await loadRequirementForActor(id, actor);
-  const role = workflowRole(req, actor);
+  const role = workflowRole(req, actor, "editRequirements");
 
   if (!edits || typeof edits !== "object" || Array.isArray(edits)) {
     throw new RequirementWorkflowError("Provide the fields to update.", 400);
@@ -187,7 +189,7 @@ export async function editRequirementFields(id: string, actor: Actor, edits: unk
 /** Owner submits the reviewed extraction to the admin queue. */
 export async function submitForAdminReview(id: string, actor: Actor) {
   const req = await loadRequirementForActor(id, actor);
-  const role = workflowRole(req, actor);
+  const role = workflowRole(req, actor, "editRequirements");
   if (role !== "DONOR") throw new RequirementWorkflowError("Only the requirement's owner can submit it for review.", 403);
 
   return prisma.$transaction(async (tx) => {
@@ -311,7 +313,7 @@ export async function requestCorrection(id: string, actor: Actor, note: unknown,
  */
 export async function rerunExtraction(id: string, actor: Actor, request?: Request) {
   const req = await loadRequirementForActor(id, actor);
-  const role = workflowRole(req, actor);
+  const role = workflowRole(req, actor, "editRequirements");
   if (!req.storageKey) {
     throw new RequirementWorkflowError("The original document is not available for re-processing.", 400);
   }
@@ -338,7 +340,7 @@ export async function rerunExtraction(id: string, actor: Actor, request?: Reques
 /** Shares the sanitized brief with one eligible shortlisted candidate's NGO. */
 export async function inviteMatch(id: string, actor: Actor, matchId: string) {
   const req = await loadRequirementForActor(id, actor);
-  const role = workflowRole(req, actor);
+  const role = workflowRole(req, actor, "decide");
   if (req.status !== "SHORTLISTED" && req.status !== "NGO_RESPONSE") {
     throw new RequirementWorkflowError("NGOs can be invited only after matching has produced a shortlist.", 400);
   }
@@ -389,7 +391,7 @@ export async function selectResponse(id: string, actor: Actor, responseId: unkno
     throw new RequirementWorkflowError("Choose the NGO response to select.", 400);
   }
   const req = await loadRequirementForActor(id, actor);
-  const role = workflowRole(req, actor);
+  const role = workflowRole(req, actor, "decide");
 
   const response = await prisma.opportunityResponse.findUnique({
     where: { id: responseId },
@@ -441,6 +443,55 @@ export async function selectResponse(id: string, actor: Actor, responseId: unkno
     });
     return updated;
   });
+}
+
+/**
+ * The owning donor withdraws a requirement (allowed stages: lib/requirements/status.ts).
+ * Every NGO response still open on it is closed and that NGO is told why — a
+ * proposal must never be left waiting on a requirement that no longer exists.
+ */
+export async function withdrawRequirement(id: string, actor: Actor, reason: unknown) {
+  const text = requireText(reason, "A reason for withdrawing", 10);
+  const req = await loadRequirementForActor(id, actor);
+  const role = workflowRole(req, actor, "editRequirements");
+  if (role !== "DONOR") throw new RequirementWorkflowError("Only the requirement's owner can withdraw it.", 403);
+
+  const now = new Date();
+  const { updated, closed } = await prisma.$transaction(async (tx) => {
+    const updated = await commitRequirementChange(tx, req, {
+      actorId: actor.id,
+      actorRole: "DONOR",
+      toStatus: "WITHDRAWN",
+      audit: { action: "REQUIREMENT_WITHDRAWN", detail: text },
+    });
+    const open = await tx.opportunityResponse.findMany({
+      where: { requirementId: id, status: { notIn: ["REJECTED", "SELECTED"] } },
+      select: { id: true, ngo: { select: { userId: true } } },
+    });
+    if (open.length > 0) {
+      await tx.opportunityResponse.updateMany({
+        where: { id: { in: open.map((o) => o.id) } },
+        data: { status: "REJECTED", reviewedAt: now, reviewedById: actor.id },
+      });
+    }
+    return { updated, closed: open };
+  });
+
+  if (closed.length > 0) {
+    try {
+      await prisma.notification.createMany({
+        data: closed.map((o) => ({
+          userId: o.ngo.userId,
+          type: "CSR_REQUIREMENT_WITHDRAWN",
+          title: "A CSR opportunity was withdrawn",
+          body: "The funder withdrew a CSR requirement you responded to, so your response has been closed. This is not a judgement on your proposal.",
+        })),
+      });
+    } catch (err) {
+      console.error("[requirements] withdrawal notification failed:", err);
+    }
+  }
+  return updated;
 }
 
 export { ERRORS };

@@ -34,7 +34,7 @@ export async function listRequirementsForActor(actor: Actor, filter: { status?: 
 
   const rows = await prisma.sponsorRequirement.findMany({
     where: {
-      ...(actor.role === "DONOR" ? { sponsorId: actor.id } : {}),
+      ...(actor.role === "DONOR" ? { sponsorId: actor.accountId ?? actor.id } : {}),
       ...(filter.status ? { status: filter.status } : {}),
     },
     orderBy: { updatedAt: "desc" },

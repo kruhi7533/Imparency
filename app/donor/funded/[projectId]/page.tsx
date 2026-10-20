@@ -10,6 +10,9 @@ import ProjectUpdatesToggle from "./ProjectUpdatesToggle";
 import { loadDonorProjectOutcomes } from "@/lib/outcome-cockpit";
 import { loadProjectFunding } from "@/lib/project-funding";
 import { ProjectFundingBadge } from "@/components/projects/ProjectFundingBadge";
+import { formatOutcome, inr } from "@/lib/outcome-format";
+import UpdateFeedback from "@/components/donor/UpdateFeedback";
+import { resolveDonorAccount } from "@/lib/donor-team";
 
 export const dynamic = "force-dynamic";
 
@@ -30,18 +33,12 @@ const MILESTONE_STYLE: Record<string, { cls: string; label: string }> = {
   COMPLETED: { cls: "bg-emerald-100 text-emerald-700", label: "Completed" },
 };
 const DONE = new Set(["VERIFIED", "COMPLETED"]);
-const inr = (v: { toString(): string } | number) => `₹${Number(v.toString()).toLocaleString("en-IN")}`;
-const OUTCOME_UNIT: Record<string, string> = {
-  COUNT_PEOPLE: "people", COUNT_ITEMS: "items", COUNT_EVENTS: "events", PERCENTAGE: "%",
-  HOURS: "hours", KILOGRAMS: "kg", LITRES: "litres", AREA_SQM: "m²",
-};
-const formatOutcome = (value: string, unit: string) =>
-  unit === "CURRENCY_INR" ? inr(value) : `${Number(value).toLocaleString("en-IN")} ${OUTCOME_UNIT[unit] ?? ""}`.trim();
 
 export default async function DonorFundedProjectPage({ params }: { params: { projectId: string } }) {
   const session = await getServerSession(authOptions);
   if (!session?.user || session.user.role !== "DONOR") redirect(`/login?callbackUrl=/donor/funded/${params.projectId}`);
-  const donorId = session.user.id;
+  // Contracts belong to the organisation's account; a team member sees them too.
+  const donorId = (await resolveDonorAccount(session.user.id)).accountId;
 
   const contracts = await prisma.contract.findMany({
     where: { donorId, projectId: params.projectId, status: { in: ["ACTIVE", "COMPLETED"] } },
@@ -71,7 +68,7 @@ export default async function DonorFundedProjectPage({ params }: { params: { pro
         task: { select: { title: true, milestone: { select: { title: true } } } },
       },
     }),
-    prisma.user.findUnique({ where: { id: donorId }, select: { projectUpdatesOptOut: true } }),
+    prisma.user.findUnique({ where: { id: session.user.id }, select: { projectUpdatesOptOut: true } }),
     loadDonorProjectOutcomes(params.projectId),
     loadProjectFunding([params.projectId]),
   ]);
@@ -137,6 +134,12 @@ export default async function DonorFundedProjectPage({ params }: { params: { pro
               );
             })}
           </ol>
+        </section>
+
+        <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+          <h2 className="text-base font-bold text-gray-900 dark:text-white">Your feedback to the organisation</h2>
+          <p className="text-xs text-gray-500">Shared with the organisation without your name, so they know what to report on next.</p>
+          <UpdateFeedback projectId={params.projectId} prompt="How useful are this project's updates?" />
         </section>
 
         {/* Reported outcomes — through claimDisplay(): a figure only when approved AND still

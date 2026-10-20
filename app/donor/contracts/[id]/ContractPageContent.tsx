@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import ContractDetailClient from "@/app/donor/contracts/[id]/ContractDetailClient";
 import { fundingPanelProps, resolveContractParty } from "@/lib/contract-payments";
+import { resolveDonorAccount } from "@/lib/donor-team";
 
 /**
  * The grant-contract screen, shared by /donor/contracts/[id] and
@@ -78,7 +79,7 @@ export default async function ContractPageContent({ contractId, loginPath }: { c
   }
 
   // Check access
-  if (userRole === "DONOR" && contract.donorId !== userId) {
+  if (userRole === "DONOR" && (await resolveDonorAccount(userId)).accountId !== contract.donorId) {
     notFound();
   }
   if (userRole === "NGO" && contract.ngo.userId !== userId) {

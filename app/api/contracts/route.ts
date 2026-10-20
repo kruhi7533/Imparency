@@ -1,7 +1,9 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
-import { createContract } from "@/lib/contract-service";
+import { donorCan, resolveDonorAccount, ROLE_FORBIDDEN } from "@/lib/donor-team";
+import { createContract, parseRupees } from "@/lib/contract-service";
 
 export async function GET(request: Request) {
   try {
@@ -19,7 +21,8 @@ export async function GET(request: Request) {
     const where: any = {};
 
     if (userRole === "DONOR") {
-      where.donorId = userId;
+      // A donor team member sees their organisation's contracts (lib/donor-team.ts).
+      where.donorId = (await resolveDonorAccount(userId)).accountId;
     } else if (userRole === "NGO") {
       // Find NGO Profile for this user
       const ngoProfile = await prisma.nGOProfile.findUnique({
@@ -67,6 +70,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    // Money and contract state change here; bound how fast any one client can hit it.
+    const rl = await checkRateLimit(request, "contracts/create", 10, 3600);
+    if (rl.isBlocked) return rl.response;
     const { authorized, response, session } = await verifySessionRole();
     if (!authorized) return response;
 
@@ -111,7 +117,10 @@ export async function POST(request: Request) {
     let ngoId: string = project.ngoId;
 
     if (userRole === "DONOR") {
-      donorId = userId;
+      // The contract belongs to the organisation's account, and drafting one is a decision.
+      const account = await resolveDonorAccount(userId);
+      if (!donorCan(account.role, "decide")) return NextResponse.json({ error: ROLE_FORBIDDEN }, { status: 403 });
+      donorId = account.accountId;
     } else if (userRole === "NGO") {
       // NGO proposing a contract to a donor
       const ngoProfile = await prisma.nGOProfile.findUnique({
@@ -134,6 +143,14 @@ export async function POST(request: Request) {
       ngoId = inputNgoId || project.ngoId;
     }
 
+    // Amounts are parsed to exact Decimals here; a malformed one is a 400, never a NaN.
+    const grant = parseRupees(totalGrantAmount);
+    if (!grant) return NextResponse.json({ error: "totalGrantAmount must be a rupee amount with at most two decimals." }, { status: 400 });
+    const allocations = milestones.map((m: any) => parseRupees(m?.allocatedAmount));
+    if (allocations.some((a: unknown) => a === null)) {
+      return NextResponse.json({ error: "Every milestone needs an allocatedAmount: a rupee amount with at most two decimals." }, { status: 400 });
+    }
+
     const contract = await createContract({
       donorId,
       ngoId,
@@ -141,7 +158,7 @@ export async function POST(request: Request) {
       requirementId,
       title,
       description,
-      totalGrantAmount: Number(totalGrantAmount),
+      totalGrantAmount: grant,
       currency: currency || "INR",
       startDate: startDate ? new Date(startDate) : null,
       endDate: endDate ? new Date(endDate) : null,
@@ -151,7 +168,7 @@ export async function POST(request: Request) {
       milestones: milestones.map((m: any, idx: number) => ({
         title: m.title,
         description: m.description || "",
-        allocatedAmount: Number(m.allocatedAmount),
+        allocatedAmount: allocations[idx]!,
         deliverables: m.deliverables || [],
         dueDate: m.dueDate ? new Date(m.dueDate) : null,
         projectMilestoneId: m.projectMilestoneId || null,

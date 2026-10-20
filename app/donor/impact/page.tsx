@@ -55,13 +55,19 @@ export default async function DonorImpactPage() {
     <ImpactFeedClient
       events={events.map((e) => ({
         id: e.id,
+        projectId: e.projectId,
         type: e.type,
         title: e.title,
         body: e.body,
         createdAt: e.createdAt.toISOString(),
         projectTitle: projectMap.get(e.projectId)?.title ?? "Unknown project",
         ngoName: projectMap.get(e.projectId)?.ngo.orgName ?? "",
-        mediaUrls: Array.isArray((e.payload as any)?.mediaUrls) ? ((e.payload as any).mediaUrls as string[]) : [],
+        // Only an admin-approved completion may show proof photos. Older
+        // PROOF_SUBMITTED rows carried unreviewed media in their payload.
+        mediaUrls:
+          e.type === "MILESTONE_COMPLETED" && Array.isArray((e.payload as any)?.mediaUrls)
+            ? ((e.payload as any).mediaUrls as string[])
+            : [],
       }))}
       subscriptions={subscriptions.map((s) => ({
         projectId: s.projectId,

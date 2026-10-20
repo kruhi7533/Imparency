@@ -113,6 +113,10 @@ model User {
   // CSR specific fields
   csrRegistrationNumber String?
   csrBudget             Decimal? @db.Decimal(12, 2)
+  /// The company's board-approved CSR policy, summarised (roadmap row 6, "CSR profile").
+  csrPolicySummary      String?
+  /// Focus areas from the same sector list matching uses (lib/requirements/form-options.ts).
+  csrFocusAreas         String[] @default([])
 
   // ── Donor organisation verification ────────────────────────────────────
   // Corporate Identity Number — the one value that identifies an Indian
@@ -1515,6 +1519,8 @@ enum RequirementStatus {
   CONTRACTED
   REJECTED
   FAILED
+  /// The donor withdrew it before selecting a proposal. Terminal.
+  WITHDRAWN
 }
 
 enum OpportunityResponseStatus {
@@ -3522,4 +3528,63 @@ model JobRun {
   /// The ops console reads the latest run per job; the sweep reads failures.
   @@index([job, startedAt])
   @@index([status, startedAt])
+}
+
+enum DonorFeedbackSignal {
+  HELPFUL
+  NEED_MORE_DETAIL
+}
+
+/// A donor's reaction to a project's updates (roadmap row 12, "feedback
+/// signal"). One per donor per project per update; `eventKey` is the
+/// ProjectImpactEvent id, or "" for feedback on the project's updates overall,
+/// so the unique key also covers project-level feedback (Postgres treats NULLs
+/// as distinct, which would allow duplicates). The NGO sees counts and notes,
+/// never the donor's identity.
+model DonorUpdateFeedback {
+  id        String              @id @default(uuid())
+  donorId   String
+  projectId String
+  eventKey  String              @default("")
+  signal    DonorFeedbackSignal
+  note      String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([donorId, projectId, eventKey])
+  @@index([projectId, createdAt])
+}
+
+/// A donor organisation's sub-users (roadmap row 6, "team roles"). The CSR
+/// account is the owner's User row: requirements, contracts and verification
+/// stay keyed on that id, and a member acts FOR it (lib/donor-team.ts). A user
+/// belongs to at most one donor organisation.
+enum DonorTeamRole {
+  ADMIN
+  APPROVER
+  VIEWER
+}
+
+model DonorTeamMember {
+  id          String        @id @default(uuid())
+  accountId   String
+  userId      String        @unique
+  role        DonorTeamRole @default(VIEWER)
+  invitedById String
+  createdAt   DateTime      @default(now())
+
+  @@index([accountId])
+}
+
+model DonorTeamInvite {
+  id        String        @id @default(cuid())
+  accountId String
+  email     String
+  role      DonorTeamRole @default(VIEWER)
+  token     String        @unique @default(cuid())
+  accepted  Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  expiresAt DateTime
+
+  @@unique([email, accountId])
 }

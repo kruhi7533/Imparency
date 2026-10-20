@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   generateContractNumber,
@@ -71,11 +72,11 @@ describe("DonorOrg / Opportunity Contracts Subsystem", () => {
         ngoId: "ngo-456",
         projectId: "proj-789",
         title: "Test Education Grant",
-        totalGrantAmount: 500000,
+        totalGrantAmount: new Prisma.Decimal(500000),
         termsAndConditions: "Standard CSR terms",
         milestones: [
-          { title: "M1", description: "Desc 1", allocatedAmount: 200000 },
-          { title: "M2", description: "Desc 2", allocatedAmount: 200000 }, // Total = 400,000 !== 500,000
+          { title: "M1", description: "Desc 1", allocatedAmount: new Prisma.Decimal(200000) },
+          { title: "M2", description: "Desc 2", allocatedAmount: new Prisma.Decimal(200000) }, // Total = 400,000 !== 500,000
         ],
         actorId: "donor-123",
         actorRole: "DONOR" as const,
@@ -90,11 +91,11 @@ describe("DonorOrg / Opportunity Contracts Subsystem", () => {
         ngoId: "ngo-456",
         projectId: "proj-789",
         title: "Test Healthcare Grant",
-        totalGrantAmount: 500000,
+        totalGrantAmount: new Prisma.Decimal(500000),
         termsAndConditions: "Standard CSR terms",
         milestones: [
-          { title: "M1", description: "Desc 1", allocatedAmount: 250000 },
-          { title: "M2", description: "Desc 2", allocatedAmount: 250000 },
+          { title: "M1", description: "Desc 1", allocatedAmount: new Prisma.Decimal(250000) },
+          { title: "M2", description: "Desc 2", allocatedAmount: new Prisma.Decimal(250000) },
         ],
         actorId: "donor-123",
         actorRole: "DONOR" as const,

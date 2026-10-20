@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { checkRateLimit } from "@/lib/rate-limiter";
+import { acceptDonorInviteOnSignup } from "@/lib/donor-team-admin";
 
 export async function POST(request: Request) {
   try {
@@ -41,6 +42,19 @@ export async function POST(request: Request) {
         role,
       },
     });
+
+    // ── Donor organisation invite (lib/donor-team-admin.ts) ───────────────
+    if (user.role === "DONOR") {
+      const joined = await acceptDonorInviteOnSignup(user, typeof inviteToken === "string" ? inviteToken : null);
+      if (joined) {
+        return NextResponse.json({
+          success: true,
+          userId: user.id,
+          joinedDonorTeam: true,
+          message: "Account created and you've joined your organisation's CSR team.",
+        });
+      }
+    }
 
     // ── Auto-accept team invite if one exists for this email ──────────────
     try {

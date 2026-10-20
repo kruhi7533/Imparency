@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import NewContractClient from "@/app/donor/contracts/new/NewContractClient";
 import { normalizeFields } from "@/lib/requirements/provenance";
+import { donorCan, resolveDonorAccount } from "@/lib/donor-team";
 
 export const dynamic = "force-dynamic";
 
@@ -19,28 +20,12 @@ export default async function NewContractPage({
     redirect("/login?callbackUrl=/donor/contracts/new");
   }
 
-  let user = await prisma.user.findFirst({
-    where: {
-      OR: [
-        session.user.id ? { id: session.user.id } : undefined,
-        session.user.email ? { email: session.user.email } : undefined,
-      ].filter(Boolean) as any,
-    },
-  });
-
-  if (!user && session.user.email) {
-    user = await prisma.user.create({
-      data: {
-        id: session.user.id || undefined,
-        email: session.user.email,
-        name: session.user.name || "Donor User",
-        role: "DONOR",
-        passwordHash: "oauth-or-session-restored",
-      },
-    });
-  }
-
-  const userId = user?.id || session.user.id;
+  // The session id is the identity (no email fallback, no user rows created in
+  // a render). A team member drafts for their organisation's account, and only
+  // if their role may make decisions (lib/donor-team.ts).
+  const account = await resolveDonorAccount(session.user.id);
+  if (!donorCan(account.role, "decide")) redirect("/donor/contracts");
+  const userId = account.accountId;
 
   // Fetch verified active projects for Opportunity selection
   const projects = await prisma.project.findMany({

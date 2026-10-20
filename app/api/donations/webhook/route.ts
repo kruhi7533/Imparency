@@ -293,39 +293,9 @@ export async function POST(req: Request) {
         await queueReceiptClaim(updatedDonation);
       }
 
-      // NOTE: Replace with Inngest or Vercel Cron in production.
-      const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;
-
-      setTimeout(async () => {
-        try {
-          // Find the most recent ImpactReport for this donation
-          const report = await prisma.impactReport.findFirst({
-            where: { donationId: donation.id },
-            orderBy: { sentAt: "desc" }
-          });
-
-          if (!report) {
-            // No impact report yet — re-engagement will be triggered
-            // by the Gemini impact agent in Phase 4 instead.
-            console.log(`[ReEngagement] No impact report for donationId=${donation.id}, skipping.`);
-            return;
-          }
-
-          // Call re-engagement API internally
-          const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-          await fetch(`${baseUrl}/api/engagement/re-engage`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              // Internal call — bypass auth with a server secret header
-              "x-internal-secret": process.env.INTERNAL_API_SECRET || "",
-            },
-            body: JSON.stringify({ reportId: report.id, donorId: donation.donorId }),
-          });
-        } catch (err) {
-          console.error("[ReEngagement Scheduler Error]", err);
-        }
-      }, FORTY_EIGHT_HOURS);
+      // Re-engagement 48h after the impact report is the daily cron
+      // /api/cron/re-engagement (lib/re-engagement.ts). It used to be a
+      // setTimeout here, which never fires once a serverless function returns.
     } else if (eventName === "refund.created" || eventName === "refund.processed") {
       // Money given back. Nothing handled this before: a refund left the
       // ledger, the project's raised total and the donor's lifetime giving

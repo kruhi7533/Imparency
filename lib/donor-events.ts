@@ -21,7 +21,13 @@ export type DonorEventType =
   /// An approved company edited its own name or CIN, which retires the
   /// approval. Recorded because "why did this go back to pending" is the first
   /// question anyone will ask.
-  | "CSR_ORG_REOPENED";
+  | "CSR_ORG_REOPENED"
+  // Donor organisation team (lib/donor-team.ts). Logged on the ACCOUNT with
+  // the member's user id and role only, never a name or email.
+  | "TEAM_MEMBER_INVITED"
+  | "TEAM_MEMBER_ADDED"
+  | "TEAM_ROLE_CHANGED"
+  | "TEAM_MEMBER_REMOVED";
 
 export type DonorEventSource = "USER" | "ADMIN" | "SYSTEM" | "WEBHOOK";
 

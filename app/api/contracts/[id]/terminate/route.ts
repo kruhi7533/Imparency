@@ -1,6 +1,8 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
+import { checkDonorAction, ROLE_FORBIDDEN } from "@/lib/donor-team";
 import { terminateContract } from "@/lib/contract-service";
 
 export async function POST(
@@ -8,6 +10,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Money and contract state change here; bound how fast any one client can hit it.
+    const rl = await checkRateLimit(request, "contracts/terminate", 10, 60);
+    if (rl.isBlocked) return rl.response;
     const { authorized, response, session } = await verifySessionRole();
     if (!authorized) return response;
 
@@ -24,8 +29,13 @@ export async function POST(
       return NextResponse.json({ error: "Contract not found" }, { status: 404 });
     }
 
-    if (userRole === "DONOR" && contract.donorId !== userId) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    if (userRole === "DONOR") {
+      // Team-aware: a member of the donor organisation acts for its account,
+      // within their role (lib/donor-team.ts).
+      const acts = await checkDonorAction(userId, contract.donorId, "terminate");
+      if (!acts.ok) {
+        return NextResponse.json({ error: acts.reason === "role" ? ROLE_FORBIDDEN : "Access denied" }, { status: 403 });
+      }
     }
     if (userRole === "NGO" && contract.ngo.userId !== userId) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
+import { resolveDonorAccount } from "@/lib/donor-team";
 import DonorContractsClient from "@/app/donor/contracts/DonorContractsClient";
 
 export const dynamic = "force-dynamic";
@@ -19,28 +20,12 @@ export default async function DonorContractsPage({
     redirect("/login?callbackUrl=/donor/contracts");
   }
 
-  let user = await prisma.user.findFirst({
-    where: {
-      OR: [
-        session.user.id ? { id: session.user.id } : undefined,
-        session.user.email ? { email: session.user.email } : undefined,
-      ].filter(Boolean) as any,
-    },
-  });
-
-  if (!user && session.user.email) {
-    user = await prisma.user.create({
-      data: {
-        id: session.user.id || undefined,
-        email: session.user.email,
-        name: session.user.name || "Donor User",
-        role: "DONOR",
-        passwordHash: "oauth-or-session-restored",
-      },
-    });
-  }
-
-  const userId = user?.id || session.user.id;
+  // The session id is the identity. This page used to fall back to matching by
+  // email and then CREATE a user row during render when none was found: a
+  // write in a GET, and a way for one session to resolve to another account's
+  // contracts. Contracts are only ever listed for the signed-in user's id.
+  // A donor team member lists their organisation's contracts.
+  const userId = (await resolveDonorAccount(session.user.id)).accountId;
   const statusFilter = searchParams.status;
   const q = searchParams.q?.trim() || "";
 

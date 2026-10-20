@@ -588,7 +588,7 @@ For every group: validation → auth → business logic → DB writes → extern
 
 **Persona system:** set at `app/donor/onboarding/page.tsx` (wizard) → `POST /api/donor/persona/route.ts`, or changed later via `app/donor/profile/DonorProfileClient.tsx` (4-way selector) → `PUT /api/donor/profile/route.ts`. Persona (`DonorPersona`: INDIVIDUAL/CSR_OFFICER/HNI/FOUNDATION/GOVERNMENT) is distinct from `donorCategory` (FCRA-relevant: INDIAN_IN_INDIA/INDIAN_ABROAD/FOREIGN_NATIONAL) — don't conflate the two when working in this area.
 
-**Known incomplete state (inherited from the merge, not fixed since):** `app/donor/dashboard/page.tsx` is a stub (§12 item 5); `DismissButton.tsx`/`ReadMoreNarrative.tsx` are fully built but unimported anywhere; `/donor/portfolio` isn't in `DonorSidebarShell.tsx`'s nav list despite existing as a page. If continuing work here, wiring the dashboard to real data and connecting the two orphaned components is the highest-leverage next step.
+**State since the merge (updated 2026-10-21):** the dashboard is wired to real data, `DismissButton` is used by the re-engagement card and `ReadMoreNarrative` by the dashboard, and every donor page is in the sidebar (see §17).
 
 **Debugging tips:** `components/donor/DonorSidebarShell.tsx` owns its own active-nav-item and mobile-drawer state — if a new donor page isn't appearing in the sidebar, it's because the nav list is hardcoded there (lines ~80-131), not derived from the route tree.
 
@@ -787,3 +787,67 @@ Tests: `tests/outcome-cockpit.test.ts`, `tests/outcome-extraction.test.ts`, `tes
   - **Regression guard**: `tests/ngo-accessibility.test.ts` pins these fixes statically.
 
 Tests: `tests/field-task-edit.test.ts`, `tests/proof-field-evidence.test.ts`, `tests/ngo-activity.test.ts`, `tests/bank-statement.test.ts` (funding cases), `tests/ngo-accessibility.test.ts`.
+
+## 17. Donor side: organisations, impact, audit, engagement (2026-10-21)
+
+The donor column of the roadmap (rows 5–16). Each piece reuses an existing rule rather than adding a parallel one.
+
+- **Donor organisations and team roles** (`lib/donor-team.ts`, `lib/donor-team-admin.ts`, `DonorTeamMember` / `DonorTeamInvite`, migration `20261021140000_donor_team`).
+  - **Ownership is unchanged.** The CSR account is the owner's `User` row. `SponsorRequirement.sponsorId`, `Contract.donorId` and organisation verification all stay keyed on it, so nothing was re-keyed. A member *acts for* the account.
+  - **Roles**:
+    - OWNER (the account itself);
+    - ADMIN (everything, including the team);
+    - APPROVER (decide: matching, invites, change requests, approve, sign, propose, pay);
+    - VIEWER (read only).
+  - Capabilities live in `donorCan`. Only the owner creates admins.
+  - **Every donor ownership check goes through the helper**:
+    - `resolveDonorAccount` / `checkDonorAction` / `donorActsFor`;
+    - `resolveContractParty` (DONOR now carries `donorRole`);
+    - the requirement `Actor` (`accountId`, `donorRole`), with `workflowRole(req, actor, cap)` and `donorAccountFor`.
+    - A VIEWER can read a requirement; every write path refuses them with `ROLE_FORBIDDEN`.
+    - **Adding a donor route means calling one of these, not comparing `donorId === session.user.id`.**
+  - **Donations stay personal.** They are an individual's money, not the company's.
+  - **Joining rules**: one organisation per user; only `role: DONOR` users can join. A donor who already owns requirements or contracts cannot be pulled into another organisation, because joining would hide their own work.
+  - **Invites**: an existing donor is added at once. A new email gets a 7-day `DonorTeamInvite`, accepted at signup exactly once (compare-and-swap on `accepted`). Team events go to `DonorEvent` with ids and roles only.
+  - **UI**: `/donor/team`. Admins see the team, requirements and contracts on `/admin/donors/[id]`, and contracts on the new `/admin/contracts/[id]`.
+- **Cross-project impact report** (`lib/donor-impact.ts`, `/donor/impact-report`, `GET /api/donor/impact-report` CSV).
+  - **Portfolio**: every project with a signed contract or a SUCCESS donation from the account.
+  - **The donor's money** (exact strings): committed from signed contracts, received from RECONCILED payments only, and donated.
+  - **Outcomes**: shown through `loadDonorProjectOutcomes` → `claimDisplay()`. The per-metric portfolio rollup sums verified figures only.
+  - **Project-level, not apportioned**: outcomes are never divided by the donor's share of the funding, and the page says so.
+  - **CSV**: writes the word `unverified`, never blank or 0.
+  - **Printing**: navigation is `print:hidden`, so the page prints as a PDF report.
+  - `lib/outcome-format.ts` is the shared formatter.
+- **Donor activity** (`lib/donor-activity.ts`, `/donor/activity`). A read model over the requirement audit log, contract audit log, donations and `DonorEvent`.
+  - **Requirement detail** is shown only for `REQUIREMENT_REJECTED` / `REQUIREMENT_CORRECTION_REQUESTED` (written for the donor).
+  - **Donor-event values** (PAN, category) are never selected.
+  - **Actors**: staff appear as "Platform reviewer"; a team member viewing sees the owner as "Account owner".
+  - `mergeActivity` is shared with the NGO view and is generic.
+- **Requirement withdrawal.** New terminal `RequirementStatus.WITHDRAWN` (migration `20261021120000`).
+  - **Who and when**: owner-donor only, from any settled stage before SELECTED. Never mid-run (UPLOADED/PROCESSING/MATCHING), and never by an admin.
+  - **Reason**: required, and recorded in the audit log.
+  - **NGO side**: open responses are closed, and their NGOs are notified that the requirement was withdrawn, not that their proposal was judged.
+  - `DONOR_WITHDRAWABLE` is derived from the transition table.
+- **Notifications.**
+  - `/notifications` (any role) is the full list behind the bell.
+  - `GET /api/user/notifications` takes an optional keyset cursor `createdAt|id`, `limit` (1–50) and `unread=1`. The cursor is a position, never a row lookup.
+- **Feedback on updates** (`DonorUpdateFeedback`, migration `20261021130000`, `lib/donor-feedback.ts`, `PUT /api/donor/update-feedback`).
+  - **What a donor can do**: mark an update, or the project overall, Helpful or "I'd like more detail", with an optional note.
+  - **Who can**: donors who fund or follow the project.
+  - **One answer each**: an upsert keyed on donor + project + `eventKey` (`""` for project-level, because Postgres NULLs are distinct).
+  - **Who sees it**: the NGO sees counts and notes on its project page with no donor identity; `/admin/impact-health` shows 30-day totals.
+- **Re-engagement.** The 48h `setTimeout` in the payment webhook (which never fired on serverless) is replaced by the daily `/api/cron/re-engagement` (`lib/re-engagement.ts`, `runJob`).
+  - **Idempotent**: per (donor, report).
+  - **Rate-limited**: at most one nudge per donor per 30 days and per run.
+  - **Opt-out respected**: never emails a donor with `projectUpdatesOptOut`.
+  - The route is now donor-session only.
+- **Impact feed media fix.** `submit-proof` used to put unreviewed photos on the `PROOF_SUBMITTED` event, and the donor feed showed them. The feed now shows media only on `MILESTONE_COMPLETED`.
+- **CSR profile**: `User.csrPolicySummary` and `csrFocusAreas` (migration `20261021150000`). Focus areas come from `SECTOR_OPTIONS`; unknown ones are refused.
+- **Navigation.** Every donor page is in `DonorSidebarShell`. On phones the hamburger sits below the global navbar, and the navbar's own menu is hidden inside `/donor/*`.
+- **Hygiene.** The contracts list, new-contract page and requirement upload no longer match users by email or create `User` rows during a request.
+- **Demo/UAT**: `npm run seed:csr -- --apply` (`tools/seed-csr-donor.ts`; Acme, PENDING verification, approver + viewer, one DONOR_REVIEW requirement). Walkthrough in `docs/DONOR-GUIDE.md`, handover in `docs/DONOR-HANDOVER.md`, AI evals in `docs/AI-EVALS.md`.
+
+Tests:
+- `donor-team`, `donor-impact`, `donor-activity`, `requirement-withdraw`, `notifications-route`;
+- `donor-feedback`, `re-engagement`, `donor-csr-policy`, `ai-regression` (golden fixtures in `tests/fixtures/ai/`);
+- `e2e-tests/donor.spec.ts` (10 real journeys).

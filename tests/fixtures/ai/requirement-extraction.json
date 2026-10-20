@@ -1,0 +1,59 @@
+{
+  "description": "Raw model outputs for the CSR requirement extraction schema (src/agents/requirements-agent/validators/schema.ts). Each case records whether the schema must accept it. Add a case whenever a model change produces output the schema should have caught.",
+  "cases": [
+    {
+      "name": "complete, well-formed extraction",
+      "expect": "valid",
+      "output": {
+        "sector": { "value": "Education", "confidence": 0.95 },
+        "state": { "value": "Karnataka", "confidence": 0.9 },
+        "district": { "value": null, "confidence": 0.2 },
+        "budgetMin": { "value": 250000, "confidence": 0.85 },
+        "budgetMax": { "value": 400000, "confidence": 0.85 },
+        "currency": { "value": "INR", "confidence": 0.99 },
+        "durationMonths": { "value": 12, "confidence": 0.8 },
+        "expectedBeneficiaries": { "value": 1000, "confidence": 0.8 },
+        "primaryKPIs": { "value": ["Students using digital lessons weekly"], "confidence": 0.7 },
+        "secondaryKPIs": { "value": [], "confidence": 0.5 },
+        "reportingCadence": { "value": "Quarterly", "confidence": 0.9 },
+        "timeline": { "value": "April 2026 to March 2027", "confidence": 0.7 },
+        "requiredDocuments": { "value": ["12A", "80G"], "confidence": 0.8 },
+        "contactPerson": { "value": "Meera Iyer", "confidence": 0.9 },
+        "contactEmail": { "value": "csr@acme.example", "confidence": 0.9 },
+        "contactPhone": { "value": null, "confidence": 0.1 },
+        "specialConstraints": { "value": null, "confidence": 0.3 },
+        "summary": { "value": "Digital classrooms in government middle schools.", "confidence": 0.8 }
+      }
+    },
+    {
+      "name": "missing field — the model dropped budgetMax entirely",
+      "expect": "invalid",
+      "dropKeys": ["budgetMax"],
+      "base": "complete, well-formed extraction"
+    },
+    {
+      "name": "budget as a formatted string (₹4,00,000) instead of a number",
+      "expect": "invalid",
+      "base": "complete, well-formed extraction",
+      "patch": { "budgetMax": { "value": "₹4,00,000", "confidence": 0.85 } }
+    },
+    {
+      "name": "confidence outside 0..1 (a percentage)",
+      "expect": "invalid",
+      "base": "complete, well-formed extraction",
+      "patch": { "sector": { "value": "Education", "confidence": 95 } }
+    },
+    {
+      "name": "unknown value honestly reported as null is accepted",
+      "expect": "valid",
+      "base": "complete, well-formed extraction",
+      "patch": { "expectedBeneficiaries": { "value": null, "confidence": 0.1 } }
+    },
+    {
+      "name": "KPIs as a single string instead of a list",
+      "expect": "invalid",
+      "base": "complete, well-formed extraction",
+      "patch": { "primaryKPIs": { "value": "Attendance", "confidence": 0.6 } }
+    }
+  ]
+}

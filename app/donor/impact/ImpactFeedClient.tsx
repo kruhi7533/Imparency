@@ -2,9 +2,11 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import UpdateFeedback from "@/components/donor/UpdateFeedback";
 
 interface FeedEvent {
   id: string;
+  projectId: string;
   type: string;
   title: string;
   body: string;
@@ -171,6 +173,7 @@ export default function ImpactFeedClient({
                       ))}
                     </div>
                   )}
+                  <UpdateFeedback projectId={e.projectId} eventId={e.id} />
                 </div>
               );
             })

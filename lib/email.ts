@@ -727,6 +727,34 @@ The ImpactBridge Team`;
   return sendEmail({ to, subject, body });
 }
 
+/** A donor organisation invited someone to its CSR team (lib/donor-team-admin.ts). */
+export async function sendDonorTeamInviteEmail({
+  to,
+  orgName,
+  role,
+  url,
+  hasAccount,
+}: {
+  to: string;
+  orgName: string;
+  role: string;
+  url: string;
+  hasAccount: boolean;
+}) {
+  const subject = `You've been added to ${orgName}'s CSR team on ImpactBridge`;
+  const body = `Hello,
+
+${orgName} has ${hasAccount ? "added you to" : "invited you to join"} its CSR team on ImpactBridge as ${role.toLowerCase()}.
+
+${hasAccount ? "Sign in to see the organisation's CSR requirements, contracts and impact reports" : "Create a donor account with this email address to join; the invitation is accepted automatically"}:
+${url}
+
+${hasAccount ? "" : "The invitation expires in 7 days.\n\n"}If you were not expecting this, you can ignore this email.
+
+The ImpactBridge Team`;
+  return sendEmail({ to, subject, body });
+}
+
 export async function sendDonorInquiryReceivedEmail(
   to: string,
   donorName: string,

@@ -39,6 +39,8 @@ export default async function DonorRequirementDetailPage({
   ]);
 
   return (
+    <>
+    <TeamRoleBanner role={actor.donorRole} />
     <RequirementDetailClient
       requirement={serializeRequirement(requirement, { includeRawText: true })}
       matchRun={run ? serializeMatchRun(run) : null}
@@ -48,5 +50,18 @@ export default async function DonorRequirementDetailPage({
       duplicate={searchParams.duplicate === "1"}
       created={searchParams.created === "1"}
     />
+    </>
   );
 }
+
+function TeamRoleBanner({ role }: { role?: string }) {
+  if (role !== "VIEWER" && role !== "APPROVER") return null;
+  return (
+    <p role="note" className="mb-4 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-200">
+      {role === "VIEWER"
+        ? "You have view-only access to your organisation's CSR work. Ask an owner or admin to make changes."
+        : "As an approver you can run matching, review proposals and approve them. Editing the requirement itself is for owners and admins."}
+    </p>
+  );
+}
+

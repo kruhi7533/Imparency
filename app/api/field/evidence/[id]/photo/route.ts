@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { readPrivateFile } from "@/lib/storage";
 import { isShareableWithDonor, resolveNgoActor } from "@/lib/field-evidence";
+import { resolveDonorAccount } from "@/lib/donor-team";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     else if (user.role === "NGO") allowed = (await resolveNgoActor(user.id))?.ngoId === evidence.ngoId;
     else if (user.role === "DONOR") {
       const funds = await prisma.contract.findFirst({
-        where: { donorId: user.id, projectId: evidence.projectId, status: { in: ["ACTIVE", "COMPLETED"] } },
+        where: { donorId: (await resolveDonorAccount(user.id)).accountId, projectId: evidence.projectId, status: { in: ["ACTIVE", "COMPLETED"] } },
         select: { id: true },
       });
       allowed = !!funds && isShareableWithDonor(evidence, evidence.feedback);

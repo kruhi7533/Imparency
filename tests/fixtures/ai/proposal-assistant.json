@@ -1,0 +1,12 @@
+{
+  "description": "Model answers for the donor's grounded proposal assistant (lib/requirements/proposal-assistant.ts checkGrounding). Sources S1..S3 exist. 'grounded' is what the donor may be shown as an answer; anything ungrounded falls back to the cited facts.",
+  "sources": ["S1", "S2", "S3"],
+  "cases": [
+    { "name": "cites a real source", "answer": "The proposed budget is ₹3,20,000 [S2].", "grounded": true, "invalid": [] },
+    { "name": "explicit not-found is honest, so grounded", "answer": "The proposals do not say.", "grounded": true, "invalid": [] },
+    { "name": "invents a source", "answer": "They reached 5,000 students last year [S9].", "grounded": false, "invalid": ["S9"] },
+    { "name": "opinion with no citation", "answer": "Akshar is clearly the strongest applicant.", "grounded": false, "invalid": [] },
+    { "name": "mixes a real and an invented source — the invented one is stripped", "answer": "Duration is 12 months [S1]; they have 40 staff [S7].", "grounded": true, "invalid": ["S7"] },
+    { "name": "citation-shaped text that is not a citation", "answer": "See section [5] of the brief.", "grounded": false, "invalid": [] }
+  ]
+}

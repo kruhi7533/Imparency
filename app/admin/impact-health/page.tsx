@@ -12,6 +12,8 @@ import {
   CalendarClock,
   CheckCircle2,
   PartyPopper,
+  ThumbsUp,
+  MessageSquareMore,
 } from "lucide-react";
 import NgoAgentActions from "./NgoAgentActions";
 import AskNgoBox from "@/app/admin/components/AskNgoBox";
@@ -116,6 +118,23 @@ export default async function ImpactHealthPage() {
       distinct: ["projectId"],
     })
   ).map((e) => e.projectId);
+
+  // Donor feedback on updates (lib/donor-feedback.ts), last 30 days. Counts and
+  // project titles only — never which donor said what.
+  const [feedbackBySignal, wantMore] = await Promise.all([
+    prisma.donorUpdateFeedback.groupBy({ by: ["signal"], where: { updatedAt: { gte: thirtyDaysAgo } }, _count: { _all: true } }),
+    prisma.donorUpdateFeedback.groupBy({
+      by: ["projectId"],
+      where: { signal: "NEED_MORE_DETAIL", updatedAt: { gte: thirtyDaysAgo } },
+      _count: { _all: true },
+      orderBy: { _count: { projectId: "desc" } },
+      take: 5,
+    }),
+  ]);
+  const wantMoreProjects = wantMore.length
+    ? await prisma.project.findMany({ where: { id: { in: wantMore.map((w) => w.projectId) } }, select: { id: true, title: true, ngo: { select: { orgName: true } } } })
+    : [];
+  const fbCount = (sig: string) => feedbackBySignal.find((f) => f.signal === sig)?._count._all ?? 0;
 
   const [statusCounts, eventCount, subCount, failedRows, silentNgos, overdueMilestoneRows] = await Promise.all([
     prisma.impactDelivery.groupBy({ by: ["status"], _count: true }),
@@ -223,6 +242,36 @@ export default async function ImpactHealthPage() {
               value={subCount}
             />
           </div>
+        </div>
+
+        {/* Donor feedback on updates */}
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-wider text-gray-400 mb-3">Donor feedback (30 days)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <StatCard icon={ThumbsUp} label="Rated helpful" helper="Donors who marked a project's updates as helpful." value={fbCount("HELPFUL")} />
+            <StatCard
+              icon={MessageSquareMore}
+              label="Asked for more detail"
+              helper="Donors who wanted more from an update. The NGO sees these anonymously on its project page."
+              value={fbCount("NEED_MORE_DETAIL")}
+              tone={fbCount("NEED_MORE_DETAIL") > fbCount("HELPFUL") ? "warn" : "neutral"}
+            />
+          </div>
+          {wantMore.length > 0 && (
+            <ul className="mt-3 text-sm text-gray-700 dark:text-gray-300 space-y-1">
+              {wantMore.map((w) => {
+                const proj = wantMoreProjects.find((x) => x.id === w.projectId);
+                return (
+                  <li key={w.projectId}>
+                    <a href={`/projects/${w.projectId}`} className="font-semibold hover:underline">
+                      {proj?.title ?? "Project"}
+                    </a>
+                    {proj ? ` · ${proj.ngo.orgName}` : ""} — {w._count._all} asked for more detail
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
 
         {/* Delivery health */}

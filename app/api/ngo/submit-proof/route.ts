@@ -305,7 +305,10 @@ export async function POST(request: Request) {
         type: "PROOF_SUBMITTED",
         title: `Progress proof submitted for "${milestone.title}"`,
         body: `The NGO submitted ${files.length + fieldEvidenceIds.length} item(s) of evidence for this milestone. Our admin team is reviewing it — you'll be notified once it's verified.`,
-        payload: { proofId: proof.id, mediaUrls, aiScore: validationResult.score },
+        // No media here: this event fires BEFORE admin review, and the feed
+        // would show donors unreviewed photos. Media travels on the
+        // MILESTONE_COMPLETED event that review-proof emits on approval.
+        payload: { proofId: proof.id, aiScore: validationResult.score },
       });
     } catch (impactErr) {
       console.error("Failed to emit impact event on proof submission:", impactErr);

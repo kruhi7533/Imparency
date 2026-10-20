@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/risk-dispatch",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/re-engagement",
+      "schedule": "30 4 * * *"
     }
   ]
 }

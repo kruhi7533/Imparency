@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MatchRunDTO, RequirementDTO } from "@/lib/requirements/dto";
 import type { ResponseItem } from "@/lib/requirements/queries";
-import { DONOR_EDITABLE, POST_VALIDATION } from "@/lib/requirements/status";
+import { DONOR_EDITABLE, DONOR_WITHDRAWABLE, POST_VALIDATION } from "@/lib/requirements/status";
 import { StatusBadge } from "@/components/requirements/StatusBadge";
 import { RequirementStepper } from "@/components/requirements/RequirementStepper";
 import { FieldsEditor, initialDraft, draftEdits, type FieldDraft } from "@/components/requirements/FieldsEditor";
@@ -60,6 +60,9 @@ export default function RequirementDetailClient({
       : null
   );
   const [showRaw, setShowRaw] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawReason, setWithdrawReason] = useState("");
+  const canWithdraw = (DONOR_WITHDRAWABLE as string[]).includes(status);
 
   // After router.refresh() the server sends the new version; reset the draft to it.
   useEffect(() => {
@@ -96,6 +99,17 @@ export default function RequirementDetailClient({
         await requirementApi(`/api/requirements/${id}/submit-review`, { method: "POST" });
       },
       "Submitted for admin verification. You'll be able to find matches once an admin validates it."
+    );
+  const withdraw = () =>
+    perform(
+      "withdraw",
+      async () => {
+        await requirementApi(`/api/requirements/${id}/withdraw`, { method: "POST", body: JSON.stringify({ reason: withdrawReason }) });
+        setWithdrawing(false);
+      },
+      responses.length > 0
+        ? "Requirement withdrawn. The NGOs that responded have been told and their responses closed."
+        : "Requirement withdrawn."
     );
   const retry = () => perform("retry", () => requirementApi(`/api/requirements/${id}/rerun-extraction`, { method: "POST" }), "Extraction complete.");
   const findMatches = () =>
@@ -237,6 +251,8 @@ export default function RequirementDetailClient({
               Initiate Contract
             </Link>
           </div>
+        ) : status === "WITHDRAWN" ? (
+          <p className="text-gray-400">You withdrew this requirement. It is closed and no longer visible to NGOs.</p>
         ) : status === "CONTRACTED" && contract ? (
           <p>
             Contracted —{" "}
@@ -247,6 +263,46 @@ export default function RequirementDetailClient({
           </p>
         ) : null}
       </div>
+
+      {canWithdraw && (
+        <div className="text-sm">
+          {!withdrawing ? (
+            <button type="button" onClick={() => setWithdrawing(true)} className="min-h-[40px] text-xs font-bold text-red-300 hover:underline">
+              Withdraw this requirement…
+            </button>
+          ) : (
+            <div className="border border-red-500/30 bg-red-500/5 rounded-2xl p-4 space-y-2">
+              <label htmlFor="withdraw-reason" className="block text-xs font-bold text-red-200">
+                Why are you withdrawing it? (at least 10 characters)
+              </label>
+              <textarea
+                id="withdraw-reason"
+                rows={2}
+                value={withdrawReason}
+                onChange={(e) => setWithdrawReason(e.target.value)}
+                className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100"
+              />
+              <p className="text-xs text-gray-400">
+                This closes the requirement for good.
+                {responses.length > 0 ? ` ${responses.length} NGO response${responses.length === 1 ? "" : "s"} will be closed and the NGOs notified.` : ""}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={!!busy || withdrawReason.trim().length < 10}
+                  onClick={withdraw}
+                  className="min-h-[40px] px-4 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-40"
+                >
+                  {busy === "withdraw" ? "Withdrawing…" : "Withdraw requirement"}
+                </button>
+                <button type="button" onClick={() => setWithdrawing(false)} className="min-h-[40px] px-3 text-xs text-gray-300">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 border-b border-gray-800">
         {tabs.map((t) => (

@@ -54,7 +54,10 @@ export default function Navbar() {
         ];
   // Ten NGO links do not fit until xl; everyone else's few links fit from md.
   const desktopNav = role === "NGO" ? "hidden xl:flex" : "hidden md:flex";
-  const menuButton = role === "NGO" ? "xl:hidden" : "md:hidden";
+  // On the donor portal the sidebar drawer is the navigation; a second menu
+  // button would compete with it on a phone.
+  const inDonorPortal = role === "DONOR" && !!pathname?.startsWith("/donor");
+  const menuButton = inDonorPortal ? "hidden" : role === "NGO" ? "xl:hidden" : "md:hidden";
 
   // Hide Navbar inside the Login / Signup screen to keep it focused
   if (pathname === "/login") return null;
@@ -75,7 +78,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="border-b border-gray-900 bg-gray-950/95 sticky top-0 z-50">
+    <header className="border-b border-gray-900 bg-gray-950/95 sticky top-0 z-50 print:hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
 
         {/* Left: Branding Logo — shrink-0 + whitespace-nowrap so it can never

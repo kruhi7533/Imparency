@@ -1,6 +1,8 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
+import { checkDonorAction, ROLE_FORBIDDEN } from "@/lib/donor-team";
 import { ContractStatus } from "@prisma/client";
 
 export async function GET(
@@ -76,8 +78,13 @@ export async function GET(
     }
 
     // Access control check
-    if (userRole === "DONOR" && contract.donorId !== userId) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    if (userRole === "DONOR") {
+      // Team-aware: a member of the donor organisation acts for its account,
+      // within their role (lib/donor-team.ts).
+      const acts = await checkDonorAction(userId, contract.donorId, "view");
+      if (!acts.ok) {
+        return NextResponse.json({ error: acts.reason === "role" ? ROLE_FORBIDDEN : "Access denied" }, { status: 403 });
+      }
     }
 
     if (userRole === "NGO" && contract.ngo.userId !== userId) {
@@ -102,6 +109,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Money and contract state change here; bound how fast any one client can hit it.
+    const rl = await checkRateLimit(request, "contracts/edit", 30, 60);
+    if (rl.isBlocked) return rl.response;
     const { authorized, response, session } = await verifySessionRole();
     if (!authorized) return response;
 
@@ -119,7 +129,12 @@ export async function PATCH(
     }
 
     // Access check
-    const isDonor = userRole === "DONOR" && existing.donorId === userId;
+    // Editing contract terms is a decision; a VIEWER member cannot (lib/donor-team.ts).
+    const donorAct = userRole === "DONOR" ? await checkDonorAction(userId, existing.donorId, "decide") : null;
+    if (donorAct && !donorAct.ok && donorAct.reason === "role") {
+      return NextResponse.json({ error: ROLE_FORBIDDEN }, { status: 403 });
+    }
+    const isDonor = !!donorAct?.ok;
     const isNgo = userRole === "NGO" && existing.ngo.userId === userId;
     const isAdmin = userRole === "ADMIN";
 

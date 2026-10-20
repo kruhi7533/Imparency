@@ -1,6 +1,7 @@
 import { Prisma, ContractPaymentMode, ContractPaymentStatus, ContractStatus, TeamRole } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { fundingState, type FundingState } from "@/lib/allocation";
+import { donorCan, resolveDonorAccount, type DonorRole } from "@/lib/donor-team";
 
 /**
  * Week 6: money on the CSR contract track.
@@ -20,7 +21,7 @@ const dec = (v: Amount) => new Prisma.Decimal(v.toString());
 // ─── Who is asking ───────────────────────────────────────────────────────────
 
 export type ContractParty =
-  | { party: "DONOR" }
+  | { party: "DONOR"; donorRole: DonorRole }
   | { party: "NGO"; teamRole: TeamRole }
   | { party: "ADMIN" };
 
@@ -36,7 +37,11 @@ export async function resolveContractParty(
   contract: { donorId: string; ngoId: string },
 ): Promise<ContractParty | null> {
   if (user.role === "ADMIN") return { party: "ADMIN" };
-  if (user.role === "DONOR") return contract.donorId === user.id ? { party: "DONOR" } : null;
+  if (user.role === "DONOR") {
+    // Team-aware: a member of the donor organisation is the donor party, with their role.
+    const account = await resolveDonorAccount(user.id);
+    return account.accountId === contract.donorId ? { party: "DONOR", donorRole: account.role } : null;
+  }
   if (user.role !== "NGO") return null;
 
   const owned = await prisma.nGOProfile.findUnique({ where: { userId: user.id }, select: { id: true } });
@@ -278,6 +283,7 @@ export function fundingPanelProps(
   party: ContractParty,
 ) {
   const teamRole = party.party === "NGO" ? party.teamRole : null;
+  const donorRole = party.party === "DONOR" ? party.donorRole : null;
   const { milestones: perMilestone, ...summary } = fundingSummary(contract, contract.milestones, contract.payments);
   return {
     contractId: contract.id,
@@ -287,6 +293,8 @@ export function fundingPanelProps(
       party: party.party,
       canAccept: teamRole !== null && CAN_ACCEPT.includes(teamRole),
       canConfirm: teamRole !== null && CAN_CONFIRM_PAYMENT.includes(teamRole),
+      /** A VIEWER member of the donor organisation sees payments but cannot record one. */
+      canPay: donorRole !== null && donorCan(donorRole, "pay"),
     },
     milestones: contract.milestones.map((m) => ({ id: m.id, title: m.title, allocatedAmount: Number(m.allocatedAmount.toString()) })),
     payments: [...contract.payments]

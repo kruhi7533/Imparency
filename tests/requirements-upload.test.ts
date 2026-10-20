@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import crypto from "crypto";
 
 const db = vi.hoisted(() => ({
+  donorTeamMember: { findUnique: vi.fn() },
   user: { findFirst: vi.fn(), create: vi.fn() },
   sponsorRequirement: { create: vi.fn() },
   requirementAuditLog: { create: vi.fn() },
