@@ -19,7 +19,9 @@ test.describe('Admin Portal Tests', () => {
     // Fill login form - use flexible selectors that work with various input configurations
     const emailInput = page.locator('input[type="email"], input[name="email"], input[id="email"]').first();
     const passwordInput = page.locator('input[type="password"], input[name="password"], input[id="password"]').first();
-    const submitButton = page.locator('button[type="submit"], button:has-text("Login"), button:has-text("Sign in")').first();
+    // The submit button itself. A comma selector + .first() matched the "Sign In"
+    // TAB above the form (document order), so the form was never submitted.
+    const submitButton = page.locator('form button[type="submit"]').first();
 
     await emailInput.fill(ADMIN_EMAIL);
     await passwordInput.fill(ADMIN_PASSWORD);
@@ -28,7 +30,8 @@ test.describe('Admin Portal Tests', () => {
     await submitButton.click();
 
     // Wait for redirect to admin - be flexible with the redirect URL
-    await page.waitForURL(`${BASE_URL}/admin/**`, { timeout: 15000 });
+    // Generous: in dev the first visit compiles the admin dashboard.
+    await page.waitForURL(`${BASE_URL}/admin/**`, { timeout: 60000 });
 
     // Verify admin access
     await expect(page).toHaveURL(/\/admin\//);

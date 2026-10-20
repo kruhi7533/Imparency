@@ -26,7 +26,8 @@ test.describe('Security & Negative Tests', () => {
     await page.fill('input[type="email"]', 'admin@impactbridge.com');
     await page.fill('input[type="password"]', 'adminpassword123');
     await page.click('button[type="submit"]');
-    await page.waitForURL(`${BASE_URL}/**`);
+    // Wait until we have LEFT /login — "**" also matches the login URL itself.
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 60000 });
 
     // Verify logged in
     expect(page.url()).not.toContain('/login');
@@ -201,14 +202,11 @@ test.describe('Security & Negative Tests', () => {
     // Try to directly access admin endpoints
 
     // Without authentication, should be blocked
-    const response = await page.request.get(`${BASE_URL}/admin/dashboard`);
+    // Do not follow the redirect: following it lands on /login, which is a 200.
+    const response = await page.request.get(`${BASE_URL}/admin/dashboard`, { maxRedirects: 0 });
 
-    // Should redirect or return 401/403
-    expect(
-      response.status() === 302 ||
-      response.status() === 401 ||
-      response.status() === 403
-    ).toBeTruthy();
+    // Should redirect (Next middleware answers 307) or return 401/403
+    expect([302, 307, 401, 403]).toContain(response.status());
   });
 
   test('SEC-015: Data isolation between tenants', async ({ page }) => {

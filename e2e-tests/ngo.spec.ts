@@ -29,8 +29,8 @@ test.describe('NGO Portal Tests', () => {
     const fieldLabels = ['Organization Name', 'Founded Year', 'Registration Number', 'PAN Number', 'Office Address'];
 
     for (const label of fieldLabels) {
-      const fieldVisible = await page.locator(`label:has-text("${label}")`).isVisible();
-      expect(fieldVisible).toBeTruthy();
+      // toBeVisible() waits for render; isVisible() checks once and races the page.
+      await expect(page.locator(`label:has-text("${label}")`).first()).toBeVisible();
     }
   });
 
