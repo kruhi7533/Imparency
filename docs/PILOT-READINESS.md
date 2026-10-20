@@ -13,8 +13,8 @@ Procedures are in [`RUNBOOK.md`](RUNBOOK.md).
 |---|---|---|---|
 | 1 | **Build script runs `prisma db push --accept-data-loss`** against whatever `DATABASE_URL` the deploy has. Baseline production, then switch `build` to `migrate deploy` (RUNBOOK §5). | | Open — needs production access |
 | 2 | **Decide where production runs** — Vercel (`DEPLOYMENT.md`, `vercel.json`) or own server with the generated crontab (`lib/job-registry.ts`). The scheduler, rollback and secrets steps differ. | | Open — team decision |
-| 3 | **Apply the deferred database update** for the NGO, donor and admin branches: recompute the schema difference against the dev database, confirm no DROP, apply, mark migrations applied. | | Open — planned for after all three PRs |
-| 4 | **Open every new page in a browser** after #3 (NGO, donor, admin) and run `e2e-tests/` against a seeded database. Unit tests cannot catch a page that fails to render. | | Open |
+| 3 | ~~**Apply the deferred database update**~~ for the NGO, donor and admin branches: recompute the schema difference against the dev database, confirm no DROP, apply, mark migrations applied. | | **Done 2026-10-21** on the shared dev DB: additive diff (no DROP), 54/54 migrations recorded, a stale July failed-migration record resolved |
+| 4 | ~~**Open every new page in a browser**~~ after #3 (NGO, donor, admin) and run `e2e-tests/` against a seeded database. Unit tests cannot catch a page that fails to render. | | **Done 2026-10-21** on the dev DB: `next build` green; all 6 e2e suites green in Chromium (donor 10, NGO, admin 20, cross-portal 8, security, plus the two golden paths). Re-run on staging before the pilot |
 | 5 | **Restore drill**: back up, restore into a scratch branch, compare counts, record evidence (RUNBOOK §4). | | Open — needs PostgreSQL client tools |
 | 6 | **Scheduler configured with `CRON_SECRET`**, and `/admin/ops` shows every job healthy for 48 hours. | | Open |
 | 7 | **Outside monitoring**: uptime monitor on `GET /api/health`; `ERROR_WEBHOOK_URL` set so `captureError` alerts reach a person. | | Open |
