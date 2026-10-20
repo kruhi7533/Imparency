@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
@@ -11,6 +12,9 @@ import { CAN_ACCEPT, checkAccept, resolveContractParty } from "@/lib/contract-pa
  */
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
   try {
+    // Money and contract state change here; bound how fast any one client can hit it.
+    const rl = await checkRateLimit(_request, "contracts/accept", 20, 60);
+    if (rl.isBlocked) return rl.response;
     const { authorized, response, session } = await verifySessionRole("NGO");
     if (!authorized) return response;
 

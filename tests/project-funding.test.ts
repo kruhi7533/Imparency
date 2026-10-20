@@ -16,6 +16,7 @@ const db = vi.hoisted(() => ({
   notification: { createMany: vi.fn() },
   $transaction: vi.fn(),
 }));
+vi.mock("@/lib/rate-limiter", () => ({ checkRateLimit: vi.fn(async () => ({ isBlocked: false, response: null })) }));
 vi.mock("@/lib/prisma", () => ({ default: db }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("next-auth/next", () => ({ getServerSession: vi.fn() }));

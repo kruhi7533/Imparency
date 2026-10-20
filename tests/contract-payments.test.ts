@@ -15,6 +15,7 @@ import { Prisma } from "@prisma/client";
  *    disputed money stops counting, pending money is not "funded").
  */
 
+vi.mock("@/lib/rate-limiter", () => ({ checkRateLimit: vi.fn(async () => ({ isBlocked: false, response: null })) }));
 vi.mock("@/lib/prisma", () => ({
   default: {
     donorTeamMember: { findUnique: vi.fn() },

@@ -1,3 +1,4 @@
+import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import { Role } from "@prisma/client";
 import prisma from "@/lib/prisma";
@@ -19,6 +20,9 @@ import {
  */
 export async function PATCH(request: Request, { params }: { params: { id: string; paymentId: string } }) {
   try {
+    // Money and contract state change here; bound how fast any one client can hit it.
+    const rl = await checkRateLimit(request, "contracts/payments-decide", 30, 60);
+    if (rl.isBlocked) return rl.response;
     const { authorized, response, session } = await verifySessionRole(Role.NGO);
     if (!authorized) return response;
 

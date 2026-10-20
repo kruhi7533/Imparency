@@ -12,7 +12,7 @@ Answer architecture questions from that document plus a targeted re-read of the 
 
 ## Known sharp edges (see `docs/ARCHITECTURE.md` §12 for the full list)
 - `DonateModal.tsx` and `create-order/route.ts` have mismatched request/response shapes.
-- `lib/rate-limiter.ts` is now wired into ~12 routes (auth signup/forgot-password/reset-password, the admin AI routes, `assistant`, `donor/receipts/claim`) — but **donation/payment routes are still unprotected**, which is the gap that matters most.
+- `lib/rate-limiter.ts` covers auth (signup/forgot-password/reset-password), the admin AI routes, `assistant`, `donor/receipts/claim`, the donation routes (create-order, status, retry, csr-certificate) and **every contract write route** (create, edit, propose, sign, accept, terminate, disburse, record/decide payment — pinned by `tests/contract-rate-limits.test.ts`). The Razorpay webhook is deliberately not IP-limited: it is signature-verified, and a limit could drop genuine deliveries.
 - Several files bypass the shared `lib/prisma.ts` singleton with their own `new PrismaClient()` (loses the Neon retry wrapper): WhatsApp worker, drafts routes, pitch/lead route.
 - ~~`Notification` rows are never surfaced in any UI~~ — the navbar bell lists the latest 20 and `/notifications` is the full, paged list for every role. There is still no deep link per notification (no `link` column).
 - ~~`app/donor/dashboard/page.tsx` is a hardcoded stub~~ — fixed; it is now wired to real Prisma data.
