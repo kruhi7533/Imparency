@@ -136,6 +136,7 @@ export const ADMIN_HUBS: Hub[] = [
         hint: "Every organisation on the platform, searchable. Verified ones live here too — the verification queue only ever shows those still pending.",
       },
       { href: "/admin/inquiries", label: "Inquiries", hint: "Donor questions waiting on an answer." },
+      { href: "/admin/search", label: "Search", hint: "One search across organisations, donors, projects, CSR requirements and contracts." },
     ],
   },
   {
