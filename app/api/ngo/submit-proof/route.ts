@@ -8,6 +8,7 @@ import { recalculateNGOHealthScore } from "@/lib/ngo-health";
 import { extractGpsFromImage, classifyProofLocation } from "@/lib/proof-location";
 import { findPriorEvidence } from "@/lib/evidence-duplicates";
 import { hashBuffer } from "@/lib/proof-hash";
+import { checkAttachableEvidence, loadEvidenceForCheck } from "@/lib/proof-field-evidence";
 import {
   classifyDuplicate,
   duplicateSeverity,
@@ -42,8 +43,11 @@ export async function POST(request: Request) {
       }
     });
 
-    if (files.length === 0) {
-      return NextResponse.json({ error: "At least one proof file is required" }, { status: 400 });
+    // Approved field evidence attached by reference (lib/proof-field-evidence.ts).
+    const fieldEvidenceRequested = formData.getAll("fieldEvidenceIds").filter((v): v is string => typeof v === "string");
+
+    if (files.length === 0 && fieldEvidenceRequested.length === 0) {
+      return NextResponse.json({ error: "Attach at least one proof file or approved field evidence" }, { status: 400 });
     }
 
     // Enforce max 5 files
@@ -117,6 +121,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Milestone is already completed" }, { status: 400 });
     }
 
+    const attached = checkAttachableEvidence(fieldEvidenceRequested, await loadEvidenceForCheck(fieldEvidenceRequested), {
+      ngoId: user.ngoProfile.id,
+      projectId: milestone.projectId,
+      milestoneId: milestone.id,
+    });
+    if (!attached.ok) return NextResponse.json({ error: attached.error }, { status: attached.status });
+    const fieldEvidenceIds = attached.ids;
+
     // Upload files and convert to buffers for Gemini API
     const mediaUrls: string[] = [];
     const documentUrls: string[] = [];
@@ -163,7 +175,13 @@ export async function POST(request: Request) {
         problemStatement: milestone.project.problem_statement || "Not specified",
         expectedOutcome: milestone.project.expected_outcome || "Not specified",
       },
-      description,
+      // Attached field evidence is described to the model, never sent: its
+      // photos are consent-gated and a human has already reviewed them.
+      fieldEvidenceIds.length > 0
+        ? `${description}
+
+[Also attached: ${fieldEvidenceIds.length} field evidence item(s) already approved by a platform reviewer.]`
+        : description,
       fileBuffers
     );
 
@@ -201,6 +219,7 @@ export async function POST(request: Request) {
         proofLongitude: proofCoordinates?.longitude ?? null,
         gpsSource: proofCoordinates ? "EXIF" : null,
         contentHashes,
+        fieldEvidenceIds,
       },
     });
 
@@ -285,7 +304,7 @@ export async function POST(request: Request) {
         milestoneId: milestone.id,
         type: "PROOF_SUBMITTED",
         title: `Progress proof submitted for "${milestone.title}"`,
-        body: `The NGO submitted ${files.length} file(s) of evidence for this milestone. Our admin team is reviewing it — you'll be notified once it's verified.`,
+        body: `The NGO submitted ${files.length + fieldEvidenceIds.length} item(s) of evidence for this milestone. Our admin team is reviewing it — you'll be notified once it's verified.`,
         payload: { proofId: proof.id, mediaUrls, aiScore: validationResult.score },
       });
     } catch (impactErr) {

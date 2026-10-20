@@ -1,3 +1,6 @@
+import MatchingProfilePanel from "./MatchingProfilePanel";
+import { loadProjectFunding } from "@/lib/project-funding";
+import { ProjectFundingBadge } from "@/components/projects/ProjectFundingBadge";
 import React from "react";
 import Link from "next/link";
 import { getServerSession } from "next-auth/next";
@@ -56,6 +59,7 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
   // Tenant check: the caller must be on this project's NGO.
   const party = await resolveContractParty(user, { donorId: "", ngoId: project.ngoId });
   if (!party || party.party !== "NGO") notFound();
+  const funding = await loadProjectFunding([project.id]);
 
   // Week 7: field tasks. Owners/admins see and assign all; others see their own.
   const canManage = CAN_ASSIGN.includes(party.teamRole);
@@ -83,6 +87,9 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
     dueDate: t.dueDate?.toISOString() ?? null,
     assigneeName: nameOf.get(t.assignedToId) ?? "Former member",
     milestoneTitle: t.milestone?.title ?? null,
+    instructions: t.instructions,
+    assignedToId: t.assignedToId,
+    milestoneId: t.milestoneId,
     evidence: t.evidence.map((e) => ({
       id: e.id,
       status: e.status,
@@ -119,6 +126,7 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
           <div className="flex flex-wrap items-center gap-3 mt-1">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{project.title}</h1>
             <span className="px-3 py-0.5 rounded-full text-xs font-extrabold bg-gray-100 text-gray-700">{project.status}</span>
+            <ProjectFundingBadge funding={funding.get(project.id)} fundedAt={project.fundedAt} />
           </div>
           <p className="text-sm text-gray-500 mt-1">
             {project.location} · {project.causeCategory}
@@ -130,6 +138,20 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
           <Card label="Approved grant budget" value={inr(approvedBudget)} tone="text-emerald-600" />
           <Card label="Funded contracts" value={String(funded.length)} />
         </div>
+
+        <MatchingProfilePanel
+          projectId={project.id}
+          canEdit={canManage}
+          initial={{
+            causeCategory: project.causeCategory,
+            stateName: project.stateName,
+            expectedBeneficiaries: project.expectedBeneficiaries,
+            beneficiaryGroup: project.beneficiaryGroup,
+            durationMonths: project.durationMonths,
+            primaryKPIs: project.primaryKPIs,
+            reportingCadence: project.reportingCadence,
+          }}
+        />
 
         {/* Project milestones */}
         <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-3">
@@ -182,7 +204,7 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
                     {c.contractNumber} · funded by {c.donor.companyName || c.donor.name} · {c.status}
                   </p>
                 </div>
-                <Link href={`/donor/contracts/${c.id}`} className="text-xs font-bold text-emerald-600 hover:underline">
+                <Link href={`/ngo/contracts/${c.id}`} className="text-xs font-bold text-emerald-600 hover:underline">
                   Full contract →
                 </Link>
               </div>
@@ -220,7 +242,7 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
           <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-2">
             <h2 className="text-sm font-bold text-gray-900 dark:text-white">Contracts awaiting signature</h2>
             {awaitingSignature.map((c) => (
-              <Link key={c.id} href={`/donor/contracts/${c.id}`} className="block text-xs text-emerald-600 hover:underline">
+              <Link key={c.id} href={`/ngo/contracts/${c.id}`} className="block text-xs text-emerald-600 hover:underline">
                 {c.title} ({c.status}) — {inr(c.totalGrantAmount)} →
               </Link>
             ))}

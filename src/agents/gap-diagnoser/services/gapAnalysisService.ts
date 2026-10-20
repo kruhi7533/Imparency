@@ -67,7 +67,12 @@ export async function loadCandidates(): Promise<CandidateProject[]> {
       districtName: p.districtName,
       location: p.location || null,
       targetAmount: Number(p.targetAmount) || null,
-      durationMonths: deadlines.length ? monthsBetween(p.createdAt, new Date(Math.max(...deadlines))) : null,
+      // SPEC-8: the duration the NGO declared wins; the milestone-derived one is the fallback.
+      durationMonths: p.durationMonths ?? (deadlines.length ? monthsBetween(p.createdAt, new Date(Math.max(...deadlines))) : null),
+      expectedBeneficiaries: p.expectedBeneficiaries,
+      beneficiaryGroup: p.beneficiaryGroup,
+      primaryKPIs: p.primaryKPIs ?? [],
+      reportingCadence: p.reportingCadence,
       outcomeText: outcomeText || null,
       healthScore: p.ngo.healthScore === null ? null : Number(p.ngo.healthScore),
       fcraStatus,

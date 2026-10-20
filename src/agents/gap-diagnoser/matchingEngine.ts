@@ -60,8 +60,16 @@ export interface CandidateProject {
   districtName: string | null;
   location: string | null;
   targetAmount: number | null;
-  /** Derived from the milestone schedule; null when there are no milestones. */
+  /** Stored on the project when the NGO declared it (SPEC-8); otherwise derived
+   *  from the milestone schedule; null when neither exists. */
   durationMonths: number | null;
+  /** The project's beneficiary cohort (SPEC-8 / roadmap row 7). Optional so older
+   *  callers and fixtures keep compiling; absent reads as "not declared". */
+  expectedBeneficiaries?: number | null;
+  beneficiaryGroup?: string | null;
+  /** KPIs the NGO declared as discrete strings — compared before the prose scrape. */
+  primaryKPIs?: string[];
+  reportingCadence?: string | null;
   /** Stated outcomes: expected outcome, problem statement, milestone titles/descriptions. */
   outcomeText: string | null;
   healthScore: number | null;
@@ -295,22 +303,38 @@ function compareKpis(r: MatchRequirement, c: CandidateProject): { outcome: Dimen
     return { outcome: dim("Outcome KPIs", null, null, "NOT_APPLICABLE", "The requirement lists no KPIs."), uncovered: [] };
   }
   const reqValue = r.kpis.join("; ");
-  if (!c.outcomeText || !c.outcomeText.trim()) {
+  const statedKpis = (c.primaryKPIs ?? []).filter((k) => k && k.trim());
+  if (statedKpis.length === 0 && (!c.outcomeText || !c.outcomeText.trim())) {
     return {
       outcome: dim("Outcome KPIs", reqValue, null, "INSUFFICIENT_DATA", "The project has no stated outcomes to compare KPIs against."),
       uncovered: r.kpis,
     };
   }
-  const projectTokens = new Set(keyTokens(c.outcomeText));
+  // SPEC-8: a KPI the NGO declared is compared first, against each declared KPI
+  // on its own; the keyword scrape of outcome prose is the fallback for projects
+  // that have not declared KPIs (or for KPIs their declared list misses).
+  const proseTokens = new Set(keyTokens(c.outcomeText ?? ""));
+  const statedTokenSets = statedKpis.map((k) => new Set(keyTokens(k)));
+  const covers = (tokens: string[], pool: Set<string>) =>
+    tokens.length > 0 && tokens.filter((t) => pool.has(t)).length >= Math.ceil(tokens.length / 2);
   const covered: string[] = [];
   const uncovered: string[] = [];
+  let viaStated = 0;
   for (const kpi of r.kpis) {
     const tokens = keyTokens(kpi);
-    const hits = tokens.filter((t) => projectTokens.has(t)).length;
-    (tokens.length > 0 && hits >= Math.ceil(tokens.length / 2) ? covered : uncovered).push(kpi);
+    if (statedTokenSets.some((set) => covers(tokens, set))) {
+      covered.push(kpi);
+      viaStated++;
+    } else if (covers(tokens, proseTokens)) covered.push(kpi);
+    else uncovered.push(kpi);
   }
   const projValue = covered.length ? `Addresses: ${covered.join("; ")}` : "No stated outcome matches";
-  const method = "(keyword overlap with the project's stated outcomes and milestones)";
+  const method =
+    viaStated === covered.length && covered.length > 0
+      ? "(matched against the project's declared KPIs)"
+      : viaStated > 0
+      ? "(matched against the project's declared KPIs, then its stated outcomes)"
+      : "(keyword overlap with the project's stated outcomes and milestones)";
   if (uncovered.length === 0) {
     return { outcome: dim("Outcome KPIs", reqValue, projValue, "MATCH", `All ${r.kpis.length} KPIs appear in the project's outcomes ${method}.`), uncovered };
   }
@@ -423,6 +447,58 @@ function gapFor(d: DimensionOutcome, r: MatchRequirement, uncoveredKpis: string[
   };
 }
 
+/**
+ * The donor's expected reach against the project's declared cohort. Unscored
+ * (SPEC-8: reweighting is a separate decision), but a real verdict rather than
+ * a permanent "insufficient data".
+ */
+export function compareBeneficiaries(r: MatchRequirement, c: CandidateProject): DimensionOutcome {
+  if (r.expectedBeneficiaries === null) {
+    return dim("Beneficiaries", null, null, "NOT_APPLICABLE", "The requirement does not specify beneficiaries.");
+  }
+  const reqValue = r.expectedBeneficiaries.toLocaleString("en-IN");
+  const n = c.expectedBeneficiaries ?? null;
+  if (n === null || n < 1) {
+    return dim("Beneficiaries", reqValue, null, "INSUFFICIENT_DATA", "The project has not declared its beneficiary cohort.");
+  }
+  const who = c.beneficiaryGroup ? ` (${c.beneficiaryGroup})` : "";
+  const projValue = `${n.toLocaleString("en-IN")}${who}`;
+  if (n >= r.expectedBeneficiaries) {
+    return dim("Beneficiaries", reqValue, projValue, "MATCH", `The project expects to reach ${n.toLocaleString("en-IN")} people, meeting the ${reqValue} the requirement asks for.`);
+  }
+  if (n >= r.expectedBeneficiaries / 2) {
+    return dim("Beneficiaries", reqValue, projValue, "PARTIAL", `The project expects to reach ${n.toLocaleString("en-IN")} people — at least half of the ${reqValue} requested.`);
+  }
+  return dim("Beneficiaries", reqValue, projValue, "MISMATCH", `The project expects to reach ${n.toLocaleString("en-IN")} people, well short of the ${reqValue} requested.`);
+}
+
+/** Reports per year, so "monthly" satisfies a "quarterly" requirement. "At each milestone" has no fixed rate. */
+const CADENCE_PER_YEAR: Array<[RegExp, number]> = [
+  [/month/i, 12],
+  [/quarter/i, 4],
+  // Before "annual": the project form stores "BI_ANNUAL" (twice a year).
+  [/bi.?annual|half|semi|six/i, 2],
+  [/annual|year/i, 1],
+];
+const perYear = (s: string) => CADENCE_PER_YEAR.find(([re]) => re.test(s))?.[1] ?? null;
+
+export function compareReporting(r: MatchRequirement, c: CandidateProject): DimensionOutcome {
+  if (!r.reportingCadence) {
+    return dim("Reporting cadence", null, null, "NOT_APPLICABLE", "The requirement does not specify a reporting cadence.");
+  }
+  if (!c.reportingCadence) {
+    return dim("Reporting cadence", r.reportingCadence, null, "INSUFFICIENT_DATA", "The project has not declared how often it reports.");
+  }
+  const want = perYear(r.reportingCadence);
+  const have = perYear(c.reportingCadence);
+  if (want === null || have === null) {
+    return dim("Reporting cadence", r.reportingCadence, c.reportingCadence, "PARTIAL", "The two cadences cannot be compared directly — confirm with the organisation.");
+  }
+  return have >= want
+    ? dim("Reporting cadence", r.reportingCadence, c.reportingCadence, "MATCH", `The project reports ${c.reportingCadence.toLowerCase()}, at least as often as required.`)
+    : dim("Reporting cadence", r.reportingCadence, c.reportingCadence, "MISMATCH", `The project reports ${c.reportingCadence.toLowerCase()}, less often than the ${r.reportingCadence.toLowerCase()} required.`);
+}
+
 export function evaluateCandidate(r: MatchRequirement, c: CandidateProject): CandidateEvaluation {
   const { rules, info } = hardRules(r, c);
   const kpi = compareKpis(r, c);
@@ -430,12 +506,8 @@ export function evaluateCandidate(r: MatchRequirement, c: CandidateProject): Can
 
   const informational: DimensionOutcome[] = [
     ...info,
-    r.expectedBeneficiaries !== null
-      ? dim("Beneficiaries", r.expectedBeneficiaries.toLocaleString("en-IN"), null, "INSUFFICIENT_DATA", "Projects do not record beneficiary targets, so this cannot be compared yet.")
-      : dim("Beneficiaries", null, null, "NOT_APPLICABLE", "The requirement does not specify beneficiaries."),
-    r.reportingCadence
-      ? dim("Reporting cadence", r.reportingCadence, null, "INSUFFICIENT_DATA", "Projects do not record reporting capability, so this cannot be compared yet.")
-      : dim("Reporting cadence", null, null, "NOT_APPLICABLE", "The requirement does not specify a reporting cadence."),
+    compareBeneficiaries(r, c),
+    compareReporting(r, c),
   ];
 
   const eligible = rules.every((rule) => rule.passed);

@@ -413,6 +413,14 @@ export default function ContractDetailClient({
                 Milestone progress & verified evidence →
               </Link>
             )}
+            {isNgo && (
+              <Link
+                href={`/ngo/projects/${contract.project.id}`}
+                className="text-xs font-bold text-blue-600 hover:underline mt-1 block"
+              >
+                Project page: milestones, funding & field work →
+              </Link>
+            )}
           </div>
         </div>
       </div>

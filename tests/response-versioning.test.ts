@@ -128,6 +128,26 @@ describe("proposal versioning", () => {
   });
 });
 
+describe("budget and milestones", () => {
+  it("refuses milestones that add up to more than the proposed budget", async () => {
+    const res = await submit(
+      post({ projectId: "proj-1", proposedBudget: 100000, implementationPlan: "Plan", milestones: [{ title: "A", amount: 70000 }, { title: "B", amount: 40000 }] }),
+      ctx
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/more than the proposed budget/);
+    expect(db.opportunityResponse.create).not.toHaveBeenCalled();
+  });
+
+  it("accepts milestones within the budget (partial allocation is allowed)", async () => {
+    const res = await submit(
+      post({ projectId: "proj-1", proposedBudget: 100000, implementationPlan: "Plan", milestones: [{ title: "A", amount: 60000 }] }),
+      ctx
+    );
+    expect(res.status).toBe(201);
+  });
+});
+
 describe("schema", () => {
   it("deleting a response cascades its revisions (no orphans)", () => {
     const model = Prisma.dmmf.datamodel.models.find((m) => m.name === "OpportunityResponseRevision")!;

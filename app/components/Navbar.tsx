@@ -7,10 +7,54 @@ import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import NotificationBell from "./NotificationBell";
 
+type NavLink = { href: string; label: string; match: "exact" | "prefix" };
+
+/** The NGO workspace. One list drives the desktop bar and the small-screen menu. */
+const NGO_LINKS: NavLink[] = [
+  { href: "/ngo/dashboard", label: "NGO Dashboard", match: "exact" },
+  { href: "/ngo/crm", label: "Donor CRM", match: "exact" },
+  { href: "/ngo/projects/new", label: "Launch Project", match: "exact" },
+  { href: "/ngo/match-inbox", label: "Match Inbox", match: "exact" },
+  { href: "/ngo/inquiries", label: "Inquiries", match: "exact" },
+  { href: "/ngo/opportunities", label: "CSR Opportunities", match: "prefix" },
+  { href: "/ngo/contracts", label: "Contracts", match: "prefix" },
+  { href: "/ngo/impact", label: "Impact", match: "prefix" },
+  { href: "/ngo/bank-reconciliation", label: "Bank Reconciliation", match: "prefix" },
+  { href: "/ngo/field", label: "Field App", match: "exact" },
+];
+
 export default function Navbar() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const isActive = (l: NavLink) => (l.match === "exact" ? pathname === l.href : !!pathname?.startsWith(l.href));
+  const role = session?.user?.role;
+  // What the small-screen menu lists for this visitor. Below the breakpoint the
+  // centre bar is hidden, so this menu is the only way around on a phone — a
+  // field worker must be able to reach the Field App without typing a URL.
+  const menuLinks: NavLink[] =
+    role === "NGO"
+      ? [{ href: "/", label: "Home", match: "exact" }, { href: "/discover", label: "Discover NGOs", match: "exact" }, ...NGO_LINKS]
+      : role === "ADMIN"
+      ? [{ href: "/admin/today", label: "Admin Console", match: "prefix" }]
+      : role === "DONOR"
+      ? [
+          { href: "/", label: "Home", match: "exact" },
+          { href: "/discover", label: "Discover NGOs", match: "exact" },
+          { href: "/donor/portfolio", label: "My Impact Portfolio", match: "exact" },
+          { href: "/donor/impact", label: "Impact Feed", match: "exact" },
+        ]
+      : [
+          { href: "/", label: "Home", match: "exact" },
+          { href: "/discover", label: "Discover NGOs", match: "exact" },
+          { href: "/login", label: "Become a Donor", match: "exact" },
+          { href: "/ngo/register", label: "NGO Onboarding", match: "exact" },
+        ];
+  // Ten NGO links do not fit until xl; everyone else's few links fit from md.
+  const desktopNav = role === "NGO" ? "hidden xl:flex" : "hidden md:flex";
+  const menuButton = role === "NGO" ? "xl:hidden" : "md:hidden";
 
   // Hide Navbar inside the Login / Signup screen to keep it focused
   if (pathname === "/login") return null;
@@ -37,18 +81,18 @@ export default function Navbar() {
         {/* Left: Branding Logo — shrink-0 + whitespace-nowrap so it can never
             be squeezed by the center nav on medium widths */}
         <div className="flex items-center gap-3 shrink-0">
-          <Link href="/" className="font-display text-2xl font-semibold italic text-white tracking-tight whitespace-nowrap">
+          <Link href="/" className="font-display text-xl sm:text-2xl font-semibold italic text-white tracking-tight whitespace-nowrap">
             ImpactBridge<span className="text-gold-400">.</span>
           </Link>
           {session?.user && (
-            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${getRoleBadge(session.user.role)}`}>
+            <span className={`hidden sm:inline text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${getRoleBadge(session.user.role)}`}>
               {session.user.role}
             </span>
           )}
         </div>
 
         {/* Center: Contextual Navigation Links */}
-        <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-gray-400">
+        <nav aria-label="Main" className={`${desktopNav} items-center gap-5 text-xs font-bold text-gray-400`}>
           {session?.user?.role === "NGO" ? (
             <>
               <Link href="/" className={`text-gray-500 font-medium hover:text-gray-300 transition ${pathname === "/" ? "text-white font-bold" : ""}`}>
@@ -58,30 +102,16 @@ export default function Navbar() {
                 Discover NGOs
               </Link>
               <span className="text-gray-700 select-none">|</span>
-              <Link href="/ngo/dashboard" className={`hover:text-white transition ${pathname === "/ngo/dashboard" ? "text-white" : ""}`}>
-                NGO Dashboard
-              </Link>
-              <Link href="/ngo/crm" className={`hover:text-white transition ${pathname === "/ngo/crm" ? "text-white" : ""}`}>
-                Donor CRM
-              </Link>
-              <Link href="/ngo/projects/new" className={`hover:text-white transition ${pathname === "/ngo/projects/new" ? "text-white" : ""}`}>
-                Launch Project
-              </Link>
-              <Link href="/ngo/match-inbox" className={`hover:text-white transition ${pathname === "/ngo/match-inbox" ? "text-white" : ""}`}>
-                Match Inbox
-              </Link>
-              <Link href="/ngo/inquiries" className={`hover:text-white transition ${pathname === "/ngo/inquiries" ? "text-white" : ""}`}>
-                Inquiries
-              </Link>
-              <Link href="/ngo/opportunities" className={`hover:text-white transition ${pathname?.startsWith("/ngo/opportunities") ? "text-white" : ""}`}>
-                CSR Opportunities
-              </Link>
-              <Link href="/ngo/contracts" className={`hover:text-white transition ${pathname?.startsWith("/ngo/contracts") ? "text-white" : ""}`}>
-                Contracts
-              </Link>
-              <Link href="/ngo/field" className={`hover:text-white transition ${pathname === "/ngo/field" ? "text-white" : ""}`}>
-                Field App
-              </Link>
+              {NGO_LINKS.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  aria-current={isActive(l) ? "page" : undefined}
+                  className={`hover:text-white transition whitespace-nowrap ${isActive(l) ? "text-white" : ""}`}
+                >
+                  {l.label}
+                </Link>
+              ))}
             </>
           ) : (
             <>
@@ -141,7 +171,23 @@ export default function Navbar() {
         </nav>
 
         {/* Right: Authentication Session Controls */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-nav"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            className={`${menuButton} w-10 h-10 flex items-center justify-center rounded-lg text-gray-300 hover:text-white hover:bg-gray-900 transition`}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              {menuOpen ? (
+                <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              ) : (
+                <path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              )}
+            </svg>
+          </button>
           {status === "loading" ? (
             <div className="h-8 w-8 animate-pulse bg-gray-900 rounded-full" />
           ) : session?.user ? (
@@ -156,12 +202,13 @@ export default function Navbar() {
               {/* Profile Avatar Initials Trigger */}
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="w-8 h-8 rounded-full bg-trust-600/20 border border-trust-500/30 text-trust-300 font-bold flex items-center justify-center text-xs select-none hover:bg-trust-600/30 transition focus:outline-none relative overflow-hidden"
+                aria-label="Account menu"
+                className="w-10 h-10 rounded-full bg-trust-600/20 border border-trust-500/30 text-trust-300 font-bold flex items-center justify-center text-xs select-none hover:bg-trust-600/30 transition focus:outline-none relative overflow-hidden"
                 aria-haspopup="true"
                 aria-expanded={dropdownOpen}
               >
                 {session.user.image ? (
-                  <img src={session.user.image} alt={session.user.name || "User"} className="w-full h-full object-cover" />
+                  <img src={session.user.image} alt="" className="w-full h-full object-cover" />
                 ) : (
                   (session.user.name || "U").charAt(0).toUpperCase()
                 )}
@@ -205,6 +252,13 @@ export default function Navbar() {
                           className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
                         >
                           Team Settings
+                        </Link>
+                        <Link
+                          href="/ngo/activity"
+                          onClick={() => setDropdownOpen(false)}
+                          className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
+                        >
+                          Activity &amp; Audit
                         </Link>
                         <Link
                           href="/ngo/pitch-deck"
@@ -263,6 +317,25 @@ export default function Navbar() {
         </div>
 
       </div>
+
+      {menuOpen && (
+        <nav id="mobile-nav" aria-label="Main" className={`${menuButton} border-t border-gray-900 bg-gray-950 px-4 py-3`}>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+            {menuLinks.map((l) => (
+              <li key={l.href}>
+                <Link
+                  href={l.href}
+                  onClick={() => setMenuOpen(false)}
+                  aria-current={isActive(l) ? "page" : undefined}
+                  className={`block px-3 py-3 rounded-lg text-sm font-bold transition ${isActive(l) ? "bg-gray-900 text-white" : "text-gray-400 hover:text-white hover:bg-gray-900"}`}
+                >
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
     </header>
   );
 }

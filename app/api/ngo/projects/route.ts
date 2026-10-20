@@ -49,6 +49,7 @@ export async function POST(request: Request) {
     // Matching Fields
     const durationMonthsStr = formData.get("durationMonths") as string | null;
     const expectedBeneficiariesStr = formData.get("expectedBeneficiaries") as string | null;
+    const beneficiaryGroupStr = (formData.get("beneficiaryGroup") as string | null)?.trim().slice(0, 200) || null;
     const reportingCadence = formData.get("reportingCadence") as string | null;
     const primaryKPIsStr = formData.get("primaryKPIs") as string | null;
 
@@ -155,6 +156,7 @@ export async function POST(request: Request) {
           expected_outcome: expectedOutcome ? expectedOutcome.trim() : null,
           durationMonths: durationMonthsStr ? parseInt(durationMonthsStr, 10) : null,
           expectedBeneficiaries: expectedBeneficiariesStr ? parseInt(expectedBeneficiariesStr, 10) : null,
+          beneficiaryGroup: beneficiaryGroupStr,
           reportingCadence: reportingCadence || null,
           primaryKPIs: primaryKPIs,
         }

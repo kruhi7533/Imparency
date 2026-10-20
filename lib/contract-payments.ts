@@ -272,6 +272,7 @@ export function fundingPanelProps(
       status: ContractPaymentStatus;
       disputeNote: string | null;
       contractMilestoneId: string | null;
+      reconciledVia?: string | null;
     }>;
   },
   party: ContractParty,
@@ -300,6 +301,7 @@ export function fundingPanelProps(
         status: p.status,
         disputeNote: p.disputeNote,
         contractMilestoneId: p.contractMilestoneId,
+        reconciledVia: p.reconciledVia ?? null,
       })),
     summary,
     /** Per contract milestone, from reconciled money only. */

@@ -67,6 +67,9 @@ export default async function NgoContractsPage() {
             <Link href="/ngo/dashboard" className="text-xs font-bold text-emerald-600 hover:underline">
               ← Back to NGO Dashboard
             </Link>
+            <Link href="/ngo/bank-reconciliation" className="ml-4 text-xs font-bold text-emerald-600 hover:underline">
+              Bank reconciliation →
+            </Link>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">Grant Contracts & Agreements</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Institutional grant agreements, counter-signing, and milestone tranche management.
@@ -127,7 +130,7 @@ export default async function NgoContractsPage() {
                     return (
                       <tr key={c.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition">
                         <td className="px-4 py-4">
-                          <Link href={`/donor/contracts/${c.id}`} className="font-bold text-gray-900 dark:text-white hover:text-emerald-600 transition block">
+                          <Link href={`/ngo/contracts/${c.id}`} className="font-bold text-gray-900 dark:text-white hover:text-emerald-600 transition block">
                             {c.title}
                           </Link>
                           <span className="text-xs font-mono text-gray-400 block mt-0.5">{c.contractNumber}</span>
@@ -162,7 +165,7 @@ export default async function NgoContractsPage() {
                         </td>
                         <td className="px-4 py-4 text-right">
                           <Link
-                            href={`/donor/contracts/${c.id}`}
+                            href={`/ngo/contracts/${c.id}`}
                             className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
                           >
                             Review & Sign →

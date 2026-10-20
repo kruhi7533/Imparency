@@ -70,6 +70,50 @@ export function parseTaskInput(body: any): Check<{
   };
 }
 
+/**
+ * Edit or cancel a field task. Only an OPEN task can change: once evidence is
+ * SUBMITTED it is waiting on review, and moving the goalposts under a reviewer
+ * (or cancelling the task the evidence answers) would make that review
+ * meaningless. A resubmit request reopens the task, so it is editable again.
+ */
+export const EDITABLE_TASK_STATUS = "OPEN" as const;
+
+export type TaskEdit =
+  | { action: "CANCEL" }
+  | {
+      action: "EDIT";
+      changes: Partial<{ title: string; instructions: string | null; assignedToId: string; milestoneId: string | null; dueDate: Date | null }>;
+    };
+
+export function parseTaskEdit(body: any): Check<TaskEdit> {
+  if (body?.action === "CANCEL") return { ok: true, value: { action: "CANCEL" } };
+  if (body?.action !== "EDIT") return { ok: false, status: 400, error: "action must be EDIT or CANCEL." };
+  const has = (k: string) => body != null && Object.prototype.hasOwnProperty.call(body, k);
+  const changes: Extract<TaskEdit, { action: "EDIT" }>["changes"] = {};
+  if (has("title")) {
+    const title = str(body.title, 200);
+    if (title.length < 3) return { ok: false, status: 400, error: "Give the task a title (at least 3 characters)." };
+    changes.title = title;
+  }
+  if (has("instructions")) changes.instructions = str(body.instructions, 2000) || null;
+  if (has("assignedToId")) {
+    const a = str(body.assignedToId, 100);
+    if (!a) return { ok: false, status: 400, error: "Choose who the task is assigned to." };
+    changes.assignedToId = a;
+  }
+  if (has("milestoneId")) changes.milestoneId = str(body.milestoneId, 100) || null;
+  if (has("dueDate")) {
+    if (!body.dueDate) changes.dueDate = null;
+    else {
+      const d = new Date(body.dueDate);
+      if (Number.isNaN(d.getTime())) return { ok: false, status: 400, error: "dueDate is not a valid date." };
+      changes.dueDate = d;
+    }
+  }
+  if (Object.keys(changes).length === 0) return { ok: false, status: 400, error: "Nothing to change." };
+  return { ok: true, value: { action: "EDIT", changes } };
+}
+
 // ─── Capture (one offline-queued submission) ─────────────────────────────────
 
 /** How long a capture may sit in an offline queue before sync is refused. */

@@ -666,11 +666,13 @@ Allocations above live on the funder track (`Proposal`), which donors never reac
   - DISPUTE needs a note and raises a `CONTRACT_PAYMENT_DISPUTED` `FinanceException` (ids only, never auto-resolved), which shows in `/admin/finance`.
 - **Funding state** (`fundingSummary`) is derived from **RECONCILED money only**. A donor's claim of payment is not funding. The donor's "Authorize Release" button on a contract milestone now appears only once that milestone is fully reconciled. The `disburse` API itself is unchanged.
 - **Surfaces**:
-  - `ContractPaymentsPanel` on `/donor/contracts/[id]` (shared with NGOs).
+  - `ContractPaymentsPanel` on the contract page. The page body is `ContractPageContent` (`app/donor/contracts/[id]/ContractPageContent.tsx`), rendered by `/donor/contracts/[id]` **and** `/ngo/contracts/[id]` (2026-10-10). Every NGO link used to point at the donor route, which the donor layout bounces — so an NGO could not counter-sign, no contract reached ACTIVE, and accept/confirm were unreachable from the UI. NGO links (`/ngo/contracts`, the project cockpit) now use the NGO route.
   - The new NGO project cockpit `/ngo/projects/[id]`: project milestones, funded contracts, approved budget and milestones, and the funding panel. Owner and team members can open it; any other NGO gets a 404.
 - **Not done**: no `LedgerEntry` is written for contract payments (no money moves through the platform; deciding which balance it belongs to is Intern 1's call), and no reconciler check on contracts.
 
-Tests: `tests/contract-payments.test.ts` (rules, tenant isolation, role gates, idempotency, concurrency).
+- **Bank-statement matching** (2026-10-10, `lib/bank-statement.ts`) — a second, evidence-based way to reconcile. The NGO (OWNER/ADMIN/FINANCE) uploads its bank statement CSV at `/ngo/bank-reconciliation` (`POST /api/ngo/bank-statements`, rate-limited, ≤1 MB / 5,000 lines; `POST …/rematch` re-runs without a file). The parser finds the header under preamble rows and handles Withdrawal/Deposit columns (HDFC-style) or Amount + Cr/Dr (SBI-style), day-first dates and Indian-grouped amounts; balance rows are skipped, not guessed. `matchStatementLines` (pure) reconciles a PENDING_CONFIRMATION `MANUAL` payment only when exactly one payment's normalised reference appears on a credit line, for **exactly** its amount, within `MATCH_WINDOW_DAYS` (7) of the donor's `paidAt`, and no other line claims it. Otherwise: `AMOUNT_MISMATCH` (raises a `BANK_LINE_AMOUNT_MISMATCH` exception, severe, ids/amounts only), `AMBIGUOUS` (several payments fit, dates too far apart, or a duplicate credit), `UNMATCHED` (re-checked on every later import, so a credit uploaded before the donor recorded the payment still matches later) or `DEBIT`. A match is the same compare-and-swap as a manual confirm, plus `reconciledVia: "BANK_STATEMENT"`, `BankStatementLine.matchedPaymentId` (UNIQUE — one line per payment), a `PAYMENT_RECONCILED` contract audit row and a donor notification. Lines are stored per NGO under a unique content hash (`statementLineHash`), so re-uploading an overlapping period never duplicates or re-matches a line. A manual confirm now records `reconciledVia: "NGO_CONFIRMATION"`, and the panel says which. Still no gateway and no payout: the platform only checks evidence.
+
+Tests: `tests/contract-payments.test.ts` (rules, tenant isolation, role gates, idempotency, concurrency), `tests/bank-statement.test.ts` (parsing real CSV shapes, every match verdict, re-upload idempotency, role/tenant scope, the concurrent-decision race).
 
 ## 15. Field tasks, offline evidence, beneficiary consent (Week 7, 2026-10-05)
 
@@ -694,7 +696,7 @@ Tests: `tests/contract-payments.test.ts` (rules, tenant isolation, role gates, i
   - Compare-and-swap on PENDING_REVIEW. Decisions are terminal, and a reason is required for anything other than approval.
   - Approval completes the task; a resubmit reopens it. Logged as `FIELD_EVIDENCE_REVIEWED`.
   - There is a minimal queue at `/admin/field-evidence`, which Intern 1 owns from here.
-- **Not built**: consent withdrawal UI (the field exists), task cancel/edit, and conversion of approved field evidence into `MilestoneProof`.
+- **Since built** (2026-10-21, see §16.2): consent withdrawal in `FieldTasksPanel`, task edit/cancel, and approved field evidence attached to a `MilestoneProof` by reference.
 
 Tests: `tests/field-evidence.test.ts`.
 
@@ -711,3 +713,77 @@ Tests: `tests/field-evidence.test.ts`.
 - **Known gap, not fixed here**: the public `/projects/[id]` page and the impact feed still show the latest `MilestoneProof` media before admin review. That is the older proof track, separate from field evidence.
 
 Tests: `tests/donor-funded-view.test.ts`.
+
+## 16. NGO outcomes, funding and matching profile (2026-10-21)
+
+The NGO half of roadmap rows 7, 10 and 12. Each piece reuses an existing rule rather than adding a parallel one.
+
+- **Impact cockpit `/ngo/impact`** (`lib/outcome-cockpit.ts`, `ImpactCockpitClient.tsx`). Claims, per-metric rollups and citable evidence for the caller's NGO.
+  - The owner can edit; team members get a read-only view.
+  - Rollups are per metric in exact minor units. Only APPROVED-and-still-backed claims count as verified; never sum across metrics (see the impact-quality rule in CLAUDE.md).
+  - Citable evidence: milestone proofs whose milestone has an APPROVED review, `FieldEvidence` with status APPROVED, and consented feedback whose linked evidence is approved. `verifyCitationOwnership` (shared with the create route) rejects anything outside the caller's NGO.
+  - `POST /api/ngo/outcome-claims/preview` runs the real triage over an unsaved claim and writes nothing. That is the "check against review" button.
+  - `PUT /api/ngo/outcome-claims/[id]` edits a DRAFT or NEEDS_EVIDENCE claim (`isEditable`). It runs a compare-and-swap on `{id, status}` and returns 409 on a race; citations are replaced in the same transaction. Another org's claim → 404.
+- **Donor figures.** `loadDonorProjectOutcomes` renders "Reported outcomes" on `/donor/funded/[projectId]` through `claimDisplay()`. An unbacked claim reads "unverified", never 0.
+- **AI outcome extraction** (`lib/gemini/extract-outcomes.ts`, `POST /api/ngo/outcome-claims/extract`, rate-limited `outcome-extract` 10/300s). It suggests values only; the NGO still saves a draft and submits it to human review.
+  - **Hard rules**: the quote must appear verbatim in a cited source, and the value must appear in the quote. Below `MIN_CONFIDENCE` (0.6) the answer is downgraded. Unknown metrics are dropped. Every requested metric gets exactly one answer.
+  - **Failure handling**: no model, a model error or bad JSON all produce `INSUFFICIENT_DATA` for every metric — never a guessed number.
+  - **What the model sees**: milestone proof text and field notes only. Beneficiary feedback text is never sent to it.
+- **Project becomes FUNDED** (`lib/project-funding.ts`, `Project.fundedAt`, migration `20261021090000_project_funded_at`).
+  - **Rule**: funded when RECONCILED payments on ACTIVE/COMPLETED contracts cover every committed rupee. Pending or disputed payments, and draft or proposed contracts, never count.
+  - **Stamping**: `stampProjectFundedIfComplete` runs inside the CONFIRM transaction of `PATCH /api/contracts/[id]/payments/[paymentId]`. It is a compare-and-swap on `fundedAt: null`, so `PROJECT_FUNDED` notifications (NGO owner + contract donors) go out exactly once.
+  - **Shown by** `ProjectFundingBadge` on `/ngo/projects/[id]`, `/donor/funded/[projectId]` and `/admin/projects`.
+  - **Bank statements too**: `rematchNgoStatements` (`lib/bank-statement.ts`) calls the same stamp inside its reconcile transaction, so a payment matched from the NGO's statement funds the project exactly as a manual confirmation does.
+- **Beneficiary cohort and matching profile** (`lib/project-readiness.ts`, `Project.beneficiaryGroup`, migration `20261021100000_project_beneficiary_group`).
+  - **Ready for matching** needs cause, state, cohort size ≥ `MIN_COHORT` (1), who the beneficiaries are, and duration. KPIs and reporting cadence are optional. Readiness is advisory and never hides a project from matching.
+  - **Saving** goes through `PATCH /api/ngo/projects/[id]/matching-profile` (OWNER/ADMIN, ownership-checked). It exists because `PATCH /api/ngo/projects/[id]` sends an ACTIVE project back to PENDING_APPROVAL on any edit. The new-project form also collects `beneficiaryGroup`.
+  - **Engine changes** (`matchingEngine.ts`):
+    - `compareBeneficiaries`: MATCH when the cohort covers the requirement, PARTIAL at ≥ half, INSUFFICIENT_DATA when undeclared.
+    - `compareReporting`: compares reports per year and understands the form's `BI_ANNUAL`-style values (`LEGACY_PROJECT_CADENCES`).
+    - Declared `primaryKPIs` are compared before the outcome-prose fallback. Both new rows stay **unscored**, so weights are unchanged.
+  - **Shown on** `MatchingProfilePanel` on `/ngo/projects/[id]`, and "Ready for matching" / "N missing" on `/admin/projects`.
+
+### 16.1 NGO-side state reference
+
+| Record | States | Who moves it | Where |
+|---|---|---|---|
+| `NGOProfile.verificationStatus` | PENDING → VERIFIED / REJECTED | Admin only | §3 Admin Verification |
+| `Project.status` | DRAFT → PENDING_APPROVAL → ACTIVE → COMPLETED; PAUSED | NGO submits; admin approves. Any edit through the main project PATCH returns ACTIVE → PENDING_APPROVAL | `app/api/ngo/projects/[id]` |
+| `Project.fundedAt` | null → timestamp, once | System, on the payment confirmation that completes funding | `lib/project-funding.ts` |
+| `Milestone.status` | PENDING → IN_PROGRESS → PROOF_SUBMITTED → VERIFIED / COMPLETED | NGO submits proof; admin reviews | `app/api/admin/review-proof` |
+| `Contract.status` | DRAFT → PROPOSED → UNDER_REVIEW → ACTIVE → COMPLETED; TERMINATED / REJECTED | Donor and NGO, then `ngoAcceptedAt` before any payment | §14.1 |
+| `ContractPayment.status` | PENDING_CONFIRMATION → RECONCILED / DISPUTED (terminal) | Donor records; NGO OWNER/ADMIN/FINANCE decides | §14.1 |
+| `FieldTask.status` | OPEN → SUBMITTED → COMPLETED; CANCELLED | OWNER/ADMIN assign; field staff submit; evidence approval completes | §15 |
+| `FieldEvidence.status` | PENDING_REVIEW → APPROVED / RESUBMIT_REQUESTED / REJECTED | Admin only | §15 |
+| `OutcomeClaim.status` | DRAFT / NEEDS_EVIDENCE →(submit) SUBMITTED →(admin) APPROVED / NEEDS_EVIDENCE / REJECTED; SUBMITTED / APPROVED →(withdraw) WITHDRAWN | NGO owner submits/withdraws; admin decides, BLOCKED triage refused server-side | `lib/outcome-workflow.ts` |
+
+Rules that hold across the table: every NGO-side transition is ownership-checked in its route; decisions are compare-and-swap (409 on a race); a figure or photo reaches a donor only after a human approval.
+
+Tests: `tests/outcome-cockpit.test.ts`, `tests/outcome-extraction.test.ts`, `tests/project-funding.test.ts`, `tests/project-readiness-and-cohort.test.ts`. Demo data: `npm run seed`, then `tools/seed-ngo-demo.ts`. Walkthrough: `docs/NGO-GUIDE.md`. Handover: `docs/NGO-HANDOVER.md`.
+
+### 16.2 NGO gap closure (2026-10-21)
+
+- **NGO contract route.** `/ngo/contracts/[id]` renders the shared `ContractPageContent`. Before this, every NGO contract link pointed at `/donor/contracts/[id]`, and the donor layout sends non-donors to login, so an NGO could never counter-sign, accept or confirm a payment from the UI. Access is decided in `ContractPageContent` via `resolveContractParty`, the same rule the payment API uses.
+- **Field task edit/cancel.** `PATCH /api/ngo/field-tasks/[id]` takes `EDIT` or `CANCEL`.
+  - OWNER/ADMIN only. Another NGO's task is a 404.
+  - Only an OPEN task changes (`EDITABLE_TASK_STATUS`), via a compare-and-swap on OPEN: evidence that syncs at the same moment wins, and the edit gets a 409.
+  - Reassignment and milestone changes are re-checked against the NGO's team and the task's project. `parseTaskEdit` lives in `lib/field-evidence.ts`.
+- **Field evidence as milestone proof** (`lib/proof-field-evidence.ts`, `MilestoneProof.fieldEvidenceIds`, migration `20261021110000_proof_field_evidence`).
+  - **Selection**: the proof modal lists the milestone's attachable evidence from `GET /api/ngo/milestones/[id]/field-evidence`. `submit-proof` accepts `fieldEvidenceIds`, through `checkAttachableEvidence`: this NGO, this project, unassigned or this milestone, APPROVED. Anything else is refused by id, never silently dropped.
+  - **Storage**: the ids are stored on the proof. The photo is **never** copied into `mediaUrls` (shown on the public project page) or `contentHashes` (it would self-flag as reuse).
+  - **AI**: the model is told evidence was attached but is not sent the consent-gated photos.
+  - **Review**: admin proof review renders the attached photos through the consent-gated photo route. The milestone still goes to human review.
+  - **Known limit**: an outcome claim citing both such a proof and the same field evidence is not caught by `DUPLICATE_SOURCE_EVIDENCE`, because the proof carries no hash for it.
+- **Activity & audit** (`/ngo/activity`, `lib/ngo-activity.ts`). This is a read model over existing logs: no new writes.
+  - **Who sees it**: OWNER/ADMIN/FINANCE.
+  - **What it hides**:
+    - Admin actions come only from `NGO_VISIBLE_ADMIN_ACTIONS`, so risk flags, trust-insight runs and screening never appear; they would tip off an organisation under investigation.
+    - Admin notes are never read.
+    - Platform staff show as "Platform reviewer".
+- **Bank-statement funding.** `rematchNgoStatements` stamps `fundedAt` in the same transaction as the reconcile (merged from `feat/week6-bank-matching`).
+- **Accessibility/mobile.**
+  - **Navbar**: below `xl` (NGO) or `md` (other roles) the centre nav is replaced by a named menu button and panel driven by one link list. Before, phones had no navigation at all.
+  - **Pages**: the field app, Impact page and project panels now have live regions, 40–44px targets and AA contrast.
+  - **Regression guard**: `tests/ngo-accessibility.test.ts` pins these fixes statically.
+
+Tests: `tests/field-task-edit.test.ts`, `tests/proof-field-evidence.test.ts`, `tests/ngo-activity.test.ts`, `tests/bank-statement.test.ts` (funding cases), `tests/ngo-accessibility.test.ts`.

@@ -19,6 +19,8 @@ vi.mock("@/lib/prisma", () => ({
     milestone: { findUnique: vi.fn() },
     fieldEvidence: { findMany: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn() },
     fieldTask: { updateMany: vi.fn() },
+    // The page also lists reported outcomes (lib/outcome-cockpit.ts); none here.
+    outcomeClaim: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn((cb: any) => cb(prismaMock)),
   },
 }));

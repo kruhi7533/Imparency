@@ -19,7 +19,10 @@ vi.mock("@/lib/prisma", () => ({
   default: {
     nGOProfile: { findUnique: vi.fn() },
     nGOTeamMember: { findFirst: vi.fn() },
-    contract: { findUnique: vi.fn(), updateMany: vi.fn() },
+    // findMany: the confirm route checks whether the project is now fully
+    // funded (lib/project-funding.ts); no signed contracts here, so it is not.
+    contract: { findUnique: vi.fn(), updateMany: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
+    project: { updateMany: vi.fn() },
     contractMilestone: { findUnique: vi.fn() },
     contractPayment: { findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
     contractAuditLog: { create: vi.fn() },

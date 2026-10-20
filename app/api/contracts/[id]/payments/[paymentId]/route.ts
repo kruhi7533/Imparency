@@ -3,6 +3,7 @@ import { Role } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { recordContractPaymentDispute } from "@/lib/finance-exceptions";
+import { notifyProjectFunded, stampProjectFundedIfComplete } from "@/lib/project-funding";
 import {
   CAN_CONFIRM_PAYMENT,
   checkDecision,
@@ -50,11 +51,18 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const note = body.decision === "DISPUTE" ? String(body.note).trim().slice(0, 500) : null;
     const now = new Date();
 
+    let newlyFunded = false;
     const updated = await prisma.$transaction(async (tx) => {
       // Only a still-pending payment moves. A concurrent decision loses here.
       const { count } = await tx.contractPayment.updateMany({
         where: { id: payment.id, status: "PENDING_CONFIRMATION" },
-        data: { status: check.target, confirmedById: session.user.id, confirmedAt: now, disputeNote: note },
+        data: {
+          status: check.target,
+          confirmedById: session.user.id,
+          confirmedAt: now,
+          disputeNote: note,
+          reconciledVia: body.decision === "CONFIRM" ? "NGO_CONFIRMATION" : null,
+        },
       });
       if (count === 0) return null;
       await tx.contractAuditLog.create({
@@ -70,12 +78,18 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           metadata: { paymentId: payment.id },
         },
       });
+      // "Project becomes FUNDED": this confirmation may be the last committed rupee.
+      if (body.decision === "CONFIRM") {
+        newlyFunded = await stampProjectFundedIfComplete(tx, payment.contract.projectId, now);
+      }
       return tx.contractPayment.findUnique({ where: { id: payment.id } });
     });
 
     if (!updated) {
       return NextResponse.json({ error: "This payment was decided by someone else just now. Refresh." }, { status: 409 });
     }
+
+    if (newlyFunded) await notifyProjectFunded(payment.contract.projectId);
 
     if (body.decision === "DISPUTE") {
       // Outside the transaction: the dispute stands even if the queue write
