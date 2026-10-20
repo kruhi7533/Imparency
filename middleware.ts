@@ -6,6 +6,7 @@ import {
   TRACEPARENT_HEADER,
   CORRELATION_HEADER,
 } from "@/lib/correlation";
+import { checkCsrf } from "@/lib/csrf";
 
 /**
  * Two jobs, deliberately separated: give every request a correlation id, and
@@ -124,6 +125,20 @@ export default async function middleware(req: NextRequest, event: NextFetchEvent
     res.headers.set(CORRELATION_HEADER, trace.traceId);
     return res;
   };
+
+  // Cross-site writes to the API are refused before any route runs (lib/csrf.ts).
+  const csrf = checkCsrf({
+    method: req.method,
+    pathname: req.nextUrl.pathname,
+    origin: req.headers.get("origin"),
+    secFetchSite: req.headers.get("sec-fetch-site"),
+    host: req.headers.get("host"),
+    forwardedHost: req.headers.get("x-forwarded-host"),
+    env: { NEXTAUTH_URL: process.env.NEXTAUTH_URL, ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS },
+  });
+  if (!csrf.ok) {
+    return stamp(NextResponse.json({ error: "Cross-site request refused." }, { status: 403 }));
+  }
 
   if (!isProtectedPage(req.nextUrl.pathname)) {
     // Public pages and the whole API surface: correlation only, no auth gate.
