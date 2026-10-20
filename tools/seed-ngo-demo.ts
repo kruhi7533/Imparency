@@ -22,6 +22,7 @@ import bcrypt from "bcryptjs";
 import { TeamRole } from "@prisma/client";
 import prisma from "../lib/prisma";
 import { matchingReadiness } from "../lib/project-readiness";
+import { MATCHING_PROFILES, stateOf } from "./demo-matching-profiles";
 
 const APPLY = process.argv.includes("--apply");
 const OWNER_EMAIL = "akshar@demo.org";
@@ -118,6 +119,41 @@ async function main() {
         dueDate: daysFromNow(t.dueInDays),
       },
     });
+  }
+
+  // ---- backfill matching profiles on demo projects ------------------------
+  // Demo projects created before the cohort fields existed have none. Only
+  // projects of @demo.org NGOs, and only fields that are still empty — a value
+  // someone entered through the app is never overwritten.
+  console.log("\nMatching profiles on demo projects:");
+  const demoProjects = await prisma.project.findMany({
+    where: { isDeleted: false, ngo: { user: { email: { endsWith: "@demo.org" } } } },
+    select: {
+      id: true,
+      title: true,
+      stateName: true,
+      expectedBeneficiaries: true,
+      beneficiaryGroup: true,
+      durationMonths: true,
+      primaryKPIs: true,
+      reportingCadence: true,
+      ngo: { select: { address: true } },
+    },
+  });
+  for (const p of demoProjects) {
+    const profile = MATCHING_PROFILES[p.title];
+    const data: Record<string, unknown> = {};
+    if (!p.stateName && p.ngo.address) data.stateName = stateOf(p.ngo.address);
+    if (profile) {
+      if (p.expectedBeneficiaries == null && profile.expectedBeneficiaries != null) data.expectedBeneficiaries = profile.expectedBeneficiaries;
+      if (!p.beneficiaryGroup && profile.beneficiaryGroup) data.beneficiaryGroup = profile.beneficiaryGroup;
+      if (p.durationMonths == null && profile.durationMonths != null) data.durationMonths = profile.durationMonths;
+      if ((p.primaryKPIs ?? []).length === 0 && profile.primaryKPIs.length) data.primaryKPIs = profile.primaryKPIs;
+      if (!p.reportingCadence && profile.reportingCadence) data.reportingCadence = profile.reportingCadence;
+    }
+    const keys = Object.keys(data);
+    console.log(`  ${keys.length ? `fill ${keys.join(", ")}` : "keep"} — ${p.title}`);
+    if (APPLY && keys.length) await prisma.project.update({ where: { id: p.id }, data });
   }
 
   // ---- matching readiness, computed by the real rule ----------------------
