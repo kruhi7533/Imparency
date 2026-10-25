@@ -52,12 +52,17 @@ export default function Navbar() {
           { href: "/login", label: "Become a Donor", match: "exact" },
           { href: "/ngo/register", label: "NGO Onboarding", match: "exact" },
         ];
-  // Ten NGO links do not fit until xl; everyone else's few links fit from md.
-  const desktopNav = role === "NGO" ? "hidden xl:flex" : "hidden md:flex";
+  // The NGO workspace has twelve links (Home, Discover + ten tools). The header
+  // content is capped at ~1216px (max-w-7xl), so they never fit inline at ANY
+  // screen size: showing them from xl overflowed and pushed the logo off-screen
+  // whenever the window was wide (e.g. browser zoom below 100%). So for NGOs the
+  // whole navigation lives behind the menu button at every width; everyone
+  // else's few links fit inline from md.
+  const desktopNav = role === "NGO" ? "hidden" : "hidden md:flex";
   // On the donor portal the sidebar drawer is the navigation; a second menu
   // button would compete with it on a phone.
   const inDonorPortal = role === "DONOR" && !!pathname?.startsWith("/donor");
-  const menuButton = inDonorPortal ? "hidden" : role === "NGO" ? "xl:hidden" : "md:hidden";
+  const menuButton = inDonorPortal ? "hidden" : role === "NGO" ? "" : "md:hidden";
 
   // Hide Navbar inside the Login / Signup screen to keep it focused
   if (pathname === "/login") return null;
@@ -323,7 +328,7 @@ export default function Navbar() {
 
       {menuOpen && (
         <nav id="mobile-nav" aria-label="Main" className={`${menuButton} border-t border-gray-900 bg-gray-950 px-4 py-3`}>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+          <ul className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1">
             {menuLinks.map((l) => (
               <li key={l.href}>
                 <Link

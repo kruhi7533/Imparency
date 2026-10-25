@@ -24,6 +24,11 @@ describe("navigation on a phone", () => {
     expect(nav).toMatch(/role === "NGO"\s*\?\s*\[[^\]]*\.\.\.NGO_LINKS\]/);
   });
 
+  it("NGO links never render inline: twelve links overflow the capped header at any width (zoomed-out bug)", () => {
+    expect(nav).toMatch(/const desktopNav = role === "NGO" \? "hidden" :/);
+    expect(nav).toMatch(/role === "NGO" \? "" : "md:hidden"/);
+  });
+
   it("the account button is named", () => {
     expect(nav).toMatch(/aria-label="Account menu"/);
   });
