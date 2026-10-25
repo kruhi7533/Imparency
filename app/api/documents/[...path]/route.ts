@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { PRIVATE_UPLOAD_ROOT } from "@/lib/storage";
+import { PRIVATE_UPLOAD_ROOT, readPrivateDocument } from "@/lib/storage";
 import { captureError } from "@/lib/observability";
-import fs from "fs/promises";
 import path from "path";
 
 export const runtime = "nodejs";
@@ -28,13 +27,6 @@ export const dynamic = "force-dynamic";
  *   NGO    — only files listed on its OWN NGOProfile.documents. Role is not
  *            ownership; being *an* NGO must never grant another org's papers.
  *   others — nothing.
- *
- * NOT covered, deliberately, and tracked as follow-ups:
- *   - The ~23 files already sitting in `public/uploads/` stay reachable until
- *     they are moved and their stored URLs rewritten. That is a data migration
- *     against a live database, not a code change.
- *   - Cloudinary/S3 return public URLs; `uploadFile` refuses private uploads on
- *     those providers rather than pretending. Signed URLs are the real fix.
  */
 export async function GET(
   _request: Request,
@@ -79,9 +71,9 @@ export async function GET(
 
   let file: Buffer;
   try {
-    file = await fs.readFile(resolved);
-  } catch (err) {
-    if (err && typeof err === "object" && "code" in err && (err as any).code === "ENOENT") {
+    file = await readPrivateDocument(relativePath);
+  } catch (err: any) {
+    if (err && typeof err === "object" && (err.code === "ENOENT" || err.message?.includes("not found"))) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
     captureError(err, {

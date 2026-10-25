@@ -52,23 +52,36 @@ export async function uploadFile(
   const filename = `${uuidv4()}${ext}`;
   const provider = (process.env.STORAGE_PROVIDER || "local").toLowerCase();
 
-  // Fail closed. Cloudinary and S3/R2 return world-readable URLs here; private
-  // delivery on those needs signed, expiring URLs, which is not built yet.
-  // Refusing is deliberate — silently storing a PAN card at a public URL
-  // because the provider changed is exactly the failure this flag exists to
-  // prevent, and an unguessable URL is not access control.
-  if (options.private && provider !== "local") {
-    throw new Error(
-      `Refusing to upload a private file: STORAGE_PROVIDER is "${provider}", which returns public URLs. ` +
-        `Private delivery needs signed URLs (not yet implemented). Use STORAGE_PROVIDER="local" or implement signing before storing sensitive documents.`
-    );
-  }
-
   if (provider === "cloudinary") {
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
       throw new Error(
         `STORAGE_PROVIDER is "cloudinary" but CLOUDINARY_CLOUD_NAME/CLOUDINARY_API_KEY/CLOUDINARY_API_SECRET are not fully set — refusing to upload to an unconfigured account.`
       );
+    }
+
+    if (options.private) {
+      // Store confidential file as authenticated raw asset in Cloudinary
+      // and serve only through authorised /api/documents route.
+      const publicId = `${PRIVATE_UPLOAD_ROOT}/${folder}/${filename}`;
+      await new Promise<any>((resolve, reject) => {
+        cloudinary.uploader
+          .upload_stream(
+            { public_id: publicId, resource_type: "raw", type: "authenticated" },
+            (err, res) => (err || !res ? reject(err ?? new Error("Cloudinary upload returned no result")) : resolve(res))
+          )
+          .end(file);
+      });
+
+      // Best-effort local write for cache / dev environments
+      try {
+        const uploadDir = path.join(process.cwd(), PRIVATE_UPLOAD_ROOT, folder);
+        await fs.mkdir(uploadDir, { recursive: true });
+        await fs.writeFile(path.join(uploadDir, filename), file);
+      } catch {
+        // Ephemeral or read-only filesystem (e.g. Vercel)
+      }
+
+      return `/api/documents/${folder}/${filename}`;
     }
 
     const publicId = `${folder}/${filename.replace(ext, "")}`;
@@ -83,7 +96,7 @@ export async function uploadFile(
 
     return result.secure_url;
   } else if (provider === "s3" || provider === "r2") {
-    const bucketName = process.env.AWS_BUCKET_NAME;
+    const bucketName = options.private ? privateBucket() : process.env.AWS_BUCKET_NAME;
     const cdnUrl = process.env.AWS_CDN_URL;
 
     if (!bucketName) {
@@ -91,6 +104,29 @@ export async function uploadFile(
         `STORAGE_PROVIDER is "${provider}" but AWS_BUCKET_NAME is not set — refusing to upload to an unconfigured bucket.`
       );
     }
+
+    if (options.private) {
+      const key = `${PRIVATE_UPLOAD_ROOT}/${folder}/${filename}`;
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: bucketName,
+          Key: key,
+          Body: file,
+          ContentType: getContentType(ext),
+        })
+      );
+
+      try {
+        const uploadDir = path.join(process.cwd(), PRIVATE_UPLOAD_ROOT, folder);
+        await fs.mkdir(uploadDir, { recursive: true });
+        await fs.writeFile(path.join(uploadDir, filename), file);
+      } catch {
+        // Ephemeral or read-only filesystem
+      }
+
+      return `/api/documents/${folder}/${filename}`;
+    }
+
     // R2 has no S3-style default public URL (unlike AWS S3), so without a
     // CDN/public URL configured, uploads would "succeed" but be unreachable.
     if (provider === "r2" && !cdnUrl) {
@@ -142,18 +178,117 @@ export async function uploadFile(
 }
 
 /**
+ * Reads a private document by its relative path under PRIVATE_UPLOAD_ROOT
+ * (e.g. "documents/<uuid>.pdf").
+ * Tries local disk first (for local storage or local cache), and falls back
+ * to Cloudinary (authenticated download) or S3/R2.
+ */
+export async function readPrivateDocument(relativePath: string): Promise<Buffer> {
+  const root = path.resolve(process.cwd(), PRIVATE_UPLOAD_ROOT);
+  const resolved = path.resolve(root, relativePath);
+  if (resolved !== root && !resolved.startsWith(root + path.sep)) {
+    throw new Error("Invalid document path traversal");
+  }
+
+  // 1. Try local disk first
+  try {
+    return await fs.readFile(resolved);
+  } catch (err: any) {
+    if (err && typeof err === "object" && err.code !== "ENOENT") throw err;
+  }
+
+  // 2. Cloudinary authenticated download
+  const provider = (process.env.STORAGE_PROVIDER || "local").toLowerCase();
+  if (provider === "cloudinary") {
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      const err: any = new Error("Cloudinary credentials not configured for private document retrieval");
+      err.code = "ENOENT";
+      throw err;
+    }
+    const publicId = `${PRIVATE_UPLOAD_ROOT}/${relativePath}`;
+    const downloadUrl = cloudinary.utils.private_download_url(publicId, "", {
+      resource_type: "raw",
+      type: "authenticated",
+    });
+    const res = await fetch(downloadUrl);
+    if (!res.ok) {
+      const notFoundErr: any = new Error(`Document not found on Cloudinary (${res.status})`);
+      notFoundErr.code = "ENOENT";
+      throw notFoundErr;
+    }
+    const arrayBuffer = await res.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
+
+  // 3. S3 / R2 download
+  if (provider === "s3" || provider === "r2") {
+    const key = `${PRIVATE_UPLOAD_ROOT}/${relativePath}`;
+    try {
+      const result = await s3Client.send(new GetObjectCommand({ Bucket: privateBucket(), Key: key }));
+      if (!result.Body) {
+        const notFoundErr: any = new Error("Private file body empty in S3");
+        notFoundErr.code = "ENOENT";
+        throw notFoundErr;
+      }
+      return Buffer.from(await result.Body.transformToByteArray());
+    } catch (err: any) {
+      if (err?.name === "NoSuchKey") {
+        const notFoundErr: any = new Error("Document not found in S3");
+        notFoundErr.code = "ENOENT";
+        throw notFoundErr;
+      }
+      throw err;
+    }
+  }
+
+  const notFoundErr: any = new Error("Document not found");
+  notFoundErr.code = "ENOENT";
+  throw notFoundErr;
+}
+
+/**
  * Deletes a file from the configured storage provider using its URL.
  */
 export async function deleteFile(fileUrl: string): Promise<void> {
   const provider = (process.env.STORAGE_PROVIDER || "local").toLowerCase();
 
+  if (fileUrl.startsWith("/api/documents/")) {
+    const rel = fileUrl.slice("/api/documents/".length);
+    const filePath = path.join(process.cwd(), PRIVATE_UPLOAD_ROOT, rel);
+    try {
+      await fs.unlink(filePath);
+    } catch (err: any) {
+      if (err && typeof err === "object" && err.code !== "ENOENT") {
+        throw err;
+      }
+    }
+
+    if (provider === "cloudinary") {
+      try {
+        const publicId = `${PRIVATE_UPLOAD_ROOT}/${rel}`;
+        await cloudinary.uploader.destroy(publicId, { resource_type: "raw", type: "authenticated" });
+      } catch (err) {
+        console.error("Failed to delete private Cloudinary asset:", fileUrl, err);
+      }
+    } else if (provider === "s3" || provider === "r2") {
+      try {
+        const key = `${PRIVATE_UPLOAD_ROOT}/${rel}`;
+        await s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: privateBucket(),
+            Key: key,
+          })
+        );
+      } catch (err) {
+        console.error("Failed to delete private S3 asset:", fileUrl, err);
+      }
+    }
+    return;
+  }
+
   if (provider === "cloudinary") {
     // e.g. https://res.cloudinary.com/<cloud>/image/upload/v.../folder/filename.jpg
-    // The public_id is everything after the version segment, without the extension.
-    // resource_type (image/video/raw) must be read from the URL and passed to
-    // destroy() explicitly — it defaults to "image" otherwise, which silently
-    // no-ops (returns "not found" rather than throwing) for non-image uploads
-    // like PDFs/docs, which upload as "raw" via resource_type: "auto".
+    // or https://res.cloudinary.com/<cloud>/raw/authenticated/s--...--/v.../folder/filename
     try {
       const parsedUrl = new URL(fileUrl);
       const parts = parsedUrl.pathname.split("/");
@@ -162,8 +297,12 @@ export async function deleteFile(fileUrl: string): Promise<void> {
       const publicIdWithExt = parts.slice(versionIdx + 1).join("/");
       const publicId = publicIdWithExt.replace(path.extname(publicIdWithExt), "");
       if (!publicId) return;
-      const resourceType = parts[versionIdx - 2] || "image"; // .../<resource_type>/upload/v.../...
-      await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+      const isAuthenticated = parts.includes("authenticated");
+      const resourceType = ["image", "raw", "video"].includes(parts[2]) ? parts[2] : "image";
+      await cloudinary.uploader.destroy(publicId, {
+        resource_type: resourceType,
+        ...(isAuthenticated ? { type: "authenticated" } : {}),
+      });
     } catch (err) {
       console.error("Failed to delete Cloudinary asset:", fileUrl, err);
     }
@@ -194,19 +333,6 @@ export async function deleteFile(fileUrl: string): Promise<void> {
     // Default: Local Storage
     // e.g. /uploads/folder/filename.jpg
     // Check if the URL is relative to public uploads
-    if (fileUrl.startsWith("/api/documents/")) {
-      const rel = fileUrl.slice("/api/documents/".length);
-      const filePath = path.join(process.cwd(), PRIVATE_UPLOAD_ROOT, rel);
-      try {
-        await fs.unlink(filePath);
-      } catch (err) {
-        if (err && typeof err === "object" && "code" in err && err.code !== "ENOENT") {
-          throw err;
-        }
-      }
-      return;
-    }
-
     if (fileUrl.startsWith("/uploads/")) {
       const filePath = path.join(process.cwd(), "public", fileUrl);
       try {

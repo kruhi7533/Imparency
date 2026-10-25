@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import { PRIVATE_UPLOAD_ROOT } from "@/lib/storage";
+import { PRIVATE_UPLOAD_ROOT, readPrivateDocument } from "@/lib/storage";
 
 /**
  * Shared document loading for the agents that read stored NGO uploads
@@ -27,7 +27,7 @@ export function guessMime(url: string): string {
 /**
  * Loads a stored document URL into a Buffer.
  * - Public local uploads ("/uploads/...") are read from the public folder.
- * - Private local uploads ("/api/documents/...") are read from PRIVATE_UPLOAD_ROOT.
+ * - Private local uploads ("/api/documents/...") are read via readPrivateDocument (local or cloud).
  * - Anything else (S3/R2/CDN absolute URLs) is fetched over HTTP.
  * Returns null if the document cannot be loaded — callers turn that into a
  * flag rather than an exception, since one bad upload must not abort a run.
@@ -48,8 +48,13 @@ export async function loadDocumentBuffer(url: string): Promise<LoadedDocument | 
         console.error(`Refusing to load document outside private root: ${url}`);
         return null;
       }
-      const buffer = await fs.readFile(resolved);
-      return { buffer, mimeType: guessMime(url) };
+      try {
+        const buffer = await readPrivateDocument(relativePath);
+        return { buffer, mimeType: guessMime(url) };
+      } catch (e) {
+        console.error(`Error loading private document ${url}:`, e);
+        return null;
+      }
     }
 
     const res = await fetch(url);
