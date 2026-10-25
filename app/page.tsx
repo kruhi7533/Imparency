@@ -10,6 +10,7 @@ import Reveal from "@/components/home/Reveal";
 import NgoMarquee from "@/components/home/NgoMarquee";
 import BridgeArt from "@/components/home/BridgeArt";
 import HeroField from "@/components/home/HeroField";
+import HeroCtas from "@/components/home/HeroCtas";
 import ImpactStories from "@/components/home/ImpactStories";
 import { getPlatformStats } from "@/lib/platform-stats";
 
@@ -72,20 +73,8 @@ export default async function Home() {
           </Reveal>
 
           <Reveal delay={0.34}>
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-              <Link
-                href="/discover"
-                className="w-full sm:w-auto bg-trust-600 hover:bg-trust-500 text-white font-semibold px-8 py-4 rounded-lg text-base transition"
-              >
-                Browse campaigns
-              </Link>
-              <Link
-                href="/ngo/register"
-                className="w-full sm:w-auto bg-trust-600 hover:bg-trust-500 text-white font-semibold px-8 py-4 rounded-lg text-base transition"
-              >
-                Register your NGO
-              </Link>
-            </div>
+            {/* Role-aware: visitors see both sides; signed-in users their own next step. */}
+            <HeroCtas />
           </Reveal>
 
           {/* A fragment of the real audit trail, sitting quietly in the hero */}
@@ -319,6 +308,7 @@ export default async function Home() {
           </div>
           <div className="flex justify-center gap-6 text-[10px] font-bold text-gray-500">
             <Link href="/discover" className="hover:text-white transition">Discover</Link>
+            <Link href="/login?mode=signup&role=DONOR" className="hover:text-white transition">Join as donor</Link>
             <Link href="/ngo/register" className="hover:text-white transition">Join as NGO</Link>
             <Link href="/admin/dashboard" className="hover:text-white transition">Admin Panel</Link>
           </div>
