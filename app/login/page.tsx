@@ -20,12 +20,14 @@ function LoginContent() {
     }
   }, [sessionStatus, callbackUrl, router]);
 
-  const [isSignUp, setIsSignUp] = useState(false);
+  // ?mode=signup&role=DONOR|NGO (e.g. the homepage "Become a donor" button)
+  // opens the registration form with that role pre-selected.
+  const [isSignUp, setIsSignUp] = useState(searchParams.get("mode") === "signup");
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"DONOR" | "NGO">("DONOR");
+  const [role, setRole] = useState<"DONOR" | "NGO">(searchParams.get("role") === "NGO" ? "NGO" : "DONOR");
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
