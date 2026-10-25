@@ -43,7 +43,15 @@ interface Props {
   investigationStatusByAlertId: Record<string, { status: string; riskLevel: string | null; summary: string | null; riskReviewId: string | null }>;
   /** Deep-link target from ?case=<id> — e.g. the "View case" link on an NGO's own detail page. */
   initialHighlightReviewId: string | null;
+  /**
+   * INVESTIGATOR_ENABLED, read on the server. When it is off the API refuses
+   * every run, so offering a live Investigate button only produced an error.
+   */
+  investigatorEnabled: boolean;
 }
+
+const INVESTIGATOR_OFF_HINT =
+  "The AI investigator is switched off on this deployment (INVESTIGATOR_ENABLED is not 'true'). Review the alert yourself and resolve it with a note.";
 
 const INVESTIGATION_STATUS_BADGE: Record<string, string> = {
   FAILED: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30",
@@ -66,7 +74,9 @@ function InvestigationStatusBadge({
   alert,
   status,
   onViewCase,
+  investigatorEnabled,
 }: {
+  investigatorEnabled: boolean;
   alert: FraudAlert;
   status: { status: string; riskLevel: string | null; summary: string | null; riskReviewId: string | null } | undefined;
   onViewCase: (reviewId: string) => void;
@@ -91,6 +101,17 @@ function InvestigationStatusBadge({
     // Only HIGH NGO alerts auto-trigger (lib/fraud-investigator/trigger.ts) — for
     // anything else, "not run" is expected, not a gap worth flagging.
     if (alert.severity !== "HIGH") return null;
+    // "Not yet" promises a run that, with the investigator off, never comes.
+    if (!investigatorEnabled) {
+      return (
+        <span
+          className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${INVESTIGATION_STATUS_BADGE.NOT_RUN}`}
+          title={INVESTIGATOR_OFF_HINT}
+        >
+          AI: investigator off — manual review
+        </span>
+      );
+    }
     return (
       <span
         className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${INVESTIGATION_STATUS_BADGE.NOT_RUN}`}
@@ -195,6 +216,7 @@ export default function RiskComplianceClient({
   initialInvestigations,
   investigationStatusByAlertId,
   initialHighlightReviewId,
+  investigatorEnabled,
 }: Props) {
   const router = useRouter();
   const [mainTab, setMainTab] = useState<MainTab>("risk");
@@ -414,15 +436,19 @@ export default function RiskComplianceClient({
                   </td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex justify-end mb-1.5">
-                      <InvestigationStatusBadge alert={alert} status={investigationStatusByAlertId[alert.id]} onViewCase={viewCase} />
+                      <InvestigationStatusBadge alert={alert} status={investigationStatusByAlertId[alert.id]} onViewCase={viewCase} investigatorEnabled={investigatorEnabled} />
                     </div>
                     <div className="flex items-center justify-end gap-2">
                       {alert.entityType === "NGO" && (
                         <button
                           onClick={() => runInvestigation(alert)}
-                          disabled={investigatingId === alert.id}
-                          className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition flex items-center gap-1.5"
-                          title="Follow this alert: check team overlap, duplicate identity, donor overlap, and proof history"
+                          disabled={!investigatorEnabled || investigatingId === alert.id}
+                          className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-violet-600 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition flex items-center gap-1.5"
+                          title={
+                            investigatorEnabled
+                              ? "Follow this alert: check team overlap, duplicate identity, donor overlap, and proof history"
+                              : INVESTIGATOR_OFF_HINT
+                          }
                         >
                           {investigatingId === alert.id && <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>}
                           {investigatingId === alert.id ? "Investigating…" : "Investigate"}
@@ -527,6 +553,14 @@ export default function RiskComplianceClient({
                 </button>
               ))}
             </div>
+          )}
+
+          {riskSubTab === "alerts" && alertFilter !== "resolved" && !investigatorEnabled && (
+            <p role="note" className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+              AI investigation is off on this deployment, so Investigate is unavailable. Review each alert yourself and
+              resolve it with a note. To turn it on, set <span className="font-mono">INVESTIGATOR_ENABLED=true</span> and a
+              model provider key.
+            </p>
           )}
 
           {riskSubTab === "alerts" && alertFilter === "fraud" && renderAlertTable(fraudAlerts, "No active fraud alerts", "🛡️")}

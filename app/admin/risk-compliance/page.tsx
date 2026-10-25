@@ -3,6 +3,7 @@ import SchemaOutOfSync from "@/app/admin/components/SchemaOutOfSync";
 import { getAllComplianceSummaries } from "@/lib/compliance-agent";
 import RiskComplianceClient from "./RiskComplianceClient";
 import { buildInvestigationStatusByAlertId } from "@/lib/risk-compliance-view";
+import { INVESTIGATOR_ENABLED } from "@/lib/fraud-investigator/config";
 
 export const runtime = "nodejs";
 
@@ -93,6 +94,7 @@ export default async function RiskCompliancePage({
             createdAt: i.createdAt.toISOString(),
           }))}
           investigationStatusByAlertId={investigationStatusByAlertId}
+          investigatorEnabled={INVESTIGATOR_ENABLED}
           initialHighlightReviewId={searchParams.case ?? null}
         />
       </div>
