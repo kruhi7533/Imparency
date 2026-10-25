@@ -78,8 +78,10 @@ export default function AskNgoBox({
       </button>
 
       {open && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800 text-left">
+        // The box is usually rendered inside a `whitespace-nowrap` table cell,
+        // and white-space inherits: reset it or the text runs out of the dialog.
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 whitespace-normal">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800 text-left break-words">
             <h3 className="text-lg font-extrabold text-gray-900 dark:text-white mb-1">
               Ask NGO a Question
             </h3>
