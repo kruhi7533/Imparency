@@ -77,6 +77,7 @@ export async function PATCH(
 
     const { id } = params;
     const body = await request.json();
+    const status = body.status;
     const rejectionReason = body.rejectionReason || body.reason;
 
     if (status !== 'APPROVED' && status !== 'REJECTED') {

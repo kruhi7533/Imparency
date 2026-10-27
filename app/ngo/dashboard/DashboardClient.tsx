@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import SubmitProofModal from "./SubmitProofModal";
 import ShareProjectModal from "@/app/components/ShareProjectModal";
@@ -127,6 +128,7 @@ export default function DashboardClient({
   whatsappBotNumber?: string;
   joinCode?: string | null;
 }) {
+  const router = useRouter();
   const [ngoProfile, setNgoProfile] = useState<NGOProfile>(profile);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [activeMilestone, setActiveMilestone] = useState<{ id: string; title: string } | null>(null);
@@ -183,11 +185,14 @@ export default function DashboardClient({
 
   const handleApprove = async (id: string) => {
     setDrafts(curr => curr.map(d => d.id === id ? { ...d, status: 'APPROVED' } : d));
-    await fetch(`/api/drafts/${id}`, {
+    const res = await fetch(`/api/drafts/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'APPROVED' })
     });
+    if (res.ok) {
+      router.refresh();
+    }
   };
 
   const handleReject = async (id: string) => {
