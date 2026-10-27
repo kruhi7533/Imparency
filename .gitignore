@@ -65,3 +65,9 @@ backups/
 
 # Tesseract OCR language data downloaded at runtime
 *.traineddata
+
+# Playwright run artefacts
+/test-results/
+/playwright-report/
+/test-results.json
+/junit-report.xml

@@ -99,22 +99,26 @@ export async function extractWithFallback(
 
 /** Claude over the (contact-redacted) document text, validated against the same schema as Gemini. */
 const callClaude: ModelCall = async (text) => {
-  const [{ claudeStructured, CLAUDE_MODEL }, { RequirementSchema }, { SYSTEM_PROMPT, wrapDocument }, llm] = await Promise.all([
+  const [{ claudeStructured, CLAUDE_MODEL }, { RequirementSchema }, { SYSTEM_PROMPT, wrapDocument }, llm, wire] = await Promise.all([
     import("@/lib/ai/claude"),
     import("@/src/agents/requirements-agent/validators/schema"),
     import("@/src/agents/requirements-agent/prompts"),
     import("@/src/agents/requirements-agent/services/llm/llm.service"),
+    import("@/lib/requirements/claude-requirement-schema"),
   ]);
   const { text: redacted, tokens } = llm.redactContactDetails(text);
   const started = Date.now();
+  // Union-free wire schema: the nullable RequirementSchema exceeds the API's
+  // 16-union limit and was refused with a 400 on every call.
   const parsed = await claudeStructured({
-    schema: RequirementSchema,
-    system: SYSTEM_PROMPT,
+    schema: wire.ClaudeRequirementSchema,
+    system: `${SYSTEM_PROMPT}\n\n${wire.CLAUDE_REQUIREMENT_FORMAT}`,
     content: [{ type: "text", text: wrapDocument(redacted) }],
     effort: "medium",
+    site: "extract-requirement",
   });
   return {
-    data: llm.restoreContactDetails(RequirementSchema.parse(parsed), tokens) as any,
+    data: llm.restoreContactDetails(RequirementSchema.parse(wire.fromClaudeRequirement(parsed)), tokens) as any,
     metadata: {
       model: CLAUDE_MODEL,
       promptHash: crypto.createHash("sha256").update(SYSTEM_PROMPT + redacted).digest("hex"),
