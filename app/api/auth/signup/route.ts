@@ -56,55 +56,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── Auto-accept team invite if one exists for this email ──────────────
-    try {
-      const now = new Date();
-      const normalizedEmail = email.trim().toLowerCase();
-      // Check by token (matching email and non-expired), or by email fallback
-      const invite = inviteToken
-        ? await prisma.teamInvite.findFirst({
-            where: {
-              token: inviteToken,
-              email: normalizedEmail,
-              accepted: false,
-              expiresAt: { gt: now },
-            },
-          })
-        : await prisma.teamInvite.findFirst({
-            where: {
-              email: normalizedEmail,
-              accepted: false,
-              expiresAt: { gt: now },
-            },
-          });
-
-      if (invite && !invite.accepted) {
-        // Add them to the NGO team
-        await prisma.nGOTeamMember.create({
-          data: {
-            userId: user.id,
-            ngoId: invite.ngoId,
-            role: invite.role,
-          },
-        });
-
-        // Mark invite as accepted
-        await prisma.teamInvite.update({
-          where: { id: invite.id },
-          data: { accepted: true },
-        });
-
-        return NextResponse.json({
-          success: true,
-          userId: user.id,
-          joinedNgo: true,
-          message: "Account created and you've been added to your NGO team!",
-        });
-      }
-    } catch (inviteErr) {
-      // Non-fatal — user is still created
-      console.warn("[signup] Invite auto-accept failed:", inviteErr);
-    }
+    // NGO team invitations are NOT auto-accepted here any more (NGO-003): the
+    // old fallback joined anyone who signed up with an invited email, without
+    // the token. Invitees accept at /invite/[token] (lib/ngo-team-invites.ts),
+    // which checks the hashed, single-use, expiring token.
 
     return NextResponse.json({ success: true, userId: user.id });
   } catch (err: any) {

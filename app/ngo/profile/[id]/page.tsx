@@ -43,36 +43,42 @@ export default async function PublicNGOProfilePage({ params }: { params: { id: s
     });
   });
 
+  // Share of this NGO's milestones whose proof a human has verified — the
+  // figure behind the "verified impact" bar. Was a hard-coded "100%".
+  const allMilestones = ngo.projects.flatMap((p) => p.milestones);
+  const verifiedMilestones = allMilestones.filter((m) => m.status === "VERIFIED" || m.status === "COMPLETED").length;
+  const verifiedPct = allMilestones.length ? Math.round((verifiedMilestones / allMilestones.length) * 100) : null;
+
   // Take up to 12 images for the gallery
   const displayImages = galleryImages.slice(0, 12);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200 pb-20">
+    <div className="pb-20">
       {/* Cover Image */}
-      <div className="w-full h-64 md:h-80 relative bg-emerald-900">
+      <div className="w-full h-56 md:h-72 relative bg-trust-50 border-b border-trust-100">
         {ngo.cover_image_url ? (
           <Image 
             src={ngo.cover_image_url} 
             alt={`${ngo.orgName} Cover`} 
             fill 
-            className="object-cover opacity-60 mix-blend-overlay"
+            className="object-cover"
             priority
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-900 to-teal-800" />
+          <div className="absolute inset-0 bg-trust-50" />
         )}
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-10">
         {/* Header Profile Section */}
-        <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-xl p-6 sm:p-10 border border-gray-100 dark:border-gray-800">
+        <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-6 sm:p-10 border border-gray-200/80 dark:border-gray-800">
           <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
             {/* Logo */}
-            <div className="w-32 h-32 rounded-2xl bg-white dark:bg-gray-800 shadow-lg border-4 border-white dark:border-gray-900 flex-shrink-0 flex items-center justify-center overflow-hidden relative">
+            <div className="w-32 h-32 rounded-2xl bg-white dark:bg-gray-800 shadow-[0_1px_2px_rgba(16,24,40,0.04)] border-4 border-white dark:border-gray-900 flex-shrink-0 flex items-center justify-center overflow-hidden relative">
               {ngo.logo_url ? (
                 <Image src={ngo.logo_url} alt={ngo.orgName} fill className="object-contain p-2" />
               ) : (
-                <span className="text-4xl font-extrabold text-emerald-600 dark:text-emerald-400">
+                <span className="font-display text-4xl font-semibold text-trust-700">
                   {ngo.orgName.charAt(0)}
                 </span>
               )}
@@ -81,22 +87,22 @@ export default async function PublicNGOProfilePage({ params }: { params: { id: s
             {/* Info */}
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">
                   {ngo.orgName}
                 </h1>
                 {ngo.verificationStatus === "VERIFIED" && (
-                  <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full text-xs font-bold border border-emerald-200 dark:border-emerald-800/50" title="Verified NGO">
+                  <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-bold ring-1 ring-emerald-200" title="Verified NGO">
                     <CheckCircle className="w-3.5 h-3.5" />
                     Verified
                   </div>
                 )}
               </div>
 
-              <p className="text-gray-600 dark:text-gray-400 max-w-3xl leading-relaxed mb-4">
+              <p className="text-gray-600 max-w-3xl leading-relaxed mb-4">
                 {ngo.description}
               </p>
 
-              <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                 <div className="flex items-center gap-1.5">
                   <MapPin className="w-4 h-4" /> {ngo.address}
                 </div>
@@ -115,8 +121,8 @@ export default async function PublicNGOProfilePage({ params }: { params: { id: s
             
             {/* CTA */}
             <div className="flex-shrink-0 w-full sm:w-auto mt-4 sm:mt-0">
-              <button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-emerald-500/30 transition-all flex items-center justify-center gap-2">
-                <Heart className="w-5 h-5 fill-emerald-600/30" />
+              <button className="w-full sm:w-auto bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3 px-6 rounded-lg shadow-sm transition-all flex items-center justify-center gap-2">
+                <Heart className="w-5 h-5 fill-white/30" />
                 Support Us
               </button>
             </div>
@@ -125,28 +131,30 @@ export default async function PublicNGOProfilePage({ params }: { params: { id: s
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm text-center">
-            <div className="text-3xl font-black text-gray-900 dark:text-white mb-1">
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-[0_1px_2px_rgba(16,24,40,0.04)] text-center">
+            <div className="text-3xl font-bold text-gray-900 mb-1">
               ₹{totalRaised.toLocaleString('en-IN')}
             </div>
-            <div className="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Funds Raised</div>
+            <div className="text-sm font-semibold text-gray-600">Total Funds Raised</div>
           </div>
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm text-center">
-            <div className="text-3xl font-black text-gray-900 dark:text-white mb-1">
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-[0_1px_2px_rgba(16,24,40,0.04)] text-center">
+            <div className="text-3xl font-bold text-gray-900 mb-1">
               {activeProjectsCount}
             </div>
-            <div className="text-sm font-semibold text-gray-500 dark:text-gray-400">Active Projects</div>
+            <div className="text-sm font-semibold text-gray-600">Active Projects</div>
           </div>
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm text-center">
-            <div className="text-3xl font-black text-gray-900 dark:text-white mb-1 text-emerald-500">
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-[0_1px_2px_rgba(16,24,40,0.04)] text-center">
+            <div className="text-3xl font-bold mb-1 text-emerald-700">
               {ngo.healthScore ? `${ngo.healthScore}/100` : "TBD"}
             </div>
-            <div className="text-sm font-semibold text-gray-500 dark:text-gray-400">Health Score</div>
+            <div className="text-sm font-semibold text-gray-600">Health Score</div>
           </div>
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm text-center flex flex-col justify-center items-center">
-             <div className="text-sm font-bold text-gray-900 dark:text-white mb-2">100% Verified Impact</div>
-             <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2">
-                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-[0_1px_2px_rgba(16,24,40,0.04)] text-center flex flex-col justify-center items-center">
+             <div className="text-sm font-bold text-gray-900 dark:text-white mb-2">
+               {verifiedPct === null ? "No milestones yet" : `${verifiedPct}% of milestones verified`}
+             </div>
+             <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2" role="img" aria-label={verifiedPct === null ? "No milestones yet" : `${verifiedMilestones} of ${allMilestones.length} milestones verified`}>
+                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${verifiedPct ?? 0}%` }}></div>
              </div>
           </div>
         </div>
@@ -154,7 +162,7 @@ export default async function PublicNGOProfilePage({ params }: { params: { id: s
         {/* Impact Gallery */}
         {displayImages.length > 0 && (
           <div className="mt-12">
-            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-6">Impact Gallery</h2>
+            <h2 className="font-display text-2xl font-semibold text-gray-900 mb-6">Impact Gallery</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {displayImages.map((url, i) => (
                 <div key={i} className="relative aspect-square rounded-2xl overflow-hidden shadow-sm group">
@@ -168,22 +176,22 @@ export default async function PublicNGOProfilePage({ params }: { params: { id: s
 
         {/* Projects */}
         <div className="mt-12">
-          <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-6">Our Initiatives</h2>
+          <h2 className="font-display text-2xl font-semibold text-gray-900 mb-6">Our Initiatives</h2>
           <div className="grid md:grid-cols-2 gap-6">
             {ngo.projects.map(project => (
-              <div key={project.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm hover:shadow-md transition">
+              <div key={project.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:shadow-md transition">
                 <div className="h-48 relative">
                   <ProjectCoverImage src={project.coverImage || undefined} alt={project.title} causeCategory={project.causeCategory} />
-                  <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-900 dark:text-white">
+                  <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full text-xs font-bold text-gray-900 ring-1 ring-gray-200">
                     {project.status === "ACTIVE" ? (
-                      <span className="text-emerald-500">● Active</span>
+                      <span className="text-emerald-700">● Active</span>
                     ) : (
                       <span>Completed</span>
                     )}
                   </div>
                 </div>
                 <div className="p-6">
-                  <div className="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-2">{project.causeCategory}</div>
+                  <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">{project.causeCategory}</div>
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-1">{project.title}</h3>
                   <p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-2 mb-4">{project.description}</p>
                   
@@ -201,7 +209,7 @@ export default async function PublicNGOProfilePage({ params }: { params: { id: s
               </div>
             ))}
             {ngo.projects.length === 0 && (
-              <div className="col-span-2 text-center py-12 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 border-dashed">
+              <div className="col-span-2 text-center py-12 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 border-dashed">
                 <p className="text-gray-500">No public projects available at the moment.</p>
               </div>
             )}

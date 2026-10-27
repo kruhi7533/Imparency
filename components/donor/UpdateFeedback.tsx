@@ -42,14 +42,14 @@ export default function UpdateFeedback({
 
   const btn = (active: boolean) =>
     `min-h-[40px] px-3 rounded-lg text-xs font-bold border ${
-      active ? "border-emerald-400 bg-emerald-500/15 text-emerald-700 dark:text-emerald-200" : "border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+      active ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
     }`;
   const inputId = `fb-note-${eventId ?? projectId}`;
 
   return (
     <div className="mt-3 space-y-2">
       <div role="group" aria-label={prompt} className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-gray-500 dark:text-gray-400">{prompt}</span>
+        <span className="text-xs text-gray-600">{prompt}</span>
         <button type="button" aria-pressed={signal === "HELPFUL"} onClick={() => send("HELPFUL")} className={btn(signal === "HELPFUL")}>
           Helpful
         </button>
@@ -73,18 +73,18 @@ export default function UpdateFeedback({
             maxLength={500}
             onChange={(e) => setNote(e.target.value)}
             placeholder="What would you like to know? (optional, shared without your name)"
-            className="flex-1 min-h-[40px] rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 text-sm text-gray-900 dark:text-gray-100"
+            className="flex-1 min-h-[40px] rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
           />
           <button type="button" disabled={state === "saving"} onClick={() => send("NEED_MORE_DETAIL", note)} className={btn(false)}>
             Send note
           </button>
         </div>
       )}
-      <p role="status" aria-live="polite" className="text-xs text-emerald-600 dark:text-emerald-300">
+      <p role="status" aria-live="polite" className="text-xs text-emerald-600">
         {state === "saved" ? "Thanks — the organisation sees this without your name." : ""}
       </p>
       {error && (
-        <p role="alert" className="text-xs text-red-600 dark:text-red-300">
+        <p role="alert" className="text-xs text-red-600">
           {error}
         </p>
       )}

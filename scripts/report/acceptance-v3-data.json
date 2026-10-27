@@ -1,0 +1,785 @@
+{
+ "title": "ImpactBridge — Acceptance Test Pack Report v3 (post-remediation)",
+ "date": "27 October 2026",
+ "branch": "fix/acceptance-v2-remediation",
+ "commit": "7486378",
+ "baseline": "Report v2 (25 Oct 2026, deployment impactbridge-omega.vercel.app): 91 cases — 20 PASS, 28 PARTIAL, 22 FAIL, 7 NOT BUILT, 14 NOT RUN.",
+ "method": "Each of the 91 sheet cases has a Playwright test of the same ID that drives the real UI in Chromium against the application running on a seeded PostgreSQL database (synthetic data only, sandbox/manual-test payments, no real money). Unit and integration tests run with Vitest. Same pass rule as v2: a case passes only when the visible expected result works with persisted data.",
+ "verdict": "All 91 acceptance cases PASS — pilot gates met",
+ "verdictDetail": "Every case in the sheet now passes in a real browser with persisted data, including all five P0 defects (D1–D5) and the seven features previously not built. Every pilot gate on the sheet's dashboard passes. Remaining items before a production pilot are operational (production keys and migration rollout) and are listed under Notes.",
+ "defects": [
+  {
+   "id": "D1",
+   "title": "Stale OPEN RiskReview blocked verification",
+   "cause": "Triage returned early on a SAFE verdict, so the risk review raised against the NGO's earlier, wrong documents was never superseded; verification read only the newest open review; no API listed reviews. Registration also loaded the document-analysis runner with require(), which returned no export, so re-analysis never started.",
+   "fix": "A clean re-analysis now closes the triage review it opened and resolves its alerts (never admin- or agent-raised reviews); verification weighs all open reviews; GET /api/admin/risk/review lists them; analysis starts via dynamic import; NGOs get “Replace your documents” with a prefilled form."
+  },
+  {
+   "id": "D2",
+   "title": "Field-evidence photo sync returned 500",
+   "cause": "Private uploads ignored STORAGE_PROVIDER=cloudinary and wrote to the read-only serverless filesystem (EROFS); the route hid the cause behind a generic 500.",
+   "fix": "Cloudinary authenticated private storage; structured error codes (413/415/503/409); client-id idempotency; signed, expiring, per-viewer photo links that re-check access on every fetch."
+  },
+  {
+   "id": "D3",
+   "title": "RFP upload / extraction returned an empty 500",
+   "cause": "Document-parser modules failed to load on serverless before the handler ran; model/storage failures surfaced as bare 500s; the Claude schema exceeded the API's union-type limit.",
+   "fix": "Lazy parser loading; JSON errors with codes and a retryable FAILED state; Claude → Gemini → rule-based extraction with per-field confidence; manual entry; union-free Claude schema."
+  },
+  {
+   "id": "D4",
+   "title": "Milestones stayed UNFUNDED after full reconciliation",
+   "cause": "Payments were recorded with no milestone link and nothing allocated reconciled money to milestones; allocation existed only for the legacy Proposal model.",
+   "fix": "Reconciled money is allocated to milestones in delivery order (or the milestone the donor chose) inside a row-locked transaction; milestone funding status, admin allocation approval, contract and project FUNDED."
+  },
+  {
+   "id": "D5",
+   "title": "UTR-based reconciliation not possible",
+   "cause": "Sandbox mode discarded the supplied UTR; the reconciliation sweep did no UTR matching.",
+   "fix": "UTR stored and normalised in every mode, duplicates refused per payer account; reconciliation matches bank-statement lines by UTR and amount; unmatched lines go to an exception queue with manual match."
+  }
+ ],
+ "built": [
+  "NGO team invites for Program Manager and Field Worker (hashed, expiring, single-use tokens; revoke/resend; field workers see only their tasks).",
+  "Admin Finance, Auditor (read-only) and Support roles with distinct permissions; donor-team Finance role.",
+  "Break-glass support access: reasoned, time-boxed (≤ 60 min), audited, revocable grants.",
+  "Tamper-evident audit log: database-enforced append-only hash chain, live verifier and export verifier.",
+  "Operator dead-letter queue with one-time replay for failed jobs.",
+  "NGO registration save-and-resume drafts; NGO expense/utilisation recording per contract milestone.",
+  "Stored impact reports, donor re-engagement (renewal / next opportunity), consent-filtered impact stories.",
+  "Admin-triggered re-verification (review-due) workflow; structured FCRA-required field; admin shortlist approval.",
+  "AI call telemetry and admin fault injection; notification channel preferences with fallback and delivery log."
+ ],
+ "gates": [
+  {
+   "gate": "Stage 0 identity / verification",
+   "before": "FAIL",
+   "after": "PASS"
+  },
+  {
+   "gate": "RFP → match → proposal",
+   "before": "FAIL",
+   "after": "PASS"
+  },
+  {
+   "gate": "Funding → reconciliation → allocation",
+   "before": "FAIL",
+   "after": "PASS"
+  },
+  {
+   "gate": "Field evidence → verification → donor",
+   "before": "FAIL",
+   "after": "PASS"
+  },
+  {
+   "gate": "Outcome → impact report → feedback",
+   "before": "FAIL",
+   "after": "PASS"
+  }
+ ],
+ "runs": [
+  {
+   "check": "Unit + integration tests (Vitest, npm test)",
+   "result": "189 files, 2,727 tests — all passed on commit 7486378 (baseline before work: 158 files / 2,230 tests)."
+  },
+  {
+   "check": "TypeScript (npx tsc --noEmit)",
+   "result": "No errors."
+  },
+  {
+   "check": "Production build (next build)",
+   "result": "Succeeded."
+  },
+  {
+   "check": "ESLint (next lint)",
+   "result": "64 errors vs 69 on main (pre-existing, non-blocking backlog per CLAUDE.md) — this work adds none and clears five."
+  },
+  {
+   "check": "Prisma migrations",
+   "result": "All migrations apply cleanly; migrate diff against the schema reports no drift (additive migrations only)."
+  },
+  {
+   "check": "Browser suite — Admin, Negative/Security, AI (45 cases)",
+   "result": "Full run: 45 passed (10.6 min). A second full run had one test-side locator issue (AI-002), fixed and re-run: passed."
+  },
+  {
+   "check": "Browser suite — NGO, Donor/CSR, Cross-portal (46 cases)",
+   "result": "Full run: 46 passed (12.6 min). After three bug fixes, the latest full run had 43 passed and 3 failed on test-side issues; those 3 were fixed and re-run: 3 passed (45.6 s)."
+  }
+ ],
+ "notes": [
+  "All data is synthetic. Payments are SANDBOX/manual-test records; no real money moved and no real NGO, company, PAN, CIN or UTR was used.",
+  "AI: document and RFP extraction ran on Claude (Anthropic) in this run. Without a model key the platform falls back to labelled rule-based extraction and template drafts — never invented values.",
+  "External delivery was not exercised live: WhatsApp (Twilio) and email providers were not configured, so notification tests verify the in-app delivery, the opt-out, the fallback order and the delivery log, where external channels are recorded as PROVIDER_NOT_CONFIGURED. Razorpay live checkout was not used; webhook handling was verified with signed test payloads.",
+  "Production rollout: apply the additive migrations with `prisma migrate deploy`. Do not deploy with the repo's current `npm run build`, which runs `prisma db push --accept-data-loss` (pre-existing risk noted in CLAUDE.md).",
+  "Production needs STORAGE_PROVIDER=cloudinary with CLOUDINARY_* keys for private uploads (the cause of D2), RAZORPAY_WEBHOOK_SECRET, and ANTHROPIC_API_KEY and/or GEMINI_API_KEY for AI extraction.",
+  "UI: the platform was redesigned to a light theme (homepage, admin console, NGO and donor portals); every figure on screen is read from the database.",
+  "Known minor UI gaps (not acceptance criteria): the donor feedback widget does not re-display the saved choice after reload; NGO claim cards do not show the method text.",
+  "Branch: fix/acceptance-v2-remediation (commits 3162a1e, 63e8344, 358858d, 7486378). Browser tests: e2e-tests/acceptance-v2-admin-security-ai.spec.ts and e2e-tests/acceptance-v2-ngo-donor-e2e.spec.ts. Full remediation notes: docs/ACCEPTANCE-V2-REMEDIATION.md."
+ ],
+ "suites": [
+  {
+   "key": "ADM",
+   "title": "Admin Tests"
+  },
+  {
+   "key": "NGO",
+   "title": "NGO Tests"
+  },
+  {
+   "key": "DON",
+   "title": "Donor / CSR Tests"
+  },
+  {
+   "key": "E2E",
+   "title": "Cross-portal E2E"
+  },
+  {
+   "key": "NEG",
+   "title": "Negative / Security Tests"
+  },
+  {
+   "key": "AI",
+   "title": "AI Resilience Tests"
+  }
+ ],
+ "cases": [
+  {
+   "id": "ADM-001",
+   "suite": "ADM",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Admin console loads for admin; an NGO user opening /admin/dashboard is redirected to /unauthorized."
+  },
+  {
+   "id": "ADM-002",
+   "suite": "ADM",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Fresh NGO whose certificate names another organisation → shown AT RISK, approval refused in UI and API → NGO clicks “Replace your documents” (form prefilled) → re-analysis DOCUMENTS CLEAN → admin approves → NGO verified (defect D1 fixed)."
+  },
+  {
+   "id": "ADM-003",
+   "suite": "ADM",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Fresh CSR donor; admin Verify Organisation + Verify PAN; donor then passes the funder gate."
+  },
+  {
+   "id": "ADM-004",
+   "suite": "ADM",
+   "prior": "NOT BUILT",
+   "verdict": "PASS",
+   "evidence": "Admin “Request re-verification” → NGO dashboard shows the re-verification banner with reason and due date → admin re-decides → banner clears."
+  },
+  {
+   "id": "ADM-005",
+   "suite": "ADM",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Requirement with structured FCRA-required flag excludes FCRA-ineligible NGOs; “see why” shows the rule explanation."
+  },
+  {
+   "id": "ADM-006",
+   "suite": "ADM",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Invite refused before admin review; admin excludes one candidate, reorders and approves the shortlist; ranks persist; excluded NGO cannot be invited."
+  },
+  {
+   "id": "ADM-007",
+   "suite": "ADM",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Creating a contract linked to a requirement before proposal selection is refused (400)."
+  },
+  {
+   "id": "ADM-008",
+   "suite": "ADM",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Donor records a payment in the UI, NGO confirms; committed vs reconciled shown separately; receivable schedule per milestone."
+  },
+  {
+   "id": "ADM-009",
+   "suite": "ADM",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "NGO uploads a bank statement with a mistyped UTR → admin runs reconciliation → “Bank transfer (UTR) not matched” exception → Match to payment → contract funded (defect D5 fixed)."
+  },
+  {
+   "id": "ADM-010",
+   "suite": "ADM",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Same idempotency key replayed → 200 replayed, no second payment row; unsigned webhook rejected (400/503)."
+  },
+  {
+   "id": "ADM-011",
+   "suite": "ADM",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Admin approves milestone allocation lines in /admin/allocations; a second decision returns 409; milestones FUNDED (defect D4 fixed)."
+  },
+  {
+   "id": "ADM-012",
+   "suite": "ADM",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Admin evidence queue lists field photos; signed photo renders; admin approves (defect D2 fixed)."
+  },
+  {
+   "id": "ADM-013",
+   "suite": "ADM",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Duplicate and GPS-mismatch photos are flagged; approving over a flag requires a note; Return to NGO works."
+  },
+  {
+   "id": "ADM-014",
+   "suite": "ADM",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Baseline 42% and endline 61% claims approved in /admin/impact-review; NGO report shows +19 pp."
+  },
+  {
+   "id": "ADM-015",
+   "suite": "ADM",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "Consent-filtered funder story generated → admin publishes → visible to the funder."
+  },
+  {
+   "id": "ADM-016",
+   "suite": "ADM",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Grievance Triage → Start investigating → Resolve with outcome note."
+  },
+  {
+   "id": "ADM-017",
+   "suite": "ADM",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Live audit hash chain verifies OK; exported CSV uploaded back verifies OK; tampered export detected (see NEG-013)."
+  },
+  {
+   "id": "ADM-018",
+   "suite": "ADM",
+   "prior": "NOT BUILT",
+   "verdict": "PASS",
+   "evidence": "Failed job lands in the dead-letter queue → “Replay once” runs the real job → REPLAYED; a second replay returns 409."
+  },
+  {
+   "id": "ADM-019",
+   "suite": "ADM",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Another NGO receives 403/404 on Akshar’s contract, payments, project update, photo and tasks."
+  },
+  {
+   "id": "ADM-020",
+   "suite": "ADM",
+   "prior": "NOT BUILT",
+   "verdict": "PASS",
+   "evidence": "Support admin blocked (BREAK_GLASS_REQUIRED) → opens a reasoned, time-boxed grant → access → revoke → 403 again."
+  },
+  {
+   "id": "NGO-001",
+   "suite": "NGO",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "NGO saves a partial registration (“Save draft and finish later”), leaves, returns to a prefilled form and submits; profile becomes PENDING with the draft's documents."
+  },
+  {
+   "id": "NGO-002",
+   "suite": "NGO",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "NGO submits registration documents; analysis runs and the profile moves PENDING → VERIFIED after admin approval."
+  },
+  {
+   "id": "NGO-003",
+   "suite": "NGO",
+   "prior": "NOT BUILT",
+   "verdict": "PASS",
+   "evidence": "NGO owner invites a Field Worker and a Program Manager; invite link accepted; reused/revoked links refused."
+  },
+  {
+   "id": "NGO-004",
+   "suite": "NGO",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Project created with geography, budget and milestones; admin-approved; ACTIVE and matchable."
+  },
+  {
+   "id": "NGO-005",
+   "suite": "NGO",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "NGO match inbox lists the CSR invitation with its next action and a Respond link."
+  },
+  {
+   "id": "NGO-006",
+   "suite": "NGO",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Proposal v1 submitted and versioned."
+  },
+  {
+   "id": "NGO-007",
+   "suite": "NGO",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Change request → v2 submitted; revisions recorded; v2 selected for the contract."
+  },
+  {
+   "id": "NGO-008",
+   "suite": "NGO",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "After reconciliation every contract milestone shows FUNDED and the project is marked FUNDED (defect D4 fixed)."
+  },
+  {
+   "id": "NGO-009",
+   "suite": "NGO",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Field task assigned to a field worker by the owner/program manager."
+  },
+  {
+   "id": "NGO-010",
+   "suite": "NGO",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Beneficiary feedback recorded with per-purpose consent (pseudonymous reference; consent honoured downstream)."
+  },
+  {
+   "id": "NGO-011",
+   "suite": "NGO",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "Field worker logs in, lands on the Field app and sees only the tasks assigned to them."
+  },
+  {
+   "id": "NGO-012",
+   "suite": "NGO",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Offline capture syncs with photo; replaying the same clientId returns the same record (no duplicate) (defect D2 fixed)."
+  },
+  {
+   "id": "NGO-013",
+   "suite": "NGO",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Normal photo with correct GPS uploads and persists; GPS check MATCH."
+  },
+  {
+   "id": "NGO-014",
+   "suite": "NGO",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Duplicate / bad-GPS photo flagged → admin returns it → NGO recaptures and resubmits."
+  },
+  {
+   "id": "NGO-015",
+   "suite": "NGO",
+   "prior": "NOT BUILT",
+   "verdict": "PASS",
+   "evidence": "NGO records an expense against a contract milestone with a receipt; utilisation shown; donor sees it read-only."
+  },
+  {
+   "id": "NGO-016",
+   "suite": "NGO",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Baseline 42% and endline 61% claims approved; NGO impact report shows +19 pp from approved claims only."
+  },
+  {
+   "id": "NGO-017",
+   "suite": "NGO",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "NGO creates and submits a stored impact report built from approved claims; admin publishes it; donor sees approved figures only."
+  },
+  {
+   "id": "NGO-018",
+   "suite": "NGO",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "NGO sees aggregated beneficiary feedback; the donor view shows aggregates only, with no personal data."
+  },
+  {
+   "id": "NGO-019",
+   "suite": "NGO",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Grievance filed by the NGO and resolved through the admin workflow."
+  },
+  {
+   "id": "NGO-020",
+   "suite": "NGO",
+   "prior": "NOT BUILT",
+   "verdict": "PASS",
+   "evidence": "Donor renewal / next-opportunity request appears in /ngo/reporting; NGO accepts or declines."
+  },
+  {
+   "id": "DON-001",
+   "suite": "DON",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Donor registers, completes profile; organisation and PAN verified."
+  },
+  {
+   "id": "DON-002",
+   "suite": "DON",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Donor team invite with the Finance role; Finance can record payments but cannot approve proposals; Viewer cannot pay."
+  },
+  {
+   "id": "DON-003",
+   "suite": "DON",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Manual (form) CSR opportunity created, validated and entered into matching."
+  },
+  {
+   "id": "DON-004",
+   "suite": "DON",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "RFP PDF uploaded; fields extracted with confidence; donor corrects a field (defect D3 fixed)."
+  },
+  {
+   "id": "DON-005",
+   "suite": "DON",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Ranked, explainable shortlist (score, coverage, per-dimension reasons); FCRA variant excludes ineligible NGOs."
+  },
+  {
+   "id": "DON-006",
+   "suite": "DON",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Donor invites an approved NGO; NGO is notified and the proposal handoff follows."
+  },
+  {
+   "id": "DON-007",
+   "suite": "DON",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Change request on v1 reaches the NGO and produces v2."
+  },
+  {
+   "id": "DON-008",
+   "suite": "DON",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Donor compares proposal v1 and v2 side by side with highlighted changes, then selects v2."
+  },
+  {
+   "id": "DON-009",
+   "suite": "DON",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Contract signed by both parties and accepted by the NGO; ACTIVE."
+  },
+  {
+   "id": "DON-010",
+   "suite": "DON",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Payment lifecycle visible (pending → reconciled); UTR kept as the reference; remaining commitment shown (D4/D5 fixed)."
+  },
+  {
+   "id": "DON-011",
+   "suite": "DON",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Donor sees contract, payment summary and correct per-milestone utilisation (all milestones FUNDED)."
+  },
+  {
+   "id": "DON-012",
+   "suite": "DON",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "Donor receives a milestone notification when a milestone is funded/completed."
+  },
+  {
+   "id": "DON-013",
+   "suite": "DON",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Donor impact dashboard and CSV show approved figures, the +19 pp change, and INSUFFICIENT_DATA where unbacked."
+  },
+  {
+   "id": "DON-014",
+   "suite": "DON",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "Consent-safe donor story visible on the contract; non-consented material excluded."
+  },
+  {
+   "id": "DON-015",
+   "suite": "DON",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Donor feedback (HELPFUL + note) stored on an update."
+  },
+  {
+   "id": "DON-016",
+   "suite": "DON",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Donor “Renew this grant” from a stored impact report creates a re-engagement request (no 404)."
+  },
+  {
+   "id": "DON-017",
+   "suite": "DON",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Donor pages and downloads show no beneficiary PII, risk scores or internal notes."
+  },
+  {
+   "id": "DON-018",
+   "suite": "DON",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "Donor disables WhatsApp; notifications fall back to email/in-app and appear in the delivery log."
+  },
+  {
+   "id": "E2E-001",
+   "suite": "E2E",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Sheet NGO profile verified end to end through the UI, including correcting a wrong document (D1 fixed)."
+  },
+  {
+   "id": "E2E-002",
+   "suite": "E2E",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Opportunity → match → admin-approved shortlist → invite → proposal; RFP upload path works."
+  },
+  {
+   "id": "E2E-003",
+   "suite": "E2E",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "v1 → change request → v2 → donor approval → contract; version history intact."
+  },
+  {
+   "id": "E2E-004",
+   "suite": "E2E",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Contract → payment → reconciliation → allocation → milestones FUNDED."
+  },
+  {
+   "id": "E2E-005",
+   "suite": "E2E",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Money → work → field evidence → admin approval → donor-safe update."
+  },
+  {
+   "id": "E2E-006",
+   "suite": "E2E",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Evidence → approved outcome claims → +19 pp → donor impact report."
+  },
+  {
+   "id": "E2E-007",
+   "suite": "E2E",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Grievance resolved, beneficiary and donor feedback stored, re-engagement started from the stored report."
+  },
+  {
+   "id": "E2E-008",
+   "suite": "E2E",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Uninterrupted pilot journey through the UI from verification to re-engagement with no database manipulation."
+  },
+  {
+   "id": "NEG-001",
+   "suite": "NEG",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Role gates enforced across admin/NGO/donor, including read-only Auditor and Finance admin sub-roles."
+  },
+  {
+   "id": "NEG-002",
+   "suite": "NEG",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Cross-organisation isolation enforced centrally; another NGO cannot read or modify org-owned records."
+  },
+  {
+   "id": "NEG-003",
+   "suite": "NEG",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "Beneficiary consent withdrawal hides the photo from the funder and invalidates previously issued links."
+  },
+  {
+   "id": "NEG-004",
+   "suite": "NEG",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "Prompt-injection text inside an uploaded RFP is flagged; submission blocked (409 FLAGS_UNCONFIRMED) until a human confirms; eligibility rules unaffected."
+  },
+  {
+   "id": "NEG-005",
+   "suite": "NEG",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Replayed payment request is idempotent — no duplicate record."
+  },
+  {
+   "id": "NEG-006",
+   "suite": "NEG",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Over-payment beyond the unpaid balance refused (422); allocation-level over-allocation refused."
+  },
+  {
+   "id": "NEG-007",
+   "suite": "NEG",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Contract side door before proposal approval refused server-side."
+  },
+  {
+   "id": "NEG-008",
+   "suite": "NEG",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Re-used image flagged as duplicate in the evidence queue."
+  },
+  {
+   "id": "NEG-009",
+   "suite": "NEG",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "Photo with GPS far from the project site flagged as GPS mismatch."
+  },
+  {
+   "id": "NEG-010",
+   "suite": "NEG",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Where evidence is missing the impact view shows INSUFFICIENT_DATA — no invented figures."
+  },
+  {
+   "id": "NEG-011",
+   "suite": "NEG",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "Donor WhatsApp opt-out honoured; notification falls back to email/in-app and each attempt is logged."
+  },
+  {
+   "id": "NEG-012",
+   "suite": "NEG",
+   "prior": "NOT BUILT",
+   "verdict": "PASS",
+   "evidence": "Dead-letter item replays exactly once; second replay refused."
+  },
+  {
+   "id": "NEG-013",
+   "suite": "NEG",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Tampered audit export is detected (HASH_MISMATCH at the edited row)."
+  },
+  {
+   "id": "NEG-014",
+   "suite": "NEG",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Donor-facing pages and APIs never expose admin notes, risk scores or AI scores."
+  },
+  {
+   "id": "NEG-015",
+   "suite": "NEG",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "Signed photo links are per-viewer and expiring; a tampered link is rejected; revoked link returns 404."
+  },
+  {
+   "id": "AI-001",
+   "suite": "AI",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "RFP PDF upload extracted by Claude with values and per-field confidence (defect D3 fixed)."
+  },
+  {
+   "id": "AI-002",
+   "suite": "AI",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "RFP with two conflicting budget figures raises a blocking “Conflicting budget figures” flag for human confirmation."
+  },
+  {
+   "id": "AI-003",
+   "suite": "AI",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "Ranking is explainable: score, coverage and per-dimension reasons shown."
+  },
+  {
+   "id": "AI-004",
+   "suite": "AI",
+   "prior": "PASS",
+   "verdict": "PASS",
+   "evidence": "FCRA hard rule overrides any similarity score; exclusion reason visible."
+  },
+  {
+   "id": "AI-005",
+   "suite": "AI",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "Proposal-assist draft generated for an invited NGO; budget and milestone amounts left empty for the NGO to fill."
+  },
+  {
+   "id": "AI-006",
+   "suite": "AI",
+   "prior": "FAIL",
+   "verdict": "PASS",
+   "evidence": "AI flags evidence, a human decides; overriding a flag is recorded with the flag codes."
+  },
+  {
+   "id": "AI-007",
+   "suite": "AI",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "Impact story generated from the UI from approved data."
+  },
+  {
+   "id": "AI-008",
+   "suite": "AI",
+   "prior": "PARTIAL",
+   "verdict": "PASS",
+   "evidence": "Public story excludes funder-only and non-consented beneficiary material."
+  },
+  {
+   "id": "AI-009",
+   "suite": "AI",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "Every AI call is recorded with provider, model, latency and outcome on /admin/ai-telemetry."
+  },
+  {
+   "id": "AI-010",
+   "suite": "AI",
+   "prior": "NOT RUN",
+   "verdict": "PASS",
+   "evidence": "Admin fault injection forces an AI timeout; the UI shows “AI unavailable — human review required” instead of an error or invented output."
+  }
+ ]
+}

@@ -128,7 +128,7 @@ export async function POST(request: Request) {
       await sendProjectPublishedEmail(ngoEmail, project.ngo.orgName, project.title);
 
       try {
-        const { triggerFollowedNGONewProject } = require("@/lib/notification-triggers");
+        const { triggerFollowedNGONewProject } = await import("@/lib/notification-triggers");
         await triggerFollowedNGONewProject(project.ngoId, project.id);
       } catch (triggerErr) {
         console.error("Failed to trigger new project follower notifications:", triggerErr);

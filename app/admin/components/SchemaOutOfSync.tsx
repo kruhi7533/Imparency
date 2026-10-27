@@ -27,30 +27,30 @@ export default function SchemaOutOfSync({
     !!detail && (detail.includes("Unknown argument") || detail.includes("reading 'findMany'"));
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-6">
-      <div className="max-w-lg w-full bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/40 rounded-2xl shadow-sm p-8">
-        <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">{title}</h1>
+    <div className="min-h-[60vh] flex items-center justify-center p-6">
+      <div className="max-w-lg w-full bg-white border border-amber-200 rounded-2xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-8">
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">{title}</h1>
 
         {looksLikeStaleClient ? (
           <>
-            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+            <p className="mt-3 text-sm text-gray-600">
               This looks like a <strong>stale Prisma client</strong>, not a database problem. The dev server has been
               running since before the last migration, so it is still using a client generated without this column.
               Restart it — <code className="font-mono text-xs">predev</code> regenerates the client on startup:
             </p>
             <pre className="mt-3 rounded-lg bg-gray-900 text-emerald-300 text-sm px-4 py-3 font-mono">npm run dev</pre>
-            <p className="mt-3 text-xs text-gray-500 dark:text-gray-500">
+            <p className="mt-3 text-xs text-gray-500">
               If it persists after a restart, the database really is behind — run{" "}
               <code className="font-mono">npm run db:sync</code>.
             </p>
           </>
         ) : (
           <>
-            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+            <p className="mt-3 text-sm text-gray-600">
               A database query failed — usually the branch&apos;s database is behind the Prisma schema:
             </p>
             <pre className="mt-3 rounded-lg bg-gray-900 text-emerald-300 text-sm px-4 py-3 font-mono">npm run db:sync</pre>
-            <p className="mt-3 text-xs text-gray-500 dark:text-gray-500">
+            <p className="mt-3 text-xs text-gray-500">
               If the database is already in sync, restart the dev server — a long-running one holds the Prisma client
               it started with.
             </p>
@@ -58,7 +58,7 @@ export default function SchemaOutOfSync({
         )}
 
         {detail && (
-          <p className="mt-4 text-xs text-gray-400 font-mono break-all border-t border-gray-100 dark:border-gray-800 pt-3">
+          <p className="mt-4 text-xs text-gray-500 font-mono break-all border-t border-gray-100 pt-3">
             {detail}
           </p>
         )}

@@ -12,10 +12,10 @@ export const dynamic = "force-dynamic";
  * donations, and account verification — one timeline (lib/donor-activity.ts).
  */
 const KIND_LABEL: Record<DonorActivityKind, { label: string; cls: string }> = {
-  REQUIREMENT: { label: "CSR requirement", cls: "bg-blue-500/15 text-blue-300" },
-  CONTRACT: { label: "Contract", cls: "bg-amber-500/15 text-amber-300" },
-  DONATION: { label: "Donation", cls: "bg-emerald-500/15 text-emerald-300" },
-  ACCOUNT: { label: "Account", cls: "bg-purple-500/15 text-purple-300" },
+  REQUIREMENT: { label: "CSR requirement", cls: "bg-blue-50 text-blue-700 ring-1 ring-blue-200" },
+  CONTRACT: { label: "Contract", cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-200" },
+  DONATION: { label: "Donation", cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" },
+  ACCOUNT: { label: "Account", cls: "bg-violet-50 text-violet-700 ring-1 ring-violet-200" },
 };
 
 export default async function DonorActivityPage({ searchParams }: { searchParams: { kind?: string } }) {
@@ -27,12 +27,12 @@ export default async function DonorActivityPage({ searchParams }: { searchParams
   const kind = searchParams.kind && searchParams.kind in KIND_LABEL ? (searchParams.kind as DonorActivityKind) : null;
   const items = kind ? all.filter((i) => i.kind === kind) : all;
   const chip = (active: boolean) =>
-    `min-h-[40px] inline-flex items-center px-3 rounded-full text-xs font-bold ${active ? "bg-white text-gray-900" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`;
+    `min-h-[40px] inline-flex items-center px-3 rounded-full text-xs font-semibold border ${active ? "bg-trust-600 border-trust-600 text-white" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-      <h1 className="text-2xl font-extrabold text-white">Activity</h1>
-      <p className="mt-1 text-sm text-gray-400">
+      <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">Activity</h1>
+      <p className="mt-1 text-sm text-gray-600">
         Everything that happened on your account — requirements, contracts and payments, donations and verification — newest
         first.
       </p>
@@ -53,28 +53,28 @@ export default async function DonorActivityPage({ searchParams }: { searchParams
       </nav>
 
       {items.length === 0 ? (
-        <p className="mt-10 text-sm text-gray-400">No activity yet.</p>
+        <p className="mt-10 rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-600">No activity yet.</p>
       ) : (
         <ol className="mt-6 space-y-3">
           {items.map((i, idx) => (
-            <li key={idx} className="rounded-xl border border-gray-800 bg-gray-900/60 p-4">
+            <li key={idx} className="rounded-2xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-4">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${KIND_LABEL[i.kind].cls}`}>{KIND_LABEL[i.kind].label}</span>
-                <time dateTime={i.at.toISOString()} className="text-xs text-gray-400">
+                <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${KIND_LABEL[i.kind].cls}`}>{KIND_LABEL[i.kind].label}</span>
+                <time dateTime={i.at.toISOString()} className="text-xs text-gray-500">
                   {i.at.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
                 </time>
-                <span className="text-xs text-gray-400">· {i.actor}</span>
+                <span className="text-xs text-gray-500">· {i.actor}</span>
               </div>
-              <p className="mt-1 text-sm font-bold text-white">
+              <p className="mt-1 text-sm font-semibold text-gray-900">
                 {i.href ? (
-                  <Link href={i.href} className="hover:underline">
+                  <Link href={i.href} className="hover:text-trust-700 hover:underline">
                     {i.title}
                   </Link>
                 ) : (
                   i.title
                 )}
               </p>
-              {i.detail && <p className="mt-1 text-sm text-gray-300 break-words">{i.detail}</p>}
+              {i.detail && <p className="mt-1 text-sm text-gray-600 break-words">{i.detail}</p>}
             </li>
           ))}
         </ol>

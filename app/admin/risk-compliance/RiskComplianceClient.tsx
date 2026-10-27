@@ -46,13 +46,13 @@ interface Props {
 }
 
 const INVESTIGATION_STATUS_BADGE: Record<string, string> = {
-  FAILED: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30",
-  RUNNING: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30",
-  HIGH: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30",
-  MEDIUM: "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30",
-  LOW: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30",
-  CLEAN: "bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700",
-  NOT_RUN: "bg-gray-50 text-gray-400 border-gray-200 dark:bg-gray-900 dark:text-gray-500 dark:border-gray-800",
+  FAILED: "bg-red-50 text-red-700 border-red-100",
+  RUNNING: "bg-blue-50 text-blue-700 border-blue-100",
+  HIGH: "bg-red-50 text-red-700 border-red-100",
+  MEDIUM: "bg-amber-50 text-amber-700 border-amber-100",
+  LOW: "bg-blue-50 text-blue-700 border-blue-100",
+  CLEAN: "bg-gray-100 text-gray-500 border-gray-200",
+  NOT_RUN: "bg-gray-50 text-gray-500 border-gray-200",
 };
 
 /**
@@ -81,7 +81,7 @@ function InvestigationStatusBadge({
     <button
       type="button"
       onClick={() => onViewCase(status.riskReviewId!)}
-      className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline underline-offset-2"
+      className="text-[10px] font-bold text-blue-600 hover:underline underline-offset-2"
     >
       View case →
     </button>
@@ -171,19 +171,19 @@ type RiskSubTab = "alerts" | "cases";
 type AlertFilter = "fraud" | "doc_errors" | "resolved";
 
 const SEVERITY_BADGE: Record<string, string> = {
-  HIGH: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30",
-  MEDIUM: "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30",
-  LOW: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30",
-  CRITICAL: "bg-red-100 text-red-800 border-red-200 dark:bg-red-950/50 dark:text-red-300",
+  HIGH: "bg-red-50 text-red-700 border-red-100",
+  MEDIUM: "bg-amber-50 text-amber-700 border-amber-100",
+  LOW: "bg-blue-50 text-blue-700 border-blue-100",
+  CRITICAL: "bg-red-100 text-red-800 border-red-200",
 };
 
 const FCRA_BADGE: Record<string, string> = {
-  ACTIVE: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
-  EXPIRING_SOON: "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
-  EXPIRED: "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400",
-  PENDING: "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
-  REJECTED: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
-  NONE: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500",
+  ACTIVE: "bg-emerald-100 text-emerald-700",
+  EXPIRING_SOON: "bg-amber-100 text-amber-700",
+  EXPIRED: "bg-red-100 text-red-700",
+  PENDING: "bg-blue-100 text-blue-700",
+  REJECTED: "bg-slate-100 text-slate-600",
+  NONE: "bg-gray-100 text-gray-500",
 };
 
 export default function RiskComplianceClient({
@@ -377,39 +377,39 @@ export default function RiskComplianceClient({
   const renderAlertTable = (alerts: FraudAlert[], emptyMsg: string, emptyIcon: string) => {
     if (alerts.length === 0) {
       return (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center shadow-sm">
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-10 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <span className="text-4xl mb-3 block">{emptyIcon}</span>
-          <p className="text-sm font-bold text-gray-900 dark:text-white">{emptyMsg}</p>
+          <p className="text-sm font-bold text-gray-900">{emptyMsg}</p>
         </div>
       );
     }
     return (
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-gray-200/80 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800">
-            <thead className="bg-gray-50 dark:bg-gray-800/50">
+          <table className="min-w-full divide-y divide-gray-100">
+            <thead className="bg-gray-50">
               <tr>
                 {["Severity", "Alert Type", "Details", "Detected", ""].map(h => (
-                  <th key={h} className="px-5 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{h}</th>
+                  <th key={h} className="px-5 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-gray-100">
               {alerts.map(alert => (
-                <tr key={alert.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition">
+                <tr key={alert.id} className="hover:bg-slate-50/50 transition">
                   <td className="px-5 py-4">
-                    <span className={`text-[10px] font-extrabold px-2 py-0.5 border rounded-full ${SEVERITY_BADGE[alert.severity] || SEVERITY_BADGE.LOW}`}>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${SEVERITY_BADGE[alert.severity] || SEVERITY_BADGE.LOW}`}>
                       {alert.severity}
                     </span>
                   </td>
                   <td className="px-5 py-4">
-                    <p className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wide">{alert.type.replace(/_/g, " ")}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{alert.entityType} · {alert.entityId.substring(0, 8)}…</p>
+                    <p className="text-xs font-bold text-gray-900 uppercase tracking-wide">{alert.type.replace(/_/g, " ")}</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">{alert.entityType} · {alert.entityId.substring(0, 8)}…</p>
                   </td>
                   <td className="px-5 py-4 max-w-sm">
-                    <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">{alert.description}</p>
+                    <p className="text-xs text-gray-700 leading-relaxed">{alert.description}</p>
                   </td>
-                  <td className="px-5 py-4 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  <td className="px-5 py-4 text-xs text-gray-500 whitespace-nowrap">
                     {new Date(alert.createdAt).toLocaleString("en-IN")}
                   </td>
                   <td className="px-5 py-4 text-right">
@@ -430,19 +430,19 @@ export default function RiskComplianceClient({
                       )}
                       <button
                         onClick={() => { setSelectedAlert(alert); setResolutionNote(""); setAlertError(""); }}
-                        className="bg-slate-700 hover:bg-slate-800 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition"
+                        className="bg-trust-600 hover:bg-trust-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition"
                       >
                         Resolve
                       </button>
                     </div>
                     {investigationResult?.alertId === alert.id && (
-                      <div className="mt-2 text-left text-xs bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-900 rounded-lg px-3 py-2 max-w-sm ml-auto">
+                      <div className="mt-2 text-left text-xs bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 max-w-sm ml-auto">
                         {investigationResult.riskLevel && (
-                          <span className="font-black text-violet-700 dark:text-violet-400">{investigationResult.riskLevel}: </span>
+                          <span className="font-bold text-violet-700">{investigationResult.riskLevel}: </span>
                         )}
-                        <span className="text-gray-700 dark:text-gray-300">{investigationResult.summary}</span>
+                        <span className="text-gray-700">{investigationResult.summary}</span>
                         {investigationResult.riskReviewId && (
-                          <p className="text-[10px] text-gray-400 mt-1">Findings added to this NGO's risk review.</p>
+                          <p className="text-[10px] text-gray-500 mt-1">Findings added to this NGO's risk review.</p>
                         )}
                       </div>
                     )}
@@ -459,12 +459,12 @@ export default function RiskComplianceClient({
   return (
     <div className="space-y-6">
       {/* Main tabs */}
-      <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
+      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
         {(["risk", "compliance"] as MainTab[]).map(t => (
           <button
             key={t}
             onClick={() => setMainTab(t)}
-            className={`px-5 py-2 text-xs font-bold rounded-lg transition capitalize ${mainTab === t ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
+            className={`px-5 py-2 text-xs font-bold rounded-lg transition capitalize ${mainTab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
           >
             {t === "risk" ? "Risk Agent" : "Compliance Agent"}
           </button>
@@ -474,30 +474,30 @@ export default function RiskComplianceClient({
       {/* ── RISK TAB ── */}
       {mainTab === "risk" && (
         <div className="space-y-5">
-          <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-xl">
-            <div className="text-amber-600 dark:text-amber-400 mt-0.5">⚠</div>
+          <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-xl">
+            <div className="text-amber-600 mt-0.5">⚠</div>
             <div>
-              <p className="text-sm font-bold text-amber-900 dark:text-amber-300">Risk Agent — Behavioral & Fraud Signals</p>
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+              <p className="text-sm font-bold text-amber-900">Risk Agent — Behavioral & Fraud Signals</p>
+              <p className="text-xs text-amber-700 mt-0.5">
                 Monitors suspicious patterns. Admin decides all outcomes — no auto-suspension.
               </p>
             </div>
           </div>
 
           {/* Risk sub-tabs */}
-          <div className="flex border-b border-gray-200 dark:border-gray-800">
+          <div className="flex border-b border-gray-200">
             {([
-              { key: "alerts", label: "Alerts", count: fraudAlerts.length + docErrors.length, color: "border-red-400 text-red-600 dark:text-red-400" },
-              { key: "cases", label: "Cases", count: riskReviews.length, color: "border-blue-400 text-blue-600 dark:text-blue-400" },
+              { key: "alerts", label: "Alerts", count: fraudAlerts.length + docErrors.length, color: "border-red-400 text-red-600" },
+              { key: "cases", label: "Cases", count: riskReviews.length, color: "border-blue-400 text-blue-600" },
             ] as { key: RiskSubTab; label: string; count: number; color: string }[]).map(t => (
               <button
                 key={t.key}
                 onClick={() => setRiskSubTab(t.key)}
-                className={`py-2.5 px-5 font-bold text-sm border-b-2 -mb-px flex items-center gap-2 transition-all ${riskSubTab === t.key ? t.color : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}
+                className={`py-2.5 px-5 font-bold text-sm border-b-2 -mb-px flex items-center gap-2 transition-all ${riskSubTab === t.key ? t.color : "border-transparent text-gray-500 hover:text-gray-700"}`}
               >
                 {t.label}
                 {t.count > 0 && (
-                  <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs px-1.5 py-0.5 rounded-full font-bold">{t.count}</span>
+                  <span className="bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded-full font-bold">{t.count}</span>
                 )}
               </button>
             ))}
@@ -516,12 +516,12 @@ export default function RiskComplianceClient({
                   onClick={() => setAlertFilter(f.key)}
                   className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
                     alertFilter === f.key
-                      ? "bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-800"
+                      ? "bg-trust-600 text-white border-trust-600"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
                   }`}
                 >
                   {f.label}
-                  <span className={`ml-1.5 tabular-nums ${alertFilter === f.key ? "opacity-70" : "text-gray-400 dark:text-gray-600"}`}>
+                  <span className={`ml-1.5 tabular-nums ${alertFilter === f.key ? "opacity-70" : "text-gray-500"}`}>
                     {f.count}
                   </span>
                 </button>
@@ -535,7 +535,7 @@ export default function RiskComplianceClient({
           {riskSubTab === "cases" && missingCaseId && (
             <div
               data-testid="missing-case-banner"
-              className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-semibold text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-400"
+              className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-semibold text-amber-800"
             >
               <span>That case is no longer open — it was likely resolved since this link was created.</span>
               <button
@@ -550,9 +550,9 @@ export default function RiskComplianceClient({
 
           {riskSubTab === "cases" && (
             riskReviews.length === 0 ? (
-              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center shadow-sm">
+              <div className="bg-white border border-gray-200/80 rounded-2xl p-10 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                 <span className="text-4xl mb-3 block">🔍</span>
-                <p className="text-sm font-bold text-gray-900 dark:text-white">No open risk reviews</p>
+                <p className="text-sm font-bold text-gray-900">No open risk reviews</p>
                 <p className="text-xs text-gray-500 mt-1">Risk reviews are created when consecutive low proof scores are detected.</p>
               </div>
             ) : (
@@ -561,36 +561,36 @@ export default function RiskComplianceClient({
                   <div
                     key={r.id}
                     ref={(el) => { caseRefs.current[r.id] = el; }}
-                    className={`bg-white dark:bg-gray-900 border rounded-2xl p-5 shadow-sm transition-colors duration-500 ${
+                    className={`bg-white border rounded-2xl p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-colors duration-500 ${
                       highlightedReviewId === r.id
-                        ? "border-blue-400 dark:border-blue-500 ring-2 ring-blue-200 dark:ring-blue-900/50"
-                        : "border-gray-100 dark:border-gray-800"
+                        ? "border-blue-400 ring-2 ring-blue-200"
+                        : "border-gray-100"
                     }`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <a href={`/admin/ngos/${r.ngoId}`} className="text-sm font-black text-gray-900 dark:text-white hover:text-emerald-600 hover:underline">
+                          <a href={`/admin/ngos/${r.ngoId}`} className="text-sm font-bold text-gray-900 hover:text-emerald-600 hover:underline">
                             {r.ngo.orgName}
                           </a>
-                          <span className={`text-[10px] font-extrabold px-2 py-0.5 border rounded-full ${SEVERITY_BADGE[r.riskLevel] || SEVERITY_BADGE.LOW}`}>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${SEVERITY_BADGE[r.riskLevel] || SEVERITY_BADGE.LOW}`}>
                             {r.riskLevel}
                           </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 rounded-full">
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
                             {r.status}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="text-xs text-gray-500 mt-1">
                           {r.findings?.reason?.replace(/_/g, " ")} · Opened {new Date(r.createdAt).toLocaleDateString("en-IN")}
                         </p>
                         {r.findings?.recommendedAction && (
-                          <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 font-semibold">
+                          <p className="text-xs text-amber-700 mt-1 font-semibold">
                             Recommended: {r.findings.recommendedAction.replace(/_/g, " ")}
                           </p>
                         )}
                         <a
                           href="/admin/proof-review"
-                          className="inline-block text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline underline-offset-2 mt-1"
+                          className="inline-block text-[10px] font-bold text-blue-600 hover:underline underline-offset-2 mt-1"
                         >
                           View Proofs →
                         </a>
@@ -608,9 +608,9 @@ export default function RiskComplianceClient({
                             key={a}
                             onClick={() => { setSelectedReview(r); setReviewAction(a); setReviewNote(""); setReviewError(""); }}
                             className={`text-xs font-bold py-1.5 px-3 rounded-lg transition ${
-                              a === "SUSPEND" ? "bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/20 dark:text-red-400"
-                              : a === "CLEAR" ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400"
-                              : "bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/20 dark:text-amber-400"
+                              a === "SUSPEND" ? "bg-red-50 text-red-600 hover:bg-red-100"
+                              : a === "CLEAR" ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                              : "bg-amber-50 text-amber-700 hover:bg-amber-100"
                             }`}
                           >
                             {a}
@@ -628,16 +628,16 @@ export default function RiskComplianceClient({
               investigation exists to produce a review, and splitting them meant
               reading a finding in one tab and the reasoning behind it in another. */}
           {riskSubTab === "cases" && (
-            <h3 className="mt-8 mb-3 text-xs font-black uppercase tracking-wider text-gray-400 dark:text-gray-600">
+            <h3 className="mt-8 mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
               Investigations ({initialInvestigations.length})
             </h3>
           )}
 
           {riskSubTab === "cases" && (
             initialInvestigations.length === 0 ? (
-              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center shadow-sm">
+              <div className="bg-white border border-gray-200/80 rounded-2xl p-10 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                 <span className="text-4xl mb-3 block">🕵️</span>
-                <p className="text-sm font-bold text-gray-900 dark:text-white">No investigations yet</p>
+                <p className="text-sm font-bold text-gray-900">No investigations yet</p>
                 <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
                   An investigation starts automatically on a HIGH-severity NGO alert, or when you press
                   Investigate on an alert above. It reads records only — it can never suspend, reject, or
@@ -655,28 +655,28 @@ export default function RiskComplianceClient({
 
           {riskSubTab === "alerts" && alertFilter === "resolved" && (
             resolved.length === 0 ? (
-              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center shadow-sm">
+              <div className="bg-white border border-gray-200/80 rounded-2xl p-10 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                 <span className="text-4xl mb-3 block">📂</span>
-                <p className="text-sm font-bold text-gray-900 dark:text-white">No resolved alerts yet</p>
+                <p className="text-sm font-bold text-gray-900">No resolved alerts yet</p>
               </div>
             ) : (
-              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
+              <div className="bg-white border border-gray-200/80 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800">
-                    <thead className="bg-gray-50 dark:bg-gray-800/50">
+                  <table className="min-w-full divide-y divide-gray-100">
+                    <thead className="bg-gray-50">
                       <tr>
                         {["Severity", "Type", "Category", "Resolution Note", "Date"].map(h => (
                           <th key={h} className="px-5 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{h}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    <tbody className="divide-y divide-gray-100">
                       {resolved.map(a => (
-                        <tr key={a.id} className="hover:bg-slate-50/30 dark:hover:bg-slate-800/10 transition">
+                        <tr key={a.id} className="hover:bg-slate-50/30 transition">
                           <td className="px-5 py-4">
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 border rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">{a.severity}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 border rounded-full bg-gray-100 text-gray-600">{a.severity}</span>
                           </td>
-                          <td className="px-5 py-4 text-xs font-bold text-gray-900 dark:text-white uppercase">{a.type.replace(/_/g, " ")}</td>
+                          <td className="px-5 py-4 text-xs font-bold text-gray-900 uppercase">{a.type.replace(/_/g, " ")}</td>
                           <td className="px-5 py-4">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${a.alertCategory === "DOCUMENT_ERROR" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>
                               {a.alertCategory === "DOCUMENT_ERROR" ? "Doc Error" : "Fraud"}
@@ -698,11 +698,11 @@ export default function RiskComplianceClient({
       {/* ── COMPLIANCE TAB ── */}
       {mainTab === "compliance" && (
         <div className="space-y-5">
-          <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-xl">
-            <div className="text-blue-600 dark:text-blue-400 mt-0.5">✓</div>
+          <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+            <div className="text-blue-600 mt-0.5">✓</div>
             <div>
-              <p className="text-sm font-bold text-blue-900 dark:text-blue-300">Compliance Agent — KYC & Regulatory Status</p>
-              <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">
+              <p className="text-sm font-bold text-blue-900">Compliance Agent — KYC & Regulatory Status</p>
+              <p className="text-xs text-blue-700 mt-0.5">
                 Tracks document verification, FCRA registration, and compliance scores. Read-only — actions go through NGO Verification or FCRA Review.
               </p>
             </div>
@@ -713,25 +713,25 @@ export default function RiskComplianceClient({
             placeholder="Search by NGO name or email…"
             value={complianceSearch}
             onChange={e => setComplianceSearch(e.target.value)}
-            className="w-full max-w-sm px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full max-w-sm px-4 py-2 border border-gray-200 rounded-xl bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
 
           {filteredCompliance.length === 0 ? (
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center shadow-sm">
-              <p className="text-sm font-bold text-gray-900 dark:text-white">No NGOs found</p>
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-10 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <p className="text-sm font-bold text-gray-900">No NGOs found</p>
             </div>
           ) : (
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-white border border-gray-200/80 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800">
-                  <thead className="bg-gray-50 dark:bg-gray-800/50">
+                <table className="min-w-full divide-y divide-gray-100">
+                  <thead className="bg-gray-50">
                     <tr>
                       {["Organisation", "Score", "PAN", "Reg", "80G", "12A", "FCRA"].map(h => (
                         <th key={h} className="px-5 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  <tbody className="divide-y divide-gray-100">
                     {filteredCompliance.map(s => {
                       const needsAction = s.fcraBadge === "EXPIRING_SOON" || s.fcraBadge === "EXPIRED";
                       const isExpired = s.fcraBadge === "EXPIRED";
@@ -753,24 +753,24 @@ export default function RiskComplianceClient({
                           key={s.ngoId}
                           className={`transition ${
                             isExpired
-                              ? "bg-red-50/40 dark:bg-red-950/10 hover:bg-red-50/60"
+                              ? "bg-red-50/40 hover:bg-red-50/60"
                               : needsAction
-                              ? "bg-amber-50/40 dark:bg-amber-950/10 hover:bg-amber-50/60"
-                              : "hover:bg-slate-50/40 dark:hover:bg-slate-800/10"
+                              ? "bg-amber-50/40 hover:bg-amber-50/60"
+                              : "hover:bg-slate-50/40"
                           }`}
                         >
                           <td className="px-5 py-4">
-                            <a href={`/admin/ngos/${s.ngoId}`} className="text-xs font-bold text-gray-900 dark:text-white hover:text-emerald-600 hover:underline">
+                            <a href={`/admin/ngos/${s.ngoId}`} className="text-xs font-bold text-gray-900 hover:text-emerald-600 hover:underline">
                               {s.orgName}
                             </a>
-                            <p className="text-[10px] text-gray-400">{s.email}</p>
+                            <p className="text-[10px] text-gray-500">{s.email}</p>
                             <div className="mt-1.5">
                               <AskNgoBox
                                 ngoId={s.ngoId}
                                 ngoName={s.orgName}
                                 subject="Compliance question"
                                 buttonLabel="✉️ Ask"
-                                buttonClassName="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/40 border border-amber-100/50 dark:border-amber-900/20 transition"
+                                buttonClassName="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-100/50 transition"
                               />
                             </div>
                           </td>
@@ -780,22 +780,22 @@ export default function RiskComplianceClient({
                                 or nobody ever looked. */}
                             {!s.hasExtraction ? (
                               <span
-                                className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
+                                className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800"
                                 title="No document has ever been analysed for this organisation. This is not a score of zero — it is the absence of one."
                               >
                                 NOT ASSESSED
                               </span>
                             ) : (
                               <>
-                                <span className={`text-sm font-black ${s.complianceScore >= 80 ? "text-emerald-600" : s.complianceScore >= 50 ? "text-amber-600" : "text-red-500"}`}>
+                                <span className={`text-sm font-bold ${s.complianceScore >= 80 ? "text-emerald-600" : s.complianceScore >= 50 ? "text-amber-600" : "text-red-500"}`}>
                                   {s.complianceScore}
                                 </span>
-                                <span className="text-[10px] text-gray-400">/100</span>
+                                <span className="text-[10px] text-gray-500">/100</span>
                               </>
                             )}
                             <a
                               href="/admin/proof-review"
-                              className="block text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline underline-offset-2 mt-0.5"
+                              className="block text-[10px] font-bold text-blue-600 hover:underline underline-offset-2 mt-0.5"
                             >
                               Proofs →
                             </a>
@@ -821,13 +821,13 @@ export default function RiskComplianceClient({
                               <td key={i} className="px-5 py-4 text-center">
                                 {unbacked ? (
                                   <span
-                                    className="text-[10px] font-black px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                                    className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700"
                                     title="Claimed, but no validated field supports it. This badge is shown to donors with nothing behind it."
                                   >
                                     ! claimed
                                   </span>
                                 ) : (
-                                  <span className={`text-sm font-black ${v ? "text-emerald-600" : "text-gray-300 dark:text-gray-600"}`}>
+                                  <span className={`text-sm font-bold ${v ? "text-emerald-600" : "text-gray-300"}`}>
                                     {v ? "✓" : "—"}
                                   </span>
                                 )}
@@ -840,17 +840,17 @@ export default function RiskComplianceClient({
                                 {s.fcraBadge.replace(/_/g, " ")}
                               </span>
                               {fcraUrgencyLabel && (
-                                <span className={`text-[10px] font-extrabold ${isExpired ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`}>
+                                <span className={`text-[10px] font-bold ${isExpired ? "text-red-600" : "text-amber-600"}`}>
                                   {fcraUrgencyLabel}
                                 </span>
                               )}
                               {needsAction && (
                                 <a
                                   href="/admin/fcra-review"
-                                  className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-1 rounded-lg transition ${
+                                  className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg transition ${
                                     isExpired
-                                      ? "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
-                                      : "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:hover:bg-amber-950/50"
+                                      ? "bg-red-100 text-red-700 hover:bg-red-200"
+                                      : "bg-amber-100 text-amber-700 hover:bg-amber-200"
                                   }`}
                                 >
                                   {isExpired ? "Renew now →" : "Review →"}
@@ -871,15 +871,15 @@ export default function RiskComplianceClient({
 
       {/* Resolve Alert Modal */}
       {selectedAlert && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800">
-            <h3 className="text-lg font-extrabold text-gray-900 dark:text-white mb-1">
+        <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-200/80">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">
               Resolve {selectedAlert.alertCategory === "DOCUMENT_ERROR" ? "Document Error" : "Fraud Alert"}
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-xs text-gray-500 mb-4">
               Document your investigation findings and actions taken.
             </p>
-            {alertError && <div className="mb-3 p-3 bg-red-50 dark:bg-red-950/30 text-xs text-red-600 rounded">{alertError}</div>}
+            {alertError && <div className="mb-3 p-3 bg-red-50 text-xs text-red-600 rounded">{alertError}</div>}
             <form onSubmit={handleResolveAlert} className="space-y-4">
               <textarea
                 value={resolutionNote}
@@ -887,11 +887,11 @@ export default function RiskComplianceClient({
                 rows={4}
                 required
                 placeholder="Detail the investigation steps and actions taken…"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
               />
               <div className="flex justify-end gap-3">
-                <button type="button" onClick={() => setSelectedAlert(null)} disabled={alertLoading} className="px-4 py-2 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition">Cancel</button>
-                <button type="submit" disabled={alertLoading} className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1">
+                <button type="button" onClick={() => setSelectedAlert(null)} disabled={alertLoading} className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-50 transition">Cancel</button>
+                <button type="submit" disabled={alertLoading} className="px-4 py-2 bg-trust-600 hover:bg-trust-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1">
                   {alertLoading && <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />}
                   Confirm Resolve
                 </button>
@@ -903,20 +903,20 @@ export default function RiskComplianceClient({
 
       {/* Risk Review Modal */}
       {selectedReview && reviewAction && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800">
-            <h3 className="text-lg font-extrabold text-gray-900 dark:text-white mb-1">
+        <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-200/80">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">
               {reviewAction === "CLEAR" ? "Clear Risk Review" : reviewAction === "SUSPEND" ? "Suspend NGO" : "Escalate for Review"}
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <p className="text-xs text-gray-500 mb-1">
               {selectedReview.ngo.orgName}
             </p>
             {reviewAction === "SUSPEND" && (
-              <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-950/30 text-xs text-amber-700 dark:text-amber-400 rounded-lg font-semibold">
+              <div className="mb-3 p-3 bg-amber-50 text-xs text-amber-700 rounded-lg font-semibold">
                 This will suspend the NGO's profile. Donors will no longer be able to donate to their campaigns.
               </div>
             )}
-            {reviewError && <div className="mb-3 p-3 bg-red-50 dark:bg-red-950/30 text-xs text-red-600 rounded">{reviewError}</div>}
+            {reviewError && <div className="mb-3 p-3 bg-red-50 text-xs text-red-600 rounded">{reviewError}</div>}
             <form onSubmit={handleRiskReview} className="space-y-4">
               <textarea
                 value={reviewNote}
@@ -924,10 +924,10 @@ export default function RiskComplianceClient({
                 rows={4}
                 required
                 placeholder="Document your decision and the evidence reviewed…"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
               />
               <div className="flex justify-end gap-3">
-                <button type="button" onClick={() => { setSelectedReview(null); setReviewAction(null); }} disabled={reviewLoading} className="px-4 py-2 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition">Cancel</button>
+                <button type="button" onClick={() => { setSelectedReview(null); setReviewAction(null); }} disabled={reviewLoading} className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-50 transition">Cancel</button>
                 <button type="submit" disabled={reviewLoading} className={`px-4 py-2 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 ${reviewAction === "SUSPEND" ? "bg-red-600 hover:bg-red-700" : reviewAction === "CLEAR" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-amber-600 hover:bg-amber-700"}`}>
                   {reviewLoading && <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />}
                   Confirm {reviewAction}

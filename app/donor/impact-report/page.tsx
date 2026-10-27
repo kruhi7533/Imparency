@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { loadDonorImpact } from "@/lib/donor-impact";
-import { formatOutcome, inr } from "@/lib/outcome-format";
+import { formatOutcome, inr, rollupFigure } from "@/lib/outcome-format";
 import PrintButton from "./PrintButton";
 
 export const dynamic = "force-dynamic";
@@ -26,18 +26,18 @@ export default async function DonorImpactReportPage() {
   const allClaims = report.projects.flatMap((p) => p.outcomes).length;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 text-gray-100 print:text-black print:bg-white">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 text-gray-800 print:text-black print:bg-white">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-white print:text-black">Impact report</h1>
-          <p className="mt-1 text-sm text-gray-400 print:text-gray-700">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 print:text-black">Impact report</h1>
+          <p className="mt-1 text-sm text-gray-600 print:text-gray-700">
             {session.user.name ? `${session.user.name} · ` : ""}Generated {generated}
           </p>
         </div>
         <div className="flex gap-2 print:hidden">
           <a
             href="/api/donor/impact-report"
-            className="min-h-[44px] inline-flex items-center px-4 rounded-lg border border-gray-700 text-sm font-bold text-gray-200 hover:bg-gray-900"
+            className="min-h-[44px] inline-flex items-center px-4 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-800 hover:bg-gray-50"
           >
             Download CSV
           </a>
@@ -45,40 +45,40 @@ export default async function DonorImpactReportPage() {
         </div>
       </div>
 
-      <p className="mt-4 text-xs text-gray-400 print:text-gray-700 max-w-3xl">
+      <p className="mt-4 text-xs text-gray-600 print:text-gray-700 max-w-3xl">
         Figures are shown only when they passed the platform&apos;s impact review and their evidence still supports them;
         anything else reads <strong>unverified</strong>. Outcomes are reported for the whole project — they are not divided by
         your share of its funding.
       </p>
 
       {report.projects.length === 0 ? (
-        <div className="mt-10 rounded-2xl border border-gray-800 p-8 text-center">
-          <p className="text-sm text-gray-300">You are not funding any project yet.</p>
-          <Link href="/discover" className="mt-3 inline-block text-sm font-bold text-emerald-400 underline">
+        <div className="mt-10 rounded-2xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-8 text-center">
+          <p className="text-sm text-gray-700">You are not funding any project yet.</p>
+          <Link href="/discover" className="mt-3 inline-block text-sm font-semibold text-trust-700 underline">
             Discover NGOs
           </Link>
         </div>
       ) : (
         <>
           <section aria-labelledby="portfolio-h" className="mt-8">
-            <h2 id="portfolio-h" className="text-sm font-bold uppercase tracking-wider text-gray-400 print:text-gray-700">
+            <h2 id="portfolio-h" className="text-xs font-semibold uppercase tracking-wider text-gray-600 print:text-gray-700">
               Across your portfolio
             </h2>
-            <p className="mt-1 text-xs text-gray-400 print:text-gray-700">
+            <p className="mt-1 text-xs text-gray-500 print:text-gray-700">
               {report.projects.length} project{report.projects.length === 1 ? "" : "s"} · {verifiedClaims} of {allClaims} reported figure
               {allClaims === 1 ? "" : "s"} verified
             </p>
             {report.portfolio.length === 0 ? (
-              <p className="mt-3 text-sm text-gray-300 print:text-black">No outcomes have been reported on your projects yet.</p>
+              <p className="mt-3 text-sm text-gray-700 print:text-black">No outcomes have been reported on your projects yet.</p>
             ) : (
               <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {report.portfolio.map((m) => (
-                  <li key={m.metricCode} className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 print:border-gray-300 print:bg-white">
-                    <p className="text-xs text-gray-400 print:text-gray-700">{m.metricName}</p>
-                    <p className="mt-1 text-2xl font-extrabold text-emerald-300 print:text-black">
-                      {m.verifiedCount > 0 ? formatOutcome(m.verifiedTotal, m.unit) : "Unverified"}
+                  <li key={m.metricCode} className="rounded-2xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-4 print:border-gray-300 print:bg-white">
+                    <p className="text-xs text-gray-500 print:text-gray-700">{m.metricName}</p>
+                    <p className="mt-1 text-2xl font-semibold text-emerald-700 print:text-black">
+                      {rollupFigure(m) ?? "Unverified"}
                     </p>
-                    <p className="mt-1 text-[11px] text-gray-400 print:text-gray-700">
+                    <p className="mt-1 text-[11px] text-gray-600 print:text-gray-700">
                       {m.verifiedCount} verified
                       {m.inReviewCount + m.unverifiedApprovedCount > 0
                         ? ` · ${m.inReviewCount + m.unverifiedApprovedCount} unverified, not counted`
@@ -91,26 +91,26 @@ export default async function DonorImpactReportPage() {
           </section>
 
           <section aria-labelledby="projects-h" className="mt-10 space-y-6">
-            <h2 id="projects-h" className="text-sm font-bold uppercase tracking-wider text-gray-400 print:text-gray-700">
+            <h2 id="projects-h" className="text-xs font-semibold uppercase tracking-wider text-gray-600 print:text-gray-700">
               By project
             </h2>
             {report.projects.map((p) => (
-              <article key={p.projectId} className="rounded-2xl border border-gray-800 bg-gray-900/40 p-5 break-inside-avoid print:border-gray-300 print:bg-white">
+              <article key={p.projectId} className="rounded-2xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-5 break-inside-avoid print:border-gray-300 print:bg-white">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <h3 className="text-base font-bold text-white print:text-black">
-                      <Link href={`/donor/funded/${p.projectId}`} className="hover:underline print:no-underline">
+                    <h3 className="text-base font-semibold text-gray-900 print:text-black">
+                      <Link href={`/donor/funded/${p.projectId}`} className="hover:text-trust-700 hover:underline print:no-underline">
                         {p.title}
                       </Link>
                     </h3>
-                    <p className="text-xs text-gray-400 print:text-gray-700">
+                    <p className="text-xs text-gray-500 print:text-gray-700">
                       {p.ngoName}
                       {p.location ? ` · ${p.location}` : ""}
                       {p.causeCategory ? ` · ${p.causeCategory}` : ""}
                     </p>
                   </div>
                   {p.fundedAt && (
-                    <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300 print:text-black print:border print:border-gray-400">
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 print:text-black print:border print:border-gray-400">
                       Fully funded · {new Date(p.fundedAt).toLocaleDateString("en-IN")}
                     </span>
                   )}
@@ -118,52 +118,94 @@ export default async function DonorImpactReportPage() {
 
                 <dl className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                   <div>
-                    <dt className="text-[11px] text-gray-400 print:text-gray-700">You committed (contracts)</dt>
-                    <dd className="font-bold">{inr(p.contribution.contractCommitted)}</dd>
+                    <dt className="text-[11px] text-gray-600 print:text-gray-700">You committed (contracts)</dt>
+                    <dd className="font-semibold text-gray-900">{inr(p.contribution.contractCommitted)}</dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] text-gray-400 print:text-gray-700">Confirmed received</dt>
-                    <dd className="font-bold">{inr(p.contribution.contractReconciled)}</dd>
+                    <dt className="text-[11px] text-gray-600 print:text-gray-700">Confirmed received</dt>
+                    <dd className="font-semibold text-gray-900">{inr(p.contribution.contractReconciled)}</dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] text-gray-400 print:text-gray-700">You donated</dt>
-                    <dd className="font-bold">{inr(p.contribution.donated)}</dd>
+                    <dt className="text-[11px] text-gray-600 print:text-gray-700">You donated</dt>
+                    <dd className="font-semibold text-gray-900">{inr(p.contribution.donated)}</dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] text-gray-400 print:text-gray-700">Milestones verified</dt>
-                    <dd className="font-bold">
+                    <dt className="text-[11px] text-gray-600 print:text-gray-700">Milestones verified</dt>
+                    <dd className="font-semibold text-gray-900">
                       {p.milestones.verified} of {p.milestones.total}
                     </dd>
                   </div>
                 </dl>
 
+                {p.changes.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-gray-600 print:text-gray-700">Baseline → endline</h4>
+                    <ul className="mt-2 space-y-1 text-sm">
+                      {p.changes.map((c) => (
+                        <li key={c.metricCode} className="flex flex-wrap items-baseline gap-x-2">
+                          <span>{c.metricName}:</span>
+                          {c.status === "COMPUTED" ? (
+                            <>
+                              <strong className="text-emerald-700 print:text-black">{c.label}</strong>
+                              <span className="text-xs text-gray-500 print:text-gray-700">
+                                ({formatOutcome(c.baseline.value, c.unit)} → {formatOutcome(c.endline.value, c.unit)}, verified figures only)
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <strong className="font-mono text-amber-700 print:text-black">INSUFFICIENT_DATA</strong>
+                              <span className="text-xs text-gray-500 print:text-gray-700">{c.reason}</span>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="mt-4 text-sm">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wider text-gray-600 print:text-gray-700">Beneficiary feedback</h4>
+                  {p.beneficiaryFeedback.status === "AVAILABLE" ? (
+                    <p className="mt-1">
+                      {p.beneficiaryFeedback.respondents} consenting respondents
+                      {p.beneficiaryFeedback.averageRating ? ` · average rating ${p.beneficiaryFeedback.averageRating} / 5` : ""}
+                      <span className="text-xs text-gray-500 print:text-gray-700"> · aggregated, no individual responses shown</span>
+                    </p>
+                  ) : (
+                    <p className="mt-1">
+                      <strong className="font-mono text-amber-700 print:text-black">INSUFFICIENT_DATA</strong>{" "}
+                      <span className="text-xs text-gray-500 print:text-gray-700">{p.beneficiaryFeedback.reason}</span>
+                    </p>
+                  )}
+                </div>
+
                 {p.outcomes.length === 0 ? (
-                  <p className="mt-4 text-xs text-gray-400 print:text-gray-700">No outcomes reported yet.</p>
+                  <p className="mt-4 text-xs text-gray-500 print:text-gray-700">No outcomes reported yet.</p>
                 ) : (
                   <div className="mt-4 overflow-x-auto">
                     <table className="min-w-full text-sm">
                       <caption className="sr-only">Reported outcomes for {p.title}</caption>
                       <thead>
-                        <tr className="text-left text-[11px] uppercase tracking-wider text-gray-400 print:text-gray-700">
+                        <tr className="text-left text-[11px] uppercase tracking-wider text-gray-600 print:text-gray-700">
                           <th scope="col" className="py-2 pr-4">Outcome</th>
                           <th scope="col" className="py-2 pr-4">Figure</th>
                           <th scope="col" className="py-2">Period</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-800 print:divide-gray-300">
+                      <tbody className="divide-y divide-gray-100 print:divide-gray-300">
                         {p.outcomes.map((o) => (
                           <tr key={o.id}>
                             <td className="py-2 pr-4">{o.metricName}</td>
                             <td className="py-2 pr-4 font-bold">
                               {o.display.kind === "verified" ? (
-                                <span className="text-emerald-300 print:text-black">{formatOutcome(o.display.value, o.display.unit)}</span>
+                                <span className="text-emerald-700 print:text-black">{formatOutcome(o.display.value, o.display.unit)}</span>
                               ) : (
-                                <span className="text-amber-300 print:text-black" title={o.display.reason}>
+                                <span className="text-amber-700 print:text-black" title={o.display.reason}>
                                   Unverified
                                 </span>
                               )}
                             </td>
-                            <td className="py-2 text-gray-300 print:text-black whitespace-nowrap">
+                            <td className="py-2 text-gray-700 print:text-black whitespace-nowrap">
                               {new Date(o.periodStart).toLocaleDateString("en-IN")} – {new Date(o.periodEnd).toLocaleDateString("en-IN")}
                             </td>
                           </tr>

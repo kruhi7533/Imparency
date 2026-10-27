@@ -35,7 +35,7 @@ export default function NotifyButton({ candidateId }: { candidateId: string }) {
 
   return (
     <div className="mt-2">
-      <p className="text-xs text-amber-600 dark:text-amber-400">
+      <p className="text-xs text-amber-600">
         Shortlisted, but this organisation has not been told.
       </p>
       <button
@@ -46,7 +46,7 @@ export default function NotifyButton({ candidateId }: { candidateId: string }) {
       >
         {busy ? "Sending…" : "Notify organisation"}
       </button>
-      {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   );
 }

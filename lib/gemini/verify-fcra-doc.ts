@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { callAi } from "@/lib/ai/telemetry";
 
 export interface FcraFlag {
   severity: "LOW" | "MEDIUM" | "HIGH";
@@ -95,7 +96,7 @@ Return ONLY a valid JSON object matching the response schema. No markdown, no ex
   };
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callAi({ site: "verify-fcra-doc", model: "gemini-3.5-flash-lite", promptVersion: "v1" }, () => ai.models.generateContent({
       model: "gemini-3.5-flash-lite",
       contents: [prompt, inlineFile],
       config: {
@@ -140,7 +141,7 @@ Return ONLY a valid JSON object matching the response schema. No markdown, no ex
           ],
         },
       },
-    });
+    }));
 
     const text = response.text;
     if (!text) {

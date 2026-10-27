@@ -77,13 +77,13 @@ interface SerializedContract {
 }
 
 const STATUS_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  DRAFT: { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-600 dark:text-gray-300", label: "Draft" },
-  PROPOSED: { bg: "bg-amber-100 dark:bg-amber-950/40", text: "text-amber-700 dark:text-amber-400", label: "Proposed" },
-  UNDER_REVIEW: { bg: "bg-purple-100 dark:bg-purple-950/40", text: "text-purple-700 dark:text-purple-400", label: "Under Review" },
-  ACTIVE: { bg: "bg-emerald-100 dark:bg-emerald-950/40", text: "text-emerald-700 dark:text-emerald-400", label: "Active" },
-  COMPLETED: { bg: "bg-blue-100 dark:bg-blue-950/40", text: "text-blue-700 dark:text-blue-400", label: "Completed" },
-  TERMINATED: { bg: "bg-red-100 dark:bg-red-950/40", text: "text-red-700 dark:text-red-400", label: "Terminated" },
-  REJECTED: { bg: "bg-rose-100 dark:bg-rose-950/40", text: "text-rose-700 dark:text-rose-400", label: "Rejected" },
+  DRAFT: { bg: "bg-gray-100", text: "text-gray-600", label: "Draft" },
+  PROPOSED: { bg: "bg-amber-100", text: "text-amber-700", label: "Proposed" },
+  UNDER_REVIEW: { bg: "bg-purple-100", text: "text-purple-700", label: "Under Review" },
+  ACTIVE: { bg: "bg-emerald-100", text: "text-emerald-700", label: "Active" },
+  COMPLETED: { bg: "bg-blue-100", text: "text-blue-700", label: "Completed" },
+  TERMINATED: { bg: "bg-red-100", text: "text-red-700", label: "Terminated" },
+  REJECTED: { bg: "bg-rose-100", text: "text-rose-700", label: "Rejected" },
 };
 
 export default function ContractDetailClient({
@@ -233,17 +233,17 @@ export default function ContractDetailClient({
         <div>
           <Link
             href={isDonor ? "/donor/contracts" : isNgo ? "/ngo/contracts" : "/admin/donors"}
-            className="text-xs font-bold text-emerald-600 hover:underline"
+            className="text-xs font-bold text-emerald-700 hover:underline"
           >
             {isDonor || isNgo ? "← Back to All Contracts" : "← Back to donors"}
           </Link>
           <div className="flex items-center gap-3 mt-1">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{contract.title}</h1>
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">{contract.title}</h1>
             <span className={`px-3 py-0.5 rounded-full text-xs font-extrabold ${badge.bg} ${badge.text}`}>
               {badge.label}
             </span>
           </div>
-          <p className="text-xs font-mono text-gray-400 mt-0.5">
+          <p className="text-xs font-mono text-gray-600 mt-0.5">
             Ref: {contract.contractNumber} · Created on {new Date(contract.createdAt).toLocaleDateString("en-IN")}
           </p>
         </div>
@@ -261,7 +261,7 @@ export default function ContractDetailClient({
           {canSign && (
             <button
               onClick={() => setShowSignModal(true)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-sm animate-pulse"
+              className="px-4 py-2 bg-trust-600 hover:bg-trust-700 text-white text-xs font-bold rounded-xl transition shadow-sm animate-pulse"
             >
               Sign Agreement (E-Sign)
             </button>
@@ -269,7 +269,7 @@ export default function ContractDetailClient({
           {contract.status === "ACTIVE" && (
             <button
               onClick={() => setShowTerminateModal(true)}
-              className="px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition"
+              className="px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition"
             >
               Terminate Agreement
             </button>
@@ -278,12 +278,12 @@ export default function ContractDetailClient({
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
           {error}
         </div>
       )}
       {successMsg && (
-        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-sm">
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
           {successMsg}
         </div>
       )}
@@ -291,9 +291,9 @@ export default function ContractDetailClient({
       {/* Grid: Parties & Dual-Signature Status */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Donor Party & Sign Status */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-gray-400">Grantor / Donor Organization</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-gray-600">Grantor / Donor Organization</span>
             <span
               className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
                 contract.donorSignedAt ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
@@ -304,11 +304,11 @@ export default function ContractDetailClient({
           </div>
 
           <div className="space-y-1 text-sm">
-            <p className="font-bold text-gray-900 dark:text-white">
+            <p className="font-bold text-gray-900">
               {contract.donor.companyName || contract.donor.name}
             </p>
             <p className="text-xs text-gray-500">{contract.donor.email}</p>
-            {contract.donor.gstNumber && <p className="text-xs text-gray-400">GST: {contract.donor.gstNumber}</p>}
+            {contract.donor.gstNumber && <p className="text-xs text-gray-600">GST: {contract.donor.gstNumber}</p>}
             {contract.donor.donorPersona && (
               <span className="inline-block mt-1 text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-700">
                 {contract.donor.donorPersona}
@@ -316,25 +316,25 @@ export default function ContractDetailClient({
             )}
           </div>
 
-          <div className="pt-3 border-t border-gray-100 dark:border-gray-800 text-xs">
+          <div className="pt-3 border-t border-gray-100 text-xs">
             {contract.donorSignedAt ? (
-              <div className="space-y-0.5 text-emerald-700 dark:text-emerald-400">
-                <p className="font-semibold">Electronically Signed By: {contract.donorSignedByName}</p>
+              <div className="space-y-0.5 text-emerald-700">
+                <p className="font-semibold">Electronically signed{contract.donorSignedByName ? ` by ${contract.donorSignedByName}` : ""}</p>
                 <p className="text-[11px] text-gray-500">
-                  {contract.donorSignerTitle} · {new Date(contract.donorSignedAt).toLocaleString("en-IN")}
+                  {[contract.donorSignerTitle, new Date(contract.donorSignedAt).toLocaleString("en-IN")].filter(Boolean).join(" · ")}
                 </p>
-                <p className="text-[10px] text-gray-400 font-mono">IP: {contract.donorSignerIp}</p>
+                {contract.donorSignerIp && <p className="text-[10px] text-gray-600 font-mono">IP: {contract.donorSignerIp}</p>}
               </div>
             ) : (
-              <p className="text-gray-400 italic">Signature pending from Grantor representative.</p>
+              <p className="text-gray-600 italic">Signature pending from Grantor representative.</p>
             )}
           </div>
         </div>
 
         {/* NGO Party & Sign Status */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-gray-400">Grantee / Partner NGO</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-gray-600">Grantee / Partner NGO</span>
             <span
               className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
                 contract.ngoSignedAt ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
@@ -345,70 +345,70 @@ export default function ContractDetailClient({
           </div>
 
           <div className="space-y-1 text-sm">
-            <p className="font-bold text-gray-900 dark:text-white">{contract.ngo.orgName}</p>
+            <p className="font-bold text-gray-900">{contract.ngo.orgName}</p>
             <p className="text-xs text-gray-500">PAN: {contract.ngo.panNumber}</p>
-            <p className="text-xs text-gray-400">{contract.ngo.address}</p>
+            <p className="text-xs text-gray-600">{contract.ngo.address}</p>
             {contract.ngo.website && (
               <a
                 href={contract.ngo.website}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs text-emerald-600 hover:underline block"
+                className="text-xs text-emerald-700 hover:underline block"
               >
                 {contract.ngo.website}
               </a>
             )}
           </div>
 
-          <div className="pt-3 border-t border-gray-100 dark:border-gray-800 text-xs">
+          <div className="pt-3 border-t border-gray-100 text-xs">
             {contract.ngoSignedAt ? (
-              <div className="space-y-0.5 text-emerald-700 dark:text-emerald-400">
-                <p className="font-semibold">Electronically Signed By: {contract.ngoSignedByName}</p>
+              <div className="space-y-0.5 text-emerald-700">
+                <p className="font-semibold">Electronically signed{contract.ngoSignedByName ? ` by ${contract.ngoSignedByName}` : ""}</p>
                 <p className="text-[11px] text-gray-500">
-                  {contract.ngoSignerTitle} · {new Date(contract.ngoSignedAt).toLocaleString("en-IN")}
+                  {[contract.ngoSignerTitle, new Date(contract.ngoSignedAt).toLocaleString("en-IN")].filter(Boolean).join(" · ")}
                 </p>
-                <p className="text-[10px] text-gray-400 font-mono">IP: {contract.ngoSignerIp}</p>
+                {contract.ngoSignerIp && <p className="text-[10px] text-gray-600 font-mono">IP: {contract.ngoSignerIp}</p>}
               </div>
             ) : (
-              <p className="text-gray-400 italic">Signature pending from NGO Authorized Signatory.</p>
+              <p className="text-gray-600 italic">Signature pending from NGO Authorized Signatory.</p>
             )}
           </div>
         </div>
       </div>
 
       {/* Grant Summary & Project Opportunity */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <p className="text-xs font-bold text-gray-400">Total Committed Grant</p>
-            <p className="text-xl font-extrabold text-gray-900 dark:text-white mt-0.5">
+            <p className="text-xs font-bold text-gray-600">Total Committed Grant</p>
+            <p className="text-xl font-extrabold text-gray-900 mt-0.5">
               ₹{contract.totalGrantAmount.toLocaleString("en-IN")}
             </p>
           </div>
           <div>
-            <p className="text-xs font-bold text-gray-400">Disbursed to Date</p>
-            <p className="text-xl font-extrabold text-emerald-600 mt-0.5">
+            <p className="text-xs font-bold text-gray-600">Disbursed to Date</p>
+            <p className="text-xl font-extrabold text-emerald-700 mt-0.5">
               ₹{totalDisbursed.toLocaleString("en-IN")} <span className="text-xs font-normal text-gray-500">({progressPct}%)</span>
             </p>
           </div>
           <div>
-            <p className="text-xs font-bold text-gray-400">CSR Classification</p>
-            <p className="text-xs text-gray-800 dark:text-gray-200 mt-1 line-clamp-2">
+            <p className="text-xs font-bold text-gray-600">CSR Classification</p>
+            <p className="text-xs text-gray-800 mt-1 line-clamp-2">
               {contract.csrScheduleViiCategory || "Section 135 Compliant"}
             </p>
           </div>
           <div>
-            <p className="text-xs font-bold text-gray-400">Linked Opportunity</p>
+            <p className="text-xs font-bold text-gray-600">Linked Opportunity</p>
             <Link
               href={`/projects/${contract.project.id}`}
-              className="text-xs font-bold text-emerald-600 hover:underline mt-1 block"
+              className="text-xs font-bold text-emerald-700 hover:underline mt-1 block"
             >
               {contract.project.title} →
             </Link>
             {isDonor && (contract.status === "ACTIVE" || contract.status === "COMPLETED") && (
               <Link
                 href={`/donor/funded/${contract.project.id}`}
-                className="text-xs font-bold text-blue-600 hover:underline mt-1 block"
+                className="text-xs font-bold text-blue-700 hover:underline mt-1 block"
               >
                 Milestone progress & verified evidence →
               </Link>
@@ -416,7 +416,7 @@ export default function ContractDetailClient({
             {isNgo && (
               <Link
                 href={`/ngo/projects/${contract.project.id}`}
-                className="text-xs font-bold text-blue-600 hover:underline mt-1 block"
+                className="text-xs font-bold text-blue-700 hover:underline mt-1 block"
               >
                 Project page: milestones, funding & field work →
               </Link>
@@ -429,10 +429,10 @@ export default function ContractDetailClient({
       <ContractPaymentsPanel {...funding} />
 
       {/* Milestone Disbursement Schedule */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">Milestone Disbursement Gates</h2>
+            <h2 className="text-base font-bold text-gray-900">Milestone Disbursement Gates</h2>
             <p className="text-xs text-gray-500 mt-0.5">
               Progressive funding tranches unlocked upon deliverable verification.
             </p>
@@ -444,29 +444,29 @@ export default function ContractDetailClient({
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-gray-50 dark:bg-gray-800/50 text-[11px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 dark:border-gray-800">
+            <thead className="bg-gray-50 text-[11px] font-bold uppercase tracking-wider text-gray-600 border-b border-gray-100">
               <tr>
                 <th className="px-4 py-3">#</th>
                 <th className="px-4 py-3">Milestone & Deliverables</th>
                 <th className="px-4 py-3">Target Date</th>
-                <th className="px-4 py-3">Allocated Amount</th>
+                <th className="px-4 py-3">Committed amount</th>
                 <th className="px-4 py-3">Disbursement Status</th>
                 <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-gray-100">
               {contract.milestones.map((m, idx) => (
-                <tr key={m.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                  <td className="px-4 py-3 font-bold text-gray-400">{idx + 1}</td>
+                <tr key={m.id} className="hover:bg-gray-50/50">
+                  <td className="px-4 py-3 font-bold text-gray-600">{idx + 1}</td>
                   <td className="px-4 py-3 max-w-xs">
-                    <p className="font-bold text-gray-900 dark:text-white text-sm">{m.title}</p>
+                    <p className="font-bold text-gray-900 text-sm">{m.title}</p>
                     <p className="text-gray-500 mt-0.5">{m.description}</p>
                     {m.deliverables?.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {m.deliverables.map((d, dIdx) => (
                           <span
                             key={dIdx}
-                            className="px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-[10px] text-gray-600 dark:text-gray-400"
+                            className="px-2 py-0.5 rounded bg-gray-100 text-[10px] text-gray-600"
                           >
                             ✓ {d}
                           </span>
@@ -477,7 +477,7 @@ export default function ContractDetailClient({
                   <td className="px-4 py-3 text-gray-500">
                     {m.dueDate ? new Date(m.dueDate).toLocaleDateString("en-IN") : "—"}
                   </td>
-                  <td className="px-4 py-3 font-bold text-gray-900 dark:text-white text-sm">
+                  <td className="px-4 py-3 font-bold text-gray-900 text-sm">
                     ₹{m.allocatedAmount.toLocaleString("en-IN")}
                   </td>
                   <td className="px-4 py-3">
@@ -507,10 +507,10 @@ export default function ContractDetailClient({
                       </button>
                     )}
                     {m.status === "DISBURSED" && (
-                      <span className="text-xs text-emerald-600 font-semibold">Released ✓</span>
+                      <span className="text-xs text-emerald-700 font-semibold">Released ✓</span>
                     )}
                     {contract.status === "ACTIVE" && m.status !== "DISBURSED" && funding.milestoneStates[m.id] !== "FUNDED" && (
-                      <span className="text-[11px] text-gray-400">Release after payment is reconciled</span>
+                      <span className="text-[11px] text-gray-600">Release after payment is reconciled</span>
                     )}
                   </td>
                 </tr>
@@ -521,27 +521,27 @@ export default function ContractDetailClient({
       </div>
 
       {/* Terms & Conditions Box */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-3">
-        <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-400">Legal Covenants & Operating Terms</h2>
-        <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 text-xs font-mono whitespace-pre-line text-gray-700 dark:text-gray-300 leading-relaxed max-h-64 overflow-y-auto">
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-3">
+        <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-600">Legal Covenants & Operating Terms</h2>
+        <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-xs font-mono whitespace-pre-line text-gray-700 leading-relaxed max-h-64 overflow-y-auto">
           {contract.termsAndConditions}
         </div>
       </div>
 
       {/* Immutable Audit Timeline */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
-        <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-400">Contract Execution & Audit Log</h2>
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">
+        <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-600">Contract Execution & Audit Log</h2>
         <div className="space-y-3">
           {contract.auditLogs.map((log) => (
             <div key={log.id} className="flex items-start gap-3 text-xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="font-bold text-gray-900 dark:text-white">
-                  {log.action} <span className="text-gray-400 font-normal">by {log.actorRole}</span>
+                <p className="font-bold text-gray-900">
+                  {log.action} <span className="text-gray-600 font-normal">by {log.actorRole}</span>
                 </p>
-                <p className="text-gray-600 dark:text-gray-300 mt-0.5">{log.detail}</p>
+                <p className="text-gray-600 mt-0.5">{log.detail}</p>
               </div>
-              <span className="text-[11px] text-gray-400">{new Date(log.createdAt).toLocaleString("en-IN")}</span>
+              <span className="text-[11px] text-gray-600">{new Date(log.createdAt).toLocaleString("en-IN")}</span>
             </div>
           ))}
         </div>
@@ -549,12 +549,12 @@ export default function ContractDetailClient({
 
       {/* E-Signature Modal */}
       {showSignModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 p-4">
           <form
             onSubmit={handleSign}
-            className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800 space-y-4"
+            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-200/80 space-y-4"
           >
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Execute Grant Agreement</h3>
+            <h3 className="text-lg font-bold text-gray-900">Execute Grant Agreement</h3>
             <p className="text-xs text-gray-500 leading-relaxed">
               By executing this digital signature, you confirm that you are an authorized representative of{" "}
               <span className="font-bold">{isDonor ? contract.donor.companyName || contract.donor.name : contract.ngo.orgName}</span> and
@@ -563,7 +563,7 @@ export default function ContractDetailClient({
 
             <div className="space-y-3 pt-2">
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-bold text-gray-700 mb-1">
                   Full Legal Name of Signatory
                 </label>
                 <input
@@ -571,12 +571,12 @@ export default function ContractDetailClient({
                   required
                   value={signerName}
                   onChange={(e) => setSignerName(e.target.value)}
-                  className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full text-sm bg-white border border-gray-300 rounded-xl px-3.5 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-bold text-gray-700 mb-1">
                   Designation / Official Title
                 </label>
                 <input
@@ -584,7 +584,7 @@ export default function ContractDetailClient({
                   required
                   value={signerTitle}
                   onChange={(e) => setSignerTitle(e.target.value)}
-                  className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full text-sm bg-white border border-gray-300 rounded-xl px-3.5 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
                 />
               </div>
             </div>
@@ -600,7 +600,7 @@ export default function ContractDetailClient({
               <button
                 type="submit"
                 disabled={loading}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition disabled:opacity-50"
+                className="px-5 py-2 bg-trust-600 hover:bg-trust-700 text-white text-xs font-bold rounded-xl shadow-sm transition disabled:opacity-50"
               >
                 {loading ? "Recording Signature…" : "Confirm Electronic Signature"}
               </button>
@@ -611,10 +611,10 @@ export default function ContractDetailClient({
 
       {/* Terminate Modal */}
       {showTerminateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 p-4">
           <form
             onSubmit={handleTerminate}
-            className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800 space-y-4"
+            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-200/80 space-y-4"
           >
             <h3 className="text-lg font-bold text-red-600">Terminate Grant Agreement</h3>
             <p className="text-xs text-gray-500">
@@ -622,13 +622,13 @@ export default function ContractDetailClient({
             </p>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Reason for Termination</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Reason for Termination</label>
               <textarea
                 rows={3}
                 required
                 value={terminateReason}
                 onChange={(e) => setTerminateReason(e.target.value)}
-                className="w-full text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full text-xs bg-white border border-gray-300 rounded-xl p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
                 placeholder="e.g. Mutual consent due to project scope redefinition..."
               />
             </div>

@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { sendPushNotification } from "@/lib/notification";
+import { dispatchDonorNotification } from "@/lib/notification-dispatch";
 
 /**
  * Week 7: milestone updates for CSR contract donors.
@@ -37,19 +37,45 @@ export async function notifiableDonorIds(projectId: string): Promise<string[]> {
   return Array.from(new Set(contracts.map((c) => c.donorId)));
 }
 
+/**
+ * DON-018: every funding donor goes through lib/notification-dispatch.ts —
+ * including one who switched project updates off, whose attempts are logged as
+ * OPTED_OUT rather than silently skipped. `notified` counts donors reached on
+ * at least one channel; `failed` counts donors no channel reached because a
+ * send FAILED. `eventKey` makes a re-fired event a no-op per donor/channel.
+ */
 export async function notifyContractDonors(
   projectId: string,
   title: string,
   body: string,
+  eventKey: string = `project-update:${projectId}:${title}:${Date.now()}`,
 ): Promise<{ notified: number; failed: number }> {
   try {
-    const donorIds = await notifiableDonorIds(projectId);
-    const results = await Promise.allSettled(
-      donorIds.map((id) => sendPushNotification(id, title, body, { projectId, link: `/donor/funded/${projectId}` })),
-    );
-    const failed = results.filter((r) => r.status === "rejected").length;
-    if (failed > 0) console.error(`[contract-donor-updates] ${failed}/${donorIds.length} notifications failed for project ${projectId}`);
-    return { notified: donorIds.length - failed, failed };
+    const donorIds = await contractDonorIds(projectId);
+    let project: { title: string } | null = null;
+    try {
+      project = await prisma.project.findUnique({ where: { id: projectId }, select: { title: true } });
+    } catch {
+      project = null; // the title only decorates the email
+    }
+    let notified = 0;
+    let failed = 0;
+    for (const id of donorIds) {
+      const results = await dispatchDonorNotification({
+        userId: id,
+        eventKey,
+        topic: "PROJECT_UPDATE",
+        title,
+        body,
+        link: `/donor/funded/${projectId}`,
+        data: { projectId },
+        projectTitle: project?.title,
+      });
+      if (results.some((r) => r.status === "SENT")) notified++;
+      else if (results.some((r) => r.status === "FAILED")) failed++;
+    }
+    if (failed > 0) console.error(`[contract-donor-updates] ${failed}/${donorIds.length} donors could not be reached for project ${projectId}`);
+    return { notified, failed };
   } catch (err) {
     console.error(`[contract-donor-updates] could not notify donors for project ${projectId}:`, err);
     return { notified: 0, failed: 0 };
@@ -72,6 +98,7 @@ export async function notifyContractDonorsMilestoneCompleted(milestoneId: string
     milestone.projectId,
     "Milestone completed",
     `"${milestone.title}" on "${milestone.project.title}" has been verified as complete.`,
+    `contract-milestone-completed:${milestoneId}`,
   );
 }
 

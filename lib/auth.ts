@@ -6,6 +6,37 @@ import bcrypt from "bcryptjs";
 import { rateLimit, isRateLimited, clearRateLimit } from "@/lib/rate-limiter";
 
 const LOGIN_MAX_FAILURES = 5;
+/** How often the JWT re-reads role / admin sub-role / NGO membership from the DB. */
+const ROLE_REFRESH_MS = 60_000;
+
+type IdentityRow = {
+  role: any;
+  adminRole?: any;
+  ngoProfile?: { id: string } | null;
+  teamMemberships?: { ngoId: string; role: any }[];
+};
+
+/**
+ * The session-relevant identity of a user. A team member of an NGO acts as
+ * role NGO for that NGO (pre-existing behaviour), now with their team role so
+ * pages and the field app can tell an owner from a field worker.
+ */
+export function identityFromUser(u: IdentityRow) {
+  const membership = u.teamMemberships && u.teamMemberships.length > 0 ? u.teamMemberships[0] : null;
+  const ownsNgo = !!u.ngoProfile?.id;
+  const role = membership && u.role !== "ADMIN" ? "NGO" : u.role;
+  return {
+    role,
+    ngoProfileId: u.ngoProfile?.id || membership?.ngoId || null,
+    ngoTeamRole: ownsNgo ? "OWNER" : membership?.role ?? null,
+    adminRole: u.role === "ADMIN" ? u.adminRole ?? null : null,
+  } as { role: any; ngoProfileId: string | null; ngoTeamRole: any; adminRole: any };
+}
+
+const IDENTITY_INCLUDE = {
+  ngoProfile: { select: { id: true } },
+  teamMemberships: { select: { ngoId: true, role: true }, take: 1, orderBy: { createdAt: "asc" as const } },
+};
 const LOGIN_WINDOW_SECONDS = 900;
 
 export const authOptions: NextAuthOptions = {
@@ -48,10 +79,7 @@ export const authOptions: NextAuthOptions = {
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
-          include: { 
-            ngoProfile: { select: { id: true } },
-            teamMemberships: { select: { ngoId: true }, take: 1 }
-          },
+          include: IDENTITY_INCLUDE,
         });
 
         if (!user || !user.passwordHash) {
@@ -76,8 +104,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           avatar: user.avatar,
-          role: user.teamMemberships && user.teamMemberships.length > 0 ? "NGO" : user.role,
-          ngoProfileId: user.ngoProfile?.id || (user.teamMemberships && user.teamMemberships.length > 0 ? user.teamMemberships[0].ngoId : null),
+          ...identityFromUser(user),
           donorPersona: user.donorPersona,
         };
       },
@@ -95,10 +122,7 @@ export const authOptions: NextAuthOptions = {
         // Check if user already exists
         let dbUser = await prisma.user.findUnique({
           where: { email: user.email },
-          include: { 
-            ngoProfile: { select: { id: true } },
-            teamMemberships: { select: { ngoId: true }, take: 1 }
-          },
+          include: IDENTITY_INCLUDE,
         });
 
         if (!dbUser) {
@@ -112,27 +136,24 @@ export const authOptions: NextAuthOptions = {
               role: "DONOR",
               passwordHash: "", // OAuth users don't use credentials password
             },
-            include: { 
-              ngoProfile: { select: { id: true } },
-              teamMemberships: { select: { ngoId: true }, take: 1 }
-            },
+            include: IDENTITY_INCLUDE,
           });
         } else if (!dbUser.googleId) {
           // Link Google ID if existing email login logs in via Google
           dbUser = await prisma.user.update({
             where: { email: user.email },
             data: { googleId: account.providerAccountId },
-            include: { 
-              ngoProfile: { select: { id: true } },
-              teamMemberships: { select: { ngoId: true }, take: 1 }
-            },
+            include: IDENTITY_INCLUDE,
           });
         }
 
         // Enrich the next-auth user object so JWT callback gets the correct details
         user.id = dbUser.id;
-        user.role = dbUser.teamMemberships && dbUser.teamMemberships.length > 0 ? "NGO" : dbUser.role;
-        user.ngoProfileId = dbUser.ngoProfile?.id || (dbUser.teamMemberships && dbUser.teamMemberships.length > 0 ? dbUser.teamMemberships[0].ngoId : null);
+        const ident = identityFromUser(dbUser);
+        user.role = ident.role;
+        user.ngoProfileId = ident.ngoProfileId;
+        user.ngoTeamRole = ident.ngoTeamRole;
+        user.adminRole = ident.adminRole;
         user.donorPersona = dbUser.donorPersona ?? null;
         user.avatar = dbUser.avatar;
       }
@@ -151,6 +172,27 @@ export const authOptions: NextAuthOptions = {
         token.ngoProfileId = user.ngoProfileId;
         token.donorPersona = user.donorPersona ?? null;
         token.image = (user as any).avatar || user.image || null;
+        token.adminRole = user.adminRole ?? null;
+        token.ngoTeamRole = user.ngoTeamRole ?? null;
+        token.rolesCheckedAt = Date.now();
+      } else if (token.id && (trigger === "update" || !token.rolesCheckedAt || Date.now() - token.rolesCheckedAt > ROLE_REFRESH_MS)) {
+        // Re-read role, admin sub-role and NGO membership so a demotion, a
+        // removed team member or a revoked admin role takes effect within a
+        // minute instead of at the next login. Best-effort: on a DB hiccup the
+        // token keeps its previous values and retries on the next call.
+        try {
+          const fresh = await prisma.user.findUnique({ where: { id: token.id }, include: IDENTITY_INCLUDE });
+          if (fresh) {
+            const ident = identityFromUser(fresh);
+            token.role = ident.role;
+            token.ngoProfileId = ident.ngoProfileId;
+            token.ngoTeamRole = ident.ngoTeamRole;
+            token.adminRole = ident.adminRole;
+          }
+          token.rolesCheckedAt = Date.now();
+        } catch {
+          console.warn("[auth] role refresh failed");
+        }
       }
       return token;
     },
@@ -160,6 +202,8 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role;
         session.user.ngoProfileId = token.ngoProfileId;
         session.user.donorPersona = token.donorPersona ?? null;
+        session.user.adminRole = token.adminRole ?? null;
+        session.user.ngoTeamRole = token.ngoTeamRole ?? null;
         session.user.image = token.image as string | null | undefined;
       }
       return session;

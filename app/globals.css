@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 :root {
+  --background: #f7f6f2;
+  --foreground: #111827;
+}
+
+.dark {
   --background: #0a1120;
   --foreground: #ededed;
 }
@@ -50,6 +55,35 @@ body {
   @media (prefers-reduced-motion: reduce) {
     .animate-marquee {
       animation: none;
+    }
+  }
+}
+
+@layer base {
+  /* One visible, consistent keyboard focus ring across all three portals.
+     Mouse clicks don't show it (focus-visible), keyboard users always do. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid #5f83cf; /* trust-400 */
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Tabular figures keep currency and counts aligned in tables and stat cards. */
+  table td,
+  table th {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Respect the OS "reduce motion" setting everywhere, not only on the marquee:
+     pulsing badges, fade-ins and smooth scrolling are all decorative. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
     }
   }
 }

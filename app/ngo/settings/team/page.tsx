@@ -45,32 +45,10 @@ export default async function TeamSettingsPage() {
     redirect("/unauthorized");
   }
 
-  // Fetch all team members for this NGO
-  const teamMembers = await prisma.nGOTeamMember.findMany({
-    where: {
-      ngoId: session.user.ngoProfileId,
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        }
-      }
-    },
-    orderBy: {
-      createdAt: 'asc'
-    }
-  });
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
+    <div className="font-sans">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <TeamSettingsClient 
-          teamMembers={teamMembers} 
-          currentUserRole={currentUserMembership.role} 
-        />
+        <TeamSettingsClient />
       </main>
     </div>
   );

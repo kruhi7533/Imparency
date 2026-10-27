@@ -11,7 +11,7 @@ interface MilestoneRow {
 }
 
 const inputClass =
-  "w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500";
+  "w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500";
 const labelClass = "block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wide";
 
 export default function NewCrisisCampaignPage({ params }: { params: { id: string } }) {
@@ -63,10 +63,10 @@ export default function NewCrisisCampaignPage({ params }: { params: { id: string
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
+    <div className="font-sans transition-colors duration-200">
       <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">New Relief Campaign</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">New Relief Campaign</h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             This campaign will be tagged to the crisis you joined, and — like every campaign — goes through the standard admin approval queue before it's live.
           </p>
@@ -107,7 +107,7 @@ export default function NewCrisisCampaignPage({ params }: { params: { id: string
               <h3 className="font-bold text-gray-900 dark:text-white text-sm">Milestones</h3>
               <button type="button" onClick={addMilestone} className="text-xs font-bold text-red-600 hover:text-red-700">+ Add milestone</button>
             </div>
-            <p className="text-[11px] text-gray-400 mb-3">Milestone target amounts must sum exactly to the campaign target.</p>
+            <p className="text-[11px] text-gray-600 mb-3">Milestone target amounts must sum exactly to the campaign target.</p>
             {milestones.map((m, i) => (
               <div key={i} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-3 space-y-2">
                 <div className="flex justify-between items-center">

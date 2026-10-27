@@ -60,7 +60,7 @@ export default function ImpactClaimActions({
     const rejecting = noteFor === "REJECT";
     return (
       <div className="w-full max-w-sm space-y-2">
-        <label className="block text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-500">
+        <label className="block text-[10px] font-bold uppercase tracking-wide text-gray-500">
           {rejecting ? "Why this number should not be reported" : "What evidence is missing"}
         </label>
         <textarea
@@ -73,7 +73,7 @@ export default function ImpactClaimActions({
               ? "The organisation has to be able to answer this."
               : "Name what to cite, so they can fix it and resubmit."
           }
-          className="w-full rounded-lg border border-gray-300 p-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+          className="w-full rounded-lg border border-gray-300 p-2 text-sm"
         />
         <div className="flex justify-end gap-2">
           <button
@@ -82,7 +82,7 @@ export default function ImpactClaimActions({
               setNote("");
               setError(null);
             }}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-300"
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700"
           >
             Cancel
           </button>
@@ -97,11 +97,11 @@ export default function ImpactClaimActions({
           </button>
         </div>
         {note.trim().length > 0 && note.trim().length < 10 && (
-          <p className="text-[10px] text-gray-500 dark:text-gray-500">
+          <p className="text-[10px] text-gray-500">
             At least 10 characters — a decision with no reason cannot be answered.
           </p>
         )}
-        {error && <p className="text-[10px] text-red-600 dark:text-red-400">{error}</p>}
+        {error && <p className="text-[10px] text-red-600">{error}</p>}
       </div>
     );
   }
@@ -121,24 +121,24 @@ export default function ImpactClaimActions({
         <button
           onClick={() => setNoteFor("REQUEST_EVIDENCE")}
           disabled={busy !== null}
-          className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50 dark:border-amber-900/40 dark:text-amber-400 dark:hover:bg-amber-950/30"
+          className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
         >
           Return for evidence
         </button>
         <button
           onClick={() => setNoteFor("REJECT")}
           disabled={busy !== null}
-          className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           Reject
         </button>
       </div>
       {blocked && (
-        <p className="max-w-xs text-right text-[10px] text-red-600 dark:text-red-400">
+        <p className="max-w-xs text-right text-[10px] text-red-600">
           Approval is unavailable while a blocking check fails. Return it for evidence.
         </p>
       )}
-      {error && <p className="max-w-xs text-right text-[10px] text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="max-w-xs text-right text-[10px] text-red-600">{error}</p>}
     </div>
   );
 }

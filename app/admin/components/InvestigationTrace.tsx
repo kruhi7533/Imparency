@@ -40,15 +40,15 @@ export interface Investigation {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  COMPLETED: "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30",
-  RUNNING: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30",
-  FAILED: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30",
+  COMPLETED: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  RUNNING: "bg-blue-50 text-blue-700 border-blue-100",
+  FAILED: "bg-red-50 text-red-700 border-red-100",
 };
 
 const RISK_BADGE: Record<string, string> = {
-  HIGH: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30",
-  MEDIUM: "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30",
-  LOW: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30",
+  HIGH: "bg-red-50 text-red-700 border-red-100",
+  MEDIUM: "bg-amber-50 text-amber-700 border-amber-100",
+  LOW: "bg-blue-50 text-blue-700 border-blue-100",
 };
 
 /** Paise are integers; a free-tier model genuinely costs 0 and should say so. */
@@ -69,7 +69,7 @@ function StepRow({ entry }: { entry: InvestigationTraceEntry }) {
 
   if (entry.kind === "MODEL_CALL") {
     return (
-      <li className="flex items-center gap-2 py-1.5 text-xs text-gray-400 dark:text-gray-500">
+      <li className="flex items-center gap-2 py-1.5 text-xs text-gray-500">
         <span className="font-mono text-[10px] w-6 shrink-0 text-right">{entry.seq}</span>
         <span className="italic">
           model thought
@@ -86,25 +86,25 @@ function StepRow({ entry }: { entry: InvestigationTraceEntry }) {
   return (
     <li className="py-1.5 text-xs">
       <div className="flex items-start gap-2">
-        <span className="font-mono text-[10px] w-6 shrink-0 text-right text-gray-400 pt-0.5">{entry.seq}</span>
+        <span className="font-mono text-[10px] w-6 shrink-0 text-right text-gray-500 pt-0.5">{entry.seq}</span>
         <button
           type="button"
           onClick={() => hasPayload && setOpen(!open)}
           className={`text-left flex items-center gap-1.5 ${hasPayload ? "hover:underline underline-offset-2" : "cursor-default"}`}
         >
           <span
-            className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${
+            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
               entry.kind === "ERROR" || entry.ok === false
-                ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
+                ? "bg-red-50 text-red-600"
                 : isResult
-                ? "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                : "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400"
+                ? "bg-gray-100 text-gray-500"
+                : "bg-indigo-50 text-indigo-600"
             }`}
           >
             {isResult ? "returned" : "called"}
           </span>
-          <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{entry.toolName}</span>
-          {hasPayload && <span className="text-gray-400">{open ? "▾" : "▸"}</span>}
+          <span className="font-mono font-bold text-gray-700">{entry.toolName}</span>
+          {hasPayload && <span className="text-gray-500">{open ? "▾" : "▸"}</span>}
         </button>
       </div>
       {open && hasPayload && (
@@ -121,18 +121,18 @@ export default function InvestigationTrace({ investigation }: { investigation: I
   const trace = Array.isArray(investigation.trace) ? investigation.trace : [];
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
+    <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <a
               href={`/admin/ngos/${investigation.ngoId}`}
-              className="text-sm font-black text-gray-900 dark:text-white hover:text-emerald-600 hover:underline"
+              className="text-sm font-bold text-gray-900 hover:text-emerald-600 hover:underline"
             >
               {investigation.ngo.orgName}
             </a>
             <span
-              className={`text-[10px] font-extrabold px-2 py-0.5 border rounded-full ${
+              className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${
                 STATUS_BADGE[investigation.status] || STATUS_BADGE.RUNNING
               }`}
             >
@@ -140,7 +140,7 @@ export default function InvestigationTrace({ investigation }: { investigation: I
             </span>
             {investigation.riskLevel ? (
               <span
-                className={`text-[10px] font-extrabold px-2 py-0.5 border rounded-full ${
+                className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${
                   RISK_BADGE[investigation.riskLevel] || RISK_BADGE.LOW
                 }`}
               >
@@ -149,24 +149,24 @@ export default function InvestigationTrace({ investigation }: { investigation: I
             ) : investigation.status === "COMPLETED" ? (
               // A completed run with no risk level filed nothing. Say that
               // plainly — a blank space reads as "not done yet".
-              <span className="text-[10px] font-bold px-2 py-0.5 border border-gray-200 dark:border-gray-700 text-gray-500 rounded-full">
+              <span className="text-[10px] font-bold px-2 py-0.5 border border-gray-200 text-gray-500 rounded-full">
                 nothing filed
               </span>
             ) : null}
           </div>
 
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs text-gray-500 mt-1">
             {formatTrigger(investigation.triggeredBy)} ·{" "}
             {new Date(investigation.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
           </p>
 
           {investigation.summary && (
-            <p className="text-xs text-gray-700 dark:text-gray-300 mt-2 max-w-3xl leading-relaxed">
+            <p className="text-xs text-gray-700 mt-2 max-w-3xl leading-relaxed">
               {investigation.summary}
             </p>
           )}
 
-          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 font-mono">
+          <p className="text-[10px] text-gray-500 mt-2 font-mono">
             {investigation.stepsUsed} step{investigation.stepsUsed === 1 ? "" : "s"} ·{" "}
             {(investigation.tokensIn + investigation.tokensOut).toLocaleString("en-IN")} tokens ·{" "}
             {formatCost(investigation.costPaise)}
@@ -178,23 +178,23 @@ export default function InvestigationTrace({ investigation }: { investigation: I
             <button
               type="button"
               onClick={() => setOpen(!open)}
-              className="text-xs font-bold py-1.5 px-3 rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition"
+              className="text-xs font-bold py-1.5 px-3 rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100 transition"
             >
               {open ? "Hide trace" : `Show trace (${trace.length})`}
             </button>
           )}
           {investigation.riskReviewId && (
-            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">Opened a risk review</span>
+            <span className="text-[10px] font-bold text-blue-600">Opened a risk review</span>
           )}
         </div>
       </div>
 
       {open && (
-        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-          <p className="text-[10px] uppercase tracking-wide font-extrabold text-gray-400 mb-2">
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <p className="text-[10px] uppercase tracking-wide font-bold text-gray-500 mb-2">
             What it actually did
           </p>
-          <ul className="divide-y divide-gray-50 dark:divide-gray-800/50">
+          <ul className="divide-y divide-gray-50">
             {trace.map((entry, i) => (
               <StepRow key={`${entry.seq}-${i}`} entry={entry} />
             ))}

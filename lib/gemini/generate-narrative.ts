@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { SDG_MASTER, IRIS_MASTER } from "../impact-metrics";
+import { callAi } from "@/lib/ai/telemetry";
 
 export async function generateImpactNarrative(
   donor: { name: string },
@@ -29,8 +30,11 @@ export async function generateImpactNarrative(
       : "The project is now complete!";
     return {
       narrative: `Hi ${donor.name}, through your contribution of ₹${donation.amount.toLocaleString()} (representing ${percentage}% of the total funds raised), ${ngo.orgName} successfully completed the milestone "${milestone.title}" for the campaign "${project.title}". Your funding supported: ${milestone.description}. ${nextText}`,
-      sdgTags: ["SDG3", "SDG4"],
-      irisMetrics: ["PI1000", "PI2822"]
+      // AI-010: no model answered, so no tags. Hard-coded SDG/IRIS codes here
+      // were fabricated output — the same two for every project whatever it
+      // did. An empty list renders as "not tagged", which is the truth.
+      sdgTags: [] as string[],
+      irisMetrics: [] as string[]
     };
   };
 
@@ -69,7 +73,7 @@ Select the most appropriate GIIN IRIS+ metrics.
 Choose ONLY from these IDs: ${Object.keys(IRIS_MASTER).join(", ")}.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callAi({ site: "generate-narrative", model: "gemini-3.6-flash", promptVersion: "v1" }, () => ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents: prompt,
       config: {
@@ -84,7 +88,7 @@ Choose ONLY from these IDs: ${Object.keys(IRIS_MASTER).join(", ")}.`;
           required: ["narrative", "sdgTags", "irisMetrics"]
         }
       }
-    });
+    }));
 
     const data = JSON.parse(response.text || "{}");
     return {

@@ -52,14 +52,14 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+    <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <div className="flex items-start gap-3">
-        <div className="h-9 w-9 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0">
+        <div className="h-9 w-9 rounded-xl bg-gray-50 text-gray-500 flex items-center justify-center shrink-0">
           <Icon size={18} strokeWidth={2.2} />
         </div>
         <div>
-          <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">{title}</h2>
-          <p className="mt-0.5 text-xs text-gray-400 leading-relaxed max-w-2xl">{subtitle}</p>
+          <h2 className="text-sm font-bold text-gray-900">{title}</h2>
+          <p className="mt-0.5 text-xs text-gray-500 leading-relaxed max-w-2xl">{subtitle}</p>
         </div>
       </div>
       <div className="mt-6">{children}</div>
@@ -107,7 +107,7 @@ function WeeklyTwinBars({
                 title={`${legendB}: ${seriesB[i]}`}
               />
             </div>
-            <span className="text-[9px] text-gray-400 whitespace-nowrap">{b.label}</span>
+            <span className="text-[9px] text-gray-500 whitespace-nowrap">{b.label}</span>
           </div>
         ))}
       </div>
@@ -128,7 +128,7 @@ function WeeklyPercentBars({ buckets, series, color }: { buckets: { label: strin
               style={{ height: `${Math.max(series[i], series[i] > 0 ? 2 : 0)}%` }}
             />
           </div>
-          <span className="text-[9px] text-gray-400 whitespace-nowrap">{b.label}</span>
+          <span className="text-[9px] text-gray-500 whitespace-nowrap">{b.label}</span>
         </div>
       ))}
     </div>
@@ -141,11 +141,11 @@ function Distribution({ buckets }: { buckets: { label: string; count: number; co
     <div className="space-y-2">
       {buckets.map((b) => (
         <div key={b.label} className="flex items-center gap-3">
-          <span className="w-32 text-xs font-semibold text-gray-600 dark:text-gray-300 shrink-0">{b.label}</span>
-          <div className="flex-1 h-3 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+          <span className="w-32 text-xs font-semibold text-gray-600 shrink-0">{b.label}</span>
+          <div className="flex-1 h-3 rounded-full bg-gray-100 overflow-hidden">
             <div className={`h-full rounded-full ${b.color}`} style={{ width: `${(b.count / total) * 100}%` }} />
           </div>
-          <span className="w-8 text-xs font-bold text-gray-900 dark:text-white text-right shrink-0">{b.count}</span>
+          <span className="w-8 text-xs font-bold text-gray-900 text-right shrink-0">{b.count}</span>
         </div>
       ))}
     </div>
@@ -317,15 +317,15 @@ export default async function TrustTrendsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
             <TrendingUp size={24} strokeWidth={2.2} />
           </div>
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Platform Trust Trends</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Platform Trust Trends</h1>
+            <p className="mt-1 text-sm text-gray-500 max-w-2xl">
               Is the platform getting more or less trustworthy over time? The last {WEEKS} weeks, from data
               recorded as it happened.
             </p>
@@ -379,7 +379,7 @@ export default async function TrustTrendsPage() {
           subtitle="Verified NGOs grouped by their current health score (fund utilization, milestone completion, proof speed, donor return)."
         >
           <Distribution buckets={healthBuckets} />
-          <div className="mt-4 flex items-start gap-2 text-xs text-gray-400">
+          <div className="mt-4 flex items-start gap-2 text-xs text-gray-500">
             <Info size={14} className="shrink-0 mt-0.5" />
             <p>
               This is a point-in-time snapshot, not a trend — health scores are recalculated fresh on every

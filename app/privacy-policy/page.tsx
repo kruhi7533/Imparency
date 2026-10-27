@@ -31,8 +31,8 @@ function Section({
 }) {
   return (
     <section id={id} className="scroll-mt-24 space-y-4">
-      <h2 className="font-display text-2xl font-semibold text-white tracking-tight">{title}</h2>
-      <div className="space-y-4 text-sm leading-relaxed text-gray-400">{children}</div>
+      <h2 className="font-display text-2xl font-semibold text-gray-900 tracking-tight">{title}</h2>
+      <div className="space-y-4 text-sm leading-relaxed text-gray-600">{children}</div>
     </section>
   );
 }
@@ -47,20 +47,20 @@ function DataTable({
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[520px] border-collapse text-left">
-        <caption className="mb-3 text-left font-mono text-[11px] uppercase tracking-widest text-gold-400">
+        <caption className="mb-3 text-left font-mono text-[11px] uppercase tracking-widest text-trust-700">
           {caption}
         </caption>
         <thead>
-          <tr className="border-b border-gray-800">
-            <th className="w-2/5 pb-2 pr-4 text-xs font-semibold text-gray-300">What we hold</th>
-            <th className="pb-2 text-xs font-semibold text-gray-300">Why we hold it</th>
+          <tr className="border-b border-gray-200">
+            <th className="w-2/5 pb-2 pr-4 text-xs font-semibold text-gray-700">What we hold</th>
+            <th className="pb-2 text-xs font-semibold text-gray-700">Why we hold it</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.what} className="border-b border-gray-900 align-top">
-              <td className="py-3 pr-4 text-xs text-gray-300">{row.what}</td>
-              <td className="py-3 text-xs text-gray-400">{row.why}</td>
+            <tr key={row.what} className="border-b border-gray-200 align-top">
+              <td className="py-3 pr-4 text-xs text-gray-700">{row.what}</td>
+              <td className="py-3 text-xs text-gray-600">{row.why}</td>
             </tr>
           ))}
         </tbody>
@@ -71,17 +71,17 @@ function DataTable({
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-gray-950 bg-gradient-to-b from-trust-950/40 via-gray-950 to-gray-950 text-white font-sans">
+    <div className="min-h-screen bg-canvas text-gray-900 font-sans">
       <div className="mx-auto max-w-3xl px-5 py-20 sm:px-8 sm:py-28">
         {/* Header */}
-        <header className="space-y-4 border-b border-gray-800 pb-10">
-          <p className="font-mono text-[11px] uppercase tracking-widest text-gold-400">
+        <header className="space-y-4 border-b border-gray-200 pb-10">
+          <p className="font-mono text-[11px] uppercase tracking-widest text-trust-700">
             Policy {POLICY_VERSION} · Last updated {LAST_UPDATED}
           </p>
-          <h1 className="font-display text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+          <h1 className="font-display text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
             Privacy Policy
           </h1>
-          <p className="text-sm leading-relaxed text-gray-400">
+          <p className="text-sm leading-relaxed text-gray-600">
             This policy explains what personal data ImpactBridge collects, why we collect it, who we
             share it with, and the rights you hold over it under India&apos;s Digital Personal Data
             Protection Act, 2023 (&quot;DPDP Act&quot;).
@@ -95,7 +95,7 @@ export default function PrivacyPolicyPage() {
               organisations using milestone-based funding. For the purposes of the DPDP Act, the Data
               Fiduciary responsible for your personal data is:
             </p>
-            <p className="rounded-lg border border-gray-800 bg-gray-900/40 p-4 font-mono text-xs leading-relaxed text-gray-300">
+            <p className="rounded-lg border border-gray-200 bg-white p-4 font-mono text-xs leading-relaxed text-gray-700">
               [LEGAL ENTITY NAME]
               <br />
               [REGISTERED ADDRESS]
@@ -192,8 +192,8 @@ export default function PrivacyPolicyPage() {
               ]}
             />
 
-            <p className="rounded-lg border-l-2 border-gold-500/70 bg-gray-900/40 p-4 text-xs leading-relaxed text-gray-300">
-              <strong className="font-semibold text-white">A note on published evidence.</strong>{" "}
+            <p className="rounded-lg border-l-2 border-trust-400 bg-trust-50 p-4 text-xs leading-relaxed text-gray-700">
+              <strong className="font-semibold text-gray-900">A note on published evidence.</strong>{" "}
               Milestone evidence is shown on public campaign pages so donors can audit how money was
               spent. Do not upload documents containing personal details of beneficiaries, bank
               account numbers, or identity documents. Redact them first.
@@ -202,7 +202,7 @@ export default function PrivacyPolicyPage() {
 
           <Section id="why-we-use-it" title="3. Why we use it">
             <p>We process personal data for these purposes and no others:</p>
-            <ul className="list-disc space-y-2 pl-5 marker:text-gold-500">
+            <ul className="list-disc space-y-2 pl-5 marker:text-trust-500">
               <li>Creating, securing and operating your account.</li>
               <li>Processing donations and issuing 80G tax receipts.</li>
               <li>Verifying NGOs and reviewing milestone evidence before funds are released.</li>
@@ -226,8 +226,8 @@ export default function PrivacyPolicyPage() {
               plausibility and budget consistency. Documents and evidence you upload are sent to that
               service for analysis.
             </p>
-            <p className="rounded-lg border border-gray-800 bg-gray-900/40 p-4 text-xs leading-relaxed text-gray-300">
-              <strong className="font-semibold text-white">
+            <p className="rounded-lg border border-gray-200 bg-white p-4 text-xs leading-relaxed text-gray-700">
+              <strong className="font-semibold text-gray-900">
                 No decision is made about you by a machine alone.
               </strong>{" "}
               AI output is advisory. Every approval, rejection and suspension is made by a human
@@ -242,35 +242,35 @@ export default function PrivacyPolicyPage() {
               We share personal data only with service providers who process it on our instructions,
               and only to the extent each one needs:
             </p>
-            <ul className="list-disc space-y-2 pl-5 marker:text-gold-500">
+            <ul className="list-disc space-y-2 pl-5 marker:text-trust-500">
               <li>
-                <strong className="text-gray-300">Razorpay</strong> — payment processing. Your
+                <strong className="text-gray-700">Razorpay</strong> — payment processing. Your
                 payment credentials go directly to them and never reach our servers.
               </li>
               <li>
-                <strong className="text-gray-300">Google (Gemini)</strong> — document screening and
+                <strong className="text-gray-700">Google (Gemini)</strong> — document screening and
                 evidence validation.
               </li>
               <li>
-                <strong className="text-gray-300">Cloudinary and Amazon Web Services</strong> —
+                <strong className="text-gray-700">Cloudinary and Amazon Web Services</strong> —
                 storage of uploaded documents, images and receipts.
               </li>
               <li>
-                <strong className="text-gray-300">Resend</strong> — delivery of transactional email.
+                <strong className="text-gray-700">Resend</strong> — delivery of transactional email.
               </li>
               <li>
-                <strong className="text-gray-300">Twilio</strong> — WhatsApp messaging, where an NGO
+                <strong className="text-gray-700">Twilio</strong> — WhatsApp messaging, where an NGO
                 field worker submits evidence by WhatsApp.
               </li>
               <li>
-                <strong className="text-gray-300">Google Firebase</strong> — push notifications.
+                <strong className="text-gray-700">Google Firebase</strong> — push notifications.
               </li>
               <li>
-                <strong className="text-gray-300">Neon and Vercel</strong> — database hosting and
+                <strong className="text-gray-700">Neon and Vercel</strong> — database hosting and
                 application hosting.
               </li>
               <li>
-                <strong className="text-gray-300">A PAN verification provider</strong> — validating
+                <strong className="text-gray-700">A PAN verification provider</strong> — validating
                 a PAN against government records before a tax receipt is issued.
               </li>
             </ul>
@@ -312,7 +312,7 @@ export default function PrivacyPolicyPage() {
 
           <Section id="your-rights" title="8. Your rights">
             <p>Under the DPDP Act you have the right to:</p>
-            <ul className="list-disc space-y-2 pl-5 marker:text-gold-500">
+            <ul className="list-disc space-y-2 pl-5 marker:text-trust-500">
               <li>Ask what personal data we hold about you and how it has been shared.</li>
               <li>Have inaccurate or incomplete data corrected or updated.</li>
               <li>
@@ -348,7 +348,7 @@ export default function PrivacyPolicyPage() {
               The DPDP Act requires us to name a Grievance Officer as your first point of contact for
               any concern about how your data is handled.
             </p>
-            <p className="rounded-lg border border-gray-800 bg-gray-900/40 p-4 font-mono text-xs leading-relaxed text-gray-300">
+            <p className="rounded-lg border border-gray-200 bg-white p-4 font-mono text-xs leading-relaxed text-gray-700">
               [GRIEVANCE OFFICER NAME]
               <br />
               [GRIEVANCE OFFICER EMAIL]
@@ -371,23 +371,23 @@ export default function PrivacyPolicyPage() {
         </div>
 
         {/* Footer nav */}
-        <footer className="mt-16 flex flex-wrap items-center justify-between gap-4 border-t border-gray-800 pt-8">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-gray-600">
+        <footer className="mt-16 flex flex-wrap items-center justify-between gap-4 border-t border-gray-200 pt-8">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-gray-500">
             ImpactBridge · Policy {POLICY_VERSION}
           </p>
           <div className="flex gap-5 text-xs">
-            <Link href="/" className="text-trust-300 transition hover:text-trust-200 hover:underline">
+            <Link href="/" className="text-trust-700 transition hover:text-trust-800 hover:underline">
               Home
             </Link>
             <Link
               href="/discover"
-              className="text-trust-300 transition hover:text-trust-200 hover:underline"
+              className="text-trust-700 transition hover:text-trust-800 hover:underline"
             >
               Discover NGOs
             </Link>
             <Link
               href="/login"
-              className="text-trust-300 transition hover:text-trust-200 hover:underline"
+              className="text-trust-700 transition hover:text-trust-800 hover:underline"
             >
               Sign In
             </Link>

@@ -118,17 +118,14 @@ export default function RetryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-6 relative overflow-hidden font-sans">
-      {/* Background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
-
-      <div className="max-w-md w-full bg-gray-900/40 border border-gray-900 rounded-3xl p-8 sm:p-10 shadow-2xl relative text-center">
+    <div className="min-h-[70vh] text-gray-900 flex items-center justify-center p-6 font-sans">
+      <div className="max-w-md w-full bg-white border border-gray-200/80 rounded-2xl p-8 sm:p-10 shadow-[0_1px_2px_rgba(16,24,40,0.04)] text-center">
         {/* Branding header */}
         <div className="mb-8">
-          <Link href="/" className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent tracking-tight">
+          <Link href="/" className="font-display text-2xl font-semibold text-gray-900 tracking-tight">
             ImpactBridge
           </Link>
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">
+          <p className="text-xs text-gray-600 font-bold uppercase tracking-wider mt-1">
             Donation Recovery Portal
           </p>
         </div>
@@ -136,22 +133,22 @@ export default function RetryPage() {
         {/* Loading State */}
         {state === "loading" && (
           <div className="space-y-4 py-8">
-            <Loader2 className="h-10 w-10 text-emerald-500 animate-spin mx-auto" />
-            <p className="text-sm font-semibold text-gray-300">Verifying your retry link...</p>
+            <Loader2 className="h-10 w-10 text-trust-600 animate-spin mx-auto" />
+            <p className="text-sm font-semibold text-gray-700">Verifying your retry link...</p>
           </div>
         )}
 
         {/* Error State */}
         {state === "error" && (
           <div className="space-y-6 py-4">
-            <XCircle className="h-14 w-14 text-red-500 mx-auto" />
+            <XCircle className="h-14 w-14 text-red-600 mx-auto" />
             <div className="space-y-2">
-              <h2 className="text-xl font-extrabold text-white">This link has expired</h2>
-              <p className="text-xs text-gray-400 leading-relaxed">{errorMsg}</p>
+              <h2 className="text-xl font-semibold text-gray-900">This link has expired</h2>
+              <p className="text-xs text-gray-600 leading-relaxed">{errorMsg}</p>
             </div>
             <Link
               href="/discover"
-              className="inline-block w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/10 transition text-sm cursor-pointer"
+              className="inline-block w-full bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3 px-4 rounded-lg shadow-sm transition text-sm cursor-pointer"
             >
               Make a new donation →
             </Link>
@@ -163,18 +160,18 @@ export default function RetryPage() {
           <div className="space-y-6 py-4">
             <CheckCircle2 className="h-14 w-14 text-emerald-500 mx-auto animate-pulse" />
             <div className="space-y-2">
-              <h2 className="text-xl font-extrabold text-white">Your retry link is valid</h2>
-              <p className="text-xs text-gray-400 leading-relaxed">
+              <h2 className="text-xl font-semibold text-gray-900">Your retry link is valid</h2>
+              <p className="text-xs text-gray-600 leading-relaxed">
                 Opening payment window for Rs. {orderData.amount.toLocaleString("en-IN")} to{" "}
-                <span className="text-white font-semibold">{orderData.projectTitle}</span>...
+                <span className="text-gray-900 font-semibold">{orderData.projectTitle}</span>...
               </p>
-              <p className="text-[10px] text-gray-500 italic mt-2">
+              <p className="text-[11px] text-gray-600 italic mt-2">
                 If the payment window doesn't open automatically, click the button below.
               </p>
             </div>
             <button
               onClick={handleOpenClick}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/10 transition text-sm cursor-pointer"
+              className="w-full bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3 px-4 rounded-lg shadow-sm transition text-sm cursor-pointer"
             >
               Open Payment Window
             </button>
@@ -184,16 +181,16 @@ export default function RetryPage() {
         {/* Dismissed State */}
         {state === "dismissed" && orderData && (
           <div className="space-y-6 py-4">
-            <AlertTriangle className="h-14 w-14 text-emerald-500 mx-auto" />
+            <AlertTriangle className="h-14 w-14 text-amber-600 mx-auto" />
             <div className="space-y-2">
-              <h2 className="text-xl font-extrabold text-white">Payment Window Closed</h2>
-              <p className="text-xs text-gray-400 leading-relaxed">
+              <h2 className="text-xl font-semibold text-gray-900">Payment Window Closed</h2>
+              <p className="text-xs text-gray-600 leading-relaxed">
                 The payment process was closed before completion. Click below to try again.
               </p>
             </div>
             <button
               onClick={handleOpenClick}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/10 transition text-sm cursor-pointer"
+              className="w-full bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3 px-4 rounded-lg shadow-sm transition text-sm cursor-pointer"
             >
               Open Payment Window
             </button>
@@ -203,16 +200,16 @@ export default function RetryPage() {
         {/* Failed Again State */}
         {state === "failed_again" && (
           <div className="space-y-6 py-4">
-            <AlertTriangle className="h-14 w-14 text-orange-500 mx-auto" />
+            <AlertTriangle className="h-14 w-14 text-orange-600 mx-auto" />
             <div className="space-y-2">
-              <h2 className="text-xl font-extrabold text-white">Payment Unsuccessful Again</h2>
-              <p className="text-xs text-gray-400 leading-relaxed">
+              <h2 className="text-xl font-semibold text-gray-900">Payment Unsuccessful Again</h2>
+              <p className="text-xs text-gray-600 leading-relaxed">
                 Your retry link has been used. Please start a new donation from the project page if you'd like to try again.
               </p>
             </div>
             <Link
               href="/discover"
-              className="inline-block w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/10 transition text-sm cursor-pointer"
+              className="inline-block w-full bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3 px-4 rounded-lg shadow-sm transition text-sm cursor-pointer"
             >
               Go to Discover →
             </Link>

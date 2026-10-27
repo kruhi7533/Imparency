@@ -58,10 +58,10 @@ function ResetPasswordContent() {
   };
 
   return (
-    <div className="max-w-md w-full bg-gray-900/40 border border-gray-800 border-t-2 border-t-gold-500/70 rounded-xl p-8 sm:p-10 relative">
+    <div className="max-w-md w-full bg-white border border-gray-200/80 rounded-2xl shadow-[0_8px_30px_rgba(16,24,40,0.06)] p-8 sm:p-10 relative">
       <div className="text-center mb-8">
-        <Link href="/" className="font-display text-3xl font-semibold italic text-white tracking-tight">
-          ImpactBridge<span className="text-gold-400">.</span>
+        <Link href="/" className="font-display text-3xl font-semibold text-gray-900 tracking-tight">
+          ImpactBridge<span className="text-trust-600">.</span>
         </Link>
         <p className="font-mono text-[11px] text-gray-500 uppercase tracking-widest mt-2">
           Reset your password
@@ -69,36 +69,36 @@ function ResetPasswordContent() {
       </div>
 
       {error && (
-        <div className="mb-4 p-3.5 bg-red-950/40 border-l-2 border-red-500 rounded-r text-xs text-red-300">
+        <div className="mb-4 p-3.5 bg-red-50 border-l-2 border-red-500 rounded-r text-xs text-red-700">
           {error}
         </div>
       )}
 
       {success ? (
-        <div className="mb-4 p-3.5 bg-emerald-950/30 border-l-2 border-emerald-500 rounded-r text-xs text-emerald-300">
+        <div className="mb-4 p-3.5 bg-emerald-50 border-l-2 border-emerald-500 rounded-r text-xs text-emerald-700">
           Your password has been reset. Redirecting you to sign in...
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1">New Password *</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">New Password *</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition"
+              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
               placeholder="••••••••"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1">Confirm New Password *</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Confirm New Password *</label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition"
+              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
               placeholder="••••••••"
               required
             />
@@ -107,7 +107,7 @@ function ResetPasswordContent() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-trust-600 hover:bg-trust-500 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 mt-6"
+            className="w-full bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 mt-6"
           >
             {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
             Reset Password
@@ -116,7 +116,7 @@ function ResetPasswordContent() {
       )}
 
       <p className="text-center mt-6">
-        <Link href="/login" className="text-xs text-trust-300 hover:text-trust-200 hover:underline">
+        <Link href="/login" className="text-xs text-trust-700 hover:text-trust-800 hover:underline">
           Back to Sign In
         </Link>
       </p>
@@ -126,9 +126,9 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen bg-gray-950 bg-gradient-to-b from-trust-950/60 via-gray-950 to-gray-950 text-white flex flex-col items-center justify-center p-4 sm:p-6 font-sans relative overflow-hidden">
+    <div className="min-h-screen bg-canvas bg-gradient-to-b from-trust-50/70 via-canvas to-canvas text-gray-900 flex flex-col items-center justify-center p-4 sm:p-6 font-sans relative overflow-hidden">
       <Suspense fallback={
-        <div className="max-w-md w-full bg-gray-900/40 border border-gray-800 border-t-2 border-t-gold-500/70 rounded-xl p-8 sm:p-10 flex items-center justify-center min-h-[300px]">
+        <div className="max-w-md w-full bg-white border border-gray-200/80 rounded-2xl shadow-[0_8px_30px_rgba(16,24,40,0.06)] p-8 sm:p-10 flex items-center justify-center min-h-[300px]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-trust-500"></div>
         </div>
       }>

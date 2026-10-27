@@ -53,7 +53,7 @@ export default async function ProjectPage({
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-canvas dark:bg-gray-950 font-sans transition-colors duration-200">
       
       {/* Cover Banner */}
       <div className="h-80 w-full relative overflow-hidden">
@@ -68,10 +68,10 @@ export default async function ProjectPage({
           <span className="text-[10px] font-extrabold uppercase tracking-widest bg-emerald-600 text-white px-3 py-1 rounded-full">
             {project.causeCategory}
           </span>
-          <h1 className="text-3xl sm:text-4xl font-black text-white mt-3 tracking-tight">
+          <h1 className="font-display text-3xl sm:text-4xl font-semibold text-white mt-3 tracking-tight">
             {project.title}
           </h1>
-          <p className="text-gray-200 text-sm mt-1">
+          <p className="text-white/85 text-sm mt-1">
             📍 {project.location}
           </p>
         </div>
@@ -82,7 +82,7 @@ export default async function ProjectPage({
           
           {/* Main Info */}
           <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-6">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white pb-3 border-b border-gray-100 dark:border-gray-800">Campaign Aim</h2>
               
               {project.problem_statement && (
@@ -112,7 +112,7 @@ export default async function ProjectPage({
             </div>
 
             {project.geoIntelligence && (
-              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+              <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-6">
                 <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-800 pb-3">
                   <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-xl text-emerald-600 dark:text-emerald-400">
                     🌍
@@ -171,7 +171,7 @@ export default async function ProjectPage({
             )}
 
             {/* Milestones Stepper */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-sm">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-sm">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Execution Milestones Sequence</h2>
               
               <div className="relative border-l border-gray-200 dark:border-gray-800 ml-4 space-y-8 pb-4">
@@ -311,7 +311,7 @@ export default async function ProjectPage({
 
           {/* Right Sidebar */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-6">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-6">
               
               <div>
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Campaign Progress</h3>
@@ -352,7 +352,7 @@ export default async function ProjectPage({
             </div>
 
             {/* NGO info card */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Organized By</h3>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-emerald-600 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-sm">

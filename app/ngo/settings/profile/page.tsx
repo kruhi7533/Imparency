@@ -50,25 +50,24 @@ export default function NGOUserProfilePage() {
   if (!session) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
+    <div className="relative">
       {/* Decorative background header */}
-      <div className="h-64 bg-gradient-to-br from-emerald-900 via-teal-900 to-gray-900 absolute top-0 left-0 right-0 z-0 opacity-80" />
       
-      <div className="max-w-5xl mx-auto px-4 py-12 relative z-10">
-        <div className="mb-8 pt-8">
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">Personal Settings</h2>
-          <p className="text-emerald-100/80 mt-2 font-medium">Manage your account preferences and security.</p>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 relative z-10">
+        <div className="mb-8">
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">Personal Settings</h2>
+          <p className="text-sm text-gray-600 mt-1">Manage your account preferences and security.</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-2xl flex items-center gap-3 text-sm font-bold border border-red-100 dark:border-red-500/30 backdrop-blur-sm shadow-xl">
+          <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-2xl flex items-center gap-3 text-sm font-semibold border border-red-200">
             <AlertCircle className="w-5 h-5 shrink-0" />
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center gap-3 text-sm font-bold border border-emerald-100 dark:border-emerald-500/30 backdrop-blur-sm shadow-xl">
+          <div className="mb-6 p-4 bg-emerald-50 text-emerald-700 rounded-2xl flex items-center gap-3 text-sm font-semibold border border-emerald-200">
             <CheckCircle className="w-5 h-5 shrink-0" />
             {success}
           </div>
@@ -78,53 +77,52 @@ export default function NGOUserProfilePage() {
           
           {/* Left Column: Avatar & Quick Info */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xl p-8 flex flex-col items-center text-center relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-emerald-500/10 to-transparent" />
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-8 flex flex-col items-center text-center relative overflow-hidden">
               
               <div className="relative group mb-5 mt-4">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 p-1 shadow-2xl">
+                <div className="w-32 h-32 rounded-full bg-trust-100 p-1 ring-1 ring-trust-200">
                   {avatarPreview ? (
                     <img src={avatarPreview} alt="Avatar" className="w-full h-full rounded-full object-cover border-4 border-white dark:border-gray-900" />
                   ) : (
-                    <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 text-emerald-500 text-5xl font-black flex items-center justify-center">
+                    <div className="w-full h-full rounded-full bg-white text-trust-700 font-display text-5xl font-semibold flex items-center justify-center">
                       {(name || "U").charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
                 {/* We tie this button to the hidden file input inside the form using htmlFor */}
-                <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-emerald-500 transition-colors border-4 border-white dark:border-gray-900 cursor-pointer">
+                <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 w-10 h-10 bg-trust-600 text-white rounded-full flex items-center justify-center shadow-md hover:bg-trust-700 transition-colors border-4 border-white dark:border-gray-900 cursor-pointer">
                   <Camera className="w-4 h-4" />
                 </label>
               </div>
 
-              <h3 className="text-xl font-extrabold text-gray-900 dark:text-white mb-1">{name}</h3>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">{session.user.email}</p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-1">{name}</h3>
+              <p className="text-sm font-medium text-gray-600 mb-4">{session.user.email}</p>
               
-              <div className="px-4 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-bold uppercase tracking-widest border border-emerald-100 dark:border-emerald-800/50">
+              <div className="px-4 py-1.5 bg-trust-50 text-trust-700 rounded-full text-xs font-bold uppercase tracking-widest ring-1 ring-trust-200">
                 {session.user.role} Member
               </div>
             </div>
 
             {/* Account Status Card */}
-            <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xl p-6">
-              <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4">Security Overview</h4>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-6">
+              <h4 className="text-xs font-bold text-gray-500 dark:text-gray-500 uppercase tracking-widest mb-4">Security Overview</h4>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                     <Shield className="w-5 h-5" />
                   </div>
                   <div>
                     <div className="text-sm font-bold text-gray-900 dark:text-white">Account Status</div>
-                    <div className="text-xs font-medium text-emerald-500">Secured & Verified</div>
+                    <div className="text-xs font-medium text-emerald-700">Secured & Verified</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-500 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-700 flex items-center justify-center">
                     <Key className="w-5 h-5" />
                   </div>
                   <div>
                     <div className="text-sm font-bold text-gray-900 dark:text-white">Password</div>
-                    <div className="text-xs font-medium text-amber-500">Updated 3 months ago</div>
+                    <div className="text-xs font-medium text-gray-500">Change it any time from the sign-in page via “Forgot password”.</div>
                   </div>
                 </div>
               </div>
@@ -135,9 +133,9 @@ export default function NGOUserProfilePage() {
           <div className="lg:col-span-8 space-y-6">
             
             {/* General Information Form */}
-            <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xl p-8">
-              <h3 className="text-lg font-extrabold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                <User className="w-5 h-5 text-emerald-500" />
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                <User className="w-5 h-5 text-trust-600" />
                 General Information
               </h3>
               
@@ -159,11 +157,11 @@ export default function NGOUserProfilePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
-                    <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest">
+                    <label className="block text-[11px] font-bold text-gray-600 mb-2 uppercase tracking-widest">
                       Full Name
                     </label>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-emerald-500 transition-colors">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-trust-600 transition-colors">
                         <User className="w-5 h-5" />
                       </div>
                       <input 
@@ -172,27 +170,27 @@ export default function NGOUserProfilePage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
-                        className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-2xl pl-12 pr-4 py-3.5 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all shadow-sm"
+                        className="w-full bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 rounded-xl pl-12 pr-4 py-3.5 font-medium focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition-all shadow-sm"
                       />
                     </div>
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest">
+                    <label className="block text-[11px] font-bold text-gray-600 mb-2 uppercase tracking-widest">
                       Email Address
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500">
                         <Mail className="w-5 h-5" />
                       </div>
                       <input 
                         type="email" 
                         value={session.user.email || ""}
                         disabled
-                        className="w-full bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 rounded-2xl pl-12 pr-4 py-3.5 font-medium cursor-not-allowed shadow-sm"
+                        className="w-full bg-gray-50 border border-gray-200 text-gray-600 rounded-xl pl-12 pr-4 py-3.5 font-medium cursor-not-allowed"
                       />
                     </div>
-                    <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 mt-2.5 flex items-center gap-1.5">
+                    <p className="text-[11px] font-medium text-gray-500 dark:text-gray-500 mt-2.5 flex items-center gap-1.5">
                       <AlertCircle className="w-3.5 h-3.5" />
                       Your email address is used for login and cannot be changed here.
                     </p>
@@ -204,7 +202,7 @@ export default function NGOUserProfilePage() {
                     <button 
                       type="submit" 
                       disabled={isPending}
-                      className="bg-emerald-600 hover:bg-emerald-500 focus:ring-4 focus:ring-emerald-500/20 disabled:opacity-50 text-white font-black py-3 px-8 rounded-xl shadow-lg shadow-emerald-500/30 transition-all flex items-center gap-2"
+                      className="bg-trust-600 hover:bg-trust-700 focus:ring-4 focus:ring-trust-500/20 disabled:opacity-50 text-white font-semibold py-3 px-8 rounded-lg shadow-sm transition-all flex items-center gap-2"
                     >
                       {isPending ? (
                         <>
@@ -221,9 +219,9 @@ export default function NGOUserProfilePage() {
             </div>
 
             {/* Notification Preferences (Dummy) */}
-            <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xl p-8">
-              <h3 className="text-lg font-extrabold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                <Bell className="w-5 h-5 text-amber-500" />
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                <Bell className="w-5 h-5 text-amber-700" />
                 Notification Preferences
               </h3>
               
@@ -233,14 +231,14 @@ export default function NGOUserProfilePage() {
                   { title: "Team Activity", desc: "Alerts when team members update projects." },
                   { title: "Monthly Reports", desc: "Receive automated impact summaries via email." }
                 ].map((item, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-950 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-200">
                     <div>
                       <div className="text-sm font-bold text-gray-900 dark:text-white">{item.title}</div>
                       <div className="text-[11px] font-medium text-gray-500 mt-0.5">{item.desc}</div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" className="sr-only peer" defaultChecked />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-trust-600"></div>
                     </label>
                   </div>
                 ))}

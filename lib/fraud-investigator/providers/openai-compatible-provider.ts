@@ -2,6 +2,7 @@ import { SYSTEM_INSTRUCTION } from "../prompts";
 import { DECLARATIONS } from "../declarations";
 import { withModelRetry } from "../retry";
 import type { ModelProvider, ProviderStepResult, ProviderToolCall } from "./types";
+import { callAi } from "@/lib/ai/telemetry";
 
 /**
  * Any provider that speaks the OpenAI /chat/completions dialect — Groq,
@@ -49,6 +50,10 @@ export function createOpenAICompatibleProvider(
   providerLabel: string
 ): ModelProvider {
   async function chatCompletion(messages: any[]): Promise<any> {
+    return callAi({ site: "fraud-investigator", provider: "openai-compatible", model, promptVersion: "v1" }, (signal) => rawChatCompletion(messages, signal));
+  }
+
+  async function rawChatCompletion(messages: any[], signal: AbortSignal): Promise<any> {
     const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: {
@@ -60,6 +65,7 @@ export function createOpenAICompatibleProvider(
         "X-Title": "ImpactBridge Fraud Investigator",
       },
       body: JSON.stringify({ model, messages, tools: TOOLS, tool_choice: "auto", temperature: 0.2 }),
+      signal,
     });
 
     if (!res.ok) {

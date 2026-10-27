@@ -56,7 +56,7 @@ describe("/api/donor/notification-preferences", () => {
     session("d1", "DONOR");
     prismaMock.user.findUnique.mockResolvedValue({ projectUpdatesOptOut: true });
     const res = await GET();
-    expect(await res.json()).toEqual({ projectUpdates: false });
+    expect(await res.json()).toEqual({ projectUpdates: false, channels: { whatsapp: true, email: true, inApp: true } });
     expect(prismaMock.user.findUnique.mock.calls[0][0].where).toEqual({ id: "d1" });
   });
 

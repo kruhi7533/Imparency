@@ -21,6 +21,7 @@ export type FieldDraft = Record<string, string>;
 export function fieldToDraft(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "boolean") return value ? "true" : "false";
   return String(value);
 }
 
@@ -38,6 +39,7 @@ export function draftEdits(fields: RequirementFields, draft: FieldDraft): Record
     if (raw.trim() === "") edits[key] = null;
     else if (kind === "number") edits[key] = Number(raw.replace(/,/g, ""));
     else if (kind === "string[]") edits[key] = raw.split(",").map((s) => s.trim()).filter(Boolean);
+    else if (kind === "boolean") edits[key] = raw === "true";
     else edits[key] = raw;
   }
   return edits;
@@ -45,31 +47,32 @@ export function draftEdits(fields: RequirementFields, draft: FieldDraft): Record
 
 const SOURCE_LABEL: Record<string, string> = {
   AI_EXTRACTED: "AI",
+  RULES: "Rules",
   DONOR_ENTERED: "Donor entered",
   DONOR_CORRECTED: "Donor corrected",
   ADMIN_VERIFIED: "Admin verified",
 };
 
 function isLow(f: ProvenancedField) {
-  return f.value !== null && f.source === "AI_EXTRACTED" && f.confidence < LOW_CONFIDENCE_THRESHOLD;
+  return f.value !== null && (f.source === "AI_EXTRACTED" || f.source === "RULES") && f.confidence < LOW_CONFIDENCE_THRESHOLD;
 }
 
 function ProvenanceChip({ field }: { field: ProvenancedField }) {
   const pct = Math.round(field.confidence * 100);
   const tone =
     field.source === "ADMIN_VERIFIED"
-      ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/25"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
       : field.source === "DONOR_CORRECTED" || field.source === "DONOR_ENTERED"
-      ? "bg-blue-500/10 text-blue-300 border-blue-500/25"
+      ? "bg-blue-50 text-blue-700 border-blue-200"
       : isLow(field)
-      ? "bg-amber-500/10 text-amber-300 border-amber-500/30"
-      : "bg-gray-800 text-gray-300 border-gray-700";
+      ? "bg-amber-50 text-amber-700 border-amber-200"
+      : "bg-gray-100 text-gray-700 border-gray-300";
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${tone}`}>
       {SOURCE_LABEL[field.source] ?? field.source}
       {field.value !== null && <span className="opacity-80">· {pct}%</span>}
-      {field.aiConfidence !== undefined && field.source !== "AI_EXTRACTED" && (
-        <span className="opacity-60 font-medium">(AI was {Math.round(field.aiConfidence * 100)}%)</span>
+      {field.aiConfidence !== undefined && field.source !== "AI_EXTRACTED" && field.source !== "RULES" && (
+        <span className="opacity-60 font-medium">(extracted at {Math.round(field.aiConfidence * 100)}%)</span>
       )}
     </span>
   );
@@ -91,6 +94,7 @@ const DISPLAY_ORDER: RequirementFieldKey[] = [
   "contactPerson",
   "contactEmail",
   "contactPhone",
+  "fcraRequired",
   "primaryKPIs",
   "secondaryKPIs",
   "requiredDocuments",
@@ -99,7 +103,8 @@ const DISPLAY_ORDER: RequirementFieldKey[] = [
 const WIDE = new Set<RequirementFieldKey>(["summary", "specialConstraints", "primaryKPIs", "secondaryKPIs", "requiredDocuments"]);
 
 function formatValue(key: RequirementFieldKey, value: unknown): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return key === "fcraRequired" ? "Not stated" : "—";
+  if (typeof value === "boolean") return value ? "Yes — only FCRA-registered NGOs" : "No";
   if (Array.isArray(value)) return value.join(", ");
   if (typeof value === "number" && (key === "budgetMin" || key === "budgetMax")) return `₹${value.toLocaleString("en-IN")}`;
   if (typeof value === "number") return value.toLocaleString("en-IN");
@@ -122,7 +127,7 @@ export function FieldsEditor({
   return (
     <div className="space-y-4">
       {lowCount > 0 && (
-        <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2">
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
           ⚠ {lowCount} field{lowCount > 1 ? "s were" : " was"} extracted with confidence below{" "}
           {Math.round(LOW_CONFIDENCE_THRESHOLD * 100)}% — please verify {lowCount > 1 ? "them" : "it"}.
         </p>
@@ -136,28 +141,39 @@ export function FieldsEditor({
           return (
             <div
               key={key}
-              className={`p-3.5 rounded-xl border bg-gray-950/40 ${WIDE.has(key) ? "md:col-span-2" : ""} ${
-                low ? "border-amber-600/40" : changed ? "border-blue-500/40" : "border-gray-800"
+              className={`p-3.5 rounded-xl border bg-gray-50 ${WIDE.has(key) ? "md:col-span-2" : ""} ${
+                low ? "border-amber-200" : changed ? "border-blue-200" : "border-gray-200"
               }`}
             >
               <div className="flex items-center justify-between gap-2 mb-2">
-                <label htmlFor={`field-${key}`} className="text-xs font-semibold text-gray-300">
+                <label htmlFor={`field-${key}`} className="text-xs font-semibold text-gray-700">
                   {spec.label}
                   {spec.kind === "string[]" && editable && <span className="text-gray-500 font-normal"> (comma separated)</span>}
                 </label>
                 <div className="flex items-center gap-1.5">
-                  {changed && <span className="text-[10px] font-bold text-blue-300">edited</span>}
+                  {changed && <span className="text-[10px] font-bold text-blue-700">edited</span>}
                   <ProvenanceChip field={field} />
                 </div>
               </div>
               {editable && draft && onChange ? (
-                key === "summary" || key === "specialConstraints" ? (
+                spec.kind === "boolean" ? (
+                  <select
+                    id={`field-${key}`}
+                    value={draft[key] ?? ""}
+                    onChange={(e) => onChange(key, e.target.value)}
+                    className="w-full bg-white border border-gray-300 text-sm rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
+                  >
+                    <option value="">Not stated</option>
+                    <option value="true">Yes — only FCRA-registered NGOs</option>
+                    <option value="false">No</option>
+                  </select>
+                ) : key === "summary" || key === "specialConstraints" ? (
                   <textarea
                     id={`field-${key}`}
                     rows={3}
                     value={draft[key] ?? ""}
                     onChange={(e) => onChange(key, e.target.value)}
-                    className="w-full bg-gray-900/70 border border-gray-800 text-sm rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white border border-gray-300 text-sm rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
                   />
                 ) : (
                   <input
@@ -167,15 +183,15 @@ export function FieldsEditor({
                     value={draft[key] ?? ""}
                     placeholder="Not specified"
                     onChange={(e) => onChange(key, e.target.value)}
-                    className="w-full bg-gray-900/70 border border-gray-800 text-sm rounded-lg px-3 py-2 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white border border-gray-300 text-sm rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
                   />
                 )
               ) : (
-                <p className={`text-sm ${field.value === null ? "text-gray-600" : "text-gray-100"} whitespace-pre-wrap break-words`}>
+                <p className={`text-sm ${field.value === null ? "text-gray-600" : "text-gray-900"} whitespace-pre-wrap break-words`}>
                   {formatValue(key, field.value)}
                 </p>
               )}
-              {low && <p className="text-[11px] text-amber-400 mt-1.5">⚠ Please verify</p>}
+              {low && <p className="text-[11px] text-amber-700 mt-1.5">⚠ Please verify</p>}
             </div>
           );
         })}

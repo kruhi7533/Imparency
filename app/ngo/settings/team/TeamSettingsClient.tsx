@@ -1,194 +1,256 @@
 "use client";
 
-import { useTransition, useState } from "react";
-import { addTeamMember, removeTeamMember, updateMemberRole } from "./actions";
-import { Shield, Trash2, UserPlus, AlertCircle } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { AlertCircle, Copy, Mail, RefreshCw, Shield, Trash2, UserPlus, XCircle } from "lucide-react";
 
-export default function TeamSettingsClient({ teamMembers, currentUserRole }: { teamMembers: any[], currentUserRole: string }) {
-  const [isPending, startTransition] = useTransition();
+/**
+ * NGO-003 team page: members, and every invitation with its state. Talks only
+ * to /api/ngo/team* — the server decides who may do what; this just hides
+ * buttons the caller's role cannot use.
+ */
+
+type Role = "OWNER" | "ADMIN" | "PROGRAM_MANAGER" | "FINANCE" | "FIELD_STAFF";
+type InviteState = "PENDING" | "ACCEPTED" | "EXPIRED" | "REVOKED";
+
+const ROLE_LABEL: Record<Role, string> = {
+  OWNER: "Owner",
+  ADMIN: "Admin",
+  PROGRAM_MANAGER: "Program Manager",
+  FINANCE: "Finance",
+  FIELD_STAFF: "Field Worker",
+};
+const ROLE_HINT: Record<Role, string> = {
+  OWNER: "Everything",
+  ADMIN: "Everything except ownership",
+  PROGRAM_MANAGER: "Projects and assigning field tasks; no money",
+  FINANCE: "Bank statements and payment confirmation",
+  FIELD_STAFF: "Only the field tasks assigned to them",
+};
+const STATE_BADGE: Record<InviteState, string> = {
+  PENDING: "bg-amber-50 ring-1 ring-amber-200 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  ACCEPTED: "bg-emerald-50 ring-1 ring-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  EXPIRED: "bg-gray-50 ring-1 ring-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  REVOKED: "bg-red-50 ring-1 ring-red-200 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+};
+
+interface Member { userId: string; name: string | null; email: string; role: Role; since: string }
+interface Invite { id: string; email: string; role: Role; state: InviteState; expiresAt: string; lastSentAt: string | null; sendCount: number }
+interface TeamData {
+  orgName: string;
+  members: Member[];
+  invites: Invite[];
+  me: { userId: string; role: Role; canManage: boolean; grantableRoles: Role[] };
+}
+
+export default function TeamSettingsClient() {
+  const [data, setData] = useState<TeamData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [shareLink, setShareLink] = useState<{ email: string; url: string; note: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<Role>("FIELD_STAFF");
 
-  const canManage = currentUserRole === "OWNER" || currentUserRole === "ADMIN";
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ngo/team", { cache: "no-store" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Could not load your team.");
+      setData(json);
+      setLoadError(null);
+    } catch (e: any) {
+      setLoadError(e.message);
+    }
+  }, []);
 
-  const handleRoleChange = (userId: string, newRole: string) => {
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function call(url: string, init: RequestInit, ok: string) {
+    setBusy(true);
     setError("");
     setSuccess("");
-    startTransition(async () => {
-      const result = await updateMemberRole(userId, newRole);
-      if (result.error) {
-        setError(result.error);
-      } else {
-        setSuccess("Member role updated successfully!");
-      }
-    });
-  };
+    try {
+      const res = await fetch(url, { ...init, headers: { "Content-Type": "application/json" } });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Something went wrong.");
+      setSuccess(ok);
+      await load();
+      return json;
+    } catch (e: any) {
+      setError(e.message);
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
 
-  const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
+  function handleDelivery(json: any, to: string) {
+    if (!json) return;
+    if (json.emailSent) {
+      setShareLink(null);
+      setSuccess(`Invitation emailed to ${to}.`);
+    } else if (json.inviteUrl) {
+      setCopied(false);
+      setShareLink({ email: to, url: json.inviteUrl, note: json.emailNote });
+      setSuccess(`Invitation created for ${to} — email NOT sent.`);
+    }
+  }
+
+  async function invite(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setSuccess("");
-    const formData = new FormData(e.currentTarget);
-    
-    startTransition(async () => {
-      const result = await addTeamMember(formData);
-      if (result.error) {
-        setError(result.error);
-      } else if (result.invited) {
-        setSuccess(result.message || "Invite sent!");
-        (e.target as HTMLFormElement).reset();
-      } else {
-        setSuccess("Team member added successfully!");
-        (e.target as HTMLFormElement).reset();
-      }
-    });
-  };
+    const to = email.trim();
+    const json = await call("/api/ngo/team/invites", { method: "POST", body: JSON.stringify({ email: to, role }) }, "Invitation created.");
+    if (json) {
+      setEmail("");
+      handleDelivery(json, to);
+    }
+  }
 
-  const handleRemove = (userId: string) => {
-    if (!confirm("Are you sure you want to remove this team member?")) return;
-    setError("");
-    setSuccess("");
-    
-    startTransition(async () => {
-      const result = await removeTeamMember(userId);
-      if (result.error) {
-        setError(result.error);
-      } else {
-        setSuccess("Team member removed successfully!");
-      }
-    });
-  };
+  async function resend(inv: Invite) {
+    const json = await call(`/api/ngo/team/invites/${inv.id}/resend`, { method: "POST" }, "Invitation resent.");
+    handleDelivery(json, inv.email);
+  }
+
+  async function revoke(inv: Invite) {
+    if (!confirm(`Revoke the invitation to ${inv.email}? The link stops working immediately.`)) return;
+    await call(`/api/ngo/team/invites/${inv.id}/revoke`, { method: "POST" }, "Invitation revoked.");
+  }
+
+  async function changeRole(m: Member, next: string) {
+    await call(`/api/ngo/team/members/${m.userId}`, { method: "PATCH", body: JSON.stringify({ role: next }) }, "Role updated.");
+  }
+
+  async function remove(m: Member) {
+    if (!confirm(`Remove ${m.name || m.email} from the team?`)) return;
+    await call(`/api/ngo/team/members/${m.userId}`, { method: "DELETE" }, "Member removed.");
+  }
+
+  if (loadError) {
+    return (
+      <div className="max-w-4xl mx-auto p-4 rounded-xl bg-red-50 text-red-700 text-sm flex items-center gap-2" role="alert">
+        <AlertCircle className="w-4 h-4" /> {loadError}
+        <button onClick={load} className="ml-auto underline font-semibold">Retry</button>
+      </div>
+    );
+  }
+  if (!data) {
+    return <div className="max-w-4xl mx-auto text-sm text-gray-500">Loading team…</div>;
+  }
+
+  const { me } = data;
+  const rank: Record<Role, number> = { OWNER: 4, ADMIN: 3, PROGRAM_MANAGER: 2, FINANCE: 2, FIELD_STAFF: 1 };
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">Team Management</h2>
-        <p className="text-gray-500 mt-1">Manage who has access to your NGO Dashboard.</p>
+        <h2 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">Team</h2>
+        <p className="text-sm text-gray-600 mt-1">
+          Who works on {data.orgName} and what each person can do. You are <strong>{ROLE_LABEL[me.role]}</strong>.
+        </p>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl flex items-center gap-3 text-sm font-semibold border border-red-100 dark:border-red-900/50">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          {error}
+        <div role="alert" className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl flex items-center gap-3 text-sm font-semibold border border-red-100 dark:border-red-900/50">
+          <AlertCircle className="w-5 h-5 shrink-0" /> {error}
         </div>
       )}
-
       {success && (
-        <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center gap-3 text-sm font-semibold border border-emerald-100 dark:border-emerald-900/50">
-          <Shield className="w-5 h-5 shrink-0" />
-          {success}
+        <div role="status" className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-xl flex items-center gap-3 text-sm font-semibold border border-emerald-100 dark:border-emerald-900/50">
+          <Shield className="w-5 h-5 shrink-0" /> {success}
         </div>
       )}
-
-      {canManage && (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 mb-8 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-emerald-500" /> Add New Member
-          </h3>
-          <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="flex-1 w-full">
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide">
-                User Email
-              </label>
-              <input 
-                name="email" 
-                type="email" 
-                required
-                placeholder="colleague@example.com"
-                className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition shadow-sm"
-              />
-            </div>
-            <div className="w-full sm:w-48">
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide">
-                Role
-              </label>
-              <select 
-                name="role" 
-                className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition shadow-sm appearance-none"
-              >
-                <option value="FIELD_STAFF">Field Staff</option>
-                <option value="FINANCE">Finance</option>
-                <option value="ADMIN">Admin</option>
-              </select>
-            </div>
-            <button 
-              type="submit" 
-              disabled={isPending}
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-emerald-500/30 transition-all flex items-center justify-center whitespace-nowrap"
+      {shareLink && (
+        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-xl text-sm">
+          <p className="font-semibold text-amber-800 dark:text-amber-300">{shareLink.note}</p>
+          <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">Invite link for {shareLink.email} (single use, expires in 7 days):</p>
+          <div className="mt-2 flex gap-2">
+            <input readOnly value={shareLink.url} aria-label="Invite link" className="flex-1 font-mono text-xs bg-white dark:bg-gray-950 border border-amber-200 dark:border-amber-900 rounded-lg px-2 py-2" onFocus={(e) => e.currentTarget.select()} />
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(shareLink.url);
+                  setCopied(true);
+                } catch {
+                  setCopied(false);
+                }
+              }}
+              className="px-3 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold flex items-center gap-1"
             >
-              {isPending ? "Adding..." : "Add Member"}
+              <Copy className="w-3.5 h-3.5" /> {copied ? "Copied" : "Copy"}
             </button>
-          </form>
-          <p className="text-xs text-gray-500 mt-3">
-            Note: If the user doesn't have an account yet, a secure 7-day invitation link will be emailed to them.
-          </p>
+            <button type="button" onClick={() => setShareLink(null)} className="px-2 text-xs text-amber-700 underline">Hide</button>
+          </div>
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
+      {me.canManage && (
+        <form onSubmit={invite} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 mb-8 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <UserPlus className="w-5 h-5 text-trust-600" /> Invite a team member
+          </h3>
+          <div className="flex flex-col sm:flex-row gap-4 items-end">
+            <label className="flex-1 w-full text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+              Email
+              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required placeholder="colleague@example.org"
+                className="mt-1.5 w-full normal-case font-normal bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none rounded-lg px-4 py-3 text-sm" />
+            </label>
+            <label className="w-full sm:w-56 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+              Role
+              <select value={role} onChange={(e) => setRole(e.target.value as Role)}
+                className="mt-1.5 w-full normal-case font-normal bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none rounded-lg px-4 py-3 text-sm">
+                {me.grantableRoles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+              </select>
+            </label>
+            <button type="submit" disabled={busy} className="w-full sm:w-auto bg-trust-600 hover:bg-trust-700 disabled:opacity-50 text-white font-semibold py-3 px-6 rounded-lg">
+              {busy ? "Sending…" : "Send invite"}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-3">{ROLE_LABEL[role]}: {ROLE_HINT[role]}. The link is single-use and expires in 7 days. You can only give roles up to your own.</p>
+        </form>
+      )}
+
+      <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)] mb-8">
+        <h3 className="px-6 pt-5 pb-4 text-base font-bold text-gray-900 dark:text-white">Members ({data.members.length})</h3>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600 border-y border-gray-200">
               <tr>
-                <th className="px-6 py-4 font-semibold">Team Member</th>
-                <th className="px-6 py-4 font-semibold">Role</th>
-                <th className="px-6 py-4 font-semibold">Added On</th>
-                {canManage && <th className="px-6 py-4 font-semibold text-right">Actions</th>}
+                <th className="px-6 py-3 font-semibold">Member</th>
+                <th className="px-6 py-3 font-semibold">Role</th>
+                {me.canManage && <th className="px-6 py-3 font-semibold text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {teamMembers.map((member) => {
-                const canEditThisMember = canManage && (member.role !== "OWNER" || currentUserRole === "OWNER");
+              {data.members.map((m) => {
+                const editable = me.canManage && m.role !== "OWNER" && m.userId !== me.userId && rank[m.role] <= rank[me.role];
                 return (
-                  <tr key={member.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold flex items-center justify-center text-xs">
-                          {member.user.name ? member.user.name.charAt(0).toUpperCase() : "U"}
-                        </div>
-                        <div>
-                          <div className="font-bold text-gray-900 dark:text-white">{member.user.name || "Anonymous"}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">{member.user.email}</div>
-                        </div>
-                      </div>
+                  <tr key={m.userId}>
+                    <td className="px-6 py-3">
+                      <div className="font-bold text-gray-900 dark:text-white">{m.name || "Unnamed"}{m.userId === me.userId && <span className="text-xs text-gray-500 font-normal"> (you)</span>}</div>
+                      <div className="text-xs text-gray-500">{m.email}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      {canEditThisMember && member.role !== "OWNER" ? (
-                        <select
-                          value={member.role}
-                          disabled={isPending}
-                          onChange={(e) => handleRoleChange(member.user.id, e.target.value)}
-                          className="text-xs font-bold bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-                        >
-                          <option value="FIELD_STAFF">Field Staff</option>
-                          <option value="FINANCE">Finance</option>
-                          <option value="ADMIN">Admin</option>
-                          {currentUserRole === "OWNER" && <option value="OWNER">Owner</option>}
+                    <td className="px-6 py-3">
+                      {editable ? (
+                        <select aria-label={`Role for ${m.name || m.email}`} value={m.role} disabled={busy} onChange={(e) => changeRole(m, e.target.value)}
+                          className="text-xs font-bold bg-white text-gray-800 border border-gray-300 rounded-lg px-2.5 py-1">
+                          {me.grantableRoles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                         </select>
                       ) : (
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${
-                          member.role === 'OWNER' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' :
-                          member.role === 'ADMIN' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
-                          member.role === 'FINANCE' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' :
-                          'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                        }`}>
-                          {member.role.replace('_', ' ')}
-                        </span>
+                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{ROLE_LABEL[m.role]}</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
-                      {new Date(member.createdAt).toLocaleDateString("en-IN")}
-                    </td>
-                    {canManage && (
-                      <td className="px-6 py-4 text-right">
-                        <button 
-                          onClick={() => handleRemove(member.user.id)}
-                          disabled={isPending || (member.role === 'OWNER' && currentUserRole !== 'OWNER')}
-                          className="text-gray-400 hover:text-red-500 transition disabled:opacity-20 disabled:hover:text-gray-400 p-2"
-                          title="Remove Member"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                    {me.canManage && (
+                      <td className="px-6 py-3 text-right">
+                        {editable && (
+                          <button onClick={() => remove(m)} disabled={busy} title="Remove member" aria-label={`Remove ${m.name || m.email}`} className="text-gray-500 hover:text-red-500 p-2">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -197,7 +259,41 @@ export default function TeamSettingsClient({ teamMembers, currentUserRole }: { t
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
+
+      {me.canManage && (
+        <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <h3 className="px-6 pt-5 pb-4 text-base font-bold text-gray-900 dark:text-white flex items-center gap-2"><Mail className="w-4 h-4" /> Invitations</h3>
+          {data.invites.length === 0 ? (
+            <p className="px-6 py-5 text-sm text-gray-500">No invitations yet.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+              {data.invites.map((inv) => (
+                <li key={inv.id} className="px-6 py-3 flex flex-wrap items-center gap-3 text-sm">
+                  <div className="flex-1 min-w-[200px]">
+                    <div className="font-semibold text-gray-900 dark:text-white">{inv.email}</div>
+                    <div className="text-xs text-gray-500">
+                      {ROLE_LABEL[inv.role]} · {inv.state === "PENDING" ? `expires ${new Date(inv.expiresAt).toLocaleDateString("en-IN")}` : inv.state === "EXPIRED" ? `expired ${new Date(inv.expiresAt).toLocaleDateString("en-IN")}` : ""}
+                      {inv.sendCount > 1 ? ` · sent ${inv.sendCount}×` : ""}
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${STATE_BADGE[inv.state]}`}>{inv.state}</span>
+                  {(inv.state === "PENDING" || inv.state === "EXPIRED") && rank[inv.role] <= rank[me.role] && (
+                    <button onClick={() => resend(inv)} disabled={busy} className="text-xs font-bold text-trust-700 hover:underline flex items-center gap-1">
+                      <RefreshCw className="w-3.5 h-3.5" /> Resend
+                    </button>
+                  )}
+                  {inv.state === "PENDING" && (
+                    <button onClick={() => revoke(inv)} disabled={busy} className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1">
+                      <XCircle className="w-3.5 h-3.5" /> Revoke
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
     </div>
   );
 }

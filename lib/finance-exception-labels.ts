@@ -26,6 +26,7 @@ export const EXCEPTION_LABEL: Record<FinanceExceptionType, string> = {
   UNCONFIRMED_ALLOCATION: "Committed money never confirmed as received",
   CONTRACT_PAYMENT_DISPUTED: "NGO disputes a donor-recorded contract payment",
   BANK_LINE_AMOUNT_MISMATCH: "Bank statement shows a different amount than the donor recorded",
+  UNMATCHED_BANK_LINE: "Bank transfer (UTR) not matched to any contract payment",
 };
 
 /**

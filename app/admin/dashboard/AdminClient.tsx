@@ -233,7 +233,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
       <button
         onClick={() => rerunAnalysis(ngo.id)}
         disabled={isBusy}
-        className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 disabled:opacity-50 text-gray-600 dark:text-gray-300 text-xs font-bold py-1.5 px-3 rounded-lg transition flex items-center gap-1.5 shrink-0"
+        className="bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50 text-gray-600 text-xs font-bold py-1.5 px-3 rounded-lg transition flex items-center gap-1.5 shrink-0"
       >
         {isBusy && <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500"></div>}
         {isBusy ? "Analysing…" : "Re-run analysis"}
@@ -244,12 +244,12 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
     // evidence rows is the state the whole evidence chain exists to prevent.
     if (verdict === "NOT_ANALYSED") {
       return (
-        <div className="border border-red-200 dark:border-red-900/50 rounded-2xl p-5 bg-red-50/40 dark:bg-red-950/10 space-y-2">
+        <div className="border border-red-200 rounded-2xl p-5 bg-red-50/40 space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <h4 className="text-sm font-black text-red-700 dark:text-red-400">Not analysed</h4>
+            <h4 className="text-sm font-bold text-red-700">Not analysed</h4>
             {rerunButton}
           </div>
-          <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold">
+          <p className="text-xs text-gray-600 font-semibold">
             No document evidence exists for this organisation. Approving now would set compliance
             flags with nothing behind them.
           </p>
@@ -263,16 +263,16 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
       <div
         className={`border rounded-2xl p-5 space-y-4 ${
           risk
-            ? "border-red-200 dark:border-red-900/50 bg-red-50/40 dark:bg-red-950/10"
-            : "border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/10"
+            ? "border-red-200 bg-red-50/40"
+            : "border-emerald-200 bg-emerald-50/40"
         }`}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h4 className="text-sm font-black text-gray-900 dark:text-white">
+            <h4 className="text-sm font-bold text-gray-900">
               {risk ? "Sent to Risk & Compliance" : "Documents read cleanly"}
             </h4>
-            <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold mt-0.5">
+            <p className="text-xs text-gray-600 font-semibold mt-0.5">
               {risk
                 ? `${risk.findings?.length ?? 0} issue(s) found · ${risk.riskLevel} risk`
                 : "Every identity field matches the registration form."}
@@ -296,16 +296,16 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
             to rubber-stamp something they cannot inspect. */}
         {!risk && ngo.assurances?.length > 0 && (
           <div className="space-y-1">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
               What was checked
             </span>
             {ngo.assurances.map((a, i) => (
               <div key={i} className="flex items-start gap-2 text-xs">
-                <span className="text-emerald-600 font-black shrink-0">✓</span>
-                <span className="text-gray-700 dark:text-gray-300 font-semibold">{a}</span>
+                <span className="text-emerald-600 font-bold shrink-0">✓</span>
+                <span className="text-gray-700 font-semibold">{a}</span>
               </div>
             ))}
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 italic pt-1">
+            <p className="text-[10px] text-gray-500 italic pt-1">
               These are mechanical checks on what the documents say. They do not confirm the
               documents are genuine — that judgment is yours.
             </p>
@@ -317,40 +317,40 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
             {risk.findings.map((f, i) => {
               const badge =
                 f.severity === "HIGH"
-                  ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                  ? "bg-red-100 text-red-700"
                   : f.severity === "MEDIUM"
-                  ? "bg-amber-100 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400"
+                  ? "bg-amber-100 text-amber-700"
                   : "bg-gray-100 text-gray-600";
               return (
                 <div
                   key={i}
-                  className="flex items-start gap-2 text-xs bg-white/60 dark:bg-gray-950/20 p-2 rounded-lg border border-gray-100 dark:border-gray-850"
+                  className="flex items-start gap-2 text-xs bg-white/60 p-2 rounded-lg border border-gray-100"
                 >
-                  <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0 ${badge}`}>
+                  <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0 ${badge}`}>
                     {f.severity}
                   </span>
-                  <span className="text-gray-700 dark:text-gray-300 font-semibold">{f.issue}</span>
+                  <span className="text-gray-700 font-semibold">{f.issue}</span>
                 </div>
               );
             })}
           </div>
         )}
 
-        <div className="bg-white/60 dark:bg-gray-950/20 p-3.5 rounded-xl border border-gray-100 dark:border-gray-850">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">
+        <div className="bg-white/60 p-3.5 rounded-xl border border-gray-100">
+          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-2">
             Evidence read from the documents
           </span>
           <div className="space-y-1.5">
             {ngo.extractedFields.map((f) => (
               <div key={f.fieldKey} className="flex items-center justify-between gap-3 text-xs">
-                <span className="font-semibold text-gray-600 dark:text-gray-300 shrink-0">
+                <span className="font-semibold text-gray-600 shrink-0">
                   {FIELD_LABELS[f.fieldKey] ?? f.fieldKey}
                 </span>
-                <span className="font-bold text-gray-900 dark:text-white truncate">
+                <span className="font-bold text-gray-900 truncate">
                   {f.extractedValue ?? "— not found —"}
                 </span>
                 <span
-                  className={`text-[10px] font-extrabold shrink-0 ${
+                  className={`text-[10px] font-bold shrink-0 ${
                     f.status === "VALIDATED"
                       ? "text-emerald-600"
                       : f.status === "REJECTED"
@@ -365,7 +365,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400 italic mt-2">
+          <p className="text-[10px] text-gray-500 italic mt-2">
             Values read by a model, held to code-level format and cross-checks. Validate each one in
             Document Review — only a validated field earns its compliance flag.
           </p>
@@ -384,10 +384,10 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
     <div className="space-y-6">
 
       {/* Reminder trigger — for demo and manual use */}
-      <div className="flex items-center gap-4 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+      <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
         <div className="flex-1">
-          <p className="text-sm font-bold text-blue-900 dark:text-blue-200">Admin Reminder System</p>
-          <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+          <p className="text-sm font-bold text-blue-900">Admin Reminder System</p>
+          <p className="text-xs text-blue-600 mt-0.5">
             Sends reminder emails for: pending NGOs (&gt;5 days), unreviewed proofs (&gt;3 days), unresolved fraud alerts (&gt;7 days), and NGO document errors (&gt;7 days).
           </p>
           {reminderResult && (
@@ -408,7 +408,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
       {/* Search + Filter bar */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/>
           </svg>
           <input
@@ -416,10 +416,10 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
             placeholder="Search by org name, email, reg number, PAN..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500"
           />
           {search && (
-            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-600">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           )}
@@ -428,10 +428,10 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
           {(["ALL", "SAFE", "RISK", "NOT_ANALYSED"] as const).map((val) => {
             const labels: Record<string, string> = { ALL: "All", SAFE: "Clean", RISK: "At risk", NOT_ANALYSED: "Not analysed" };
             const colors: Record<string, string> = {
-              ALL: filterRec === "ALL" ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
-              SAFE: filterRec === "SAFE" ? "bg-emerald-600 text-white" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
-              RISK: filterRec === "RISK" ? "bg-red-600 text-white" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
-              NOT_ANALYSED: filterRec === "NOT_ANALYSED" ? "bg-amber-500 text-white" : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700",
+              ALL: filterRec === "ALL" ? "bg-trust-600 text-white" : "bg-white text-gray-600 border border-gray-200",
+              SAFE: filterRec === "SAFE" ? "bg-emerald-600 text-white" : "bg-white text-gray-600 border border-gray-200",
+              RISK: filterRec === "RISK" ? "bg-red-600 text-white" : "bg-white text-gray-600 border border-gray-200",
+              NOT_ANALYSED: filterRec === "NOT_ANALYSED" ? "bg-amber-500 text-white" : "bg-white text-gray-600 border border-gray-200",
             };
             return (
               <button key={val} onClick={() => setFilterRec(val)} className={`px-3 py-2 text-xs font-bold rounded-xl transition ${colors[val]}`}>
@@ -444,64 +444,64 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
 
       {/* Results count */}
       {(search || filterRec !== "ALL") && (
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+        <p className="text-xs text-gray-500">
           Showing {filteredNgos.length} of {ngos.length} applications
-          {search && <span> matching <span className="font-semibold text-gray-700 dark:text-gray-300">"{search}"</span></span>}
+          {search && <span> matching <span className="font-semibold text-gray-700">"{search}"</span></span>}
         </p>
       )}
 
       {ngos.length === 0 ? (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-sm">
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <span className="text-4xl mb-4 block">🎉</span>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">All caught up!</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <h3 className="text-lg font-bold text-gray-900 mb-2">All caught up!</h3>
+          <p className="text-sm text-gray-500">
             There are currently no pending NGO registration documents awaiting review.
           </p>
         </div>
       ) : filteredNgos.length === 0 ? (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-sm">
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35"/>
           </svg>
-          <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">No results found</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">No NGOs match your search or filter. Try adjusting your criteria.</p>
+          <h3 className="text-base font-bold text-gray-900 mb-1">No results found</h3>
+          <p className="text-sm text-gray-500">No NGOs match your search or filter. Try adjusting your criteria.</p>
           <button onClick={() => { setSearch(""); setFilterRec("ALL"); }} className="mt-4 text-xs font-semibold text-emerald-600 hover:underline">
             Clear filters
           </button>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white border border-gray-200/80 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-              <thead className="bg-gray-50 dark:bg-gray-800/50">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">NGO Details</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Credentials</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Documents</th>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">NGO Details</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Credentials</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Documents</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+              <tbody className="bg-white divide-y divide-gray-200">
                 {filteredNgos.map((ngo) => (
                   <React.Fragment key={ngo.id}>
-                    <tr className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
+                    <tr className="hover:bg-gray-50/50">
                       <td className="px-6 py-4">
-                        <a href={`/admin/ngos/${ngo.id}`} className="text-sm font-bold text-gray-900 dark:text-white hover:text-emerald-600 hover:underline">
+                        <a href={`/admin/ngos/${ngo.id}`} className="text-sm font-bold text-gray-900 hover:text-emerald-600 hover:underline">
                           {ngo.orgName}
                         </a>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{ngo.user.email}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">Founded: {ngo.foundedYear}</div>
+                        <div className="text-xs text-gray-500 mt-1">{ngo.user.email}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">Founded: {ngo.foundedYear}</div>
                         {/* The verdict belongs HERE, next to the name — not
                             hidden behind the expand button. An admin decides
                             from this row, so anything that should change the
                             decision has to be visible before they reach the
                             Approve button. */}
                         {(ngo.hasDocuments === false || ngo.hasExtraction === false || ngo.hasIdentityContradiction) && (
-                          <div className="mt-2 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-3 py-2">
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-white">
+                          <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white">
                               CANNOT APPROVE YET
                             </span>
-                            <p className="mt-1 text-xs text-amber-900 dark:text-amber-300">
+                            <p className="mt-1 text-xs text-amber-900">
                               {ngo.hasDocuments === false
                                 ? "No documents have been uploaded. There is nothing to verify — ask the organisation to submit them."
                                 : ngo.hasExtraction === false
@@ -512,20 +512,20 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                         )}
 
                         {ngo.reverificationRequiredAt && (
-                          <div className="mt-2 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 px-3 py-2">
+                          <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-600 text-white">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-600 text-white">
                                 RE-DECISION NEEDED
                               </span>
-                              <span className="text-[11px] font-bold text-red-700 dark:text-red-400">
+                              <span className="text-[11px] font-bold text-red-700">
                                 Approved earlier — evidence has since failed
                               </span>
                               {ngo.reverificationDueAt && (
                                 <span
                                   className={`text-[11px] font-bold ${
                                     new Date(ngo.reverificationDueAt) < new Date()
-                                      ? "text-red-700 dark:text-red-400"
-                                      : "text-gray-500 dark:text-gray-400"
+                                      ? "text-red-700"
+                                      : "text-gray-500"
                                   }`}
                                 >
                                   {new Date(ngo.reverificationDueAt) < new Date()
@@ -537,8 +537,8 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                                 </span>
                               )}
                             </div>
-                            <p className="mt-1 text-xs text-red-800 dark:text-red-300">{ngo.reverificationReason}</p>
-                            <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-500">
+                            <p className="mt-1 text-xs text-red-800">{ngo.reverificationReason}</p>
+                            <p className="mt-1 text-[11px] text-gray-500">
                               It has not been suspended and its profile is still live — nothing happens to it until you
                               decide.
                             </p>
@@ -552,20 +552,20 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                               const level = ngo.openRiskReview?.riskLevel ?? "";
                               const count = ngo.openRiskReview?.findings?.length ?? 0;
                               return (
-                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200/60 dark:border-red-900/60">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200/60">
                                   ⚠ AT RISK · {level} · {count} finding{count === 1 ? "" : "s"}
                                 </span>
                               );
                             }
                             if (verdict === "NOT_ANALYSED") {
                               return (
-                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/60">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200/60">
                                   NOT ANALYSED · no evidence
                                 </span>
                               );
                             }
                             return (
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/60">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200/60">
                                 ✓ DOCUMENTS CLEAN
                               </span>
                             );
@@ -573,17 +573,17 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                         </div>
                         <div className="flex flex-wrap gap-1 mt-2">
                           {ngo.causeCategories.map((c) => (
-                            <span key={c} className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 rounded">
+                            <span key={c} className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded">
                               {c}
                             </span>
                           ))}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-xs text-gray-700 dark:text-gray-300">
+                        <div className="text-xs text-gray-700">
                           <strong className="font-semibold">Reg No:</strong> {ngo.registrationNumber}
                         </div>
-                        <div className="text-xs text-gray-700 dark:text-gray-300 mt-1">
+                        <div className="text-xs text-gray-700 mt-1">
                           <strong className="font-semibold">PAN:</strong> {ngo.panNumber}
                         </div>
                       </td>
@@ -594,7 +594,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                             href={doc}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="block text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold underline"
+                            className="block text-xs text-emerald-600 hover:text-emerald-700 font-semibold underline"
                           >
                             Document {idx + 1} (PDF)
                           </a>
@@ -611,7 +611,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                         />
                         <button
                           onClick={() => setExpandedNgoId(expandedNgoId === ngo.id ? null : ngo.id)}
-                          className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold py-1.5 px-3 rounded-lg text-xs transition"
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-1.5 px-3 rounded-lg text-xs transition"
                         >
                           {expandedNgoId === ngo.id ? "Hide evidence" : "Evidence"}
                         </button>
@@ -632,7 +632,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                             return (
                               <span
                                 title={blocker}
-                                className="bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 font-bold py-1.5 px-3 rounded-lg text-xs cursor-not-allowed border border-gray-200 dark:border-gray-700"
+                                className="bg-gray-100 text-gray-500 font-bold py-1.5 px-3 rounded-lg text-xs cursor-not-allowed border border-gray-200"
                               >
                                 Approve blocked
                               </span>
@@ -650,7 +650,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                         })()}
                         <button
                           onClick={() => openModal(ngo, "REJECT")}
-                          className="bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:bg-red-100 font-bold py-1.5 px-3 rounded-lg text-xs transition"
+                          className="bg-red-50 text-red-600 hover:bg-red-100 font-bold py-1.5 px-3 rounded-lg text-xs transition"
                         >
                           Reject
                         </button>
@@ -658,7 +658,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                     </tr>
                     {expandedNgoId === ngo.id && (
                       <tr>
-                        <td colSpan={4} className="bg-gray-50/30 dark:bg-gray-950/10 px-8 py-5 border-b border-gray-200 dark:border-gray-800 space-y-5">
+                        <td colSpan={4} className="bg-gray-50/30 px-8 py-5 border-b border-gray-200 space-y-5">
                           {renderVerificationPanel(ngo)}
                         </td>
                       </tr>
@@ -673,19 +673,19 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
 
       {/* Modal Dialog */}
       {selectedNgo && actionType && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800">
-            <h3 className="text-lg font-extrabold text-gray-900 dark:text-white mb-2">
+        <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-200/80">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
               {actionType === "APPROVE" ? "Approve NGO" : "Reject NGO Application"}
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-xs text-gray-500 mb-4">
               {actionType === "APPROVE"
                 ? `Confirming verification for "${selectedNgo.orgName}". An approval notice will be sent.`
                 : `Enter the rejection reason for "${selectedNgo.orgName}". The NGO will be required to update credentials.`}
             </p>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 text-xs text-red-600 dark:text-red-400 rounded">
+              <div className="mb-4 p-3 bg-red-50 text-xs text-red-600 rounded">
                 {error}
               </div>
             )}
@@ -694,19 +694,19 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
               
               {/* AI Override warning callout & checkbox */}
               {actionType === "APPROVE" && selectedNgo.openRiskReview?.riskLevel === "HIGH" && (
-                <div className="p-4 bg-red-50 dark:bg-red-950/30 border-l-4 border-red-500 rounded text-xs text-red-800 dark:text-red-300 space-y-2">
-                  <p className="font-extrabold flex items-center gap-1.5 text-red-750 dark:text-red-400">
+                <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded text-xs text-red-800 space-y-2">
+                  <p className="font-bold flex items-center gap-1.5 text-red-700">
                     ⚠️ Overriding a HIGH risk finding
                   </p>
-                  <p className="font-semibold text-gray-700 dark:text-gray-300">
+                  <p className="font-semibold text-gray-700">
                     The AI flagged this NGO as possible fraud. Are you sure you want to approve? Please justify in your note.
                   </p>
-                  <label className="flex items-center gap-2 mt-2 font-bold cursor-pointer select-none text-red-700 dark:text-red-400">
+                  <label className="flex items-center gap-2 mt-2 font-bold cursor-pointer select-none text-red-700">
                     <input
                       type="checkbox"
                       checked={overrideConfirmed}
                       onChange={(e) => setOverrideConfirmed(e.target.checked)}
-                      className="rounded text-red-650 focus:ring-red-550 border-gray-300 dark:border-gray-700"
+                      className="rounded text-red-600 focus:ring-red-500 border-gray-300"
                       required
                     />
                     I confirm overriding the AI fraud flag
@@ -715,7 +715,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
               )}
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-bold text-gray-700 mb-1">
                   Administrator Note *
                 </label>
                 <textarea
@@ -730,7 +730,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                       ? "Specify mandatory justification note for AI override..."
                       : "Add verification notes..."
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-trust-500 transition resize-none"
                 />
               </div>
 
@@ -739,7 +739,7 @@ export default function AdminClient({ initialPendingNGOs }: AdminClientProps) {
                   type="button"
                   onClick={closeModal}
                   disabled={loading}
-                  className="px-4 py-2 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                  className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-50 transition"
                 >
                   Cancel
                 </button>

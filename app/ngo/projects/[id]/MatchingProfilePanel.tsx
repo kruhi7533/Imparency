@@ -68,10 +68,10 @@ export default function MatchingProfilePanel({
   }
 
   const input =
-    "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white";
+    "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none";
 
   return (
-    <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
+    <section className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-base font-bold text-gray-900 dark:text-white">Beneficiary cohort & matching profile</h2>
@@ -81,7 +81,7 @@ export default function MatchingProfilePanel({
         </div>
         <span
           className={`px-3 py-0.5 rounded-full text-xs font-extrabold ${
-            readiness.ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+            readiness.ready ? "bg-emerald-50 ring-1 ring-emerald-200 text-emerald-700" : "bg-amber-50 ring-1 ring-amber-200 text-amber-700"
           }`}
         >
           {readiness.ready ? "Ready for matching" : `${readiness.missing.length} to complete`}
@@ -101,22 +101,22 @@ export default function MatchingProfilePanel({
       )}
 
       {canEdit && !editing && (
-        <button type="button" onClick={() => setEditing(true)} className="min-h-[44px] px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">
+        <button type="button" onClick={() => setEditing(true)} className="min-h-[44px] px-4 py-2 rounded-lg bg-trust-600 hover:bg-trust-700 text-white text-xs font-bold">
           Edit cohort & matching profile
         </button>
       )}
 
       {canEdit && editing && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label className="text-xs text-gray-500">
+          <label className="text-xs text-gray-600">
             Beneficiary cohort size (people)
             <input className={`${input} mt-1`} inputMode="numeric" value={beneficiaries} onChange={(e) => setBeneficiaries(e.target.value)} placeholder="e.g. 500" />
           </label>
-          <label className="text-xs text-gray-500">
+          <label className="text-xs text-gray-600">
             Duration (months)
             <input className={`${input} mt-1`} inputMode="numeric" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g. 12" />
           </label>
-          <label className="text-xs text-gray-500 md:col-span-2">
+          <label className="text-xs text-gray-600 md:col-span-2">
             Who the beneficiaries are
             <input
               className={`${input} mt-1`}
@@ -126,11 +126,11 @@ export default function MatchingProfilePanel({
               placeholder="e.g. Girls aged 14–18 in government schools of Nashik district"
             />
           </label>
-          <label className="text-xs text-gray-500">
+          <label className="text-xs text-gray-600">
             Outcome KPIs (one per line)
             <textarea className={`${input} mt-1`} rows={3} value={kpis} onChange={(e) => setKpis(e.target.value)} placeholder={"Students trained in digital skills\nAttendance rate"} />
           </label>
-          <label className="text-xs text-gray-500">
+          <label className="text-xs text-gray-600">
             Reporting cadence
             <select className={`${input} mt-1`} value={cadence} onChange={(e) => setCadence(e.target.value)}>
               <option value="">Not specified</option>
@@ -146,10 +146,10 @@ export default function MatchingProfilePanel({
             </select>
           </label>
           <div className="md:col-span-2 flex justify-end gap-2">
-            <button type="button" onClick={() => setEditing(false)} className="min-h-[44px] px-4 py-2 rounded-lg text-xs text-gray-600">
+            <button type="button" onClick={() => setEditing(false)} className="min-h-[44px] px-4 py-2 rounded-lg text-xs font-semibold bg-white border border-gray-300 text-gray-800 hover:bg-gray-50">
               Cancel
             </button>
-            <button type="button" disabled={busy} onClick={save} className="min-h-[44px] px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50">
+            <button type="button" disabled={busy} onClick={save} className="min-h-[44px] px-4 py-2 rounded-lg bg-trust-600 hover:bg-trust-700 text-white text-xs font-bold disabled:opacity-50">
               {busy ? "Saving…" : "Save matching profile"}
             </button>
           </div>

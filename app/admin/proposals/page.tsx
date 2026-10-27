@@ -20,12 +20,12 @@ export const dynamic = "force-dynamic";
 const STATUSES = ["SUBMITTED", "UNDER_REVIEW", "APPROVED", "REJECTED", "WITHDRAWN", "DRAFT"] as const;
 
 const STATUS_STYLE: Record<string, string> = {
-  SUBMITTED: "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30",
-  UNDER_REVIEW: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30",
-  APPROVED: "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30",
-  REJECTED: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30",
-  WITHDRAWN: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
-  DRAFT: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
+  SUBMITTED: "bg-amber-50 text-amber-700 border-amber-100",
+  UNDER_REVIEW: "bg-blue-50 text-blue-700 border-blue-100",
+  APPROVED: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  REJECTED: "bg-red-50 text-red-700 border-red-100",
+  WITHDRAWN: "bg-gray-100 text-gray-600 border-gray-200",
+  DRAFT: "bg-gray-100 text-gray-600 border-gray-200",
 };
 
 export default async function AdminProposalsPage({
@@ -70,11 +70,11 @@ export default async function AdminProposalsPage({
   const waiting = proposals.filter((p) => p.status === "SUBMITTED" || p.status === "UNDER_REVIEW").length;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <SupersededTrackNotice page="proposals" />
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Proposals</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Proposals</h1>
+        <p className="mt-1 text-sm text-gray-500 max-w-2xl">
           What shortlisted organisations propose to do with the funding. A proposal can only be
           submitted by an organisation this opportunity was actually shortlisted for.
         </p>
@@ -85,12 +85,12 @@ export default async function AdminProposalsPage({
             name="q"
             defaultValue={q}
             placeholder="Search proposal, organisation or opportunity…"
-            className="flex-1 min-w-[260px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="flex-1 min-w-[260px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500"
           />
           <AutoSubmitSelect
             name="status"
             defaultValue={status}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
           >
             <option value="">All statuses</option>
             {STATUSES.map((s) => (
@@ -101,13 +101,13 @@ export default async function AdminProposalsPage({
           </AutoSubmitSelect>
           <button
             type="submit"
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+            className="rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white hover:bg-trust-700"
           >
             Search
           </button>
         </form>
 
-        <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-4 text-xs text-gray-500">
           {proposals.length} shown · {waiting} awaiting a decision
         </p>
 
@@ -116,7 +116,7 @@ export default async function AdminProposalsPage({
             <Link
               key={p.id}
               href={`/admin/proposals/${p.id}`}
-              className="block rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm hover:border-emerald-200 dark:hover:border-emerald-900/40 transition"
+              className="block rounded-xl border border-gray-200/80 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:border-emerald-200 transition"
             >
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="min-w-0">
@@ -126,20 +126,20 @@ export default async function AdminProposalsPage({
                     >
                       {p.status.replace(/_/g, " ")}
                     </span>
-                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-gray-400">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
                       {p.ngo.orgName}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm font-bold text-gray-900 dark:text-white">{p.title}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="mt-1 text-sm font-bold text-gray-900">{p.title}</p>
+                  <p className="text-xs text-gray-500">
                     for {p.opportunity.title} · {p.opportunity.funderName}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">
+                  <p className="text-sm font-bold text-gray-900">
                     {formatCompactINR(Number(p.requestedAmount))}
                   </p>
-                  <p className="text-[11px] text-gray-400 dark:text-gray-600">
+                  <p className="text-[11px] text-gray-500">
                     {p.submittedAt
                       ? `submitted ${p.submittedAt.toLocaleDateString("en-IN")}`
                       : "not submitted"}
@@ -150,11 +150,11 @@ export default async function AdminProposalsPage({
           ))}
 
           {proposals.length === 0 && (
-            <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-16 text-center">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+            <div className="rounded-xl border border-dashed border-gray-200 bg-white py-16 text-center">
+              <p className="text-sm font-medium text-gray-500">
                 No proposals match this view.
               </p>
-              <p className="mt-1 text-xs text-gray-400 dark:text-gray-600">
+              <p className="mt-1 text-xs text-gray-500">
                 Proposals appear once a shortlisted organisation submits one.
               </p>
             </div>

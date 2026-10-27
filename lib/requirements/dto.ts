@@ -1,4 +1,9 @@
-import { normalizeFields, averageConfidence, FORM_ENTRY_AGENT, type RequirementFields } from "./provenance";
+import { normalizeFields, averageConfidence, FORM_ENTRY_AGENT, RULE_EXTRACTION_AGENT, CLAUDE_EXTRACTION_AGENT, type RequirementFields } from "./provenance";
+import { readFlags, type ExtractionFlag } from "./extraction-checks";
+
+/** `modelVersion` of a document requirement whose details the donor typed in after extraction failed. */
+export const MANUAL_ENTRY_MODEL = "manual-entry-after-failed-extraction";
+import { readStoredError, type StoredExtractionError } from "./extraction-errors";
 
 /**
  * Server → client shapes. Never include `storageKey` (private storage path) or
@@ -29,6 +34,12 @@ export interface RequirementDTO {
   /** Typed into the structured form rather than extracted from a document. */
   isFormEntry: boolean;
   status: string;
+  /** How the fields were produced: CLAUDE / GEMINI (model), deterministic RULES, the donor FORM, or null before extraction. */
+  extractionMethod: "CLAUDE" | "GEMINI" | "RULES" | "FORM" | "MANUAL" | null;
+  /** Deterministic warnings (budget conflict, suspected prompt injection). */
+  extractionFlags: ExtractionFlag[];
+  /** Why the last extraction failed (FAILED status), as { code, message, retryable }. */
+  extractionError: StoredExtractionError | null;
   version: number;
   versionNote: string | null;
   versionAuthorRole: string | null;
@@ -62,6 +73,20 @@ export function serializeRequirement(req: any, opts: { includeRawText?: boolean 
     hasDocument: !!req.storageKey,
     isFormEntry: req.extractedByAgent === FORM_ENTRY_AGENT,
     status: req.status,
+    extractionMethod:
+      req.modelVersion === MANUAL_ENTRY_MODEL
+        ? "MANUAL"
+        : req.extractedByAgent === FORM_ENTRY_AGENT
+        ? "FORM"
+        : req.extractedByAgent === RULE_EXTRACTION_AGENT
+        ? "RULES"
+        : req.extractedByAgent === CLAUDE_EXTRACTION_AGENT
+        ? "CLAUDE"
+        : ["UPLOADED", "PROCESSING", "FAILED"].includes(req.status) && !Object.keys(req.extractedFields ?? {}).length
+        ? null
+        : "GEMINI",
+    extractionFlags: readFlags(req.extractionFlags),
+    extractionError: readStoredError(req.extractionError),
     version: req.version,
     versionNote: req.versionNote ?? null,
     versionAuthorRole: req.versionAuthorRole ?? null,
@@ -156,6 +181,10 @@ export interface MatchDTO {
   gaps: Array<{ dimension: string; severity: string; description: string; recommendation: string }>;
   explanation: string;
   invitedAt: string | null;
+  /** Admin shortlist review (ADM-006): APPROVED | REJECTED | null (not reviewed). */
+  adminDecision: string | null;
+  adminRank: number | null;
+  adminNote: string | null;
 }
 
 export interface MatchRunDTO {
@@ -171,7 +200,14 @@ export interface MatchRunDTO {
   matches: MatchDTO[];
 }
 
-export function serializeMatchRun(report: any): MatchRunDTO {
+/**
+ * `forDonor` drops the admin's per-candidate notes (why a specific NGO was
+ * excluded), which can carry internal risk judgments about that NGO — the
+ * donor sees the decision and order only (NEG-014). The run-level reviewNote
+ * is addressed to the donor and stays.
+ */
+export function serializeMatchRun(report: any, opts: { forDonor?: boolean } = {}): MatchRunDTO {
+  const internal = (v: string | null | undefined) => (opts.forDonor ? null : v ?? null);
   return {
     id: report.id,
     createdAt: iso(report.createdAt)!,
@@ -182,7 +218,16 @@ export function serializeMatchRun(report: any): MatchRunDTO {
     reviewStatus: report.reviewStatus,
     reviewNote: report.reviewNote ?? null,
     reviewedAt: iso(report.reviewedAt),
-    matches: (report.matches ?? []).map((m: any) => ({
+    // Once an admin has approved the shortlist, everyone sees it in the admin's
+    // order: approved by adminRank, then the rest as ranked by the engine.
+    matches: [...(report.matches ?? [])]
+      .sort((a: any, b: any) => {
+        if (report.reviewStatus !== "APPROVED") return 0;
+        const ra = a.adminDecision === "APPROVED" ? a.adminRank ?? 9999 : 10000;
+        const rb = b.adminDecision === "APPROVED" ? b.adminRank ?? 9999 : 10000;
+        return ra - rb;
+      })
+      .map((m: any) => ({
       id: m.id,
       projectId: m.projectId,
       ngoId: m.ngoId,
@@ -197,6 +242,9 @@ export function serializeMatchRun(report: any): MatchRunDTO {
       gaps: m.gaps ?? [],
       explanation: m.explanation,
       invitedAt: iso(m.invitedAt),
+      adminDecision: m.adminDecision ?? null,
+      adminRank: m.adminRank ?? null,
+      adminNote: internal(m.adminNote),
     })),
   };
 }

@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Search } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import NotificationBell from "./NotificationBell";
@@ -19,6 +20,7 @@ const NGO_LINKS: NavLink[] = [
   { href: "/ngo/opportunities", label: "CSR Opportunities", match: "prefix" },
   { href: "/ngo/contracts", label: "Contracts", match: "prefix" },
   { href: "/ngo/impact", label: "Impact", match: "prefix" },
+  { href: "/ngo/reporting", label: "Reporting", match: "prefix" },
   { href: "/ngo/bank-reconciliation", label: "Bank Reconciliation", match: "prefix" },
   { href: "/ngo/field", label: "Field App", match: "exact" },
 ];
@@ -28,6 +30,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   const isActive = (l: NavLink) => (l.match === "exact" ? pathname === l.href : !!pathname?.startsWith(l.href));
   const role = session?.user?.role;
@@ -62,10 +65,15 @@ export default function Navbar() {
   // On the donor portal the sidebar drawer is the navigation; a second menu
   // button would compete with it on a phone.
   const inDonorPortal = role === "DONOR" && !!pathname?.startsWith("/donor");
-  const menuButton = inDonorPortal ? "hidden" : role === "NGO" ? "" : "md:hidden";
+  // Inside the NGO portal its sidebar drawer is the menu; a second hamburger
+  // here would give phones two menu buttons.
+  const inNgoPortal = role === "NGO" && !!pathname?.startsWith("/ngo") && !pathname.startsWith("/ngo/register");
+  const menuButton = inDonorPortal || inNgoPortal ? "hidden" : role === "NGO" ? "" : "md:hidden";
 
   // Hide Navbar inside the Login / Signup screen to keep it focused
   if (pathname === "/login") return null;
+  // The admin console has its own top bar (app/admin/components/AdminShell.tsx).
+  if (pathname?.startsWith("/admin")) return null;
 
   const handleSignOut = () => {
     signOut({ callbackUrl: "/" });
@@ -74,48 +82,57 @@ export default function Navbar() {
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "ADMIN":
-        return "bg-red-500/10 text-red-400 border border-red-500/25";
+        return "bg-red-50 text-red-700 ring-1 ring-red-200";
       case "NGO":
-        return "bg-teal-500/10 text-teal-400 border border-teal-500/25";
+        return "bg-teal-50 text-teal-700 ring-1 ring-teal-200";
       default:
-        return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25";
+        return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
     }
   };
 
+  const linkCls = (active: boolean) =>
+    `relative py-1 whitespace-nowrap transition-colors ${
+      active
+        ? "text-trust-700 after:absolute after:inset-x-0 after:-bottom-[21px] after:h-0.5 after:bg-trust-600 after:rounded-full"
+        : "text-gray-600 hover:text-gray-900"
+    }`;
+  const menuItemCls =
+    "block px-4 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition";
+
   return (
-    <header className="border-b border-gray-900 bg-gray-950/95 sticky top-0 z-50 print:hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <header className="border-b border-gray-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85 sticky top-0 z-50 print:hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
 
         {/* Left: Branding Logo — shrink-0 + whitespace-nowrap so it can never
             be squeezed by the center nav on medium widths */}
         <div className="flex items-center gap-3 shrink-0">
-          <Link href="/" className="font-display text-xl sm:text-2xl font-semibold italic text-white tracking-tight whitespace-nowrap">
-            ImpactBridge<span className="text-gold-400">.</span>
+          <Link href="/" className="font-display text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight whitespace-nowrap">
+            ImpactBridge<span className="text-trust-600">.</span>
           </Link>
           {session?.user && (
-            <span className={`hidden sm:inline text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${getRoleBadge(session.user.role)}`}>
+            <span className={`hidden sm:inline text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${getRoleBadge(session.user.role)}`}>
               {session.user.role}
             </span>
           )}
         </div>
 
         {/* Center: Contextual Navigation Links */}
-        <nav aria-label="Main" className={`${desktopNav} items-center gap-5 text-xs font-bold text-gray-400`}>
+        <nav aria-label="Main" className={`${desktopNav} items-center gap-6 text-sm font-medium`}>
           {session?.user?.role === "NGO" ? (
             <>
-              <Link href="/" className={`text-gray-500 font-medium hover:text-gray-300 transition ${pathname === "/" ? "text-white font-bold" : ""}`}>
+              <Link href="/" aria-current={pathname === "/" ? "page" : undefined} className={linkCls(pathname === "/")}>
                 Home
               </Link>
-              <Link href="/discover" className={`text-gray-500 font-medium hover:text-gray-300 transition ${pathname === "/discover" ? "text-white font-bold" : ""}`}>
+              <Link href="/discover" aria-current={pathname === "/discover" ? "page" : undefined} className={linkCls(pathname === "/discover")}>
                 Discover NGOs
               </Link>
-              <span className="text-gray-700 select-none">|</span>
+              <span className="text-gray-300 select-none">|</span>
               {NGO_LINKS.map((l) => (
                 <Link
                   key={l.href}
                   href={l.href}
                   aria-current={isActive(l) ? "page" : undefined}
-                  className={`hover:text-white transition whitespace-nowrap ${isActive(l) ? "text-white" : ""}`}
+                  className={linkCls(isActive(l))}
                 >
                   {l.label}
                 </Link>
@@ -128,12 +145,10 @@ export default function Navbar() {
                   (app/admin/layout.tsx); this single link is just the way in
                   from the public site, so an admin who lands on the home page
                   isn't stranded with only the donor/NGO CTAs. */}
-              {session?.user?.role === "ADMIN" && (
+              {session?.user?.role === "ADMIN" && !pathname.startsWith("/admin") && (
                 <Link
                   href="/admin/today"
-                  className={`px-3.5 py-1.5 rounded-full border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200 transition ${
-                    pathname.startsWith("/admin") ? "bg-red-500/20 text-red-200" : ""
-                  }`}
+                  className="px-3.5 py-1.5 rounded-full bg-trust-50 text-trust-700 ring-1 ring-trust-200 hover:bg-trust-100 transition"
                 >
                   Admin Console →
                 </Link>
@@ -141,10 +156,10 @@ export default function Navbar() {
 
               {session?.user?.role !== "ADMIN" && (
                 <>
-                  <Link href="/" className={`hover:text-white transition ${pathname === "/" ? "text-white" : ""}`}>
+                  <Link href="/" aria-current={pathname === "/" ? "page" : undefined} className={linkCls(pathname === "/")}>
                     Home
                   </Link>
-                  <Link href="/discover" className={`hover:text-white transition ${pathname === "/discover" ? "text-white" : ""}`}>
+                  <Link href="/discover" aria-current={pathname === "/discover" ? "page" : undefined} className={linkCls(pathname === "/discover")}>
                     Discover NGOs
                   </Link>
                 </>
@@ -153,10 +168,10 @@ export default function Navbar() {
               {/* Donor role specific links */}
               {session?.user?.role === "DONOR" && (
                 <>
-                  <Link href="/donor/portfolio" className={`hover:text-white transition ${pathname === "/donor/portfolio" ? "text-white" : ""}`}>
+                  <Link href="/donor/portfolio" aria-current={pathname === "/donor/portfolio" ? "page" : undefined} className={linkCls(pathname === "/donor/portfolio")}>
                     My Impact Portfolio
                   </Link>
-                  <Link href="/donor/impact" className={`hover:text-white transition ${pathname === "/donor/impact" ? "text-white" : ""}`}>
+                  <Link href="/donor/impact" aria-current={pathname === "/donor/impact" ? "page" : undefined} className={linkCls(pathname === "/donor/impact")}>
                     Impact Feed
                   </Link>
                 </>
@@ -166,11 +181,17 @@ export default function Navbar() {
                   not just the NGO side of the platform */}
               {!session?.user && (
                 <>
-                  <Link href="/login" className={`hover:text-white transition ${pathname === "/login" ? "text-white" : ""}`}>
+                  <Link href="/login" className={linkCls(false)}>
                     Become a Donor
                   </Link>
-                  <Link href="/ngo/register" className={`hover:text-white transition ${pathname === "/ngo/register" ? "text-white" : ""}`}>
+                  <Link href="/ngo/register" aria-current={pathname === "/ngo/register" ? "page" : undefined} className={linkCls(pathname === "/ngo/register")}>
                     NGO Onboarding
+                  </Link>
+                  <Link href="/#how-it-works" className={`hidden lg:inline ${linkCls(false)}`}>
+                    How it works
+                  </Link>
+                  <Link href="/#stories" className={`hidden lg:inline ${linkCls(false)}`}>
+                    Impact Stories
                   </Link>
                 </>
               )}
@@ -179,14 +200,23 @@ export default function Navbar() {
         </nav>
 
         {/* Right: Authentication Session Controls */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-1.5 sm:gap-3">
+          {role !== "NGO" && role !== "ADMIN" && (
+            <Link
+              href="/discover"
+              aria-label="Search NGOs and campaigns"
+              className="hidden sm:flex w-10 h-10 items-center justify-center rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition"
+            >
+              <Search className="w-[18px] h-[18px]" aria-hidden="true" />
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
             aria-expanded={menuOpen}
             aria-controls="mobile-nav"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
-            className={`${menuButton} w-10 h-10 flex items-center justify-center rounded-lg text-gray-300 hover:text-white hover:bg-gray-900 transition`}
+            className={`${menuButton} w-10 h-10 flex items-center justify-center rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition`}
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               {menuOpen ? (
@@ -197,21 +227,21 @@ export default function Navbar() {
             </svg>
           </button>
           {status === "loading" ? (
-            <div className="h-8 w-8 animate-pulse bg-gray-900 rounded-full" />
+            <div className="h-9 w-9 animate-pulse bg-gray-100 rounded-full" />
           ) : session?.user ? (
-            <div className="flex items-center gap-3 relative">
+            <div className="flex items-center gap-2 sm:gap-3 relative">
               <NotificationBell />
               {/* User details */}
               <div className="hidden lg:block text-right">
-                <div className="text-xs font-extrabold text-white truncate max-w-[150px]">{session.user.name}</div>
-                <div className="text-[10px] text-gray-500 truncate max-w-[150px]">{session.user.email}</div>
+                <div className="text-sm font-semibold text-gray-900 truncate max-w-[160px]">{session.user.name}</div>
+                <div className="text-[11px] text-gray-500 truncate max-w-[160px]">{session.user.email}</div>
               </div>
 
               {/* Profile Avatar Initials Trigger */}
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 aria-label="Account menu"
-                className="w-10 h-10 rounded-full bg-trust-600/20 border border-trust-500/30 text-trust-300 font-bold flex items-center justify-center text-xs select-none hover:bg-trust-600/30 transition focus:outline-none relative overflow-hidden"
+                className="w-10 h-10 rounded-full bg-trust-50 ring-1 ring-trust-200 text-trust-700 font-semibold flex items-center justify-center text-sm select-none hover:bg-trust-100 transition relative overflow-hidden"
                 aria-haspopup="true"
                 aria-expanded={dropdownOpen}
               >
@@ -230,51 +260,39 @@ export default function Navbar() {
                   <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)}></div>
 
                   <motion.div
-                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                    initial={reduceMotion ? false : { opacity: 0, y: -6, scale: 0.97 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                    exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.97 }}
                     transition={{ duration: 0.15, ease: "easeOut" }}
-                    className="absolute right-0 top-full mt-2 w-48 bg-gray-950 border border-gray-800 rounded-xl shadow-xl py-2 z-20 origin-top-right"
+                    className="absolute right-0 top-full mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg shadow-gray-900/5 py-2 z-20 origin-top-right"
                   >
+                    <div className="px-4 pb-2 mb-1 border-b border-gray-100 lg:hidden">
+                      <div className="text-sm font-semibold text-gray-900 truncate">{session.user.name}</div>
+                      <div className="text-[11px] text-gray-500 truncate">{session.user.email}</div>
+                    </div>
                     {session.user.role === "DONOR" && (
-                      <Link
-                        href="/donor/profile"
-                        onClick={() => setDropdownOpen(false)}
-                        className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
-                      >
+                      <Link href="/donor/profile" onClick={() => setDropdownOpen(false)} className={menuItemCls}>
                         Profile
                       </Link>
                     )}
                     {session.user.role === "NGO" && (
                       <>
-                        <Link
-                          href="/ngo/settings/profile"
-                          onClick={() => setDropdownOpen(false)}
-                          className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
-                        >
+                        <Link href="/ngo/settings/profile" onClick={() => setDropdownOpen(false)} className={menuItemCls}>
                           My Profile
                         </Link>
-                        <Link
-                          href="/ngo/settings/team"
-                          onClick={() => setDropdownOpen(false)}
-                          className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
-                        >
+                        <Link href="/ngo/settings/team" onClick={() => setDropdownOpen(false)} className={menuItemCls}>
                           Team Settings
                         </Link>
-                        <Link
-                          href="/ngo/activity"
-                          onClick={() => setDropdownOpen(false)}
-                          className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
-                        >
+                        <Link href="/ngo/activity" onClick={() => setDropdownOpen(false)} className={menuItemCls}>
                           Activity &amp; Audit
                         </Link>
                         <Link
                           href="/ngo/pitch-deck"
                           onClick={() => setDropdownOpen(false)}
-                          className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center justify-between"
+                          className={`${menuItemCls} flex items-center justify-between`}
                         >
                           Pitch Deck
-                          <span className="bg-emerald-500/20 text-emerald-400 text-[9px] uppercase px-1.5 py-0.5 rounded-full font-bold leading-none">New</span>
+                          <span className="bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 text-[9px] uppercase px-1.5 py-0.5 rounded-full font-semibold leading-none">New</span>
                         </Link>
                       </>
                     )}
@@ -283,27 +301,23 @@ export default function Navbar() {
                         <Link
                           href="/admin/today"
                           onClick={() => setDropdownOpen(false)}
-                          className="block px-4 py-2 text-xs font-bold text-red-300 hover:text-red-200 hover:bg-gray-900 transition"
+                          className="block px-4 py-2 text-sm font-medium text-trust-700 hover:bg-trust-50 transition"
                         >
                           Go to Admin Panel
                         </Link>
-                        <div className="border-t border-gray-900 my-1"></div>
+                        <div className="border-t border-gray-100 my-1"></div>
                       </>
                     )}
-                    <Link
-                      href="/help"
-                      onClick={() => setDropdownOpen(false)}
-                      className="block px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-900 transition"
-                    >
+                    <Link href="/help" onClick={() => setDropdownOpen(false)} className={menuItemCls}>
                       Help
                     </Link>
-                    <div className="border-t border-gray-900 my-1"></div>
+                    <div className="border-t border-gray-100 my-1"></div>
                     <button
                       onClick={() => {
                         setDropdownOpen(false);
                         handleSignOut();
                       }}
-                      className="w-full text-left block px-4 py-2 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-gray-900 transition"
+                      className="w-full text-left block px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition"
                     >
                       Sign Out
                     </button>
@@ -316,7 +330,7 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="bg-trust-600 hover:bg-trust-500 text-white font-semibold py-2 px-4 rounded-lg text-xs transition"
+                className="bg-trust-600 hover:bg-trust-700 text-white font-semibold py-2 px-3 sm:px-4 rounded-lg text-sm shadow-sm transition whitespace-nowrap"
               >
                 Sign In / Register
               </Link>
@@ -327,7 +341,7 @@ export default function Navbar() {
       </div>
 
       {menuOpen && (
-        <nav id="mobile-nav" aria-label="Main" className={`${menuButton} border-t border-gray-900 bg-gray-950 px-4 py-3`}>
+        <nav id="mobile-nav" aria-label="Main" className={`${menuButton} border-t border-gray-200 bg-white px-4 py-3 shadow-sm`}>
           <ul className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1">
             {menuLinks.map((l) => (
               <li key={l.href}>
@@ -335,7 +349,7 @@ export default function Navbar() {
                   href={l.href}
                   onClick={() => setMenuOpen(false)}
                   aria-current={isActive(l) ? "page" : undefined}
-                  className={`block px-3 py-3 rounded-lg text-sm font-bold transition ${isActive(l) ? "bg-gray-900 text-white" : "text-gray-400 hover:text-white hover:bg-gray-900"}`}
+                  className={`block px-3 py-3 rounded-lg text-sm font-medium transition ${isActive(l) ? "bg-trust-50 text-trust-700" : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"}`}
                 >
                   {l.label}
                 </Link>

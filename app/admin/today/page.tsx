@@ -79,16 +79,16 @@ function InboxCard({
   return (
     <Link
       href={item.href}
-      className={`flex items-start gap-3 h-full rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm hover:border-emerald-200 dark:hover:border-emerald-900/40 transition ${
+      className={`flex items-start gap-3 h-full rounded-xl border border-gray-200/80 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:border-emerald-200 transition ${
         chased ? "opacity-50" : ""
       }`}
     >
-      <div className="h-9 w-9 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0">
+      <div className="h-9 w-9 rounded-xl bg-gray-50 text-gray-500 flex items-center justify-center shrink-0">
         <Icon size={17} strokeWidth={2.2} />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] font-extrabold uppercase tracking-wide text-gray-400">{item.queue}</span>
+          <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500">{item.queue}</span>
           <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${style.classes}`}>{style.label}</span>
           {/* A broken promise is its own fact, separate from how bad the thing
               is — see isBreached() in lib/today-inbox.ts. */}
@@ -101,8 +101,8 @@ function InboxCard({
         {/* Clamped, not truncated: a fraud alert's whole point is in its
             description, and one clipped line hides which organisation it
             names. */}
-        <p className="text-sm font-bold text-gray-900 dark:text-white line-clamp-2">{item.title}</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{item.subtitle}</p>
+        <p className="text-sm font-bold text-gray-900 line-clamp-2">{item.title}</p>
+        <p className="text-xs text-gray-500 line-clamp-2">{item.subtitle}</p>
         {/* The individual problems behind a grouped row. Without these the
             grouping would have hidden the detail it replaced. */}
         {item.details && item.details.length > 0 && (
@@ -110,9 +110,9 @@ function InboxCard({
             {item.details.map((detail, i) => (
               <li
                 key={i}
-                className="text-[11px] text-gray-500 dark:text-gray-400 pl-3 relative line-clamp-1"
+                className="text-[11px] text-gray-500 pl-3 relative line-clamp-1"
               >
-                <span className="absolute left-0 text-gray-300 dark:text-gray-600">·</span>
+                <span className="absolute left-0 text-gray-300">·</span>
                 {detail}
               </li>
             ))}
@@ -140,7 +140,7 @@ function OlderItems({ counts }: { counts?: Map<string, number> }) {
         <li key={queue}>
           <Link
             href={`/admin/today?queue=${encodeURIComponent(queue)}&all=1`}
-            className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline"
+            className="text-[11px] text-gray-500 hover:text-emerald-600 hover:underline"
           >
             +{count} older in {queue} →
           </Link>
@@ -151,9 +151,9 @@ function OlderItems({ counts }: { counts?: Map<string, number> }) {
 }
 
 const SEVERITY_STYLE: Record<Severity, { label: string; classes: string }> = {
-  high: { label: "Needs attention", classes: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30" },
-  medium: { label: "Worth a look", classes: "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30" },
-  low: { label: "FYI", classes: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30" },
+  high: { label: "Needs attention", classes: "bg-red-50 text-red-700 border-red-100" },
+  medium: { label: "Worth a look", classes: "bg-amber-50 text-amber-700 border-amber-100" },
+  low: { label: "FYI", classes: "bg-blue-50 text-blue-700 border-blue-100" },
 };
 
 /**
@@ -248,18 +248,18 @@ export default async function TodayInboxPage({
   const [primary, ...secondary] = byCategory;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       {/* Advances the "new since" marker, after this render, in the browser. */}
       <MarkVisited />
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
             <ListChecks size={24} strokeWidth={2.2} />
           </div>
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Today</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Today</h1>
+            <p className="mt-1 text-sm text-gray-500 max-w-2xl">
               {showAll
                 ? "Everything still open in this queue, however long it has been waiting."
                 : "New since you last looked, plus anything urgent enough not to wait. Older routine work stays in its own queue, counted below."}
@@ -287,8 +287,8 @@ export default async function TodayInboxPage({
               href="/admin/today"
               className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
                 !activeQueue
-                  ? "bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white"
-                  : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  ? "bg-trust-600 text-white border-trust-600"
+                  : "border-gray-200 text-gray-600 hover:bg-gray-100"
               }`}
             >
               All · {items.length}
@@ -299,7 +299,7 @@ export default async function TodayInboxPage({
                 className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
                   onlyBreached
                     ? "bg-red-600 text-white border-red-600"
-                    : "border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+                    : "border-red-200 text-red-700 hover:bg-red-50"
                 }`}
               >
                 Past target · {breached.length}
@@ -308,7 +308,7 @@ export default async function TodayInboxPage({
             {(showAll || onlyBreached) && (
               <Link
                 href="/admin/today"
-                className="px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                className="px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-200 text-emerald-700 hover:bg-emerald-50"
               >
                 ← Back to today only
               </Link>
@@ -319,8 +319,8 @@ export default async function TodayInboxPage({
                 href={`/admin/today?queue=${encodeURIComponent(queue)}`}
                 className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
                   activeQueue === queue
-                    ? "bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white"
-                    : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    ? "bg-trust-600 text-white border-trust-600"
+                    : "border-gray-200 text-gray-600 hover:bg-gray-100"
                 }`}
               >
                 {queue} · {count}
@@ -333,25 +333,25 @@ export default async function TodayInboxPage({
             Today is opened to answer "what do I do now", so a category nobody
             is blocked on must not take an equal share of the screen. */}
         {items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-16 text-center">
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+          <div className="rounded-xl border border-dashed border-gray-200 bg-white py-16 text-center">
+            <p className="text-sm font-medium text-gray-500">
               Nothing waiting on you right now. Every queue is caught up. 🎉
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
             <section className="lg:col-span-3 min-w-0">
-              <div className="mb-3 pb-2 border-b border-gray-200 dark:border-gray-800">
-                <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400">
+              <div className="mb-3 pb-2 border-b border-gray-200">
+                <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500">
                   {primary.category}{" "}
-                  <span className="text-gray-300 dark:text-gray-600">· {primary.items.length}</span>
+                  <span className="text-gray-300">· {primary.items.length}</span>
                 </h2>
-                <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-600">
+                <p className="mt-0.5 text-[11px] text-gray-500">
                   {CATEGORY_HINT[primary.category]}
                 </p>
               </div>
               {primary.items.length === 0 ? (
-                <p className="py-6 text-xs text-gray-400 dark:text-gray-600">
+                <p className="py-6 text-xs text-gray-500">
                   Nothing new or urgent. You are caught up for today.
                 </p>
               ) : (
@@ -369,17 +369,17 @@ export default async function TodayInboxPage({
             <aside className="lg:col-span-1 min-w-0 space-y-6">
               {secondary.map(({ category, items: groupItems }) => (
                 <section key={category} className="min-w-0">
-                  <div className="mb-3 pb-2 border-b border-gray-200 dark:border-gray-800">
-                    <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400">
+                  <div className="mb-3 pb-2 border-b border-gray-200">
+                    <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500">
                       {category}{" "}
-                      <span className="text-gray-300 dark:text-gray-600">· {groupItems.length}</span>
+                      <span className="text-gray-300">· {groupItems.length}</span>
                     </h2>
-                    <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-600">
+                    <p className="mt-0.5 text-[11px] text-gray-500">
                       {CATEGORY_HINT[category]}
                     </p>
                   </div>
                   {groupItems.length === 0 ? (
-                    <p className="py-4 text-xs text-gray-400 dark:text-gray-600">Nothing here.</p>
+                    <p className="py-4 text-xs text-gray-500">Nothing here.</p>
                   ) : (
                     (() => {
                       // Already-chased items sink to the bottom, dimmed, rather

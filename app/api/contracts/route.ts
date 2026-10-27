@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { donorCan, resolveDonorAccount, ROLE_FORBIDDEN } from "@/lib/donor-team";
 import { createContract, parseRupees } from "@/lib/contract-service";
+import { getNgoMembership } from "@/lib/tenant-scope";
 
 export async function GET(request: Request) {
   try {
@@ -24,15 +25,12 @@ export async function GET(request: Request) {
       // A donor team member sees their organisation's contracts (lib/donor-team.ts).
       where.donorId = (await resolveDonorAccount(userId)).accountId;
     } else if (userRole === "NGO") {
-      // Find NGO Profile for this user
-      const ngoProfile = await prisma.nGOProfile.findUnique({
-        where: { userId },
-        select: { id: true },
-      });
-      if (!ngoProfile) {
+      // The caller's NGO by live membership — owner or team member (lib/tenant-scope.ts).
+      const member = await getNgoMembership(userId);
+      if (!member) {
         return NextResponse.json({ contracts: [] });
       }
-      where.ngoId = ngoProfile.id;
+      where.ngoId = member.ngoId;
     } else if (userRole !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
@@ -132,7 +130,22 @@ export async function POST(request: Request) {
       if (!body.donorId) {
         return NextResponse.json({ error: "donorId is required when an NGO drafts a contract." }, { status: 400 });
       }
-      donorId = body.donorId;
+      // Workstream E (cross-tenant write): an NGO may not put a draft into an
+      // arbitrary user's contract list. The donor must be a donor ACCOUNT the
+      // NGO already deals with — through the CSR requirement this contract
+      // answers (createContract checks requirement.sponsorId === donorId) or
+      // an earlier contract between the two.
+      const donor = await prisma.user.findUnique({ where: { id: String(body.donorId) }, select: { role: true } });
+      if (donor?.role !== "DONOR" || (await prisma.donorTeamMember.findUnique({ where: { userId: String(body.donorId) }, select: { id: true } }))) {
+        return NextResponse.json({ error: "Donor not found." }, { status: 404 });
+      }
+      const related = requirementId
+        ? true
+        : (await prisma.contract.count({ where: { donorId: String(body.donorId), ngoId: ngoProfile.id } })) > 0;
+      if (!related) {
+        return NextResponse.json({ error: "You can only draft a contract for a donor you already work with (via their CSR requirement or an earlier contract)." }, { status: 403 });
+      }
+      donorId = String(body.donorId);
       ngoId = ngoProfile.id;
     } else {
       // Admin creating on behalf

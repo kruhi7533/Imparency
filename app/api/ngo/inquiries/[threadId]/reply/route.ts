@@ -1,4 +1,5 @@
 import { checkRateLimit } from "@/lib/rate-limiter";
+import { getNgoMembership, ngoCan } from "@/lib/tenant-scope";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
@@ -28,13 +29,16 @@ export async function POST(
     }
 
     // Retrieve NGO Profile associated with this user
-    let ngoId = (session.user as any).ngoProfileId;
-    if (!ngoId) {
-      const profile = await prisma.nGOProfile.findUnique({
-        where: { userId: session.user.id },
-        select: { id: true },
-      });
-      ngoId = profile?.id;
+    // Live membership with programme rights (lib/tenant-scope.ts) — replying
+    // to a donor speaks for the organisation, so field workers and finance
+    // staff cannot, and the JWT's ngoProfileId is never trusted for it.
+    let ngoId: string | undefined;
+    if (session.user.role === "NGO") {
+      const member = await getNgoMembership(session.user.id);
+      if (member && !ngoCan(member.teamRole, "manageProgramme")) {
+        return NextResponse.json({ error: "Your role cannot reply to donors on behalf of the organisation." }, { status: 403 });
+      }
+      ngoId = member?.ngoId;
     }
 
     if (!ngoId && session.user.role !== "ADMIN") {

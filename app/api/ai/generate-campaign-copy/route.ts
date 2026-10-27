@@ -2,6 +2,7 @@ import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { verifySessionRole } from "@/lib/auth-guards";
+import { callAi } from "@/lib/ai/telemetry";
 
 export async function POST(request: Request) {
   const rl = await checkRateLimit(request, "ai/campaign-copy", 10, 60);
@@ -94,10 +95,10 @@ Be concrete and specific. Write in third person.
 Return ONLY the description text, no preamble, no markdown formatting.`;
     }
 
-    const geminiResponse = await ai.models.generateContent({
+    const geminiResponse = await callAi({ site: "generate-campaign-copy", model: "gemini-3.6-flash", promptVersion: "v1" }, () => ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents: prompt,
-    });
+    }));
 
     const generatedText = geminiResponse.text?.trim() || "";
     if (!generatedText) {
@@ -108,8 +109,9 @@ Return ONLY the description text, no preamble, no markdown formatting.`;
   } catch (err: any) {
     console.error("AI Copywriting generation endpoint error:", err);
     return NextResponse.json(
-      { error: "Generation failed, please try again or write manually." },
-      { status: 500 }
+      // AI-010: a structured "AI unavailable" — the form stays usable by hand.
+      { error: "Generation failed, please try again or write manually.", code: "AI_UNAVAILABLE", humanReviewRequired: true },
+      { status: 503 }
     );
   }
 }

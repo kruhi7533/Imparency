@@ -118,30 +118,30 @@ export default function PitchDeckSection() {
   ];
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg mt-8">
+    <div className="bg-white border border-gray-200/80 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)] mt-8">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-slate-800 bg-slate-800/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="px-6 py-5 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-teal-500/20 text-teal-400 rounded-lg">
+          <div className="p-2.5 bg-trust-50 text-trust-700 rounded-lg">
             <FaFilePowerpoint className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-100">Donor Pitch Deck</h3>
-            <p className="text-sm text-slate-400 mt-0.5">Share ImpactBridge's story with potential donors — foreign or Indian</p>
+            <h3 className="text-lg font-semibold text-gray-900">Donor Pitch Deck</h3>
+            <p className="text-sm text-gray-600 mt-0.5">Share ImpactBridge's story with potential donors — foreign or Indian</p>
           </div>
         </div>
         
         {meta && meta.leadCount > 0 && (
-          <div className="ml-auto hidden sm:flex bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-full items-center">
+          <div className="ml-auto hidden sm:flex bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full items-center">
             {meta.leadCount} {meta.leadCount === 1 ? 'download' : 'downloads'}
           </div>
         )}
 
         <button 
           onClick={shareLink}
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors border border-slate-700 shrink-0"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-800 rounded-lg text-sm font-medium transition-colors border border-gray-300 shrink-0"
         >
-          {shared ? <FaCheck className="text-emerald-400" /> : <FaShareAlt />}
+          {shared ? <FaCheck className="text-emerald-600" /> : <FaShareAlt />}
           {shared ? "Link copied!" : "Share Link"}
         </button>
       </div>
@@ -188,7 +188,7 @@ export default function PitchDeckSection() {
           </div>
           
           <div className="text-center mb-6">
-            <p className="text-sm font-medium text-slate-400">
+            <p className="text-sm font-medium text-gray-600">
               12 slides · {meta?.fileSizeKb ? `${meta.fileSizeKb} KB` : 'PPTX'} · Updated automatically
               {meta?.generatedAt && (
                 <> · Last generated: {new Date(meta.generatedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</>
@@ -202,7 +202,7 @@ export default function PitchDeckSection() {
                 <select 
                   value={selectedProjectId}
                   onChange={(e) => setSelectedProjectId(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 text-slate-300 font-medium text-sm rounded-lg focus:ring-teal-500 focus:border-teal-500 block p-2.5 transition-colors cursor-pointer mb-2"
+                  className="w-full bg-white border border-gray-300 text-gray-900 font-medium text-sm rounded-lg focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 block p-2.5 transition-colors cursor-pointer mb-2"
                 >
                   <option value="organization">Organizational Deck (Generic)</option>
                   {projects.map(p => (
@@ -213,7 +213,7 @@ export default function PitchDeckSection() {
                 <select 
                   value={audience}
                   onChange={(e) => setAudience(e.target.value as 'indian' | 'foreign')}
-                  className="w-full bg-slate-800 border border-slate-700 text-slate-300 font-medium text-sm rounded-lg focus:ring-teal-500 focus:border-teal-500 block p-2.5 transition-colors cursor-pointer"
+                  className="w-full bg-white border border-gray-300 text-gray-900 font-medium text-sm rounded-lg focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 block p-2.5 transition-colors cursor-pointer"
                 >
                   <option value="indian">Audience: Indian Donors (₹ INR)</option>
                   <option value="foreign">Audience: Foreign/NRI Donors ($ USD)</option>
@@ -224,7 +224,7 @@ export default function PitchDeckSection() {
             <button
               onClick={downloadDeck}
               disabled={dlState === 'loading'}
-              className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-trust-600 hover:bg-trust-700 disabled:bg-gray-200 disabled:text-gray-500 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
             >
               {dlState === 'loading' && <><FaSpinner className="animate-spin" /> Generating deck...</>}
               {dlState === 'success' && <><FaCheck /> Downloaded!</>}
@@ -237,12 +237,12 @@ export default function PitchDeckSection() {
                 <button
                   onClick={regenerateDeck}
                   disabled={regenState === 'loading' || dlState === 'loading'}
-                  className="w-full flex items-center justify-center gap-2 bg-transparent hover:bg-slate-800 border border-slate-700 disabled:border-slate-800 disabled:text-slate-600 text-slate-300 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                  className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 border border-gray-300 disabled:border-gray-200 disabled:text-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
                 >
                   {regenState === 'loading' ? (
                     <><FaSpinner className="animate-spin" /> Regenerating...</>
                   ) : regenState === 'success' ? (
-                    <><FaCheck className="text-emerald-400" /> Deck updated!</>
+                    <><FaCheck className="text-emerald-600" /> Deck updated!</>
                   ) : regenState === 'error' ? (
                     "Regeneration failed — retry"
                   ) : (
@@ -256,38 +256,38 @@ export default function PitchDeckSection() {
 
         {/* Right Column */}
         <div className="flex flex-col">
-          <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">Slide Overview</h4>
+          <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Slide Overview</h4>
           
           <div className="flex items-center flex-wrap gap-2 mb-4">
-            <span className="text-xs text-slate-500 mr-1">Designed for:</span>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-300 bg-slate-800 border border-slate-700 px-2 py-1 rounded-md">Indian donors</span>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-300 bg-slate-800 border border-slate-700 px-2 py-1 rounded-md">Foreign / NRI donors</span>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-300 bg-slate-800 border border-slate-700 px-2 py-1 rounded-md">CSR teams</span>
+            <span className="text-xs text-gray-500 mr-1">Designed for:</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-gray-700 bg-gray-50 border border-gray-200 px-2 py-1 rounded-md">Indian donors</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-gray-700 bg-gray-50 border border-gray-200 px-2 py-1 rounded-md">Foreign / NRI donors</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-gray-700 bg-gray-50 border border-gray-200 px-2 py-1 rounded-md">CSR teams</span>
           </div>
 
-          <div className="flex-1 bg-slate-950/50 border border-slate-800/50 rounded-lg p-2">
+          <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2">
             <div className="space-y-1">
               {slides.map((slide) => (
                 <React.Fragment key={slide.num}>
-                  <div className="flex items-start gap-3 p-2.5 rounded hover:bg-slate-800/50 transition-colors">
-                    <div className="flex items-center justify-center min-w-6 h-6 rounded bg-slate-800 text-teal-400 text-xs font-bold shrink-0 mt-0.5">
+                  <div className="flex items-start gap-3 p-2.5 rounded hover:bg-white transition-colors">
+                    <div className="flex items-center justify-center min-w-6 h-6 rounded bg-trust-50 text-trust-700 text-xs font-bold shrink-0 mt-0.5">
                       {slide.num}
                     </div>
                     <div>
-                      <h5 className="text-sm font-medium text-slate-200 flex items-center gap-2">
+                      <h5 className="text-sm font-medium text-gray-900 flex items-center gap-2">
                         {slide.title}
                         {(slide.num === 5 || slide.num === 11) && (
                           <span title="Most impactful slide" className="text-amber-500 text-sm cursor-help">★</span>
                         )}
                       </h5>
-                      <p className="text-xs text-slate-400 mt-0.5 leading-snug">{slide.desc}</p>
+                      <p className="text-xs text-gray-600 mt-0.5 leading-snug">{slide.desc}</p>
                     </div>
                   </div>
                   {slide.num === 7 && (
-                    <div className="flex items-center my-2 opacity-50">
-                      <div className="flex-1 h-px bg-slate-700"></div>
-                      <div className="mx-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider">Technical & Financial</div>
-                      <div className="flex-1 h-px bg-slate-700"></div>
+                    <div className="flex items-center my-2 opacity-80">
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                      <div className="mx-2 text-[10px] uppercase font-bold text-gray-600 tracking-wider">Technical & Financial</div>
+                      <div className="flex-1 h-px bg-gray-300"></div>
                     </div>
                   )}
                 </React.Fragment>

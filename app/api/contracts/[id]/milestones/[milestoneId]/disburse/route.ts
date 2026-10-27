@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { checkDonorAction, ROLE_FORBIDDEN } from "@/lib/donor-team";
 import { disburseMilestone } from "@/lib/contract-service";
+import { notifyDonorMilestone } from "@/lib/contract-funding";
 
 export async function POST(
   request: Request,
@@ -49,6 +50,12 @@ export async function POST(
       actorRole: userRole as "DONOR" | "ADMIN",
       note: body.note,
     });
+
+    // DON-012: the donor hears that the milestone completed (in-app, honouring
+    // their impact-subscription preferences). disburseMilestone refuses an
+    // already-DISBURSED milestone, so this fires once per milestone.
+    const done = updated?.milestones.find((m) => m.id === milestoneId);
+    if (done) await notifyDonorMilestone({ contractId, milestones: [{ id: done.id, title: done.title }], event: "COMPLETED" });
 
     return NextResponse.json({ contract: updated });
   } catch (error: any) {

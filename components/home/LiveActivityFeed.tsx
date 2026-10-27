@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { BadgeCheck } from "lucide-react";
 import type { RecentDonationActivity } from "@/lib/platform-stats";
 
@@ -23,6 +23,7 @@ function timeAgo(iso: string): string {
 export default function LiveActivityFeed({ activity }: { activity: RecentDonationActivity[] }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (activity.length <= 1 || paused) return;
@@ -36,9 +37,9 @@ export default function LiveActivityFeed({ activity }: { activity: RecentDonatio
     return (
       <Link
         href="/discover"
-        className="max-w-xl mx-auto flex items-center justify-center gap-2.5 border border-gray-800 rounded-lg bg-gray-900/70 px-6 py-4 hover:border-gold-500/40 transition"
+        className="w-full flex items-center justify-center gap-2.5 border border-gray-200 rounded-xl bg-white px-6 py-4 hover:border-trust-200 transition"
       >
-        <span className="font-display italic text-base text-gold-200">
+        <span className="font-display italic text-base text-gray-700">
           &ldquo;Trust isn&rsquo;t claimed, it&rsquo;s shown — one verified milestone at a time.&rdquo;
         </span>
       </Link>
@@ -49,7 +50,7 @@ export default function LiveActivityFeed({ activity }: { activity: RecentDonatio
 
   return (
     <div
-      className="max-w-xl mx-auto h-12 relative"
+      className="w-full h-14 relative" aria-live="off"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -58,19 +59,19 @@ export default function LiveActivityFeed({ activity }: { activity: RecentDonatio
       <AnimatePresence mode="wait">
         <motion.div
           key={current.id}
-          initial={{ opacity: 0, y: 8 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
+          exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="absolute inset-0 flex items-center gap-3 border border-gray-800 rounded-lg bg-gray-900/70 px-4 text-left"
+          className="absolute inset-0 flex items-center gap-3 border border-gray-200/80 rounded-xl bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] px-4 text-left"
         >
-          <BadgeCheck className="w-4 h-4 shrink-0 text-emerald-400" strokeWidth={1.75} />
-          <span className="text-sm text-gray-300 truncate min-w-0">
-            <span className="text-white font-semibold">{current.donorFirstName}</span> funded{" "}
-            <span className="text-gray-400">{current.projectTitle}</span>
+          <BadgeCheck className="w-4 h-4 shrink-0 text-emerald-600" strokeWidth={1.75} />
+          <span className="text-sm text-gray-600 truncate min-w-0">
+            <span className="text-gray-900 font-semibold">{current.donorFirstName}</span> funded{" "}
+            <span className="text-gray-700">{current.projectTitle}</span>
           </span>
           <span className="ml-auto flex items-baseline gap-3 shrink-0">
-            <span className="font-mono text-sm text-gold-300 tabular-nums">
+            <span className="font-mono text-sm font-semibold text-emerald-700 tabular-nums">
               ₹{current.amount.toLocaleString("en-IN")}
             </span>
             <span className="font-mono text-[10px] text-gray-500">{timeAgo(current.createdAt)}</span>

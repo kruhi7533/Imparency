@@ -3,6 +3,7 @@ import { captureError } from "@/lib/observability";
 import { log } from "@/lib/logger";
 import { withRequestContext } from "@/lib/request-context";
 import { jobByName } from "@/lib/job-registry";
+import { recordDeadLetter } from "@/lib/dead-letter";
 
 /**
  * The seam every scheduled job runs through, so that a job which stops working
@@ -224,6 +225,18 @@ export async function runJob<T>(
         });
 
         captureError(err, { scope: `cron/${name}`, operation: "scheduled_run" });
+
+        // ADM-018: a failed run lands in the operator dead-letter queue, ids
+        // only, so it can be inspected and replayed once from /admin/dead-letters.
+        if (runId) {
+          await recordDeadLetter({
+            kind: "JOB_RUN",
+            sourceId: runId,
+            refs: { job: name, jobRunId: runId, correlationId: ctx.correlationId },
+            errorMessage: `${name_}: ${message}`,
+            attempts: 1,
+          });
+        }
         log.error("job.failed", {
           job: name,
           durationMs: Date.now() - startedAt.getTime(),

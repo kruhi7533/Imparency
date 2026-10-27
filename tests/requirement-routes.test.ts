@@ -371,14 +371,18 @@ describe("gap analysis gate and authorization", () => {
     expect(db.gapReport.update).not.toHaveBeenCalled();
   });
 
-  it("an admin approves an analysis; rejecting needs a note", async () => {
+  it("a bare analysis approve is refused (ADM-006 uses the ordered shortlist review); rejecting needs a note", async () => {
     signIn(ADMIN);
     db.gapReport.findUnique.mockResolvedValue(report);
     expect((await putReport(put({ action: "reject" }) as any, reportCtx)).status).toBe(400);
-    expect((await putReport(put({ action: "approve" }) as any, reportCtx)).status).toBe(200);
+    const res = await putReport(put({ action: "approve" }) as any, reportCtx);
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe("USE_SHORTLIST_REVIEW");
+    expect(db.gapReport.update).not.toHaveBeenCalled();
+    expect((await putReport(put({ action: "reject", note: "Scores look stale" }) as any, reportCtx)).status).toBe(200);
     expect(db.gapReport.update).toHaveBeenCalledWith({
       where: { id: "gap-1" },
-      data: expect.objectContaining({ reviewStatus: "APPROVED", reviewedBy: "admin-1" }),
+      data: expect.objectContaining({ reviewStatus: "REJECTED", reviewedBy: "admin-1" }),
     });
   });
 });

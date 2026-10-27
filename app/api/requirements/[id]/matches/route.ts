@@ -9,7 +9,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   try {
     const actor = await requireActor();
     const run = await getLatestMatchRun(params.id, actor);
-    return NextResponse.json({ run: run ? serializeMatchRun(run) : null });
+    return NextResponse.json({ run: run ? serializeMatchRun(run, { forDonor: actor.role !== "ADMIN" }) : null });
   } catch (err) {
     return errorResponse(err, "api/requirements/[id]/matches GET");
   }
@@ -21,7 +21,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
     const actor = await requireActor();
     const result = await runMatching(params.id, actor);
     const run = await getLatestMatchRun(params.id, actor);
-    return NextResponse.json({ ...result, run: run ? serializeMatchRun(run) : null });
+    return NextResponse.json({ ...result, run: run ? serializeMatchRun(run, { forDonor: actor.role !== "ADMIN" }) : null });
   } catch (err) {
     return errorResponse(err, "api/requirements/[id]/matches POST");
   }

@@ -32,22 +32,22 @@ export default function CrisisProgressBar({
   return (
     <div className={compact ? "space-y-1.5" : "space-y-2"}>
       {pct !== null ? (
-        <div className="h-2 w-full rounded-full bg-gray-800 overflow-hidden">
+        <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-red-500 to-gold-400 transition-all duration-700"
+            className="h-full rounded-full bg-gradient-to-r from-red-500 to-amber-400 transition-all duration-700"
             style={{ width: `${pct}%` }}
           />
         </div>
       ) : (
-        <div className="h-2 w-full rounded-full bg-gradient-to-r from-red-500/40 to-gold-400/40" />
+        <div className="h-2 w-full rounded-full bg-gradient-to-r from-red-200 to-amber-200" />
       )}
 
       <div className={`flex items-center justify-between flex-wrap gap-x-4 gap-y-1 ${compact ? "text-[11px]" : "text-xs"}`}>
-        <span className="font-bold text-white">
+        <span className="font-bold text-gray-900">
           ₹{totalRaised.toLocaleString("en-IN")}
-          {targetAmount ? <span className="text-gray-400 font-medium"> / ₹{targetAmount.toLocaleString("en-IN")}</span> : null}
+          {targetAmount ? <span className="text-gray-600 font-medium"> / ₹{targetAmount.toLocaleString("en-IN")}</span> : null}
         </span>
-        <span className="text-gray-400 font-mono uppercase tracking-wide text-[10px]">
+        <span className="text-gray-600 font-mono uppercase tracking-wide text-[10px]">
           {totalDonors.toLocaleString("en-IN")} donor{totalDonors === 1 ? "" : "s"}
           {typeof totalNgos === "number" ? ` · ${totalNgos} NGO${totalNgos === 1 ? "" : "s"}` : ""}
           {remaining !== null ? ` · ${remaining}d left` : ""}

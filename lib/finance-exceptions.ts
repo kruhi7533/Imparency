@@ -22,7 +22,7 @@ import { isUniqueConstraintError } from "@/lib/razorpay-webhook";
  *    erase the first investigation's outcome.
  */
 
-export type FinanceEntityType = "PROJECT" | "DONOR" | "DONATION" | "PAYMENT" | "ALLOCATION" | "CONTRACT_PAYMENT";
+export type FinanceEntityType = "PROJECT" | "DONOR" | "DONATION" | "PAYMENT" | "ALLOCATION" | "CONTRACT_PAYMENT" | "BANK_LINE";
 
 export interface ExceptionFinding {
   type: FinanceExceptionType;

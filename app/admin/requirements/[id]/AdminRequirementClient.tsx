@@ -15,6 +15,8 @@ import { MatchResults } from "@/components/requirements/MatchResults";
 import { ResponsesPanel } from "@/components/requirements/ResponsesPanel";
 import { AuditTrail } from "@/components/requirements/AuditTrail";
 import { requirementApi } from "@/components/requirements/api";
+import { ExtractionErrorDetail, ExtractionFlagsPanel, ExtractionMethodBanner } from "@/components/requirements/ExtractionNotices";
+import { ShortlistReview } from "@/components/requirements/ShortlistReview";
 
 type Tab = "requirements" | "history" | "matches" | "responses" | "audit";
 type Decision = "approve" | "correction" | "reject" | null;
@@ -104,19 +106,37 @@ export default function AdminRequirementClient({
       action === "approve" ? "Matching analysis approved." : "Matching analysis rejected — invitations are blocked until matching is re-run."
     ).then(() => setRunNote(""));
 
+  const confirmFlag = async (flagId: string, note: string) => {
+    let ok = false;
+    await perform(`flag:${flagId}`, async () => {
+      await post("confirm-flag", { flagId, note });
+      ok = true;
+    }, "Warning confirmed.");
+    return ok;
+  };
+  const approveShortlist = (payload: object) =>
+    perform(
+      "shortlist",
+      () => requirementApi(`/api/requirements/${id}/shortlist`, { method: "PUT", body: JSON.stringify(payload) }),
+      "Shortlist approved. The donor sees the approved candidates in your order and can invite them."
+    );
+  const invitedAny = !!matchRun?.matches.some((m) => m.invitedAt);
+  const canReviewShortlist = status === "SHORTLISTED" && !!matchRun && !invitedAny;
+  const openFlags = requirement.extractionFlags.filter((f) => f.blocking && !f.confirmedAt).length;
+
   const tabs: Tab[] = ["requirements", "history", ...(matchRun ? (["matches"] as Tab[]) : []), ...(responses.length ? (["responses"] as Tab[]) : []), "audit"];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
           <Link href="/admin/requirements" className="text-xs font-bold text-emerald-500 hover:underline">
             ← CSR Requirements queue
           </Link>
           <div className="flex flex-wrap items-center gap-3 mt-2">
-            <h1 className="text-2xl font-extrabold text-white break-all">{requirement.fileName}</h1>
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight break-all text-gray-900">{requirement.fileName}</h1>
             <StatusBadge status={status} />
-            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-300">v{requirement.version}</span>
+            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">v{requirement.version}</span>
           </div>
           <p className="text-xs text-gray-500 mt-1">
             Donor: {requirement.sponsor?.companyName || requirement.sponsor?.name} ({requirement.sponsor?.email}) · {requirement.isFormEntry ? "Entered via form" : "Uploaded"}{" "}
@@ -129,30 +149,42 @@ export default function AdminRequirementClient({
           </div>
         </div>
 
-        {notice && <p className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-4 py-2">{notice}</p>}
-        {error && <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-4 py-2">{error}</p>}
+        {notice && <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2">{notice}</p>}
+        {error && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2">{error}</p>}
+
+        {status === "FAILED" && (
+          <div className="border border-red-200 bg-red-50 rounded-2xl p-5 text-sm">
+            <ExtractionErrorDetail requirement={requirement} />
+          </div>
+        )}
 
         {/* Governance actions — shown only when the state machine allows them */}
         {(status === "PENDING_ADMIN_REVIEW" || CORRECTABLE.includes(status) || RERUNNABLE.includes(status)) && (
-          <div className="border border-gray-800 bg-gray-900/40 rounded-2xl p-5 space-y-3">
+          <div className="border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] rounded-2xl p-5 space-y-3">
             <div className="flex flex-wrap gap-2">
               {status === "PENDING_ADMIN_REVIEW" && (
-                <button type="button" onClick={() => setDecision("approve")} className="px-4 py-2 rounded-lg bg-emerald-500 text-gray-950 text-xs font-bold">
+                <button
+                  type="button"
+                  disabled={openFlags > 0}
+                  title={openFlags > 0 ? "Confirm the extraction warnings first" : undefined}
+                  onClick={() => setDecision("approve")}
+                  className="px-4 py-2 rounded-lg bg-trust-600 hover:bg-trust-700 text-white text-xs font-bold disabled:opacity-40"
+                >
                   Approve Requirement
                 </button>
               )}
               {CORRECTABLE.includes(status) && (
-                <button type="button" onClick={() => setDecision("correction")} className="px-4 py-2 rounded-lg bg-orange-500/20 text-orange-200 text-xs font-bold">
+                <button type="button" onClick={() => setDecision("correction")} className="px-4 py-2 rounded-lg bg-orange-50 text-orange-700 text-xs font-bold">
                   Request Correction
                 </button>
               )}
               {status === "PENDING_ADMIN_REVIEW" && (
-                <button type="button" onClick={() => setDecision("reject")} className="px-4 py-2 rounded-lg bg-red-500/20 text-red-200 text-xs font-bold">
+                <button type="button" onClick={() => setDecision("reject")} className="px-4 py-2 rounded-lg bg-red-50 text-red-700 text-xs font-bold">
                   Reject
                 </button>
               )}
               {RERUNNABLE.includes(status) && requirement.hasDocument && (
-                <button type="button" disabled={!!busy} onClick={rerun} className="px-4 py-2 rounded-lg bg-gray-800 text-gray-200 text-xs font-bold disabled:opacity-50">
+                <button type="button" disabled={!!busy} onClick={rerun} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-800 text-xs font-bold disabled:opacity-50">
                   {busy === "rerun" ? "Re-running extraction…" : "Re-run Extraction"}
                 </button>
               )}
@@ -170,16 +202,16 @@ export default function AdminRequirementClient({
                       ? "Tell the donor exactly what to correct (shown to the donor)"
                       : "Reason for rejection (shown to the donor)"
                   }
-                  className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-trust-500"
                 />
                 {decision === "approve" && dirty && (
-                  <p className="text-xs text-blue-300">Your unsaved field corrections will be saved first, then the requirement is validated.</p>
+                  <p className="text-xs text-blue-700">Your unsaved field corrections will be saved first, then the requirement is validated.</p>
                 )}
                 <div className="flex gap-2">
-                  <button type="button" disabled={!!busy} onClick={confirmDecision} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-950 text-xs font-bold disabled:opacity-50">
+                  <button type="button" disabled={!!busy} onClick={confirmDecision} className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-800 hover:bg-gray-50 text-xs font-bold disabled:opacity-50">
                     {busy ? "Working…" : `Confirm ${decision === "approve" ? "approval" : decision === "correction" ? "correction request" : "rejection"}`}
                   </button>
-                  <button type="button" onClick={() => setDecision(null)} className="px-4 py-2 rounded-lg text-gray-400 text-xs font-semibold">
+                  <button type="button" onClick={() => setDecision(null)} className="px-4 py-2 rounded-lg text-gray-500 text-xs font-semibold">
                     Cancel
                   </button>
                 </div>
@@ -190,10 +222,10 @@ export default function AdminRequirementClient({
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <aside className="lg:col-span-4 space-y-4">
-            <div className="border border-gray-800 bg-gray-900/40 rounded-2xl p-5 space-y-3">
-              <h2 className="text-sm font-bold text-white">Original document</h2>
+            <div className="border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] rounded-2xl p-5 space-y-3">
+              <h2 className="text-sm font-bold text-gray-900">Original document</h2>
               {requirement.isFormEntry ? (
-                <p className="text-xs text-gray-400">No document — the donor entered this requirement through the structured form. Every value is donor-provided.</p>
+                <p className="text-xs text-gray-500">No document — the donor entered this requirement through the structured form. Every value is donor-provided.</p>
               ) : (
               <>
               <p className="text-[11px] text-gray-500">
@@ -206,28 +238,28 @@ export default function AdminRequirementClient({
               )}
             </div>
             {requirement.reviewNote && (
-              <div className="border border-gray-800 bg-gray-900/40 rounded-2xl p-5 text-xs text-gray-300">
-                <p className="font-bold text-gray-200 mb-1">Last review note</p>
+              <div className="border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] rounded-2xl p-5 text-xs text-gray-700">
+                <p className="font-bold text-gray-800 mb-1">Last review note</p>
                 <p className="whitespace-pre-wrap">{requirement.reviewNote}</p>
               </div>
             )}
             {!requirement.isFormEntry && (
-              <details className="border border-gray-800 bg-gray-900/40 rounded-2xl p-5 text-xs">
-                <summary className="cursor-pointer font-bold text-gray-200">Text read from the document</summary>
-                <pre className="mt-3 max-h-96 overflow-y-auto font-mono text-gray-400 whitespace-pre-wrap">{requirement.rawText || "No text extracted."}</pre>
+              <details className="border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] rounded-2xl p-5 text-xs">
+                <summary className="cursor-pointer font-bold text-gray-800">Text read from the document</summary>
+                <pre className="mt-3 max-h-96 overflow-y-auto font-mono text-gray-500 whitespace-pre-wrap">{requirement.rawText || "No text extracted."}</pre>
               </details>
             )}
           </aside>
 
           <div className="lg:col-span-8 space-y-4">
-            <div className="flex flex-wrap gap-2 border-b border-gray-800">
+            <div className="flex flex-wrap gap-2 border-b border-gray-200">
               {tabs.map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setTab(t)}
                   className={`px-4 py-2 text-xs font-bold capitalize border-b-2 -mb-px ${
-                    tab === t ? "border-emerald-400 text-emerald-300" : "border-transparent text-gray-500 hover:text-gray-200"
+                    tab === t ? "border-trust-600 text-trust-700" : "border-transparent text-gray-500 hover:text-gray-900"
                   }`}
                 >
                   {t === "history" ? "Version history" : t === "audit" ? "Audit trail" : t}
@@ -238,10 +270,12 @@ export default function AdminRequirementClient({
             {tab === "requirements" && (
               <div className="space-y-4">
                 <p className="text-xs text-gray-500">
-                  Provenance: <span className="text-gray-300">AI</span> = extracted by the agent,{" "}
-                  <span className="text-blue-300">Donor corrected</span>, <span className="text-emerald-300">Admin verified</span>.
+                  Provenance: <span className="text-gray-700">AI</span> = extracted by the agent,{" "}
+                  <span className="text-blue-700">Donor corrected</span>, <span className="text-emerald-700">Admin verified</span>.
                   {editable ? " You can correct fields before approving." : ""}
                 </p>
+                <ExtractionMethodBanner requirement={requirement} />
+                <ExtractionFlagsPanel flags={requirement.extractionFlags} canConfirm={editable} onConfirm={confirmFlag} busy={busy} />
                 <FieldsEditor fields={requirement.fields} editable={editable} draft={draft} onChange={(k, v) => setDraft((d) => ({ ...d, [k]: v }))} />
                 {editable && (
                   <div className="flex justify-end">
@@ -249,7 +283,7 @@ export default function AdminRequirementClient({
                       type="button"
                       disabled={!dirty || !!busy}
                       onClick={saveEdits}
-                      className="px-5 py-2.5 rounded-xl border border-gray-700 text-gray-200 text-sm font-semibold hover:bg-gray-800 disabled:opacity-40"
+                      className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm font-semibold hover:bg-gray-50 disabled:opacity-40"
                     >
                       {busy === "save" ? "Saving…" : "Save corrections"}
                     </button>
@@ -273,27 +307,25 @@ export default function AdminRequirementClient({
 
             {tab === "matches" && matchRun && (
               <div className="space-y-4">
-                <div className="border border-gray-800 bg-gray-900/40 rounded-2xl p-4 space-y-2">
-                  <p className="text-xs font-bold text-gray-200">Review this matching analysis</p>
+                <div className="border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] rounded-2xl p-4 space-y-2">
+                  <p className="text-xs font-bold text-gray-800">Reject this matching analysis</p>
                   <textarea
                     rows={2}
                     value={runNote}
                     onChange={(e) => setRunNote(e.target.value)}
-                    placeholder="Note (required to reject or request re-analysis)"
-                    className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-100"
+                    placeholder="Note (required) — approve candidates with the shortlist review above"
+                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-900"
                   />
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" disabled={!!busy} onClick={() => reviewRun("approve")} className="px-3 py-1.5 rounded-lg bg-emerald-500 text-gray-950 text-xs font-bold disabled:opacity-50">
-                      Approve analysis
-                    </button>
-                    <button type="button" disabled={!!busy} onClick={() => reviewRun("request-reanalysis")} className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-200 text-xs font-bold disabled:opacity-50">
+                    <button type="button" disabled={!!busy} onClick={() => reviewRun("request-reanalysis")} className="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 text-xs font-bold disabled:opacity-50">
                       Request re-analysis
                     </button>
-                    <button type="button" disabled={!!busy} onClick={() => reviewRun("reject")} className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-200 text-xs font-bold disabled:opacity-50">
+                    <button type="button" disabled={!!busy} onClick={() => reviewRun("reject")} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-bold disabled:opacity-50">
                       Reject analysis
                     </button>
                   </div>
                 </div>
+                {canReviewShortlist && <ShortlistReview run={matchRun} onSubmit={approveShortlist} busy={busy === "shortlist"} />}
                 <MatchResults
                   run={matchRun}
                   canInvite={status === "SHORTLISTED" || status === "NGO_RESPONSE"}

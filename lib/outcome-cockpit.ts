@@ -2,6 +2,7 @@ import type { EvidenceKind, MetricUnit, OutcomeClaimStatus } from "@prisma/clien
 import prisma from "@/lib/prisma";
 import { resolveCitations, evidenceAlreadyCounted } from "@/lib/outcome-evidence";
 import { triageOutcomeClaim, evidenceUpperBound, type TriageResult } from "@/lib/outcome-triage";
+import { changesByMetric, type OutcomeChange } from "@/lib/outcome-change";
 import { ASSERTED_STATUSES, claimDisplay, fromMinorUnits, toMinorUnits, type ClaimDisplay } from "@/lib/impact-quality";
 
 /**
@@ -61,13 +62,26 @@ export interface MetricRollup {
   metricCode: string;
   metricName: string;
   unit: MetricUnit;
-  /** Sum of figures that are APPROVED and still backed — the only number a donor sees. */
-  verifiedTotal: string;
+  /**
+   * Sum of figures that are APPROVED and still backed — the only number a donor
+   * sees. NULL when the metric is not summable (a percentage, or a metric the
+   * registry marks aggregatable=false): 42% + 61% is not "103%". Render
+   * `latestVerified` and the baseline→endline change instead.
+   */
+  verifiedTotal: string | null;
+  summable: boolean;
+  /** The most recent verified figure (by period end), for non-summable metrics. */
+  latestVerified: { value: string; periodEnd: string } | null;
   verifiedCount: number;
   inReviewCount: number;
   /** Approved but no longer backed, or triage could not run. */
   unverifiedApprovedCount: number;
   draftCount: number;
+}
+
+/** Whether a metric's figures may be added up. PERCENTAGE never, whatever the registry says. */
+export function isSummable(unit: MetricUnit, aggregatable: boolean | undefined): boolean {
+  return unit !== "PERCENTAGE" && aggregatable !== false;
 }
 
 /**
@@ -76,23 +90,54 @@ export interface MetricRollup {
  * in minor units, never through a float.
  */
 export function rollupByMetric(
-  rows: Array<{ metricCode: string; metricName: string; unit: MetricUnit; status: OutcomeClaimStatus; display: ClaimDisplay }>
+  rows: Array<{
+    metricCode: string;
+    metricName: string;
+    unit: MetricUnit;
+    status: OutcomeClaimStatus;
+    display: ClaimDisplay;
+    aggregatable?: boolean;
+    periodEnd?: string | Date;
+  }>
 ): MetricRollup[] {
-  const by = new Map<string, MetricRollup & { minor: bigint }>();
+  const by = new Map<string, MetricRollup & { minor: bigint; latestAt: number }>();
   for (const r of rows) {
     const m =
       by.get(r.metricCode) ??
-      { metricCode: r.metricCode, metricName: r.metricName, unit: r.unit, verifiedTotal: "0.00", verifiedCount: 0, inReviewCount: 0, unverifiedApprovedCount: 0, draftCount: 0, minor: BigInt(0) };
+      {
+        metricCode: r.metricCode,
+        metricName: r.metricName,
+        unit: r.unit,
+        verifiedTotal: "0.00",
+        summable: isSummable(r.unit, r.aggregatable),
+        latestVerified: null,
+        verifiedCount: 0,
+        inReviewCount: 0,
+        unverifiedApprovedCount: 0,
+        draftCount: 0,
+        minor: BigInt(0),
+        latestAt: -Infinity,
+      };
     if (r.display.kind === "verified") {
       m.minor += toMinorUnits(r.display.value);
       m.verifiedCount++;
+      const at = r.periodEnd ? new Date(r.periodEnd).getTime() : -Infinity;
+      if (m.latestVerified === null || at > m.latestAt) {
+        m.latestVerified = { value: r.display.value, periodEnd: r.periodEnd ? new Date(r.periodEnd).toISOString() : "" };
+        m.latestAt = at;
+      }
     } else if (r.status === "APPROVED") m.unverifiedApprovedCount++;
     else if (r.status === "SUBMITTED" || r.status === "NEEDS_EVIDENCE") m.inReviewCount++;
     else if (r.status === "DRAFT") m.draftCount++;
     by.set(r.metricCode, m);
   }
   return Array.from(by.values())
-    .map(({ minor, ...m }) => ({ ...m, verifiedTotal: fromMinorUnits(minor) }))
+    .map(({ minor, ...m }) => {
+      // latestAt is an internal sort key, not part of the row shape.
+      const row: Omit<typeof m, "latestAt"> & { latestAt?: unknown } = { ...m };
+      delete row.latestAt;
+      return { ...row, verifiedTotal: m.summable ? fromMinorUnits(minor) : null };
+    })
     .sort((a, b) => a.metricName.localeCompare(b.metricName));
 }
 
@@ -126,7 +171,7 @@ export async function loadNgoImpactCockpit(ngoId: string) {
         submittedAt: true,
         decidedAt: true,
         createdAt: true,
-        metric: { select: { code: true, name: true, unit: true, status: true, requiredEvidence: true } },
+        metric: { select: { code: true, name: true, unit: true, status: true, requiredEvidence: true, aggregatable: true } },
         citations: { select: { id: true, kind: true, proofId: true, evidenceId: true, feedbackId: true } },
       },
     }),
@@ -170,6 +215,7 @@ export async function loadNgoImpactCockpit(ngoId: string) {
       milestoneId: c.milestoneId,
       metricCode: c.metricCode,
       metricName: c.metric.name,
+      aggregatable: c.metric.aggregatable,
       value: decimalString(c.value),
       unit: c.unit,
       periodStart: c.periodStart.toISOString(),
@@ -227,7 +273,8 @@ export async function loadNgoImpactCockpit(ngoId: string) {
     projects: projects.map((p) => ({ id: p.id, title: p.title, status: p.status, milestones: p.milestones })),
     metrics: metrics.map((m) => ({ ...m, requiredEvidence: m.requiredEvidence as EvidenceKind[] })),
     claims: claimRows,
-    rollup: rollupByMetric(claimRows.map((c) => ({ metricCode: c.metricCode, metricName: c.metricName, unit: c.unit, status: c.status, display: c.display }))),
+    rollup: rollupByMetric(claimRows),
+    changes: changesForProjects(claimRows),
     evidence,
   };
 }
@@ -325,7 +372,7 @@ export async function loadDonorProjectOutcomes(projectId: string) {
       periodStart: true,
       periodEnd: true,
       status: true,
-      metric: { select: { code: true, name: true, unit: true, status: true, requiredEvidence: true, definition: true } },
+      metric: { select: { code: true, name: true, unit: true, status: true, requiredEvidence: true, definition: true, aggregatable: true } },
       citations: { select: { id: true, kind: true, proofId: true, evidenceId: true, feedbackId: true } },
     },
   });
@@ -335,11 +382,28 @@ export async function loadDonorProjectOutcomes(projectId: string) {
     metricCode: c.metricCode,
     metricName: c.metric.name,
     definition: c.metric.definition,
+    aggregatable: c.metric.aggregatable,
     unit: c.unit,
     status: c.status,
     periodStart: c.periodStart.toISOString(),
     periodEnd: c.periodEnd.toISOString(),
     display: claimDisplay({ status: c.status, value: decimalString(c.value), unit: c.unit, triage: triaged[i] }),
   }));
-  return { rows, rollup: rollupByMetric(rows.map((r) => ({ metricCode: r.metricCode, metricName: r.metricName, unit: r.unit, status: r.status, display: r.display }))) };
+  return { rows, rollup: rollupByMetric(rows), changes: changesByMetric(rows) };
+}
+
+
+/**
+ * Baseline → endline change per (project, metric), from claim rows that carry
+ * their own claimDisplay. Only verified figures count (lib/outcome-change.ts).
+ */
+export function changesForProjects<T extends Parameters<typeof changesByMetric>[0][number] & { projectId: string }>(
+  rows: T[]
+): Array<OutcomeChange & { projectId: string }> {
+  const asserted = rows.filter((r) => ASSERTED_STATUSES.includes(r.status));
+  const byProject = new Map<string, T[]>();
+  for (const r of asserted) byProject.set(r.projectId, [...(byProject.get(r.projectId) ?? []), r]);
+  return Array.from(byProject.entries()).flatMap(([projectId, group]) =>
+    changesByMetric(group).map((c) => ({ ...c, projectId }))
+  );
 }

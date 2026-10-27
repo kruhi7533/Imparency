@@ -30,11 +30,13 @@
     "eval:fraud-investigator": "npx tsx scripts/eval/run-eval.ts",
     "generate:pitch": "node scripts/generate-pitch.js",
     "generate:pitch:watch": "nodemon --watch lib/ --ext ts,js --exec 'node scripts/generate-pitch.js'",
-    "seed:ngo": "npx tsx -r dotenv/config tools/seed-ngo-demo.ts"
+    "seed:ngo": "npx tsx -r dotenv/config tools/seed-ngo-demo.ts",
+    "seed:admin-roles": "npx tsx -r dotenv/config tools/seed-admin-roles.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.39",
     "@ai-sdk/openai": "^4.0.36",
+    "@anthropic-ai/sdk": "^1.3.0",
     "@aws-sdk/client-s3": "^3.1069.0",
     "@google/genai": "^2.8.0",
     "@google/generative-ai": "^0.24.1",

@@ -1,3 +1,4 @@
+import { breakGlassPageGate } from "@/app/admin/break-glass/BreakGlassGate";
 import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -6,6 +7,7 @@ import { buildNgoRiskAndFraudView } from "@/lib/risk-compliance-view";
 import { deriveComplianceEvidence } from "@/lib/compliance-evidence";
 import { assessVerificationStanding } from "@/lib/verification-standing";
 import TrustInsight from "./TrustInsight";
+import RequestReverification from "./RequestReverification";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,30 +18,30 @@ const fmtDate = (d: Date | null) =>
   d ? d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
 const STATUS_BADGE: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  VERIFIED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
-  REJECTED: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+  PENDING: "bg-amber-100 text-amber-700",
+  VERIFIED: "bg-emerald-100 text-emerald-700",
+  REJECTED: "bg-red-100 text-red-700",
 };
 
 const SEVERITY_BADGE: Record<string, string> = {
-  HIGH: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",
-  MEDIUM: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  LOW: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
+  HIGH: "bg-red-100 text-red-700",
+  MEDIUM: "bg-amber-100 text-amber-700",
+  LOW: "bg-blue-100 text-blue-700",
 };
 
 const MILESTONE_BADGE: Record<string, string> = {
-  PENDING: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-  IN_PROGRESS: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
-  PROOF_SUBMITTED: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  COMPLETED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
-  VERIFIED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+  PENDING: "bg-gray-100 text-gray-600",
+  IN_PROGRESS: "bg-blue-100 text-blue-700",
+  PROOF_SUBMITTED: "bg-amber-100 text-amber-700",
+  COMPLETED: "bg-emerald-100 text-emerald-700",
+  VERIFIED: "bg-emerald-100 text-emerald-700",
 };
 
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+    <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-400">{title}</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">{title}</h2>
         {action}
       </div>
       {children}
@@ -50,8 +52,8 @@ function Section({ title, children, action }: { title: string; children: React.R
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs font-bold text-gray-400">{label}</p>
-      <p className="text-sm text-gray-900 dark:text-white mt-0.5">{value ?? "—"}</p>
+      <p className="text-xs font-bold text-gray-500">{label}</p>
+      <p className="text-sm text-gray-900 mt-0.5">{value ?? "—"}</p>
     </div>
   );
 }
@@ -61,6 +63,8 @@ function Badge({ children, className }: { children: React.ReactNode; className: 
 }
 
 export default async function NgoDetailPage({ params }: { params: { id: string } }) {
+  const breakGlass = await breakGlassPageGate({ orgType: "NGO", orgId: params.id });
+  if (breakGlass) return breakGlass;
   const ngo = await prisma.nGOProfile.findUnique({
     where: { id: params.id },
     include: {
@@ -124,7 +128,7 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
   const ongoingProjects = ngo.projects.filter((p) => p.status === "ACTIVE");
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <Link href="/admin/dashboard" className="text-xs font-bold text-emerald-600 hover:underline">
           ← Back to NGO Verification
@@ -137,19 +141,19 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
           <div
             className={`rounded-2xl border p-4 ${
               standing.alarming
-                ? "border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20"
-                : "border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20"
+                ? "border-red-200 bg-red-50"
+                : "border-amber-200 bg-amber-50"
             }`}
           >
-            <p className={`text-sm font-extrabold ${standing.alarming ? "text-red-700 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`}>
+            <p className={`text-sm font-bold ${standing.alarming ? "text-red-700" : "text-amber-700"}`}>
               {standing.alarming ? "⚠ " : ""}
               {standing.headline}
             </p>
-            <p className={`text-sm mt-1 ${standing.alarming ? "text-red-600 dark:text-red-300" : "text-amber-700 dark:text-amber-300"}`}>
+            <p className={`text-sm mt-1 ${standing.alarming ? "text-red-600" : "text-amber-700"}`}>
               {standing.detail}
             </p>
             {standing.level === "UNSUPPORTED" && (
-              <Link href="/admin/document-review" className="text-xs font-bold underline mt-2 inline-block text-red-700 dark:text-red-400">
+              <Link href="/admin/document-review" className="text-xs font-bold underline mt-2 inline-block text-red-700">
                 Run extraction in Document Review →
               </Link>
             )}
@@ -157,49 +161,56 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
         )}
 
         {/* Header */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">{ngo.orgName}</h1>
+                <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">{ngo.orgName}</h1>
                 <Badge className={STATUS_BADGE[ngo.verificationStatus] ?? "bg-gray-100 text-gray-600"}>
                   {ngo.verificationStatus}
                 </Badge>
-                {ngo.isSuspended && <Badge className="bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400">SUSPENDED</Badge>}
+                {ngo.isSuspended && <Badge className="bg-red-100 text-red-700">SUSPENDED</Badge>}
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{ngo.user.email}</p>
+              <p className="text-sm text-gray-500 mt-1">{ngo.user.email}</p>
               <a href={`/ngo/${ngo.id}`} className="text-xs text-emerald-600 hover:underline mt-1 inline-block">
                 View public profile ↗
               </a>
             </div>
             <div className="flex gap-6 text-right">
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase">Health Score</p>
-                <p className="text-2xl font-black text-emerald-600">{ngo.healthScore != null ? Number(ngo.healthScore).toFixed(0) : "N/A"}</p>
+                <p className="text-xs font-bold text-gray-500 uppercase">Health Score</p>
+                <p className="text-2xl font-bold text-emerald-600">{ngo.healthScore != null ? Number(ngo.healthScore).toFixed(0) : "N/A"}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase">Compliance</p>
-                <p className="text-2xl font-black text-blue-600">{compliance.score}/100</p>
+                <p className="text-xs font-bold text-gray-500 uppercase">Compliance</p>
+                <p className="text-2xl font-bold text-blue-600">{compliance.score}/100</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase">Raised</p>
-                <p className="text-2xl font-black text-gray-900 dark:text-white">₹{raisedTotal.toLocaleString("en-IN")}</p>
+                <p className="text-xs font-bold text-gray-500 uppercase">Raised</p>
+                <p className="text-2xl font-bold text-gray-900">₹{raisedTotal.toLocaleString("en-IN")}</p>
               </div>
             </div>
           </div>
           {ngo.isSuspended && ngo.suspensionReason && (
-            <p className="mt-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2">
+            <p className="mt-3 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
               Suspended: {ngo.suspensionReason}
             </p>
           )}
           {ngo.adminNote && (
-            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-3 py-2">
+            <p className="mt-3 text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
               Admin note: {ngo.adminNote}
             </p>
           )}
         </div>
 
         <TrustInsight ngoId={ngo.id} />
+
+        <RequestReverification
+          ngoId={ngo.id}
+          verificationStatus={ngo.verificationStatus}
+          dueAt={ngo.reverificationRequiredAt ? (ngo.reverificationDueAt ?? ngo.reverificationRequiredAt).toISOString() : null}
+          reason={ngo.reverificationReason ?? null}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Registration details */}
@@ -237,23 +248,23 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
           {/* Projects & Milestones */}
           <Section title={`Projects (${ngo.projects.length})`}>
             {ngo.projects.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">No projects submitted yet.</p>
+              <p className="text-xs text-gray-500 italic">No projects submitted yet.</p>
             ) : (
               <div className="space-y-2 max-h-72 overflow-y-auto">
                 {ngo.projects.map((p) => (
-                  <div key={p.id} className="flex justify-between items-center text-sm p-2 border-b border-gray-100 dark:border-gray-800/50 last:border-b-0">
+                  <div key={p.id} className="flex justify-between items-center text-sm p-2 border-b border-gray-100 last:border-b-0">
                     <div>
-                      <p className="font-semibold text-gray-800 dark:text-gray-200">{p.title}</p>
-                      <p className="text-xs text-gray-400">
+                      <p className="font-semibold text-gray-800">{p.title}</p>
+                      <p className="text-xs text-gray-500">
                         {p.status} · {p.milestones.filter((m) => ["COMPLETED", "VERIFIED"].includes(m.status)).length}/{p.milestones.length} milestones done
                       </p>
                     </div>
-                    <p className="font-bold text-gray-700 dark:text-gray-300">₹{Number(p.raisedAmount).toLocaleString("en-IN")}</p>
+                    <p className="font-bold text-gray-700">₹{Number(p.raisedAmount).toLocaleString("en-IN")}</p>
                   </div>
                 ))}
               </div>
             )}
-            <p className="text-xs text-gray-400 mt-3">{completedMilestones}/{allMilestones.length} milestones completed platform-wide for this NGO.</p>
+            <p className="text-xs text-gray-500 mt-3">{completedMilestones}/{allMilestones.length} milestones completed platform-wide for this NGO.</p>
           </Section>
 
           {/* Fraud alerts & risk reviews */}
@@ -271,13 +282,13 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
               return (
                 <div className="space-y-2">
                   {view.openReviews.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between text-sm p-2 border-b border-gray-100 dark:border-gray-800/50">
+                    <div key={r.id} className="flex items-center justify-between text-sm p-2 border-b border-gray-100">
                       <div>
-                        <p className="font-semibold text-gray-800 dark:text-gray-200">
+                        <p className="font-semibold text-gray-800">
                           Open risk review
                           {r.reasonLabel ? ` — ${r.reasonLabel}` : ""}
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-500">
                           Opened {fmtDate(r.createdAt as Date)}
                           {r.recommendedActionLabel ? ` · Recommended: ${r.recommendedActionLabel}` : ""}
                         </p>
@@ -291,10 +302,10 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
                     </div>
                   ))}
                   {openAlerts.map((a) => (
-                    <div key={a.id} className="flex items-center justify-between text-sm p-2 border-b border-gray-100 dark:border-gray-800/50">
+                    <div key={a.id} className="flex items-center justify-between text-sm p-2 border-b border-gray-100">
                       <div>
-                        <p className="font-semibold text-gray-800 dark:text-gray-200">{a.type}</p>
-                        <p className="text-xs text-gray-400">{a.description}</p>
+                        <p className="font-semibold text-gray-800">{a.type}</p>
+                        <p className="text-xs text-gray-500">{a.description}</p>
                       </div>
                       <Badge className={SEVERITY_BADGE[a.severity] ?? "bg-gray-100 text-gray-600"}>{a.severity}</Badge>
                     </div>
@@ -313,16 +324,16 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
         {/* Admin action history */}
         <Section title="Admin Action History">
           {adminActions.length === 0 ? (
-            <p className="text-xs text-gray-400 italic">No admin actions recorded for this NGO yet.</p>
+            <p className="text-xs text-gray-500 italic">No admin actions recorded for this NGO yet.</p>
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {adminActions.map((a) => (
-                <div key={a.id} className="text-sm p-2 border-b border-gray-100 dark:border-gray-800/50 last:border-b-0">
+                <div key={a.id} className="text-sm p-2 border-b border-gray-100 last:border-b-0">
                   <div className="flex justify-between items-center">
-                    <span className="font-bold text-gray-800 dark:text-gray-200">{a.action}</span>
-                    <span className="text-xs text-gray-400">{fmt(a.createdAt)}</span>
+                    <span className="font-bold text-gray-800">{a.action}</span>
+                    <span className="text-xs text-gray-500">{fmt(a.createdAt)}</span>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-gray-500">
                     by {a.admin ? a.admin.name || a.admin.email : "the platform (automated)"}
                     {a.note ? ` — ${a.note}` : ""}
                   </p>
@@ -335,34 +346,34 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
         {/* Ongoing projects & their milestones */}
         <Section title={`Ongoing Projects & Milestones (${ongoingProjects.length})`}>
           {ongoingProjects.length === 0 ? (
-            <p className="text-xs text-gray-400 italic">No active projects right now.</p>
+            <p className="text-xs text-gray-500 italic">No active projects right now.</p>
           ) : (
             <div className="space-y-5">
               {ongoingProjects.map((p) => {
                 const doneCount = p.milestones.filter((m) => ["COMPLETED", "VERIFIED"].includes(m.status)).length;
                 return (
-                  <div key={p.id} className="border border-gray-100 dark:border-gray-800 rounded-xl p-4">
+                  <div key={p.id} className="border border-gray-100 rounded-xl p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">{p.title}</p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-sm font-bold text-gray-900">{p.title}</p>
+                        <p className="text-xs text-gray-500">
                           ₹{Number(p.raisedAmount).toLocaleString("en-IN")} raised of ₹{Number(p.targetAmount).toLocaleString("en-IN")} · {doneCount}/{p.milestones.length} milestones done
                         </p>
                       </div>
                     </div>
                     {p.milestones.length === 0 ? (
-                      <p className="text-xs text-gray-400 italic mt-3">No milestones defined yet.</p>
+                      <p className="text-xs text-gray-500 italic mt-3">No milestones defined yet.</p>
                     ) : (
                       <div className="mt-3 space-y-1.5">
                         {p.milestones.map((m) => (
-                          <div key={m.id} className="flex items-center justify-between text-xs p-2 rounded-lg bg-gray-50 dark:bg-gray-800/40">
+                          <div key={m.id} className="flex items-center justify-between text-xs p-2 rounded-lg bg-gray-50">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-gray-400 font-mono">{m.sequenceOrder}.</span>
-                              <span className="text-gray-800 dark:text-gray-200 font-semibold truncate">{m.title}</span>
+                              <span className="text-gray-500 font-mono">{m.sequenceOrder}.</span>
+                              <span className="text-gray-800 font-semibold truncate">{m.title}</span>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
-                              <span className="text-gray-400">Due {fmtDate(m.deadline)}</span>
-                              <span className="text-gray-500 dark:text-gray-400">₹{Number(m.targetAmount).toLocaleString("en-IN")}</span>
+                              <span className="text-gray-500">Due {fmtDate(m.deadline)}</span>
+                              <span className="text-gray-500">₹{Number(m.targetAmount).toLocaleString("en-IN")}</span>
                               <Badge className={MILESTONE_BADGE[m.status] ?? "bg-gray-100 text-gray-600"}>{m.status.replace("_", " ")}</Badge>
                             </div>
                           </div>

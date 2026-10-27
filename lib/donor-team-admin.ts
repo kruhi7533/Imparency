@@ -18,7 +18,7 @@ import { donorCan, resolveDonorAccount, ROLE_FORBIDDEN } from "@/lib/donor-team"
  * - Audit events carry ids and roles, never names or emails.
  */
 
-export const TEAM_ROLES: DonorTeamRole[] = ["ADMIN", "APPROVER", "VIEWER"];
+export const TEAM_ROLES: DonorTeamRole[] = ["ADMIN", "APPROVER", "FINANCE", "VIEWER"];
 const INVITE_DAYS = 7;
 
 export class TeamError extends Error {
@@ -63,7 +63,7 @@ export async function inviteTeamMember(actorUserId: string, rawEmail: unknown, r
   const account = await requireManager(actorUserId);
   const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
   if (!EMAIL_RE.test(email)) throw new TeamError("Enter a valid email address.", 400);
-  if (!TEAM_ROLES.includes(rawRole as DonorTeamRole)) throw new TeamError("Choose a role: admin, approver or viewer.", 400);
+  if (!TEAM_ROLES.includes(rawRole as DonorTeamRole)) throw new TeamError("Choose a role: admin, approver, finance or viewer.", 400);
   const role = rawRole as DonorTeamRole;
   // Only the owner can create another admin; an admin cannot mint peers.
   if (role === "ADMIN" && account.role !== "OWNER") throw new TeamError("Only the account owner can add admins.", 403);
@@ -110,7 +110,7 @@ export async function inviteTeamMember(actorUserId: string, rawEmail: unknown, r
 
 export async function changeTeamRole(actorUserId: string, memberId: string, rawRole: unknown) {
   const account = await requireManager(actorUserId);
-  if (!TEAM_ROLES.includes(rawRole as DonorTeamRole)) throw new TeamError("Choose a role: admin, approver or viewer.", 400);
+  if (!TEAM_ROLES.includes(rawRole as DonorTeamRole)) throw new TeamError("Choose a role: admin, approver, finance or viewer.", 400);
   const role = rawRole as DonorTeamRole;
   const member = await prisma.donorTeamMember.findUnique({ where: { id: memberId }, select: { accountId: true, userId: true, role: true } });
   if (!member || member.accountId !== account.accountId) throw new TeamError("Team member not found.", 404);

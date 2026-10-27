@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/storage";
 import { verifySessionRole } from "@/lib/auth-guards";
+import { draftDocUrl } from "@/lib/registration-draft";
 
 // Generates a unique join code like "ANANDA-7X3K"
 function generateJoinCode(orgName: string): string {
@@ -23,6 +24,13 @@ export async function POST(request: Request) {
     if (!authorized) return response;
 
     const userId = session.user.id;
+
+    // Save-and-resume (NGO-001): documents already uploaded to the caller's own
+    // draft stand in for any slot the final form does not re-send.
+    const draft = await prisma.ngoRegistrationDraft
+      .findUnique({ where: { userId }, select: { id: true, status: true, documents: true } })
+      .catch(() => null);
+    const draftDocs = draft?.status === "DRAFT" ? draft.documents : null;
 
     // 2. Parse form data
     const formData = await request.formData();
@@ -79,13 +87,14 @@ export async function POST(request: Request) {
 
     // 4. File validations (MIME & Size)
     const files = [
-      { name: "Registration Certificate", file: regFile },
-      { name: "NGO PAN Card Copy", file: panFile },
-      { name: "80G Registration Copy", file: taxFile }
+      { name: "Registration Certificate", file: regFile, draftUrl: draftDocUrl(draftDocs, "regFile") },
+      { name: "NGO PAN Card Copy", file: panFile, draftUrl: draftDocUrl(draftDocs, "panFile") },
+      { name: "80G Registration Copy", file: taxFile, draftUrl: draftDocUrl(draftDocs, "taxFile") }
     ];
 
     for (const f of files) {
       if (!f.file) {
+        if (f.draftUrl) continue;
         return NextResponse.json({ error: `Missing required file: ${f.name}` }, { status: 400 });
       }
       
@@ -151,7 +160,11 @@ export async function POST(request: Request) {
     // 6. Upload files to Storage
     const uploadedUrls: string[] = [];
     for (const f of files) {
-      const file = f.file!;
+      if (!f.file) {
+        uploadedUrls.push(f.draftUrl!);
+        continue;
+      }
+      const file = f.file;
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       const url = await uploadFile(buffer, file.name, "documents", { private: true });
@@ -159,12 +172,12 @@ export async function POST(request: Request) {
     }
 
     // 6b. Upload optional compliance documents (when provided)
-    let a12DocumentUrl: string | null = null;
+    let a12DocumentUrl: string | null = draftDocUrl(draftDocs, "a12File");
     if (a12File) {
       const buffer = Buffer.from(await a12File.arrayBuffer());
       a12DocumentUrl = await uploadFile(buffer, a12File.name, "documents", { private: true });
     }
-    let fcraCertificateUrl: string | null = null;
+    let fcraCertificateUrl: string | null = draftDocUrl(draftDocs, "fcraFile");
     if (fcraFile) {
       const buffer = Buffer.from(await fcraFile.arrayBuffer());
       fcraCertificateUrl = await uploadFile(buffer, fcraFile.name, "documents", { private: true });
@@ -359,7 +372,7 @@ export async function POST(request: Request) {
     // the government PAN record against the form, so it stands on its own.
     if (panMismatch) {
       try {
-        const { createFraudAlert } = require("@/lib/fraud-alerts");
+        const { createFraudAlert } = await import("@/lib/fraud-alerts");
         await createFraudAlert(
           "PAN_API_MISMATCH",
           profile.id,
@@ -389,17 +402,26 @@ export async function POST(request: Request) {
     // Fire-and-forget so registration stays fast, and re-runnable from the admin
     // console if it never lands.
     try {
-      const { runAndStoreNgoExtraction } = require("@/lib/extraction-runner");
-      runAndStoreNgoExtraction(profile.id).catch((analysisErr: any) =>
-        console.error("Background NGO document analysis failed:", analysisErr)
-      );
+      // Dynamic import, not require(): the runner is an ES module graph and
+      // webpack's require() of it returned a namespace without the export,
+      // so analysis silently never started.
+      const profileId = profile.id;
+      import("@/lib/extraction-runner")
+        .then(({ runAndStoreNgoExtraction }) => runAndStoreNgoExtraction(profileId))
+        .catch((analysisErr: any) => console.error("Background NGO document analysis failed:", analysisErr));
     } catch (triggerErr) {
       console.error("Failed to trigger NGO document analysis:", triggerErr);
+    }
+
+    if (draft) {
+      await prisma.ngoRegistrationDraft
+        .update({ where: { id: draft.id }, data: { status: "SUBMITTED", submittedAt: new Date(), profileId: profile.id } })
+        .catch((e: unknown) => console.error("Failed to mark registration draft submitted:", e));
     }
 
     return NextResponse.json({ success: true, profileId: profile.id });
   } catch (err: any) {
     console.error("NGO Registration Error:", err);
-    return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Registration failed. Your progress is kept if you saved a draft — try again." }, { status: 500 });
   }
 }

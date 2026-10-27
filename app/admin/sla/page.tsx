@@ -42,11 +42,11 @@ export default async function AdminSlaPage() {
   const targets = declaredTargets();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Response targets</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Response targets</h1>
+          <p className="mt-1 text-sm text-gray-500 max-w-2xl">
             How long each queue is allowed to keep someone waiting, and what is currently past that.
             These targets are measured, not enforced. Once a day, if anything is past target, every
             admin gets one notification listing the queues (the &ldquo;SLA breach digest&rdquo; job in
@@ -58,25 +58,25 @@ export default async function AdminSlaPage() {
           <span
             className={`px-3 py-1.5 rounded-full text-sm font-bold border ${
               breached.length > 0
-                ? "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30"
-                : "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30"
+                ? "bg-red-50 text-red-700 border-red-100"
+                : "bg-emerald-50 text-emerald-700 border-emerald-100"
             }`}
           >
             {breached.length} past target
           </span>
-          <span className="px-3 py-1.5 rounded-full text-sm font-bold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">
+          <span className="px-3 py-1.5 rounded-full text-sm font-bold border border-gray-200 text-gray-600">
             {items.length} open in total
           </span>
         </div>
 
         {/* Where the breaches are */}
         <section>
-          <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400 mb-3">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-3">
             Breaches by queue
           </h2>
           {byQueue.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-12 text-center">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+            <div className="rounded-xl border border-dashed border-gray-200 bg-white py-12 text-center">
+              <p className="text-sm font-medium text-gray-500">
                 Every queue is inside its target. 🎉
               </p>
             </div>
@@ -86,11 +86,11 @@ export default async function AdminSlaPage() {
                 <li key={queue}>
                   <Link
                     href={`/admin/today?queue=${encodeURIComponent(queue)}&breached=1`}
-                    className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm hover:border-red-200 dark:hover:border-red-900/40 transition"
+                    className="flex items-center justify-between gap-4 rounded-xl border border-gray-200/80 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:border-red-200 transition"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">{queue}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                      <p className="text-sm font-bold text-gray-900">{queue}</p>
+                      <p className="text-xs text-gray-500">
                         target {targets.find((t) => t.queue === queue)?.target.days}d · {count} past it
                       </p>
                     </div>
@@ -107,7 +107,7 @@ export default async function AdminSlaPage() {
         {/* The individual breaches, worst first */}
         {breached.length > 0 && (
           <section>
-            <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400 mb-3">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-3">
               Oldest broken promises
             </h2>
             <ul className="space-y-2">
@@ -115,20 +115,20 @@ export default async function AdminSlaPage() {
                 <li key={item.id}>
                   <Link
                     href={item.href}
-                    className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 shadow-sm hover:border-red-200 dark:hover:border-red-900/40 transition"
+                    className="flex items-center justify-between gap-4 rounded-xl border border-gray-200/80 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:border-red-200 transition"
                   >
                     <div className="min-w-0">
-                      <span className="text-[10px] font-extrabold uppercase tracking-wide text-gray-400">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
                         {item.queue}
                       </span>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white line-clamp-1">
+                      <p className="text-sm font-bold text-gray-900 line-clamp-1">
                         {item.title}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
+                      <p className="text-xs text-gray-500 line-clamp-1">
                         {item.subtitle}
                       </p>
                     </div>
-                    <span className="shrink-0 text-xs font-bold text-red-600 dark:text-red-400">
+                    <span className="shrink-0 text-xs font-bold text-red-600">
                       {slaLabel(item.queue, item.age)}
                     </span>
                   </Link>
@@ -136,7 +136,7 @@ export default async function AdminSlaPage() {
               ))}
             </ul>
             {breached.length > 20 && (
-              <p className="mt-2 text-xs text-gray-400 dark:text-gray-600">
+              <p className="mt-2 text-xs text-gray-500">
                 +{breached.length - 20} more past target.
               </p>
             )}
@@ -145,34 +145,34 @@ export default async function AdminSlaPage() {
 
         {/* The promises themselves */}
         <section>
-          <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400 mb-3">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-3">
             The targets
           </h2>
-          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-              <thead className="bg-gray-50 dark:bg-gray-950/40">
+          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Queue
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Target
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Why
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              <tbody className="divide-y divide-gray-100">
                 {targets.map(({ queue, target }) => (
                   <tr key={queue} className="align-top">
-                    <td className="px-4 py-3 text-sm font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-800 whitespace-nowrap">
                       {queue}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                       {target.days}d
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                    <td className="px-4 py-3 text-xs text-gray-500">
                       {target.rationale}
                     </td>
                   </tr>

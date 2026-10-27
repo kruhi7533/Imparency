@@ -79,10 +79,10 @@ export default async function AdminDocumentReviewPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">
           Document Review
         </h1>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-3xl">
+        <p className="mt-2 text-sm text-gray-500 max-w-3xl">
           The agent reads each uploaded document and reports what it found, field by field, with a
           confidence score. Anything it could not read clearly, could not find, or that disagrees
           with the registration form is held for you. A compliance flag is only set once you

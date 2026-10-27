@@ -39,10 +39,10 @@ export default async function NGOGapReportsListPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
+    <div className="font-sans transition-colors duration-200">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Gap Analysis Reports</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Gap Analysis Reports</h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             Internal reports comparing sponsor requirements with your active initiatives.
           </p>

@@ -1,3 +1,4 @@
+import { adminPageAllowed } from "@/lib/admin-roles";
 /**
  * The admin console's information architecture, in one place.
  *
@@ -25,7 +26,7 @@ export interface HubTab {
 }
 
 export interface Hub {
-  /** Stable key, also used to pick the badge count in AdminNav. */
+  /** Stable key, also used to pick the badge count in AdminShell. */
   key: string;
   label: string;
   /** Where the top-level nav link points — always the hub's first tab. */
@@ -165,6 +166,11 @@ export const ADMIN_HUBS: Hub[] = [
         hint: "Numbers organisations reported, checked against the evidence cited for them.",
       },
       {
+        href: "/admin/impact-publishing",
+        label: "Impact publishing",
+        hint: "Funder reports and impact stories waiting for review before they are published.",
+      },
+      {
         href: "/admin/impact-quality",
         label: "Impact quality",
         hint:
@@ -197,14 +203,51 @@ export const ADMIN_HUBS: Hub[] = [
           "Whether the platform's background jobs are actually running, and Run now for any of them. A job that has never run shows as a failure, not as healthy.",
       },
       {
+        href: "/admin/dead-letters",
+        label: "Dead letters",
+        hint: "Failed job runs, impact updates that ran out of retries, and donor notifications a channel could not deliver. Inspect, replay once, or dismiss.",
+      },
+      {
+        href: "/admin/notification-deliveries",
+        label: "Notification deliveries",
+        hint: "Every donor notification attempt per channel (WhatsApp → email fallback, in-app) with its status and reason.",
+      },
+      {
+        href: "/admin/ai-telemetry",
+        label: "AI telemetry",
+        hint: "Every model call: provider, model, prompt version, latency, tokens, cost estimate, outcome. Fault injection for non-production.",
+      },
+      {
         href: "/admin/audit",
         label: "Audit trail",
         hint: "Every recorded admin decision, across every entity — searchable by actor, action, entity type, and date.",
       },
       {
+        href: "/admin/audit/integrity",
+        label: "Audit integrity",
+        hint: "Verify the audit hash chain, sign a checkpoint, or check an exported CSV for edited, deleted or reordered rows.",
+      },
+      {
         href: "/admin/platform-trail",
         label: "Platform trail",
         hint: "Everything donors, NGOs and the platform recorded — contracts and payments, CSR requirements, compliance, donor accounts — in one timeline.",
+      },
+    ],
+  },
+  {
+    key: "access",
+    label: "Access",
+    href: "/admin/team",
+    tabs: [
+      {
+        href: "/admin/team",
+        label: "Admin team",
+        hint: "Who administers the platform and with which sub-role: super, finance, auditor (read-only) or support.",
+      },
+      {
+        href: "/admin/break-glass",
+        label: "Break-glass",
+        hint: "Time-boxed, reasoned support access to one organisation. Every action under a grant is audited; grants expire on their own.",
       },
     ],
   },
@@ -234,4 +277,17 @@ export function hubForPath(pathname: string | null): Hub | null {
 export function isTabActive(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
   return pathname === href || pathname.startsWith(href + "/");
+}
+
+/**
+ * The hubs and tabs this admin sub-role may open (lib/admin-roles.ts). A hub
+ * whose tabs are all hidden disappears; its link points at its first visible tab.
+ */
+export function hubsForRole(adminRole: string | null | undefined): Hub[] {
+  return ADMIN_HUBS.map((hub) => {
+    const tabs = hub.tabs.filter((t) => adminPageAllowed(adminRole, t.href));
+    if (hub.tabs.length === 0) return adminPageAllowed(adminRole, hub.href) ? hub : null;
+    if (tabs.length === 0) return null;
+    return { ...hub, tabs, href: tabs[0].href };
+  }).filter((h): h is Hub => h !== null);
 }

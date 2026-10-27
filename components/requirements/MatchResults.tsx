@@ -4,11 +4,11 @@ import { useState } from "react";
 import type { MatchDTO, MatchRunDTO } from "@/lib/requirements/dto";
 
 const RESULT_UI: Record<string, { icon: string; tone: string; label: string }> = {
-  MATCH: { icon: "✓", tone: "text-emerald-300 bg-emerald-500/10 border-emerald-500/25", label: "Match" },
-  PARTIAL: { icon: "⚠", tone: "text-amber-300 bg-amber-500/10 border-amber-500/25", label: "Partial" },
-  MISMATCH: { icon: "✗", tone: "text-red-300 bg-red-500/10 border-red-500/25", label: "Mismatch" },
-  INSUFFICIENT_DATA: { icon: "?", tone: "text-gray-300 bg-gray-800 border-gray-700", label: "Insufficient data" },
-  NOT_APPLICABLE: { icon: "–", tone: "text-gray-500 bg-gray-900 border-gray-800", label: "Not applicable" },
+  MATCH: { icon: "✓", tone: "text-emerald-700 bg-emerald-50 border-emerald-200", label: "Match" },
+  PARTIAL: { icon: "⚠", tone: "text-amber-700 bg-amber-50 border-amber-200", label: "Partial" },
+  MISMATCH: { icon: "✗", tone: "text-red-700 bg-red-50 border-red-200", label: "Mismatch" },
+  INSUFFICIENT_DATA: { icon: "?", tone: "text-gray-700 bg-gray-100 border-gray-300", label: "Insufficient data" },
+  NOT_APPLICABLE: { icon: "–", tone: "text-gray-500 bg-gray-50 border-gray-200", label: "Not applicable" },
 };
 
 function MatchCard({
@@ -26,15 +26,23 @@ function MatchCard({
   const shown = match.dimensions.filter((d) => d.result !== "NOT_APPLICABLE");
 
   return (
-    <div className="border border-gray-800 rounded-2xl bg-gray-900/40 p-5 space-y-3">
+    <div className="border border-gray-200/80 rounded-2xl bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-5 space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-bold text-gray-500">#{match.rank}</p>
-          <h4 className="text-base font-bold text-white">{match.ngoName}</h4>
-          <p className="text-xs text-gray-400">{match.projectTitle}</p>
+          <p className="text-[11px] font-bold text-gray-500">
+            {match.adminDecision === "APPROVED" && match.adminRank ? (
+              <span className="text-emerald-700">Admin-approved #{match.adminRank}</span>
+            ) : (
+              <>#{match.rank}</>
+            )}
+            {match.adminDecision === "APPROVED" && match.adminRank && <span className="ml-2 font-normal">(engine rank #{match.rank})</span>}
+            {match.adminDecision === "REJECTED" && <span className="ml-2 text-red-700">Excluded by admin</span>}
+          </p>
+          <h4 className="text-base font-bold text-gray-900">{match.ngoName}</h4>
+          <p className="text-xs text-gray-600">{match.projectTitle}</p>
         </div>
         <div className="text-right">
-          <p className="text-3xl font-black text-emerald-300 leading-none">{match.score === null ? "—" : `${match.score}%`}</p>
+          <p className="text-3xl font-black text-emerald-700 leading-none">{match.score === null ? "—" : `${match.score}%`}</p>
           <p className="text-[10px] text-gray-500 mt-1">
             {match.score === null ? "not enough data to score" : `based on ${match.coverage}% of applicable criteria`}
           </p>
@@ -52,31 +60,33 @@ function MatchCard({
         })}
       </div>
 
-      <p className="text-xs text-gray-300">{match.explanation}</p>
+      <p className="text-xs text-gray-700">{match.explanation}</p>
 
       {match.gaps.length > 0 && (
-        <div className="text-xs bg-gray-950/50 border border-gray-800 rounded-xl p-3">
-          <p className="text-gray-400">
-            <span className="font-bold text-gray-200">Main gap:</span> {match.gaps[0].description}
+        <div className="text-xs bg-gray-50 border border-gray-200 rounded-xl p-3">
+          <p className="text-gray-600">
+            <span className="font-bold text-gray-800">Main gap:</span> {match.gaps[0].description}
           </p>
-          <p className="text-gray-400 mt-1">
-            <span className="font-bold text-gray-200">Recommendation:</span> {match.gaps[0].recommendation}
+          <p className="text-gray-600 mt-1">
+            <span className="font-bold text-gray-800">Recommendation:</span> {match.gaps[0].recommendation}
           </p>
         </div>
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <button type="button" onClick={() => setOpen((o) => !o)} className="text-xs font-semibold text-emerald-400 hover:underline">
+        <button type="button" onClick={() => setOpen((o) => !o)} className="text-xs font-semibold text-emerald-700 hover:underline">
           {open ? "Hide comparison" : "Why this score?"}
         </button>
         {match.invitedAt ? (
-          <span className="text-xs font-bold text-emerald-300">✓ Brief shared {new Date(match.invitedAt).toLocaleDateString("en-IN")}</span>
+          <span className="text-xs font-bold text-emerald-700">✓ Brief shared {new Date(match.invitedAt).toLocaleDateString("en-IN")}</span>
+        ) : match.adminDecision === "REJECTED" ? (
+          <span className="text-xs text-red-700">Not approved by the platform{match.adminNote ? `: ${match.adminNote}` : ""}</span>
         ) : canInvite && onInvite ? (
           <button
             type="button"
             disabled={inviting}
             onClick={() => onInvite(match.id)}
-            className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-bold transition disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg bg-trust-600 hover:bg-trust-700 text-white text-xs font-bold transition disabled:opacity-50"
           >
             {inviting ? "Sharing…" : "Invite to respond"}
           </button>
@@ -96,14 +106,14 @@ function MatchCard({
                   <th className="py-1.5 pr-3">Weight</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-gray-100">
                 {match.dimensions.map((d) => {
                   const ui = RESULT_UI[d.result] ?? RESULT_UI.INSUFFICIENT_DATA;
                   return (
                     <tr key={d.dimension} className="align-top">
-                      <td className="py-2 pr-3 font-semibold text-gray-200">{d.dimension}</td>
-                      <td className="py-2 pr-3 text-gray-400">{d.requirementValue ?? "—"}</td>
-                      <td className="py-2 pr-3 text-gray-400">{d.projectValue ?? "—"}</td>
+                      <td className="py-2 pr-3 font-semibold text-gray-800">{d.dimension}</td>
+                      <td className="py-2 pr-3 text-gray-600">{d.requirementValue ?? "—"}</td>
+                      <td className="py-2 pr-3 text-gray-600">{d.projectValue ?? "—"}</td>
                       <td className="py-2 pr-3">
                         <span className={`px-1.5 py-0.5 rounded border text-[10px] font-bold ${ui.tone}`}>{ui.label}</span>
                         <p className="text-gray-500 mt-1">{d.explanation}</p>
@@ -117,9 +127,9 @@ function MatchCard({
           </div>
           {match.hardEligibility.length > 0 && (
             <div className="text-xs">
-              <p className="font-bold text-gray-300 mb-1">Hard eligibility</p>
+              <p className="font-bold text-gray-700 mb-1">Hard eligibility</p>
               {match.hardEligibility.map((r) => (
-                <p key={r.rule} className={r.passed ? "text-emerald-300" : "text-red-300"}>
+                <p key={r.rule} className={r.passed ? "text-emerald-700" : "text-red-700"}>
                   {r.passed ? "✓" : "✗"} {r.rule} — {r.explanation}
                 </p>
               ))}
@@ -127,11 +137,11 @@ function MatchCard({
           )}
           {match.gaps.length > 1 && (
             <div className="text-xs space-y-1">
-              <p className="font-bold text-gray-300">All gaps</p>
+              <p className="font-bold text-gray-700">All gaps</p>
               {match.gaps.map((g, i) => (
-                <p key={i} className="text-gray-400">
-                  <span className="font-semibold text-gray-300">[{g.severity}] {g.dimension}:</span> {g.description} →{" "}
-                  <span className="text-gray-300">{g.recommendation}</span>
+                <p key={i} className="text-gray-600">
+                  <span className="font-semibold text-gray-700">[{g.severity}] {g.dimension}:</span> {g.description} →{" "}
+                  <span className="text-gray-700">{g.recommendation}</span>
                 </p>
               ))}
             </div>
@@ -160,7 +170,7 @@ export function MatchResults({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
         <span>
           Run {new Date(run.createdAt).toLocaleString("en-IN")} · {run.candidateCount} projects evaluated · {run.eligibleCount} eligible ·{" "}
           {excluded.length} excluded
@@ -168,17 +178,22 @@ export function MatchResults({
         <span
           className={`px-2 py-0.5 rounded-full border text-[10px] font-bold ${
             run.reviewStatus === "APPROVED"
-              ? "text-emerald-300 border-emerald-500/30"
+              ? "text-emerald-700 border-emerald-200"
               : run.reviewStatus === "REJECTED"
-              ? "text-red-300 border-red-500/30"
-              : "text-gray-300 border-gray-700"
+              ? "text-red-700 border-red-200"
+              : "text-gray-700 border-gray-300"
           }`}
         >
           Admin review: {run.reviewStatus.toLowerCase()}
         </span>
       </div>
+      {run.reviewStatus === "PENDING" && eligible.length > 0 && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          Awaiting admin approval of this shortlist. NGOs can be invited once an admin has approved the candidates and their order.
+        </p>
+      )}
       {run.reviewStatus === "REJECTED" && run.reviewNote && (
-        <p className="text-xs text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-3 py-2">
+        <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
           Analysis rejected by admin: {run.reviewNote}
         </p>
       )}
@@ -189,23 +204,27 @@ export function MatchResults({
       </p>
 
       {eligible.length === 0 ? (
-        <p className="text-sm text-gray-400">No eligible NGO projects matched this requirement.</p>
+        <p className="text-sm text-gray-600">No eligible NGO projects matched this requirement.</p>
       ) : (
         eligible.map((m) => (
-          <MatchCard key={m.id} match={m} canInvite={canInvite && run.reviewStatus !== "REJECTED"} inviting={invitingId === m.id} onInvite={onInvite} />
+          <MatchCard
+            key={m.id}
+            match={m}
+            canInvite={canInvite && run.reviewStatus === "APPROVED" && m.adminDecision === "APPROVED"}
+            inviting={invitingId === m.id} onInvite={onInvite} />
         ))
       )}
 
       {excluded.length > 0 && (
-        <div className="border border-gray-800 rounded-2xl p-4">
-          <button type="button" onClick={() => setShowExcluded((s) => !s)} className="text-xs font-semibold text-gray-300">
+        <div className="border border-gray-200 rounded-2xl p-4">
+          <button type="button" onClick={() => setShowExcluded((s) => !s)} className="text-xs font-semibold text-gray-700">
             {showExcluded ? "▾" : "▸"} {excluded.length} {excluded.length === 1 ? "organisation was" : "organisations were"} excluded — {showExcluded ? "hide" : "see why"}
           </button>
           {showExcluded && (
             <ul className="mt-3 space-y-2 text-xs">
               {excluded.map((m) => (
-                <li key={m.id} className="text-gray-400">
-                  <span className="font-semibold text-gray-200">{m.ngoName}</span> — {m.projectTitle}:{" "}
+                <li key={m.id} className="text-gray-600">
+                  <span className="font-semibold text-gray-800">{m.ngoName}</span> — {m.projectTitle}:{" "}
                   {m.hardEligibility.filter((r) => !r.passed).map((r) => r.explanation).join(" ")}
                 </li>
               ))}

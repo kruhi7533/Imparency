@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import DashboardClient from "./DashboardClient";
+import NextActions from "./NextActions";
+import { WelcomeHeader, DatePill } from "@/components/ui/DashboardKit";
 
 export default async function NGODashboardPage() {
   const session = await getServerSession(authOptions);
@@ -56,71 +58,80 @@ export default async function NGODashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
-      
-
-
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="font-sans">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <WelcomeHeader
+          name={(session.user.name ?? profile.orgName).split(" ")[0]}
+          subtitle={status === "VERIFIED" ? <>Here&apos;s what&apos;s happening at <span className="font-medium text-gray-800">{profile.orgName}</span> today.</> : <>Your organisation: <span className="font-medium text-gray-800">{profile.orgName}</span></>}
+          right={<DatePill />}
+        />
         
         {/* State 1: PENDING */}
         {status === "PENDING" && (
-          <div className="max-w-2xl mx-auto bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-8 shadow-md text-center">
-            <div className="inline-flex items-center justify-center p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 rounded-full mb-6">
+          <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-gray-200/80 p-8 shadow-[0_1px_2px_rgba(16,24,40,0.04)] text-center">
+            <div className="inline-flex items-center justify-center p-3 bg-amber-50 text-amber-600 rounded-full mb-6">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
               </svg>
             </div>
             
-            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">Application Under Review</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Application Under Review</h2>
+            <p className="text-sm text-gray-500 mb-8 max-w-md mx-auto">
               Your registration documents are currently under review. Our administration team will notify you within 2-3 business days.
             </p>
 
             {/* Stepper Timeline */}
             <div className="relative flex items-center justify-between max-w-md mx-auto">
-              <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-gray-200 dark:bg-gray-800 -translate-y-1/2 -z-10"></div>
+              <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-gray-200 -translate-y-1/2 -z-10"></div>
               
               {/* Step 1: Submitted */}
               <div className="flex flex-col items-center">
                 <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm font-bold shadow-md shadow-emerald-500/20 z-10">✓</div>
-                <span className="mt-2 text-xs font-semibold text-gray-700 dark:text-gray-300">Submitted</span>
+                <span className="mt-2 text-xs font-semibold text-gray-700">Submitted</span>
               </div>
 
               {/* Step 2: Under Review */}
               <div className="flex flex-col items-center">
                 <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center text-sm font-bold shadow-md shadow-amber-500/20 z-10 animate-pulse">2</div>
-                <span className="mt-2 text-xs font-semibold text-gray-700 dark:text-gray-300">Under Review</span>
+                <span className="mt-2 text-xs font-semibold text-gray-700">Under Review</span>
               </div>
 
               {/* Step 3: Verified */}
               <div className="flex flex-col items-center">
-                <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-400 flex items-center justify-center text-sm font-bold z-10">3</div>
-                <span className="mt-2 text-xs font-semibold text-gray-400">Verified</span>
+                <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-bold z-10">3</div>
+                <span className="mt-2 text-xs font-semibold text-gray-500">Verified</span>
               </div>
             </div>
+
+            <p className="mt-8 text-xs text-gray-500">
+              Uploaded the wrong file, or a document has changed?{" "}
+              <Link href="/ngo/register" className="font-semibold text-trust-600 underline underline-offset-2">
+                Replace your documents
+              </Link>{" "}
+              — they are re-checked automatically and the review continues on the new files.
+            </p>
           </div>
         )}
 
         {/* State 2: REJECTED */}
         {status === "REJECTED" && (
-          <div className="max-w-2xl mx-auto bg-white dark:bg-gray-900 rounded-2xl border border-red-100 dark:border-red-950 p-8 shadow-md text-center">
-            <div className="inline-flex items-center justify-center p-3 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-full mb-6">
+          <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-red-100 p-8 shadow-[0_1px_2px_rgba(16,24,40,0.04)] text-center">
+            <div className="inline-flex items-center justify-center p-3 bg-red-50 text-red-600 rounded-full mb-6">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
               </svg>
             </div>
 
-            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">Application Rejected</h2>
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Application Rejected</h2>
             
             {profile.adminNote && (
-              <div className="my-6 p-4 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-lg text-sm text-red-700 dark:text-red-300 text-left max-w-md mx-auto">
+              <div className="my-6 p-4 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700 text-left max-w-md mx-auto">
                 <strong className="block font-bold mb-1">Reason from Administrator:</strong>
                 {profile.adminNote}
               </div>
             )}
 
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+            <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
               Please review the feedback above, update your verification materials, and resubmit them for evaluation.
             </p>
 
@@ -135,24 +146,24 @@ export default async function NGODashboardPage() {
 
         {/* State 0: SUSPENDED (Overrides Verified Dashboard) */}
         {profile.isSuspended && (
-          <div className="max-w-2xl mx-auto bg-white dark:bg-gray-900 rounded-2xl border border-red-200 dark:border-red-900/60 p-8 shadow-md text-center space-y-4">
-            <div className="inline-flex items-center justify-center p-3 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-full">
+          <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-red-200 p-8 shadow-[0_1px_2px_rgba(16,24,40,0.04)] text-center space-y-4">
+            <div className="inline-flex items-center justify-center p-3 bg-red-50 text-red-600 rounded-full">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
 
-            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">Organization Account Suspended</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-              Administrative actions and campaign publishing for <span className="font-bold text-gray-800 dark:text-gray-200">{profile.orgName}</span> have been temporarily suspended.
+            <h2 className="text-2xl font-extrabold text-gray-900">Organization Account Suspended</h2>
+            <p className="text-sm text-gray-500 max-w-md mx-auto">
+              Administrative actions and campaign publishing for <span className="font-bold text-gray-800">{profile.orgName}</span> have been temporarily suspended.
             </p>
 
             {profile.suspensionReason && (
-              <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 rounded-xl text-xs text-red-700 dark:text-red-300 text-left max-w-md mx-auto space-y-1">
-                <span className="font-bold block uppercase tracking-wider text-[10px] text-red-600 dark:text-red-400">Suspension Reason:</span>
+              <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700 text-left max-w-md mx-auto space-y-1">
+                <span className="font-bold block uppercase tracking-wider text-[10px] text-red-600">Suspension Reason:</span>
                 <p>{profile.suspensionReason}</p>
                 {profile.suspendedAt && (
-                  <p className="text-[10px] text-gray-400 mt-1">Suspended on {new Date(profile.suspendedAt).toLocaleDateString("en-IN")}</p>
+                  <p className="text-[10px] text-gray-500 mt-1">Suspended on {new Date(profile.suspendedAt).toLocaleDateString("en-IN")}</p>
                 )}
               </div>
             )}
@@ -168,7 +179,25 @@ export default async function NGODashboardPage() {
           </div>
         )}
 
+        {/* Re-verification due (ADM-004): still VERIFIED, but a human has asked
+            for the evidence again. Says why, by when, and what to do. */}
+        {status === "VERIFIED" && profile.reverificationRequiredAt && (
+          <div role="status" className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+            <h2 className="font-extrabold text-base mb-1">Re-verification due{profile.reverificationDueAt ? ` by ${profile.reverificationDueAt.toLocaleDateString("en-IN")}` : ""}</h2>
+            {profile.reverificationReason && <p className="mb-2"><b>Reason:</b> {profile.reverificationReason}</p>}
+            <p className="mb-1 font-semibold">What to do:</p>
+            <ol className="list-decimal ml-5 space-y-0.5">
+              <li>Check that your registration certificate, PAN and 80G/12A documents are current.</li>
+              <li>Re-upload any expired or changed document from <Link href="/ngo/register" className="underline">your registration details</Link> (resubmitting sends your profile back to review).</li>
+              <li>Reply to any admin question in <Link href="/ngo/inquiries" className="underline">Inquiries</Link>.</li>
+            </ol>
+            <p className="mt-2 text-xs">Your organisation stays verified and can keep working while an admin re-checks.</p>
+          </div>
+        )}
+
         {/* State 3: VERIFIED (Full Dashboard) */}
+        {!profile.isSuspended && status === "VERIFIED" && <NextActions ngoId={profile.id} />}
+
         {!profile.isSuspended && status === "VERIFIED" && (
           <DashboardClient
             profile={serializedProfile as any}

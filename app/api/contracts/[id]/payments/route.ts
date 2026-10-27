@@ -11,6 +11,8 @@ import {
   resolveContractParty,
   sandboxReference,
 } from "@/lib/contract-payments";
+import { allocateNewPayment, lockContract } from "@/lib/contract-funding";
+import { parseUtr } from "@/lib/utr";
 
 /** Payments and the funding summary for one contract. Either party, or an admin. */
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
@@ -27,6 +29,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         totalGrantAmount: true,
         milestones: { select: { id: true, allocatedAmount: true } },
         payments: { orderBy: { paidAt: "desc" } },
+        paymentAllocations: { select: { paymentId: true, contractMilestoneId: true, amount: true, status: true } },
       },
     });
     if (!contract) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
@@ -36,7 +39,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 
     return NextResponse.json({
       payments: contract.payments,
-      summary: fundingSummary(contract, contract.milestones, contract.payments),
+      allocations: contract.paymentAllocations,
+      summary: fundingSummary(contract, contract.milestones, contract.payments, contract.paymentAllocations),
     });
   } catch (error) {
     console.error("[api/contracts/[id]/payments] GET error:", error);
@@ -88,11 +92,17 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
     const milestoneId = typeof body.contractMilestoneId === "string" && body.contractMilestoneId ? body.contractMilestoneId : null;
 
+    // The UTR is kept in EVERY mode (lib/utr.ts). `utr` and `reference` are
+    // the same field under two names; `utr` wins if both are sent.
+    const utrCheck = parseUtr(body.utr ?? body.reference);
+    if (!utrCheck.ok) return NextResponse.json({ error: utrCheck.error }, { status: 400 });
+    const utr = utrCheck.utr;
+
     try {
       const result = await prisma.$transaction(async (tx) => {
         // Serialise payments on this contract so two concurrent recordings
         // cannot both pass the balance check and overpay it together.
-        await tx.$queryRaw`SELECT id FROM "Contract" WHERE id = ${contract.id} FOR UPDATE`;
+        await lockContract(tx, contract.id);
 
         const fresh = await tx.contract.findUnique({
           where: { id: contract.id },
@@ -120,12 +130,27 @@ export async function POST(request: Request, { params }: { params: { id: string 
           payments: fresh.payments,
           amount: body.amount,
           mode: body.mode,
-          reference: body.reference,
+          reference: utr ?? "",
         });
         if (!check.ok) return check;
 
-        const reference =
-          body.mode === "SANDBOX" ? sandboxReference(idempotencyKey) : String(body.reference).trim().slice(0, 100);
+        // Duplicate UTR for this payer account (any of its contracts). The
+        // unique index is the guarantee; this is the readable answer.
+        if (utr) {
+          const dup = await tx.contractPayment.findFirst({
+            where: { payerAccountId: contract.donorId, utr },
+            select: { id: true, contractId: true },
+          });
+          if (dup) {
+            return {
+              ok: false as const,
+              status: 409,
+              error: `UTR ${utr} is already recorded on another payment from your organisation. One bank transfer can fund one payment.`,
+            };
+          }
+        }
+
+        const reference = utr ?? sandboxReference(idempotencyKey);
 
         const payment = await tx.contractPayment.create({
           data: {
@@ -134,11 +159,24 @@ export async function POST(request: Request, { params }: { params: { id: string 
             amount: check.amount,
             mode: body.mode,
             reference,
+            utr,
+            payerAccountId: contract.donorId,
             paidAt,
             note: typeof body.note === "string" ? body.note.trim().slice(0, 500) || null : null,
             recordedById: session.user.id,
             idempotencyKey,
           },
+        });
+
+        // Same transaction: the payment is split across milestones now (rule
+        // in lib/contract-funding.ts). Funding status does NOT move — this
+        // money is pending until reconciled.
+        const lines = await allocateNewPayment(tx, {
+          contractId: contract.id,
+          paymentId: payment.id,
+          amount: check.amount,
+          milestoneId: milestone?.id ?? null,
+          actorId: session.user.id,
         });
 
         await tx.contractAuditLog.create({
@@ -150,20 +188,32 @@ export async function POST(request: Request, { params }: { params: { id: string 
             detail: `${body.mode === "SANDBOX" ? "Sandbox" : "Manual"} payment of ₹${check.amount.toFixed(2)} recorded${
               milestone ? ` against "${milestone.title}"` : ""
             }. Awaiting NGO confirmation.`,
-            metadata: { paymentId: payment.id, milestoneId: milestone?.id ?? null, amount: check.amount.toFixed(2) },
+            metadata: {
+              paymentId: payment.id,
+              milestoneId: milestone?.id ?? null,
+              amount: check.amount.toFixed(2),
+              allocation: lines.map((l) => ({ milestoneId: l.contractMilestoneId, amount: l.amount.toFixed(2) })),
+            },
           },
         });
 
-        return { ok: true as const, payment };
+        return { ok: true as const, payment, allocations: lines.map((l) => ({ contractMilestoneId: l.contractMilestoneId, amount: l.amount.toFixed(2) })) };
       });
 
       if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
-      return NextResponse.json({ payment: result.payment }, { status: 201 });
+      return NextResponse.json({ payment: result.payment, allocations: result.allocations }, { status: 201 });
     } catch (err) {
       // Two identical submissions raced past the replay check; the other won.
       if (isUniqueConstraintError(err)) {
         const replayAfterRace = await findReplay(idempotencyKey, contract.id);
         if (replayAfterRace) return replayAfterRace;
+        // Not our key — so the (payerAccountId, utr) index: a concurrent duplicate UTR.
+        if (utr) {
+          return NextResponse.json(
+            { error: `UTR ${utr} is already recorded on another payment from your organisation.` },
+            { status: 409 },
+          );
+        }
       }
       throw err;
     }

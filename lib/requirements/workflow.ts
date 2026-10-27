@@ -13,12 +13,28 @@ import {
   confidenceMap,
   FORM_ENTRY_AGENT,
   REQUIREMENT_FIELDS,
+  REQUIREMENT_FIELD_KEYS,
   type RequirementFieldKey,
 } from "./provenance";
 import { assertAdmin, donorAccountFor, loadRequirementForActor, requireVerifiedFunder, workflowRole, type Actor } from "./access";
 import { SECTOR_OPTIONS, INDIAN_STATES, namesKnownOption } from "./form-options";
 import { runExtraction } from "./extraction";
+import { readFlags, unconfirmedBlockingFlags, FLAG_LABELS } from "./extraction-checks";
+import { Prisma } from "@prisma/client";
 import { assertResponseTransition } from "./response-status";
+import { MANUAL_ENTRY_MODEL } from "./dto";
+
+/** Refuses to move a requirement on while a blocking extraction flag is unconfirmed (AI-002 / NEG-004). */
+function assertFlagsConfirmed(req: { extractionFlags?: unknown }) {
+  const open = unconfirmedBlockingFlags(req.extractionFlags);
+  if (open.length > 0) {
+    throw new RequirementWorkflowError(
+      `Confirm the extraction warning${open.length > 1 ? "s" : ""} first: ${open.map((f) => FLAG_LABELS[f.code]).join(", ")}.`,
+      409,
+      "FLAGS_UNCONFIRMED"
+    );
+  }
+}
 
 /**
  * CSR requirement workflow actions. Every action: load → authorize (owner or
@@ -191,6 +207,7 @@ export async function submitForAdminReview(id: string, actor: Actor) {
   const req = await loadRequirementForActor(id, actor);
   const role = workflowRole(req, actor, "editRequirements");
   if (role !== "DONOR") throw new RequirementWorkflowError("Only the requirement's owner can submit it for review.", 403);
+  assertFlagsConfirmed(req);
 
   return prisma.$transaction(async (tx) => {
     let current = req;
@@ -216,6 +233,7 @@ export async function submitForAdminReview(id: string, actor: Actor) {
 export async function approveRequirement(id: string, actor: Actor, note: unknown, request?: Request) {
   assertAdmin(actor);
   const req = await loadRequirementForActor(id, actor);
+  assertFlagsConfirmed(req);
   const current = normalizeFields(req.extractedFields);
   if (!current.sector.value) {
     throw new RequirementWorkflowError("Add the CSR sector before validating — matching needs it.", 400);
@@ -337,6 +355,191 @@ export async function rerunExtraction(id: string, actor: Actor, request?: Reques
   return updated;
 }
 
+/**
+ * The owner gives up on extraction and types the details in themselves
+ * (FAILED → DONOR_REVIEW). The stored document stays attached for reference;
+ * nothing is extracted or invented — every field starts empty as a donor entry.
+ */
+export async function startManualEntry(id: string, actor: Actor) {
+  const req = await loadRequirementForActor(id, actor);
+  const role = workflowRole(req, actor, "editRequirements");
+  if (role !== "DONOR") throw new RequirementWorkflowError("Only the requirement's owner can enter its details manually.", 403);
+  if (req.status !== "FAILED") {
+    throw new RequirementWorkflowError("Manual entry is only offered when document extraction has failed.", 400);
+  }
+  const existing = normalizeFields(req.extractedFields);
+  const hasValues = REQUIREMENT_FIELD_KEYS.some((k) => existing[k].value !== null);
+  return prisma.$transaction((tx) =>
+    commitRequirementChange(tx, req, {
+      actorId: actor.id,
+      actorRole: "DONOR",
+      toStatus: "DONOR_REVIEW",
+      // Keep anything a previous successful extraction left; otherwise start from blank donor entries.
+      fields: hasValues ? undefined : withDonorProvenance({}),
+      versionNote: hasValues ? undefined : "Details entered manually by donor (extraction failed)",
+      data: { extractionError: Prisma.DbNull, ...(hasValues ? {} : { modelVersion: MANUAL_ENTRY_MODEL }) },
+      audit: {
+        action: "REQUIREMENT_MANUAL_ENTRY_STARTED",
+        detail: "Extraction failed; the donor is entering the requirement details manually.",
+      },
+    })
+  );
+}
+
+/**
+ * Owner (while editable) or admin (at review) confirms a blocking extraction
+ * flag — e.g. "the budget is ₹50 lakh, not ₹75 lakh", or "the injected text was
+ * ignored". A note is required: it is the human decision the flag asked for.
+ * Idempotent: confirming a confirmed flag returns the requirement unchanged.
+ */
+export async function confirmExtractionFlag(id: string, actor: Actor, flagId: unknown, note: unknown) {
+  if (typeof flagId !== "string" || !flagId) throw new RequirementWorkflowError("Choose the warning to confirm.", 400);
+  const text = requireText(note, "A note explaining your confirmation");
+  const req = await loadRequirementForActor(id, actor);
+  const role = workflowRole(req, actor, "editRequirements");
+  const editable = role === "ADMIN" ? ADMIN_EDITABLE : DONOR_EDITABLE;
+  if (!editable.includes(req.status)) {
+    throw new RequirementWorkflowError("Warnings can be confirmed only while the requirement is being reviewed.", 400);
+  }
+  const flags = readFlags(req.extractionFlags);
+  const flag = flags.find((f) => f.id === flagId);
+  if (!flag) throw new RequirementWorkflowError("Warning not found on this requirement.", 404);
+  if (flag.confirmedAt) return req;
+
+  const now = new Date().toISOString();
+  const next = flags.map((f) =>
+    f.id === flagId ? { ...f, confirmedAt: now, confirmedById: actor.id, confirmedByRole: role, confirmationNote: text } : f
+  );
+  const updated = await prisma.$transaction((tx) =>
+    commitRequirementChange(tx, req, {
+      actorId: actor.id,
+      actorRole: role,
+      data: { extractionFlags: next as any },
+      audit: {
+        action: "REQUIREMENT_FLAG_CONFIRMED",
+        detail: `${FLAG_LABELS[flag.code]} confirmed: ${text}`,
+        metadata: { flagId, code: flag.code },
+      },
+    })
+  );
+  if (role === "ADMIN") {
+    await logAdminAction({
+      adminId: actor.id,
+      action: "REQUIREMENT_EDITED",
+      entityType: "REQUIREMENT",
+      entityId: id,
+      oldValue: { flag: flag.code, confirmed: false },
+      newValue: { flag: flag.code, confirmed: true },
+      note: text,
+    });
+  }
+  return updated;
+}
+
+/**
+ * ADM-006: the admin decides the shortlist before any NGO is invited —
+ * approves candidates in an explicit order, rejects others with a reason.
+ * Body: { gapReportId, order: matchId[] (approved, first = 1), rejected?: [{ matchId, reason }], note? }.
+ * Only the latest run, only while no NGO has been invited, only eligible
+ * candidates. Re-deciding before invitations replaces the previous decision.
+ */
+export async function reviewShortlist(id: string, actor: Actor, body: unknown, request?: Request) {
+  assertAdmin(actor);
+  const input = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
+  const req = await loadRequirementForActor(id, actor);
+  if (req.status !== "SHORTLISTED") {
+    throw new RequirementWorkflowError("The shortlist can be reviewed only after matching and before NGOs respond.", 400);
+  }
+  const latest = await prisma.gapReport.findFirst({
+    where: { sponsorRequirementId: id },
+    orderBy: { createdAt: "desc" },
+    include: { matches: { select: { id: true, eligible: true, invitedAt: true } } },
+  });
+  if (!latest || input.gapReportId !== latest.id) {
+    throw new RequirementWorkflowError("This shortlist is out of date. Reload to review the latest matching run.", 409);
+  }
+  if (latest.matches.some((m) => m.invitedAt)) {
+    throw new RequirementWorkflowError("NGOs have already been invited from this shortlist; it can no longer be reordered.", 409);
+  }
+
+  const byId = new Map(latest.matches.map((m) => [m.id, m]));
+  const order = Array.isArray(input.order) ? input.order : [];
+  const rejectedRaw = Array.isArray(input.rejected) ? input.rejected : [];
+  if (order.length === 0) throw new RequirementWorkflowError("Approve at least one candidate (or reject the analysis instead).", 400);
+  if (order.some((m) => typeof m !== "string") || new Set(order).size !== order.length) {
+    throw new RequirementWorkflowError("The order must list each approved candidate once.", 400);
+  }
+  for (const matchId of order as string[]) {
+    const m = byId.get(matchId);
+    if (!m) throw new RequirementWorkflowError("A candidate in the order is not in this shortlist.", 400);
+    if (!m.eligible) throw new RequirementWorkflowError("Only eligible candidates can be approved.", 400);
+  }
+  const rejected = rejectedRaw.map((r: any) => ({
+    matchId: typeof r?.matchId === "string" ? r.matchId : "",
+    reason: requireText(r?.reason, "A reason for each rejected candidate", 3),
+  }));
+  for (const r of rejected) {
+    if (!byId.has(r.matchId)) throw new RequirementWorkflowError("A rejected candidate is not in this shortlist.", 400);
+    if ((order as string[]).includes(r.matchId)) throw new RequirementWorkflowError("A candidate cannot be both approved and rejected.", 400);
+  }
+  const decided = new Set([...(order as string[]), ...rejected.map((r) => r.matchId)]);
+  const undecided = latest.matches.filter((m) => m.eligible && !decided.has(m.id));
+  if (undecided.length > 0) {
+    throw new RequirementWorkflowError("Approve or reject every eligible candidate.", 400);
+  }
+  const note = typeof input.note === "string" && input.note.trim() ? input.note.trim().slice(0, 2000) : null;
+  const now = new Date();
+
+  await prisma.$transaction(async (tx) => {
+    // Re-checked inside the transaction: an invitation racing this review wins.
+    const invited = await tx.requirementMatch.count({ where: { gapReportId: latest.id, invitedAt: { not: null } } });
+    if (invited > 0) throw ERRORS.conflict();
+    await tx.requirementMatch.updateMany({
+      where: { gapReportId: latest.id },
+      data: { adminDecision: null, adminRank: null, adminNote: null, adminDecidedAt: null, adminDecidedById: null },
+    });
+    for (let i = 0; i < order.length; i++) {
+      const matchId = order[i] as string;
+      await tx.requirementMatch.update({
+        where: { id: matchId },
+        data: { adminDecision: "APPROVED", adminRank: i + 1, adminDecidedAt: now, adminDecidedById: actor.id },
+      });
+    }
+    for (const r of rejected) {
+      await tx.requirementMatch.update({
+        where: { id: r.matchId },
+        data: { adminDecision: "REJECTED", adminNote: r.reason, adminDecidedAt: now, adminDecidedById: actor.id },
+      });
+    }
+    await tx.gapReport.update({
+      where: { id: latest.id },
+      data: { reviewStatus: "APPROVED", reviewedBy: actor.id, reviewedAt: now, reviewNote: note },
+    });
+    await recordRequirementEvent(tx, {
+      requirementId: id,
+      action: "SHORTLIST_ADMIN_APPROVED",
+      actorId: actor.id,
+      actorRole: "ADMIN",
+      fromStatus: req.status,
+      toStatus: req.status,
+      detail: `Admin approved ${order.length} candidate(s) in order${rejected.length ? ` and rejected ${rejected.length}` : ""}.${note ? ` ${note}` : ""}`,
+      metadata: { gapReportId: latest.id, order, rejected: rejected.map((r) => r.matchId) },
+    });
+  });
+
+  await logAdminAction({
+    adminId: actor.id,
+    action: "GAP_REPORT_APPROVED",
+    entityType: "GAP_REPORT",
+    entityId: latest.id,
+    oldValue: { reviewStatus: latest.reviewStatus },
+    newValue: { reviewStatus: "APPROVED", order, rejected: rejected.map((r) => r.matchId) },
+    note,
+    request,
+  });
+  return { gapReportId: latest.id, order, rejected: rejected.map((r) => r.matchId) };
+}
+
 /** Shares the sanitized brief with one eligible shortlisted candidate's NGO. */
 export async function inviteMatch(id: string, actor: Actor, matchId: string) {
   const req = await loadRequirementForActor(id, actor);
@@ -352,7 +555,10 @@ export async function inviteMatch(id: string, actor: Actor, matchId: string) {
   });
   const match = await prisma.requirementMatch.findUnique({
     where: { id: matchId },
-    include: { ngo: { select: { orgName: true, verificationStatus: true, isSuspended: true } } },
+    include: {
+      ngo: { select: { orgName: true, verificationStatus: true, isSuspended: true, userId: true } },
+      project: { select: { title: true } },
+    },
   });
   if (!match || match.requirementId !== id || match.gapReportId !== latest?.id) {
     throw new RequirementWorkflowError("Match not found in the current shortlist.", 404);
@@ -361,6 +567,13 @@ export async function inviteMatch(id: string, actor: Actor, matchId: string) {
     throw new RequirementWorkflowError("An admin rejected this analysis. Re-run matching before inviting NGOs.", 400);
   }
   if (!match.eligible) throw new RequirementWorkflowError("This candidate is not eligible for the requirement.", 400);
+  // ADM-006: no NGO is invited before an admin has approved the shortlist.
+  if (latest.reviewStatus !== "APPROVED") {
+    throw new RequirementWorkflowError("An admin has to approve the shortlist before NGOs can be invited.", 409, "SHORTLIST_NOT_APPROVED");
+  }
+  if ((match as any).adminDecision !== "APPROVED") {
+    throw new RequirementWorkflowError("An admin excluded this candidate from the shortlist.", 400, "CANDIDATE_NOT_APPROVED");
+  }
   if (match.ngo.verificationStatus !== "VERIFIED" || match.ngo.isSuspended) {
     throw new RequirementWorkflowError("This NGO is no longer verified and cannot be invited.", 400);
   }
@@ -380,6 +593,17 @@ export async function inviteMatch(id: string, actor: Actor, matchId: string) {
       toStatus: req.status,
       detail: `Opportunity brief shared with ${match.ngo.orgName}.`,
       metadata: { matchId, projectId: match.projectId, ngoId: match.ngoId },
+    });
+    // DON-006: the NGO learns of the invitation in its notification bell, not
+    // only if it happens to open the match inbox. Same transaction, so a retry
+    // of an already-invited match (returned above) never notifies twice.
+    await tx.notification.create({
+      data: {
+        userId: match.ngo.userId,
+        type: "CSR_INVITATION",
+        title: "A CSR funder invited you to submit a proposal",
+        body: `Your project "${match.project?.title ?? "project"}" was shortlisted for a CSR requirement. Open your match inbox to respond.`,
+      },
     });
     return updated;
   });

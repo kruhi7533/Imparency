@@ -295,18 +295,18 @@ export default function ProofReviewClient({
   return (
     <div className="space-y-6">
       {/* Tabs Switcher */}
-      <div className="flex border-b border-gray-200 dark:border-gray-800">
+      <div className="flex border-b border-gray-200">
         <button
           onClick={() => setActiveTab("pending")}
           className={`py-2.5 px-6 font-bold text-sm transition-all border-b-2 -mb-px flex items-center gap-2 ${
             activeTab === "pending"
-              ? "border-emerald-600 text-emerald-600 dark:text-emerald-400"
-              : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              ? "border-emerald-600 text-emerald-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
           <span>Pending Reviews</span>
           {pendingList.length > 0 && (
-            <span className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-xs px-2 py-0.5 rounded-full font-bold">
+            <span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full font-bold">
               {pendingList.length}
             </span>
           )}
@@ -315,12 +315,12 @@ export default function ProofReviewClient({
           onClick={() => setActiveTab("history")}
           className={`py-2.5 px-6 font-bold text-sm transition-all border-b-2 -mb-px flex items-center gap-2 ${
             activeTab === "history"
-              ? "border-emerald-600 text-emerald-600 dark:text-emerald-400"
-              : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              ? "border-emerald-600 text-emerald-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
           <span>Audit Trail</span>
-          <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs px-2 py-0.5 rounded-full font-bold">
+          <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full font-bold">
             {/* "100+" when the window holds more than was fetched — a bare
                 "100" would claim an exact total this page never counted. */}
             {auditTruncated ? `${auditList.length}+` : auditList.length}
@@ -331,10 +331,10 @@ export default function ProofReviewClient({
       {/* Tab Contents */}
       {activeTab === "pending" ? (
         pendingList.length === 0 ? (
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-sm">
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <span className="text-4xl mb-4 block">👍</span>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No pending reviews</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">No pending reviews</h3>
+            <p className="text-sm text-gray-500">
               Awesome job! All milestone proof submissions have been verified and processed.
             </p>
           </div>
@@ -347,29 +347,29 @@ export default function ProofReviewClient({
               return (
                 <div
                   key={milestone.id}
-                  className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm flex flex-col lg:flex-row gap-6 hover:shadow-md transition duration-200"
+                  className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] flex flex-col lg:flex-row gap-6 hover:shadow-md transition duration-200"
                 >
                   {/* Left Side: Milestone and Campaign details */}
                   <div className={`space-y-4 ${activeDoc?.milestoneId === milestone.id ? "lg:w-64 shrink-0" : "flex-1"}`}>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">
+                        <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
                           Milestone #{milestone.sequenceOrder}
                         </span>
-                        <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 bg-yellow-50 dark:bg-yellow-950/20 text-yellow-600 dark:text-yellow-400 rounded">
+                        <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 bg-yellow-50 text-yellow-600 rounded">
                           Awaiting Manual Override
                         </span>
                       </div>
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                      <h2 className="text-xl font-bold text-gray-900">
                         {milestone.title}
                       </h2>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 flex-wrap">
-                        Campaign: <strong className="font-semibold text-gray-700 dark:text-gray-300">{milestone.project.title}</strong>
-                        <span className="text-gray-300 dark:text-gray-600">|</span>
-                        NGO: <strong className="font-semibold text-gray-700 dark:text-gray-300">{milestone.project.ngo.orgName}</strong>
+                      <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5 flex-wrap">
+                        Campaign: <strong className="font-semibold text-gray-700">{milestone.project.title}</strong>
+                        <span className="text-gray-300">|</span>
+                        NGO: <strong className="font-semibold text-gray-700">{milestone.project.ngo.orgName}</strong>
                         <a
                           href={`/admin/risk-compliance`}
-                          className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline underline-offset-2"
+                          className="text-[10px] font-bold text-blue-600 hover:underline underline-offset-2"
                           title="View risk & compliance for this NGO"
                         >
                           Risk & Compliance →
@@ -377,14 +377,14 @@ export default function ProofReviewClient({
                       </p>
                     </div>
 
-                    <div className="bg-gray-50 dark:bg-gray-800/30 p-3 rounded-lg border border-gray-100 dark:border-gray-800/50">
-                      <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
+                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                      <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
                         Expected Scope
                       </h4>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                      <p className="text-xs text-gray-600 leading-relaxed">
                         {milestone.description}
                       </p>
-                      <div className="mt-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-4">
+                      <div className="mt-2 text-[11px] font-bold text-emerald-600 flex items-center gap-4">
                         <span>Budget: ₹{milestone.targetAmount.toLocaleString("en-IN")}</span>
                         <span>Deadline: {new Date(milestone.deadline).toLocaleDateString("en-IN")}</span>
                       </div>
@@ -392,17 +392,17 @@ export default function ProofReviewClient({
 
                     {latestProof && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                        <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
                           NGO Completion Statement
                         </h4>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 bg-emerald-50/20 dark:bg-emerald-950/10 p-3 rounded-lg border border-emerald-100/50 dark:border-emerald-900/10 leading-relaxed">
+                        <p className="text-xs text-gray-600 bg-emerald-50/20 p-3 rounded-lg border border-emerald-100/50 leading-relaxed">
                           {latestProof.description}
                         </p>
 
                         {/* Attachments */}
                         {(latestProof.mediaUrls.length > 0 || latestProof.documentUrls.length > 0) && (
                           <div className="space-y-1">
-                            <h5 className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                            <h5 className="text-[11px] font-bold text-gray-500">
                               Attached Evidence:
                             </h5>
                             <div className="flex flex-wrap gap-2">
@@ -415,7 +415,7 @@ export default function ProofReviewClient({
                                     className={`text-xs font-bold px-3 py-1.5 rounded-lg border flex items-center gap-1 transition ${
                                       isActive
                                         ? "bg-emerald-600 text-white border-emerald-600"
-                                        : "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-100/50 dark:border-emerald-900/20"
+                                        : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-100/50"
                                     }`}
                                   >
                                     🖼️ Image {index + 1}
@@ -432,7 +432,7 @@ export default function ProofReviewClient({
                                     className={`text-xs font-bold px-3 py-1.5 rounded-lg border flex items-center gap-1 transition ${
                                       isActive
                                         ? "bg-blue-600 text-white border-blue-600"
-                                        : "bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-100/50 dark:border-blue-900/20"
+                                        : "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-100/50"
                                     }`}
                                   >
                                     📄 Document {index + 1}
@@ -446,7 +446,7 @@ export default function ProofReviewClient({
 
                         {(latestProof.fieldEvidenceIds?.length ?? 0) > 0 && (
                           <div className="space-y-1">
-                            <h5 className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                            <h5 className="text-[11px] font-bold text-gray-500">
                               Approved field evidence attached ({latestProof.fieldEvidenceIds!.length}) — already reviewed in Field Evidence:
                             </h5>
                             <div className="flex flex-wrap gap-2">
@@ -475,19 +475,19 @@ export default function ProofReviewClient({
 
                   {/* Center: Inline Document Viewer */}
                   {activeDoc?.milestoneId === milestone.id && (
-                    <div className="flex-1 border-t lg:border-t-0 lg:border-l border-gray-100 dark:border-gray-800 pt-6 lg:pt-0 lg:pl-6 flex flex-col gap-3 min-w-0">
+                    <div className="flex-1 border-t lg:border-t-0 lg:border-l border-gray-100 pt-6 lg:pt-0 lg:pl-6 flex flex-col gap-3 min-w-0">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                        <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
                           Document Preview
                         </h3>
                         <button
                           onClick={() => setActiveDoc(null)}
-                          className="text-[10px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition"
+                          className="text-[10px] font-bold text-gray-500 hover:text-gray-600 transition"
                         >
                           Close ✕
                         </button>
                       </div>
-                      <div className="flex-1 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 min-h-[420px]">
+                      <div className="flex-1 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 min-h-[420px]">
                         {activeDoc.type === "image" ? (
                           <img
                             src={activeDoc.url}
@@ -506,7 +506,7 @@ export default function ProofReviewClient({
                         href={activeDoc.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[11px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-center transition"
+                        className="text-[11px] font-bold text-gray-500 hover:text-gray-600 text-center transition"
                       >
                         Open in new tab ↗
                       </a>
@@ -514,9 +514,9 @@ export default function ProofReviewClient({
                   )}
 
                   {/* Right Side: AI Audit and Action triggers */}
-                  <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-100 dark:border-gray-800 pt-6 lg:pt-0 lg:pl-6 flex flex-col justify-between">
+                  <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-100 pt-6 lg:pt-0 lg:pl-6 flex flex-col justify-between">
                     <div className="space-y-4">
-                      <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
                         Gemini AI Audit Report
                       </h3>
 
@@ -526,21 +526,21 @@ export default function ProofReviewClient({
                             {/* Score Badge */}
                             <div className="flex items-center gap-3">
                               <span
-                                className={`text-2xl font-black px-4 py-1.5 rounded-2xl ${
+                                className={`text-2xl font-bold px-4 py-1.5 rounded-2xl ${
                                   latestProof.aiValidationScore >= 70
-                                    ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400"
+                                    ? "bg-emerald-100 text-emerald-800"
                                     : latestProof.aiValidationScore >= 50
-                                    ? "bg-yellow-100 dark:bg-yellow-950/60 text-yellow-800 dark:text-yellow-400"
-                                    : "bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-400"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-red-100 text-red-800"
                                 }`}
                               >
                                 {latestProof.aiValidationScore}
                               </span>
                               <div>
-                                <div className="text-xs font-bold text-gray-900 dark:text-white">
+                                <div className="text-xs font-bold text-gray-900">
                                   Milestone Completion Score
                                 </div>
-                                <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                                <div className="text-[10px] text-gray-500">
                                   advisory only — a human decides
                                 </div>
                               </div>
@@ -562,10 +562,10 @@ export default function ProofReviewClient({
                               );
                               const style =
                                 location.status === "MISMATCH"
-                                  ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-100 dark:border-red-900/30"
+                                  ? "bg-red-50 text-red-700 border-red-100"
                                   : location.status === "MATCH"
-                                  ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30"
-                                  : "bg-gray-50 dark:bg-gray-800/40 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700";
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                  : "bg-gray-50 text-gray-500 border-gray-200";
                               const label =
                                 location.status === "MISMATCH"
                                   ? `⚠ Photo taken ~${Math.round(location.distanceKm ?? 0)}km from project site`
@@ -584,7 +584,7 @@ export default function ProofReviewClient({
                             {(() => {
                               if (latestProof.duplicate === undefined || latestProof.duplicate === null) {
                                 return (
-                                  <span className="inline-flex text-[10px] font-bold px-2 py-1 rounded-lg border bg-gray-50 dark:bg-gray-800/40 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700">
+                                  <span className="inline-flex text-[10px] font-bold px-2 py-1 rounded-lg border bg-gray-50 text-gray-500 border-gray-200">
                                     Duplicate check: not fingerprinted
                                   </span>
                                 );
@@ -592,17 +592,17 @@ export default function ProofReviewClient({
                               const d = duplicateLabel(latestProof.duplicate.verdict);
                               if (!d) {
                                 return (
-                                  <span className="inline-flex text-[10px] font-bold px-2 py-1 rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30">
+                                  <span className="inline-flex text-[10px] font-bold px-2 py-1 rounded-lg border bg-emerald-50 text-emerald-700 border-emerald-100">
                                     No earlier use of these files found
                                   </span>
                                 );
                               }
                               const style =
                                 d.tone === "bad"
-                                  ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-100 dark:border-red-900/30"
+                                  ? "bg-red-50 text-red-700 border-red-100"
                                   : d.tone === "warn"
-                                  ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/30"
-                                  : "bg-gray-50 dark:bg-gray-800/40 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700";
+                                  ? "bg-amber-50 text-amber-700 border-amber-100"
+                                  : "bg-gray-50 text-gray-600 border-gray-200";
                               const extra = latestProof.duplicate.others > 0 ? ` (+${latestProof.duplicate.others} more)` : "";
                               return (
                                 <span className={`inline-flex text-[10px] font-bold px-2 py-1 rounded-lg border ${style}`}>
@@ -615,19 +615,19 @@ export default function ProofReviewClient({
 
                             {/* Reasoning */}
                             {aiDetails && (
-                              <div className="text-xs text-gray-600 dark:text-gray-400 space-y-2">
+                              <div className="text-xs text-gray-600 space-y-2">
                                 <p className="leading-relaxed">
-                                  <strong className="font-semibold text-gray-700 dark:text-gray-300">Reasoning:</strong>{" "}
+                                  <strong className="font-semibold text-gray-700">Reasoning:</strong>{" "}
                                   {aiDetails.reasoning}
                                 </p>
 
                                 {/* Flags */}
                                 {aiDetails.flags && aiDetails.flags.length > 0 && (
                                   <div className="space-y-1">
-                                    <span className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider block">
+                                    <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider block">
                                       Flags Detected:
                                     </span>
-                                    <ul className="list-disc pl-4 space-y-0.5 text-red-600 dark:text-red-400">
+                                    <ul className="list-disc pl-4 space-y-0.5 text-red-600">
                                       {aiDetails.flags.map((flag: string, idx: number) => (
                                         <li key={idx} className="text-[11px] leading-tight">
                                           {flag}
@@ -639,7 +639,7 @@ export default function ProofReviewClient({
 
                                 {/* Suggestion */}
                                 {aiDetails.suggestion && (
-                                  <p className="text-[11px] bg-yellow-50 dark:bg-yellow-950/10 text-yellow-700 dark:text-yellow-400 p-2 rounded border border-yellow-100/30 dark:border-yellow-900/20 italic">
+                                  <p className="text-[11px] bg-yellow-50 text-yellow-700 p-2 rounded border border-yellow-100/30 italic">
                                     Suggestion: {aiDetails.suggestion}
                                   </p>
                                 )}
@@ -654,10 +654,10 @@ export default function ProofReviewClient({
                             const clean = status === "ALIGNED";
                             const label = status.replace(/_/g, " ");
                             const tone = clean
-                              ? "bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-900/20"
+                              ? "bg-emerald-50/50 border-emerald-100/50"
                               : violation
-                              ? "bg-red-50/60 dark:bg-red-950/10 border-red-200/60 dark:border-red-900/30"
-                              : "bg-blue-50/50 dark:bg-blue-950/10 border-blue-100/50 dark:border-blue-900/20";
+                              ? "bg-red-50/60 border-red-200/60"
+                              : "bg-blue-50/50 border-blue-100/50";
                             const badgeTone = clean
                               ? "bg-emerald-100 text-emerald-800"
                               : violation
@@ -665,13 +665,13 @@ export default function ProofReviewClient({
                               : "bg-blue-100 text-blue-800";
                             return (
                               <div className={`p-4 rounded-xl border space-y-2 ${tone}`}>
-                                <h3 className="text-[11px] font-bold uppercase tracking-wider flex items-center justify-between text-gray-700 dark:text-gray-300">
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider flex items-center justify-between text-gray-700">
                                   Budget Compliance
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeTone}`}>
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${badgeTone}`}>
                                     {label}
                                   </span>
                                 </h3>
-                                <div className="text-[11px] text-gray-600 dark:text-gray-400 flex items-center gap-3">
+                                <div className="text-[11px] text-gray-600 flex items-center gap-3">
                                   <span>Budget: <strong>₹{milestone.targetAmount.toLocaleString("en-IN")}</strong></span>
                                   <span>
                                     Evidenced spend:{" "}
@@ -683,12 +683,12 @@ export default function ProofReviewClient({
                                   </span>
                                 </div>
                                 {aiDetails.budgetReasoning && (
-                                  <p className="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed italic">
+                                  <p className="text-[11px] text-gray-600 leading-relaxed italic">
                                     {aiDetails.budgetReasoning}
                                   </p>
                                 )}
                                 {violation && (
-                                  <p className="text-[10px] font-bold text-red-600 dark:text-red-400 leading-tight">
+                                  <p className="text-[10px] font-bold text-red-600 leading-tight">
                                     ⚠ Fails the strict budget rule — approving requires a written justification.
                                   </p>
                                 )}
@@ -698,8 +698,8 @@ export default function ProofReviewClient({
 
                           {/* Theory of Change Alignment Card */}
                           {aiDetails && typeof aiDetails.tocAlignmentScore === "number" && (
-                            <div className="bg-blue-50/50 dark:bg-blue-950/10 p-4 rounded-xl border border-blue-100/50 dark:border-blue-900/20 space-y-3">
-                              <h3 className="text-[11px] font-bold text-blue-800 dark:text-blue-400 uppercase tracking-wider flex items-center justify-between">
+                            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 space-y-3">
+                              <h3 className="text-[11px] font-bold text-blue-800 uppercase tracking-wider flex items-center justify-between">
                                 Theory of Change Alignment
                                 <span className={`px-2 py-0.5 rounded text-xs ${
                                   aiDetails.tocAlignmentScore >= 70 ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-100 text-yellow-800'
@@ -708,14 +708,14 @@ export default function ProofReviewClient({
                                 </span>
                               </h3>
                               
-                              <p className="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed italic">
+                              <p className="text-[11px] text-gray-600 leading-relaxed italic">
                                 {aiDetails.tocReasoning}
                               </p>
 
                               {aiDetails.tocStrengths && aiDetails.tocStrengths.length > 0 && (
                                 <div className="space-y-1 mt-2">
-                                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Strengths:</span>
-                                  <ul className="list-disc pl-4 space-y-0.5 text-emerald-700 dark:text-emerald-500">
+                                  <span className="text-[10px] font-bold text-emerald-600 uppercase">Strengths:</span>
+                                  <ul className="list-disc pl-4 space-y-0.5 text-emerald-700">
                                     {aiDetails.tocStrengths.map((str: string, idx: number) => (
                                       <li key={idx} className="text-[10px]">{str}</li>
                                     ))}
@@ -740,11 +740,11 @@ export default function ProofReviewClient({
                           )}
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-400 italic">No AI assessment data recorded.</p>
+                        <p className="text-xs text-gray-500 italic">No AI assessment data recorded.</p>
                       )}
                     </div>
 
-                    <div className="flex flex-col gap-2 pt-6 border-t border-gray-100 dark:border-gray-800 mt-6 lg:mt-0">
+                    <div className="flex flex-col gap-2 pt-6 border-t border-gray-100 mt-6 lg:mt-0">
                       <div className="flex gap-2">
                         <button
                           onClick={() => openModal(milestone, "APPROVE")}
@@ -754,7 +754,7 @@ export default function ProofReviewClient({
                         </button>
                         <button
                           onClick={() => openModal(milestone, "REJECT")}
-                          className="flex-1 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 text-red-600 dark:text-red-400 font-bold py-2 rounded-xl text-xs transition text-center"
+                          className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 rounded-xl text-xs transition text-center"
                         >
                           {/* Was "Reject Proof" — read as final/terminal. It isn't:
                               the API resets the milestone to IN_PROGRESS, and the
@@ -767,7 +767,7 @@ export default function ProofReviewClient({
                       </div>
                       <button
                         onClick={() => { setAskMilestone(milestone); setAskSuccess(false); }}
-                        className="w-full bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold py-2 rounded-xl text-xs transition border border-amber-100/50 dark:border-amber-900/20"
+                        className="w-full bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold py-2 rounded-xl text-xs transition border border-amber-100/50"
                       >
                         Ask NGO a Question
                       </button>
@@ -781,86 +781,86 @@ export default function ProofReviewClient({
       ) : (
         /* Audit Trail tab */
         auditList.length === 0 ? (
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-sm">
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <span className="text-4xl mb-4 block">📋</span>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
               No decisions in the last {auditWindowDays} days
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-500">
               Every approval and rejection appears here with the admin name, timestamp, AI score, and reason.
               Older decisions are in the{" "}
-              <Link href="/admin/audit" className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline">
+              <Link href="/admin/audit" className="text-emerald-600 font-semibold hover:underline">
                 full audit trail
               </Link>
               .
             </p>
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-white border border-gray-200/80 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-                <thead className="bg-gray-50 dark:bg-gray-800/50">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Decision</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Milestone & Campaign</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reviewed By</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">AI Score at Review</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Note / Reason</th>
-                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reviewed At</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Decision</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Milestone & Campaign</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reviewed By</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">AI Score at Review</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Note / Reason</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Reviewed At</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                <tbody className="bg-white divide-y divide-gray-200">
                   {auditList.map((record) => (
-                    <tr key={record.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition">
+                    <tr key={record.id} className="hover:bg-gray-50/50 transition">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full ${
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
                           record.action === "APPROVED"
-                            ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                            : "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-red-100 text-red-700"
                         }`}>
                           {record.action}
                         </span>
                       </td>
                       <td className="px-6 py-4 max-w-xs">
-                        <div className="text-xs font-bold text-gray-900 dark:text-white truncate" title={record.milestone.title}>
+                        <div className="text-xs font-bold text-gray-900 truncate" title={record.milestone.title}>
                           #{record.milestone.sequenceOrder} — {record.milestone.title}
                         </div>
-                        <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                        <div className="text-[10px] text-gray-500 mt-0.5 truncate">
                           {record.milestone.project.title}
                         </div>
-                        <div className="text-[10px] text-gray-400">
+                        <div className="text-[10px] text-gray-500">
                           {record.milestone.project.ngo.orgName}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-xs font-bold text-gray-900 dark:text-white">{record.admin.name}</div>
-                        <div className="text-[10px] text-gray-400">{record.admin.email}</div>
+                        <div className="text-xs font-bold text-gray-900">{record.admin.name}</div>
+                        <div className="text-[10px] text-gray-500">{record.admin.email}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {record.aiScore !== null ? (
                           <span className={`text-xs font-bold px-2 py-0.5 rounded ${
                             record.aiScore >= 70
-                              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                              ? "bg-emerald-50 text-emerald-700"
                               : record.aiScore >= 50
-                              ? "bg-yellow-50 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400"
-                              : "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400"
+                              ? "bg-yellow-50 text-yellow-700"
+                              : "bg-red-50 text-red-700"
                           }`}>
                             {record.aiScore}/100
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-400 italic">—</span>
+                          <span className="text-xs text-gray-500 italic">—</span>
                         )}
                       </td>
                       <td className="px-6 py-4 max-w-xs">
                         {record.note ? (
-                          <p className="text-xs text-gray-600 dark:text-gray-400 italic line-clamp-2" title={record.note}>
+                          <p className="text-xs text-gray-600 italic line-clamp-2" title={record.note}>
                             "{record.note}"
                           </p>
                         ) : (
-                          <span className="text-xs text-gray-400 italic">—</span>
+                          <span className="text-xs text-gray-500 italic">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-xs text-gray-500 dark:text-gray-400">
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-xs text-gray-500">
                         {new Date(record.reviewedAt).toLocaleString("en-IN")}
                       </td>
                     </tr>
@@ -868,12 +868,12 @@ export default function ProofReviewClient({
                 </tbody>
               </table>
             </div>
-            <div className="px-6 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="px-6 py-3 border-t border-gray-100 bg-gray-50/50">
+              <p className="text-xs text-gray-500">
                 {auditTruncated
                   ? `Showing the ${auditList.length} most recent decisions from the last ${auditWindowDays} days — there are more.`
                   : `All decisions from the last ${auditWindowDays} days.`}{" "}
-                <Link href="/admin/audit" className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline">
+                <Link href="/admin/audit" className="text-emerald-600 font-semibold hover:underline">
                   Full audit trail
                 </Link>{" "}
                 covers every admin action, with filters and CSV export.
@@ -885,29 +885,29 @@ export default function ProofReviewClient({
 
       {/* Ask NGO Question Modal */}
       {askMilestone && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800">
-            <h3 className="text-lg font-extrabold text-gray-900 dark:text-white mb-1">
+        <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-200/80">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">
               Ask NGO a Question
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-              Sending to <span className="font-semibold text-gray-700 dark:text-gray-300">{askMilestone.project.ngo.orgName}</span> regarding milestone <span className="font-semibold text-gray-700 dark:text-gray-300">"{askMilestone.title}"</span>. This does not reject the proof — it stays under review.
+            <p className="text-xs text-gray-500 mb-4">
+              Sending to <span className="font-semibold text-gray-700">{askMilestone.project.ngo.orgName}</span> regarding milestone <span className="font-semibold text-gray-700">"{askMilestone.title}"</span>. This does not reject the proof — it stays under review.
             </p>
 
             {askError && (
-              <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 text-xs text-red-600 dark:text-red-400 rounded">
+              <div className="mb-4 p-3 bg-red-50 text-xs text-red-600 rounded">
                 {askError}
               </div>
             )}
 
             {askSuccess ? (
               <div className="space-y-4">
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 rounded-xl text-sm font-semibold text-center">
+                <div className="p-4 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-semibold text-center">
                   Question sent to {askMilestone.project.ngo.orgName} successfully.
                 </div>
                 <button
                   onClick={closeAskModal}
-                  className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-200 transition"
                 >
                   Close
                 </button>
@@ -915,7 +915,7 @@ export default function ProofReviewClient({
             ) : (
               <form onSubmit={handleSendQuestion} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
                     Your Question *
                   </label>
                   <textarea
@@ -924,7 +924,7 @@ export default function ProofReviewClient({
                     rows={4}
                     required
                     placeholder="e.g. Could you provide a clearer photo of the completed structure? The current image does not show the full extent of the work..."
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition resize-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition resize-none"
                   />
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
@@ -932,7 +932,7 @@ export default function ProofReviewClient({
                     type="button"
                     onClick={closeAskModal}
                     disabled={askLoading}
-                    className="px-4 py-2 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                    className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-50 transition"
                   >
                     Cancel
                   </button>
@@ -953,19 +953,19 @@ export default function ProofReviewClient({
 
       {/* Confirmation Modal */}
       {selectedMilestone && actionType && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800">
-            <h3 className="text-lg font-extrabold text-gray-900 dark:text-white mb-2">
+        <div className="fixed inset-0 bg-gray-900/40 flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-200/80">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
               {actionType === "APPROVE" ? "Approve Milestone Proof" : "Request Resubmission"}
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-xs text-gray-500 mb-4">
               {actionType === "APPROVE"
                 ? `Confirming completion approval for milestone "${selectedMilestone.title}". This will mark the milestone as completed, batch-generate impact narratives, and notify all campaign donors.`
                 : `Specify why this proof isn't ready for milestone "${selectedMilestone.title}". This resets the milestone to IN_PROGRESS so the NGO can submit proof again.`}
             </p>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 text-xs text-red-600 dark:text-red-400 rounded">
+              <div className="mb-4 p-3 bg-red-50 text-xs text-red-600 rounded">
                 {error}
               </div>
             )}
@@ -973,7 +973,7 @@ export default function ProofReviewClient({
             <form onSubmit={handleReviewAction} className="space-y-4">
               {actionType === "REJECT" && (
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
                     Reason for Resubmission *
                   </label>
                   <textarea
@@ -982,14 +982,14 @@ export default function ProofReviewClient({
                     rows={4}
                     required
                     placeholder="Provide detailed reasons explaining what details or evidence are lacking..."
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-trust-500 transition resize-none"
                   />
                 </div>
               )}
 
               {needsApprovalJustification(selectedMilestone, actionType) && (
                 <div>
-                  <label className="block text-xs font-bold text-red-600 dark:text-red-400 mb-1">
+                  <label className="block text-xs font-bold text-red-600 mb-1">
                     {`Override Justification * (${overrideReasons(selectedMilestone, actionType).join("; ")})`}
                   </label>
                   <textarea
@@ -1002,7 +1002,7 @@ export default function ProofReviewClient({
                         ? "Why is this proof acceptable despite failing the budget rule (e.g. receipts verified offline)? Recorded in the audit log."
                         : "Why is this proof acceptable despite the low AI score? This is recorded in the audit log."
                     }
-                    className="w-full px-3 py-2 border border-red-200 dark:border-red-900 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500 transition resize-none"
+                    className="w-full px-3 py-2 border border-red-200 rounded-lg bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-red-500 transition resize-none"
                   />
                 </div>
               )}
@@ -1012,7 +1012,7 @@ export default function ProofReviewClient({
                   type="button"
                   onClick={closeModal}
                   disabled={loading}
-                  className="px-4 py-2 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                  className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-50 transition"
                 >
                   Cancel
                 </button>

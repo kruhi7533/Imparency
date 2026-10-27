@@ -247,8 +247,8 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
           }}
           className={`flex-1 pb-3 text-sm font-extrabold text-center border-b-2 transition ${
             activeTab === "admin"
-              ? "border-emerald-650 text-emerald-650 dark:text-emerald-455"
-              : "border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              ? "border-trust-600 text-trust-700"
+              : "border-transparent text-gray-600 hover:text-gray-900"
           }`}
         >
           Admin Inquiries ({threads.length})
@@ -261,8 +261,8 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
           }}
           className={`flex-1 pb-3 text-sm font-extrabold text-center border-b-2 transition ${
             activeTab === "donor"
-              ? "border-emerald-650 text-emerald-650 dark:text-emerald-455"
-              : "border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              ? "border-trust-600 text-trust-700"
+              : "border-transparent text-gray-600 hover:text-gray-900"
           }`}
         >
           Donor Questions ({donorInquiries.length})
@@ -275,7 +275,7 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
           <div className="flex justify-end">
             <button
               onClick={() => setShowAppeal(true)}
-              className="px-4 py-2 text-sm font-bold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition"
+              className="px-4 py-2 text-sm font-bold rounded-xl bg-trust-600 text-white hover:bg-trust-700 transition"
             >
               + Open an Appeal
             </button>
@@ -296,7 +296,7 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
                 return (
                   <div
                     key={t.id}
-                    className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden"
+                    className="rounded-2xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] overflow-hidden"
                   >
                     <button
                       onClick={() => {
@@ -325,7 +325,7 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
                           {t.messages.length} message{t.messages.length === 1 ? "" : "s"} · updated {fmtDateTime(t.updatedAt)}
                         </p>
                       </div>
-                      <span className="text-gray-400 text-sm shrink-0">{expanded ? "▲" : "▼"}</span>
+                      <span className="text-gray-600 text-sm shrink-0">{expanded ? "▲" : "▼"}</span>
                     </button>
 
                     {expanded && (
@@ -355,13 +355,13 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
                               onChange={(e) => setReply(e.target.value)}
                               rows={3}
                               placeholder="Write your reply to the admin team…"
-                              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20"
                             />
                             <div className="flex justify-end">
                               <button
                                 disabled={busy || !reply.trim()}
                                 onClick={() => sendReply(t.id)}
-                                className="px-4 py-2 text-sm font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
+                                className="px-4 py-2 text-sm font-semibold rounded-lg bg-trust-600 text-white hover:bg-trust-700 transition disabled:opacity-50"
                               >
                                 {busy ? "Sending…" : "Send Reply"}
                               </button>
@@ -394,7 +394,7 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
                 return (
                   <div
                     key={t.id}
-                    className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden"
+                    className="rounded-2xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] overflow-hidden"
                   >
                     <button
                       onClick={() => {
@@ -419,7 +419,7 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
                           {t.donorEmail} · {t.messages.length} message{t.messages.length === 1 ? "" : "s"} · updated {fmtDateTime(t.updatedAt)}
                         </p>
                       </div>
-                      <span className="text-gray-400 text-sm shrink-0">{expanded ? "▲" : "▼"}</span>
+                      <span className="text-gray-600 text-sm shrink-0">{expanded ? "▲" : "▼"}</span>
                     </button>
 
                     {expanded && (
@@ -451,13 +451,13 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
                             onChange={(e) => setDonorReply(e.target.value)}
                             rows={3}
                             placeholder={`Reply to ${t.donorName}…`}
-                            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20"
                           />
                           <div className="flex justify-end">
                             <button
                               disabled={busy || !donorReply.trim()}
                               onClick={() => sendDonorReply(t.id)}
-                              className="px-4 py-2 text-sm font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
+                              className="px-4 py-2 text-sm font-semibold rounded-lg bg-trust-600 text-white hover:bg-trust-700 transition disabled:opacity-50"
                             >
                               {busy ? "Sending…" : "Send Reply"}
                             </button>
@@ -475,7 +475,7 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
 
       {/* Appeal modal */}
       {showAppeal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-50 px-4">
           <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 p-6 shadow-xl">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Open an Appeal</h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -488,7 +488,7 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
                 placeholder="Subject — e.g. Appeal against suspension"
                 required
                 maxLength={200}
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20"
               />
               <textarea
                 value={appealMessage}
@@ -496,7 +496,7 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
                 rows={5}
                 required
                 placeholder="Explain why you believe the decision should be reconsidered. Include any supporting details…"
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20"
               />
               <div className="flex justify-end gap-3 pt-1">
                 <button
@@ -509,7 +509,7 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
                 <button
                   type="submit"
                   disabled={appealBusy || !appealSubject.trim() || !appealMessage.trim()}
-                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-trust-600 text-white hover:bg-trust-700 transition disabled:opacity-50"
                 >
                   {appealBusy ? "Submitting…" : "Submit Appeal"}
                 </button>

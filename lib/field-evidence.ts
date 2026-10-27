@@ -25,8 +25,8 @@ export async function resolveNgoActor(userId: string): Promise<NgoActor | null> 
   return membership ? { ngoId: membership.ngoId, teamRole: membership.role } : null;
 }
 
-/** Assigning work and seeing everyone's tasks: owners and admins. */
-export const CAN_ASSIGN: TeamRole[] = [TeamRole.OWNER, TeamRole.ADMIN];
+/** Assigning work and seeing everyone's tasks: owners, admins and program managers (NGO-009/011). */
+export const CAN_ASSIGN: TeamRole[] = [TeamRole.OWNER, TeamRole.ADMIN, TeamRole.PROGRAM_MANAGER];
 
 export function canManageTasks(actor: NgoActor): boolean {
   return CAN_ASSIGN.includes(actor.teamRole);
@@ -239,8 +239,61 @@ export function sniffImage(bytes: Uint8Array): { mime: string; ext: string } | n
   ) {
     return { mime: "image/webp", ext: ".webp" };
   }
+  // HEIC/HEIF (iPhone default): an ISO-BMFF box `ftyp` at offset 4 with a
+  // HEIF brand. Stored as-is; most browsers cannot render it inline, so the
+  // review UI offers it as a download instead of an <img>.
+  if (bytes.length >= 12 && ascii(bytes, 4, 8) === "ftyp" && HEIF_BRANDS.has(ascii(bytes, 8, 12))) {
+    return { mime: "image/heic", ext: ".heic" };
+  }
   return null;
 }
+
+const HEIF_BRANDS = new Set(["heic", "heix", "hevc", "hevx", "heim", "heis", "mif1", "msf1"]);
+
+/** Types the field app accepts, for messages and the file input's `accept`. */
+export const ACCEPTED_PHOTO_TYPES = "JPEG, PNG, WebP or HEIC";
+
+/** Whether a stored photo can be shown in an <img> by mainstream browsers. */
+export function isBrowserRenderable(mime: string): boolean {
+  return mime === "image/jpeg" || mime === "image/png" || mime === "image/webp";
+}
+
+// ─── Review flags ("AI flags, human decides") ────────────────────────────────
+
+/**
+ * Automatic flags on a capture. They never decide anything: they put the row
+ * in front of a reviewer and make approving it a deliberate, noted override.
+ * NO_GPS_DATA is NOT a flag — most phones strip location, and absence of
+ * evidence is not evidence of a problem.
+ */
+export type EvidenceFlag = "DUPLICATE_IMAGE" | "GPS_MISMATCH" | "DUPLICATE_CHECK_UNAVAILABLE";
+
+export function evidenceFlags(e: {
+  duplicateVerdict: string | null;
+  duplicateOfId?: string | null;
+  locationStatus: string;
+}): EvidenceFlag[] {
+  const flags: EvidenceFlag[] = [];
+  if (e.duplicateVerdict === "REUSED_IN_PROJECT" || e.duplicateVerdict === "CROSS_PROJECT") flags.push("DUPLICATE_IMAGE");
+  else if (!e.duplicateVerdict && e.duplicateOfId) flags.push("DUPLICATE_IMAGE");
+  else if (e.duplicateVerdict === null && !e.duplicateOfId) flags.push("DUPLICATE_CHECK_UNAVAILABLE");
+  if (e.locationStatus === "MISMATCH") flags.push("GPS_MISMATCH");
+  return flags;
+}
+
+/** Flags that make approval an override needing a written reason. */
+export function blockingFlags(flags: EvidenceFlag[]): EvidenceFlag[] {
+  return flags.filter((f) => f === "DUPLICATE_IMAGE" || f === "GPS_MISMATCH");
+}
+
+/** Prisma `where` for "flagged" in the admin queue — kept next to evidenceFlags. */
+export const FLAGGED_EVIDENCE_WHERE = {
+  OR: [
+    { duplicateVerdict: { in: ["REUSED_IN_PROJECT", "CROSS_PROJECT"] } },
+    { duplicateVerdict: null, duplicateOfId: { not: null } },
+    { locationStatus: "MISMATCH" },
+  ],
+};
 
 // ─── Review ──────────────────────────────────────────────────────────────────
 
@@ -261,16 +314,29 @@ export function checkReview(
   current: FieldEvidenceStatus,
   decision: ReviewDecision,
   note: unknown,
-): { ok: true; noop: boolean; target: FieldEvidenceStatus } | { ok: false; status: number; error: string } {
+  flags: EvidenceFlag[] = [],
+): { ok: true; noop: boolean; target: FieldEvidenceStatus; override: EvidenceFlag[] } | { ok: false; status: number; error: string; code: string } {
   const target = REVIEW_TARGET[decision];
-  if (current === target) return { ok: true, noop: true, target };
+  if (current === target) return { ok: true, noop: true, target, override: [] };
   if (current !== FieldEvidenceStatus.PENDING_REVIEW) {
-    return { ok: false, status: 409, error: `This evidence has already been reviewed (${current}).` };
+    return { ok: false, status: 409, code: "ALREADY_REVIEWED", error: `This evidence has already been reviewed (${current}).` };
   }
-  if (decision !== "APPROVE" && (typeof note !== "string" || note.trim().length < 5)) {
-    return { ok: false, status: 400, error: "Tell the field worker why (at least 5 characters)." };
+  const hasNote = typeof note === "string" && note.trim().length >= 5;
+  if (decision !== "APPROVE" && !hasNote) {
+    return { ok: false, status: 400, code: "NOTE_REQUIRED", error: "Tell the field worker why (at least 5 characters)." };
   }
-  return { ok: true, noop: false, target };
+  // AI flags, human decides: a flagged photo CAN be approved, but only as a
+  // written override, so the audit trail says why a person disagreed.
+  const override = decision === "APPROVE" ? blockingFlags(flags) : [];
+  if (override.length > 0 && !hasNote) {
+    return {
+      ok: false,
+      status: 400,
+      code: "OVERRIDE_NOTE_REQUIRED",
+      error: `This photo is flagged (${override.join(", ")}). Approving it needs a note saying why (at least 5 characters).`,
+    };
+  }
+  return { ok: true, noop: false, target, override };
 }
 
 // ─── What a donor may see ────────────────────────────────────────────────────

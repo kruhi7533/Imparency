@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type Role = "ADMIN" | "APPROVER" | "VIEWER";
+type Role = "ADMIN" | "APPROVER" | "FINANCE" | "VIEWER";
 
 interface Team {
   orgName: string;
@@ -15,6 +15,7 @@ interface Team {
 const ROLE_HELP: Record<Role, string> = {
   ADMIN: "Everything the owner can do, including managing the team.",
   APPROVER: "Runs matching, reviews and approves proposals, signs contracts, records payments. Cannot edit requirements.",
+  FINANCE: "Records and releases contract payments and sees finance. Cannot approve proposals, sign contracts or edit requirements.",
   VIEWER: "Sees requirements, contracts and reports. Changes nothing.",
 };
 
@@ -64,42 +65,42 @@ export default function TeamClient({
     }
   };
 
-  const input = "min-h-[44px] rounded-lg border border-gray-700 bg-gray-950 px-3 text-sm text-gray-100";
+  const input = "min-h-[44px] rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20";
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-white">Team</h1>
-        <p className="mt-1 text-sm text-gray-400">
-          People who act for <strong className="text-gray-200">{team.orgName}</strong> on ImpactBridge. Requirements, contracts and
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">Team</h1>
+        <p className="mt-1 text-sm text-gray-600">
+          People who act for <strong className="text-gray-900">{team.orgName}</strong> on ImpactBridge. Requirements, contracts and
           verification belong to the organisation, not to any one person.
         </p>
       </div>
 
       <div role="status" aria-live="polite">
-        {notice && <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200">{notice}</p>}
+        {notice && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">{notice}</p>}
       </div>
       {error && (
-        <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200">
+        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
           {error}
         </p>
       )}
 
-      <section aria-labelledby="members-h" className="rounded-2xl border border-gray-800 bg-gray-900/50 p-5">
-        <h2 id="members-h" className="text-sm font-bold text-white">
+      <section aria-labelledby="members-h" className="rounded-2xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-5">
+        <h2 id="members-h" className="text-sm font-semibold text-gray-900">
           Members
         </h2>
-        <ul className="mt-3 divide-y divide-gray-800">
+        <ul className="mt-3 divide-y divide-gray-100">
           {team.owner && (
             <li className="py-3 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-sm font-bold text-gray-100">
+                <p className="text-sm font-semibold text-gray-900">
                   {team.owner.name || team.owner.email}
                   {team.owner.userId === myUserId ? " (you)" : ""}
                 </p>
-                <p className="text-xs text-gray-400">{team.owner.email}</p>
+                <p className="text-xs text-gray-500">{team.owner.email}</p>
               </div>
-              <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300">Owner</span>
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">Owner</span>
             </li>
           )}
           {team.members.map((m) => {
@@ -108,11 +109,11 @@ export default function TeamClient({
             return (
               <li key={m.id} className="py-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-sm font-bold text-gray-100">
+                  <p className="text-sm font-semibold text-gray-900">
                     {m.name || m.email}
                     {self ? " (you)" : ""}
                   </p>
-                  <p className="text-xs text-gray-400">{m.email}</p>
+                  <p className="text-xs text-gray-500">{m.email}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {canEditThis ? (
@@ -131,6 +132,7 @@ export default function TeamClient({
                       >
                         {isOwner && <option value="ADMIN">Admin</option>}
                         <option value="APPROVER">Approver</option>
+                        <option value="FINANCE">Finance</option>
                         <option value="VIEWER">Viewer</option>
                       </select>
                       <button
@@ -141,13 +143,13 @@ export default function TeamClient({
                             call(`rm:${m.id}`, `/api/donor/team/${m.id}`, { method: "DELETE" }, "Removed from the team.");
                           }
                         }}
-                        className="min-h-[44px] px-3 text-xs font-bold text-red-300 hover:underline"
+                        className="min-h-[44px] px-3 text-xs font-semibold text-red-700 hover:underline"
                       >
                         Remove
                       </button>
                     </>
                   ) : (
-                    <span className="rounded-full bg-gray-800 px-3 py-1 text-xs font-bold text-gray-300">{m.role.toLowerCase()}</span>
+                    <span className="rounded-full bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200">{m.role.toLowerCase()}</span>
                   )}
                   {self && (
                     <button
@@ -158,7 +160,7 @@ export default function TeamClient({
                           call(`leave`, `/api/donor/team/${m.id}`, { method: "DELETE" }, "You left the organisation.");
                         }
                       }}
-                      className="min-h-[44px] px-3 text-xs font-bold text-red-300 hover:underline"
+                      className="min-h-[44px] px-3 text-xs font-semibold text-red-700 hover:underline"
                     >
                       Leave
                     </button>
@@ -168,12 +170,12 @@ export default function TeamClient({
             );
           })}
         </ul>
-        {team.members.length === 0 && <p className="mt-2 text-xs text-gray-400">No other members yet.</p>}
+        {team.members.length === 0 && <p className="mt-2 text-xs text-gray-500">No other members yet.</p>}
       </section>
 
       {canManage && (
-        <section aria-labelledby="invite-h" className="rounded-2xl border border-gray-800 bg-gray-900/50 p-5 space-y-3">
-          <h2 id="invite-h" className="text-sm font-bold text-white">
+        <section aria-labelledby="invite-h" className="rounded-2xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-5 space-y-3">
+          <h2 id="invite-h" className="text-sm font-semibold text-gray-900">
             Add someone
           </h2>
           <form onSubmit={invite} className="flex flex-col sm:flex-row gap-2">
@@ -195,20 +197,21 @@ export default function TeamClient({
             <select id="invite-role" value={role} onChange={(e) => setRole(e.target.value as Role)} className={input}>
               {isOwner && <option value="ADMIN">Admin</option>}
               <option value="APPROVER">Approver</option>
+              <option value="FINANCE">Finance</option>
               <option value="VIEWER">Viewer</option>
             </select>
-            <button type="submit" disabled={busy !== null} className="min-h-[44px] px-4 rounded-lg bg-emerald-500 text-gray-950 text-sm font-bold disabled:opacity-50">
+            <button type="submit" disabled={busy !== null} className="min-h-[44px] px-4 rounded-lg bg-trust-600 hover:bg-trust-700 text-white text-sm font-semibold disabled:opacity-50">
               {busy === "invite" ? "Adding…" : "Add"}
             </button>
           </form>
-          <p className="text-xs text-gray-400">{ROLE_HELP[role]}</p>
+          <p className="text-xs text-gray-500">{ROLE_HELP[role]}</p>
 
           {team.invites.length > 0 && (
             <div>
-              <h3 className="mt-4 text-xs font-bold uppercase tracking-wider text-gray-400">Pending invitations</h3>
+              <h3 className="mt-4 text-xs font-bold uppercase tracking-wider text-gray-500">Pending invitations</h3>
               <ul className="mt-2 space-y-2">
                 {team.invites.map((i) => (
-                  <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-300">
+                  <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-700">
                     <span>
                       {i.email} · {i.role.toLowerCase()} · expires {new Date(i.expiresAt).toLocaleDateString("en-IN")}
                     </span>
@@ -216,7 +219,7 @@ export default function TeamClient({
                       type="button"
                       disabled={busy !== null}
                       onClick={() => call(`inv:${i.id}`, `/api/donor/team/invites/${i.id}`, { method: "DELETE" }, "Invitation cancelled.")}
-                      className="min-h-[40px] px-3 text-xs font-bold text-red-300 hover:underline"
+                      className="min-h-[40px] px-3 text-xs font-semibold text-red-700 hover:underline"
                     >
                       Cancel
                     </button>
@@ -228,15 +231,15 @@ export default function TeamClient({
         </section>
       )}
 
-      <section aria-labelledby="roles-h" className="rounded-2xl border border-gray-800 p-5">
-        <h2 id="roles-h" className="text-sm font-bold text-white">
+      <section aria-labelledby="roles-h" className="rounded-2xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-5">
+        <h2 id="roles-h" className="text-sm font-semibold text-gray-900">
           What each role can do
         </h2>
         <dl className="mt-2 space-y-2 text-sm">
           {(Object.keys(ROLE_HELP) as Role[]).map((r) => (
             <div key={r}>
-              <dt className="font-bold text-gray-200">{r.charAt(0) + r.slice(1).toLowerCase()}</dt>
-              <dd className="text-gray-400">{ROLE_HELP[r]}</dd>
+              <dt className="font-semibold text-gray-900">{r.charAt(0) + r.slice(1).toLowerCase()}</dt>
+              <dd className="text-gray-600">{ROLE_HELP[r]}</dd>
             </div>
           ))}
         </dl>

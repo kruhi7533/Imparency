@@ -71,18 +71,18 @@ export default function MetricStatusActions({
           <button
             onClick={() => setStatus("DEPRECATED")}
             disabled={busy}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
             {busy ? "Working…" : "Deprecate"}
           </button>
         )}
       </div>
       {status === "ACTIVE" && claimCount > 0 && (
-        <p className="text-[10px] text-gray-500 dark:text-gray-500">
+        <p className="text-[10px] text-gray-500">
           Deprecating keeps the {claimCount} existing claim{claimCount === 1 ? "" : "s"}.
         </p>
       )}
-      {error && <p className="max-w-xs text-right text-[10px] text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="max-w-xs text-right text-[10px] text-red-600">{error}</p>}
     </div>
   );
 }

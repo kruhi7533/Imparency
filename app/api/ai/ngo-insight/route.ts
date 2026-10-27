@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
+import { callAi } from "@/lib/ai/telemetry";
 
 // Simple in-memory cache: ngoId -> { text, generatedAt }
 const insightCache = new Map<string, { text: string; generatedAt: number }>();
@@ -152,14 +153,14 @@ ${contextBlock}`;
       }
 
       const genAI = new GoogleGenAI({ apiKey });
-      const result = await genAI.models.generateContent({
+      const result = await callAi({ site: "ngo-insight", model: "gemini-3.6-flash", promptVersion: "v1" }, () => genAI.models.generateContent({
         model: "gemini-3.6-flash",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: {
           temperature: 0.6,
           maxOutputTokens: 1000,
         },
-      });
+      }));
 
       const raw = result.text?.trim() ?? "";
       // Strip surrounding quotes if Gemini added them despite instructions

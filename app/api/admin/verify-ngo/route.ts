@@ -29,10 +29,11 @@ export async function POST(request: Request) {
       where: { id: ngoId },
       include: {
         user: { select: { email: true } },
+        // Every open review, not just the newest: an admin's manual flag and
+        // a triage review can be open together, and the gate must see both.
         riskReviews: {
           where: { status: "OPEN" },
           orderBy: { createdAt: "desc" },
-          take: 1,
           select: { riskLevel: true, findings: true },
         },
         compliance: { select: { id: true, a12DocumentUrl: true } },
@@ -109,18 +110,16 @@ export async function POST(request: Request) {
       const identityFields = new Set(["orgName", "panNumber", "registrationNumber"]);
       // Read straight off the loaded NGO: `openRisk` is derived a few lines
       // below, and this gate has to run before any of the note-based checks.
-      const openFindings = Array.isArray(ngo.riskReviews?.[0]?.findings)
-        ? (ngo.riskReviews[0].findings as any[])
-        : [];
+      const openFindings = (ngo.riskReviews ?? []).flatMap((r) =>
+        Array.isArray(r.findings) ? (r.findings as any[]) : []
+      );
       const identityConflict = openFindings.filter(
         (f) => f?.severity === "HIGH" && typeof f?.fieldKey === "string" && identityFields.has(f.fieldKey)
       );
       if (identityConflict.length > 0) {
         return NextResponse.json(
           {
-            error: `The documents contradict the registration form on ${identityConflict
-              .map((f) => f.fieldKey)
-              .join(", ")}. This cannot be approved with a note — it is a question of whether this is the same organisation. Correct or validate the field in Document Review, or reject.`,
+            error: `The documents contradict the registration form on ${Array.from(new Set(identityConflict.map((f) => f.fieldKey))).join(", ")}. This cannot be approved with a note — it is a question of whether this is the same organisation. Correct or validate the field in Document Review, or reject.`,
           },
           { status: 400 }
         );
@@ -138,7 +137,16 @@ export async function POST(request: Request) {
 
     // Snapshot the automated verdict at decision time — analysis can be re-run
     // later, so the log must capture what the admin actually saw.
-    const openRisk = ngo.riskReviews?.[0] ?? null;
+    const RISK_ORDER = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+    const allOpenFindings = (ngo.riskReviews ?? []).flatMap((r) =>
+      Array.isArray(r.findings) ? (r.findings as any[]) : []
+    );
+    const openRisk =
+      (ngo.riskReviews ?? []).reduce<{ riskLevel: string; findings: unknown } | null>(
+        (worst, r) =>
+          !worst || RISK_ORDER.indexOf(r.riskLevel) > RISK_ORDER.indexOf(worst.riskLevel) ? r : worst,
+        null
+      );
     const aiRecommendation: string | null = openRisk
       ? `NEEDS_RISK_REVIEW:${openRisk.riskLevel}`
       : "SAFE";
@@ -201,7 +209,7 @@ export async function POST(request: Request) {
     if (action === "REJECT") {
       try {
         const { composeRejectionGuidance } = await import("@/lib/gemini/explain-rejection");
-        const findings = Array.isArray(openRisk?.findings) ? (openRisk!.findings as any[]) : [];
+        const findings = allOpenFindings;
         ngoFacingNote = await composeRejectionGuidance({
           orgName: ngo.orgName,
           adminNote: noteText,
@@ -328,7 +336,7 @@ export async function POST(request: Request) {
         ai: {
           recommendation: aiRecommendation,
           riskLevel: openRisk?.riskLevel ?? null,
-          findingCount: Array.isArray(openRisk?.findings) ? (openRisk!.findings as any[]).length : 0,
+          findingCount: allOpenFindings.length,
         },
         overrodeAi,
         ...(overrodeAi ? { disagreementReason: noteText } : {}),
@@ -355,6 +363,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error("NGO Verification Error:", err);
-    return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Verification could not be completed. Please retry." }, { status: 500 });
   }
 }

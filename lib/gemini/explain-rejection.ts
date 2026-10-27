@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { callAi } from "@/lib/ai/telemetry";
 
 /**
  * Rejection-guidance agent.
@@ -66,10 +67,10 @@ Write the message following ALL of these rules:
 - Output PLAIN TEXT only. No markdown headers, no JSON, no quotes around the whole message.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callAi({ site: "explain-rejection", model: "gemini-3.5-flash-lite", promptVersion: "v1" }, () => ai.models.generateContent({
       model: "gemini-3.5-flash-lite",
       contents: [prompt],
-    });
+    }));
 
     const text = response.text?.trim();
     if (!text) return fallback;

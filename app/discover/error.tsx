@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react";
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -14,20 +15,20 @@ export default function DiscoverError({ error, reset }: ErrorProps) {
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col justify-center items-center px-4 font-sans transition-colors duration-200">
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-8 max-w-md w-full shadow-lg text-center space-y-6 animate-in fade-in duration-200">
-        <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 rounded-full flex items-center justify-center text-3xl mx-auto shadow-inner">
-          ⚠️
+    <div className="min-h-screen bg-canvas flex flex-col justify-center items-center px-4 font-sans">
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-8 max-w-md w-full shadow-[0_8px_30px_rgba(16,24,40,0.06)] text-center space-y-6">
+        <div className="w-14 h-14 bg-red-50 text-red-600 ring-1 ring-red-100 rounded-full flex items-center justify-center mx-auto">
+          <AlertTriangle className="w-6 h-6" strokeWidth={1.75} aria-hidden />
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-black text-gray-900 dark:text-white">Failed to load discover list</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+          <h2 className="font-display text-2xl font-semibold text-gray-900">Failed to load discover list</h2>
+          <p className="text-sm text-gray-600 leading-relaxed">
             An unexpected error occurred while querying the non-profit search engine. Please try resetting your search parameters.
           </p>
         </div>
 
         {error.message && (
-          <div className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl text-left text-[11px] font-mono text-gray-500 dark:text-gray-400 break-all select-all">
+          <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-left text-[11px] font-mono text-gray-600 break-all select-all">
             {error.message}
           </div>
         )}
@@ -35,13 +36,13 @@ export default function DiscoverError({ error, reset }: ErrorProps) {
         <div className="flex gap-3 pt-2">
           <button
             onClick={() => reset()}
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition"
+            className="flex-1 bg-trust-600 hover:bg-trust-700 text-white font-semibold py-2 rounded-lg text-sm transition"
           >
             Reset & Retry
           </button>
           <Link
             href="/"
-            className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold py-2.5 rounded-xl text-xs border border-gray-200 dark:border-gray-700 transition text-center"
+            className="flex-1 bg-white hover:bg-gray-50 text-gray-800 font-semibold py-2 rounded-lg text-sm border border-gray-300 transition text-center"
           >
             Go to Home
           </Link>

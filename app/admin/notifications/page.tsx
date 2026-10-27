@@ -9,33 +9,33 @@ export const dynamic = "force-dynamic";
 
 const NOTIFICATION_COLORS: Record<string, { bg: string; border: string; icon: string }> = {
   NGO_VERIFICATION: {
-    bg: "bg-blue-50 dark:bg-blue-950/20",
-    border: "border-blue-200 dark:border-blue-900/50",
+    bg: "bg-blue-50",
+    border: "border-blue-200",
     icon: "🏢",
   },
   FRAUD_ALERT: {
-    bg: "bg-red-50 dark:bg-red-950/20",
-    border: "border-red-200 dark:border-red-900/50",
+    bg: "bg-red-50",
+    border: "border-red-200",
     icon: "⚠️",
   },
   PROOF_REVIEW: {
-    bg: "bg-amber-50 dark:bg-amber-950/20",
-    border: "border-amber-200 dark:border-amber-900/50",
+    bg: "bg-amber-50",
+    border: "border-amber-200",
     icon: "📸",
   },
   PROJECT_DECISION: {
-    bg: "bg-emerald-50 dark:bg-emerald-950/20",
-    border: "border-emerald-200 dark:border-emerald-900/50",
+    bg: "bg-emerald-50",
+    border: "border-emerald-200",
     icon: "✓",
   },
   PAYMENT: {
-    bg: "bg-purple-50 dark:bg-purple-950/20",
-    border: "border-purple-200 dark:border-purple-900/50",
+    bg: "bg-purple-50",
+    border: "border-purple-200",
     icon: "💳",
   },
   SYSTEM: {
-    bg: "bg-gray-50 dark:bg-gray-800/20",
-    border: "border-gray-200 dark:border-gray-700/50",
+    bg: "bg-gray-50",
+    border: "border-gray-200",
     icon: "⚙️",
   },
 };
@@ -93,12 +93,12 @@ export default async function AdminNotificationsPage({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-black text-gray-900 dark:text-white">Notifications</h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Notifications</h1>
+          <p className="mt-2 text-sm text-gray-600">
             All admin notifications and alerts. {stats.total} total • {stats.unread} unread
           </p>
         </div>
@@ -109,24 +109,24 @@ export default async function AdminNotificationsPage({
             href="/admin/notifications"
             className={`p-4 rounded-lg border transition ${
               !typeFilter && !readFilter
-                ? "bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700"
-                : "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-150 dark:hover:bg-gray-750"
+                ? "bg-white border-gray-300"
+                : "bg-gray-100 border-gray-200 hover:bg-gray-100"
             }`}
           >
-            <div className="text-2xl font-black text-gray-900 dark:text-white">{stats.total}</div>
-            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-1">All</div>
+            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+            <div className="text-xs font-semibold text-gray-500 mt-1">All</div>
           </Link>
 
           <Link
             href="/admin/notifications?read=unread"
             className={`p-4 rounded-lg border transition ${
               readFilter === "unread"
-                ? "bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700"
-                : "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-150 dark:hover:bg-gray-750"
+                ? "bg-white border-gray-300"
+                : "bg-gray-100 border-gray-200 hover:bg-gray-100"
             }`}
           >
-            <div className="text-2xl font-black text-red-600 dark:text-red-400">{stats.unread}</div>
-            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-1">Unread</div>
+            <div className="text-2xl font-bold text-red-600">{stats.unread}</div>
+            <div className="text-xs font-semibold text-gray-500 mt-1">Unread</div>
           </Link>
 
           {notificationTypes.map((nt) => (
@@ -135,12 +135,12 @@ export default async function AdminNotificationsPage({
               href={`/admin/notifications?type=${nt.type}`}
               className={`p-4 rounded-lg border transition ${
                 typeFilter === nt.type
-                  ? "bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700"
-                  : "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-150 dark:hover:bg-gray-750"
+                  ? "bg-white border-gray-300"
+                  : "bg-gray-100 border-gray-200 hover:bg-gray-100"
               }`}
             >
-              <div className="text-2xl font-black text-gray-900 dark:text-white">{nt.count}</div>
-              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-1 truncate">
+              <div className="text-2xl font-bold text-gray-900">{nt.count}</div>
+              <div className="text-xs font-semibold text-gray-500 mt-1 truncate">
                 {nt.type.replace(/_/g, " ")}
               </div>
             </Link>
@@ -151,7 +151,7 @@ export default async function AdminNotificationsPage({
         <div className="space-y-3">
           {notifications.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-sm text-gray-500 dark:text-gray-400">No notifications found</p>
+              <p className="text-sm text-gray-500">No notifications found</p>
             </div>
           ) : (
             notifications.map((notif) => {
@@ -168,19 +168,19 @@ export default async function AdminNotificationsPage({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                          <h3 className="text-sm font-bold text-gray-900">
                             {notif.title}
                           </h3>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-gray-600 mt-1">
                             {notif.body}
                           </p>
                         </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-500 shrink-0 whitespace-nowrap">
+                        <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">
                           {formatTime(notif.createdAt)}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-2">
-                        <span className="inline-block text-[10px] font-semibold text-gray-500 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
+                        <span className="inline-block text-[10px] font-semibold text-gray-500 bg-gray-200 px-2 py-1 rounded">
                           {notif.type.replace(/_/g, " ")}
                         </span>
                         {!notif.read && (

@@ -31,10 +31,10 @@ export interface PanelTask {
 }
 
 const EVIDENCE_BADGE: Record<string, string> = {
-  PENDING_REVIEW: "bg-amber-100 text-amber-700",
-  APPROVED: "bg-emerald-100 text-emerald-700",
-  RESUBMIT_REQUESTED: "bg-orange-100 text-orange-700",
-  REJECTED: "bg-red-100 text-red-700",
+  PENDING_REVIEW: "bg-amber-50 ring-1 ring-amber-200 text-amber-700",
+  APPROVED: "bg-emerald-50 ring-1 ring-emerald-200 text-emerald-700",
+  RESUBMIT_REQUESTED: "bg-orange-50 ring-1 ring-orange-200 text-orange-700",
+  REJECTED: "bg-red-50 ring-1 ring-red-200 text-red-700",
 };
 
 export default function FieldTasksPanel({
@@ -133,23 +133,23 @@ export default function FieldTasksPanel({
     }
   };
 
-  const input = "mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2";
+  const input = "mt-1 w-full text-sm font-normal rounded-lg border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none px-3 py-2";
 
   return (
-    <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
+    <section className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-base font-bold text-gray-900 dark:text-white">Field tasks & evidence</h2>
           <p className="text-xs text-gray-500">
             Field staff capture photo + GPS + note in the{" "}
-            <Link href="/ngo/field" className="text-emerald-600 underline">
+            <Link href="/ngo/field" className="text-trust-700 underline">
               field app
             </Link>
             , which works offline.
           </p>
         </div>
         {canManage && !showForm && (
-          <button onClick={() => setShowForm(true)} className="self-start px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl">
+          <button onClick={() => setShowForm(true)} className="self-start px-4 py-2 bg-trust-600 hover:bg-trust-700 text-white text-xs font-bold rounded-lg">
             + Assign field task
           </button>
         )}
@@ -158,12 +158,12 @@ export default function FieldTasksPanel({
       {error && <div role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>}
 
       {showForm && (
-        <form onSubmit={create} className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40">
-          <label className="text-xs font-bold sm:col-span-2">
+        <form onSubmit={create} className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
+          <label className="text-xs font-bold text-gray-700 sm:col-span-2">
             Task
             <input required minLength={3} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Photograph the completed classroom" className={input} />
           </label>
-          <label className="text-xs font-bold">
+          <label className="text-xs font-bold text-gray-700">
             Assign to
             <select required value={form.assignedToId} onChange={(e) => setForm({ ...form, assignedToId: e.target.value })} className={input}>
               {team.map((m) => (
@@ -173,7 +173,7 @@ export default function FieldTasksPanel({
               ))}
             </select>
           </label>
-          <label className="text-xs font-bold">
+          <label className="text-xs font-bold text-gray-700">
             Milestone
             <select value={form.milestoneId} onChange={(e) => setForm({ ...form, milestoneId: e.target.value })} className={input}>
               <option value="">Not milestone-specific</option>
@@ -184,11 +184,11 @@ export default function FieldTasksPanel({
               ))}
             </select>
           </label>
-          <label className="text-xs font-bold">
+          <label className="text-xs font-bold text-gray-700">
             Due date
             <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className={input} />
           </label>
-          <label className="text-xs font-bold sm:col-span-2">
+          <label className="text-xs font-bold text-gray-700 sm:col-span-2">
             Instructions
             <textarea rows={2} value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} className={input} />
           </label>
@@ -196,7 +196,7 @@ export default function FieldTasksPanel({
             <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-xs font-bold text-gray-600">
               Cancel
             </button>
-            <button disabled={busy} className="px-5 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl disabled:opacity-50">
+            <button disabled={busy} className="px-5 py-2 bg-trust-600 hover:bg-trust-700 text-white text-xs font-bold rounded-lg disabled:opacity-50">
               {busy ? "Assigning…" : "Assign"}
             </button>
           </div>
@@ -204,7 +204,7 @@ export default function FieldTasksPanel({
       )}
 
       {tasks.length === 0 ? (
-        <p className="text-xs text-gray-400 italic">No field tasks for this project yet.</p>
+        <p className="text-xs text-gray-500 italic">No field tasks for this project yet.</p>
       ) : (
         <ul className="divide-y divide-gray-100 dark:divide-gray-800">
           {tasks.map((t) => (
@@ -232,7 +232,7 @@ export default function FieldTasksPanel({
                       </span>
                     ) : (
                       <>
-                        <button onClick={() => startEdit(t)} className="px-3 py-1.5 text-xs font-bold text-emerald-700 hover:underline">
+                        <button onClick={() => startEdit(t)} className="px-3 py-1.5 text-xs font-bold text-trust-700 hover:underline">
                           Edit
                         </button>
                         <button onClick={() => setConfirmCancel(t.id)} className="px-3 py-1.5 text-xs font-bold text-red-600 hover:underline">
@@ -241,7 +241,7 @@ export default function FieldTasksPanel({
                       </>
                     )
                   )}
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-gray-100 text-gray-700">{t.status}</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-50 ring-1 ring-gray-200 text-gray-700">{t.status}</span>
                 </div>
               </div>
               {editingId === t.id && (
@@ -250,13 +250,13 @@ export default function FieldTasksPanel({
                     e.preventDefault();
                     patchTask(t.id, { action: "EDIT", ...draft, milestoneId: draft.milestoneId || null, dueDate: draft.dueDate || null });
                   }}
-                  className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40"
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200"
                 >
-                  <label className="text-xs font-bold sm:col-span-2">
+                  <label className="text-xs font-bold text-gray-700 sm:col-span-2">
                     Task
                     <input required minLength={3} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} className={input} />
                   </label>
-                  <label className="text-xs font-bold">
+                  <label className="text-xs font-bold text-gray-700">
                     Assign to
                     <select value={draft.assignedToId} onChange={(e) => setDraft({ ...draft, assignedToId: e.target.value })} className={input}>
                       {!team.some((m) => m.userId === draft.assignedToId) && <option value={draft.assignedToId}>{t.assigneeName}</option>}
@@ -267,7 +267,7 @@ export default function FieldTasksPanel({
                       ))}
                     </select>
                   </label>
-                  <label className="text-xs font-bold">
+                  <label className="text-xs font-bold text-gray-700">
                     Milestone
                     <select value={draft.milestoneId} onChange={(e) => setDraft({ ...draft, milestoneId: e.target.value })} className={input}>
                       <option value="">Not milestone-specific</option>
@@ -278,11 +278,11 @@ export default function FieldTasksPanel({
                       ))}
                     </select>
                   </label>
-                  <label className="text-xs font-bold">
+                  <label className="text-xs font-bold text-gray-700">
                     Due date
                     <input type="date" value={draft.dueDate} onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })} className={input} />
                   </label>
-                  <label className="text-xs font-bold sm:col-span-2">
+                  <label className="text-xs font-bold text-gray-700 sm:col-span-2">
                     Instructions
                     <textarea rows={2} value={draft.instructions} onChange={(e) => setDraft({ ...draft, instructions: e.target.value })} className={input} />
                   </label>
@@ -290,14 +290,14 @@ export default function FieldTasksPanel({
                     <button type="button" onClick={() => setEditingId(null)} className="px-4 py-2 text-xs font-bold text-gray-600">
                       Discard
                     </button>
-                    <button disabled={busy} className="px-5 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl disabled:opacity-50">
+                    <button disabled={busy} className="px-5 py-2 bg-trust-600 hover:bg-trust-700 text-white text-xs font-bold rounded-lg disabled:opacity-50">
                       {busy ? "Saving…" : "Save task"}
                     </button>
                   </div>
                 </form>
               )}
               {t.evidence.map((e) => (
-                <div key={e.id} className="flex gap-3 p-2 rounded-xl bg-gray-50 dark:bg-gray-800/40">
+                <div key={e.id} className="flex gap-3 p-2 rounded-xl bg-gray-50 border border-gray-200">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={`/api/field/evidence/${e.id}/photo`} alt={`Field evidence for ${t.title}`} className="w-20 h-20 rounded-lg object-cover flex-shrink-0" />
                   <div className="text-xs space-y-1 min-w-0">
@@ -340,7 +340,7 @@ export default function FieldTasksPanel({
                     )}
                     {e.note && <p className="text-gray-700 dark:text-gray-300">{e.note}</p>}
                     {e.reviewNote && <p className="text-orange-700">Reviewer: {e.reviewNote}</p>}
-                    <p className="text-gray-400">Captured {new Date(e.capturedAt).toLocaleString("en-IN")}</p>
+                    <p className="text-gray-500">Captured {new Date(e.capturedAt).toLocaleString("en-IN")}</p>
                   </div>
                 </div>
               ))}

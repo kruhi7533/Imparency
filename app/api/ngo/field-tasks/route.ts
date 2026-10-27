@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     const actor = await resolveNgoActor(session.user.id);
     if (!actor) return NextResponse.json({ error: "No NGO membership" }, { status: 403 });
     if (!canManageTasks(actor)) {
-      return NextResponse.json({ error: "Only NGO owners or admins can assign field tasks." }, { status: 403 });
+      return NextResponse.json({ error: "Only NGO owners, admins or program managers can assign field tasks." }, { status: 403 });
     }
 
     const parsed = parseTaskInput(await request.json().catch(() => ({})));

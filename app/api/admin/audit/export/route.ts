@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { Role } from "@prisma/client";
 import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
-import { buildAuditWhere } from "@/lib/audit-filters";
+import { buildAuditWhere, readAuditFilters } from "@/lib/audit-filters";
+import { AUDIT_CSV_HEADER, GENESIS_HASH, auditCsvLine, chainHeadCsvLine, csvCell } from "@/lib/audit-chain";
 import { logAdminAction } from "@/lib/admin-log";
 
 export const runtime = "nodejs";
@@ -18,15 +19,12 @@ export const runtime = "nodejs";
  */
 const MAX_ROWS = 5000;
 
-const HEADER = "When,Actor,Action,Entity Type,Entity ID,Note,Old Value,New Value";
-
-/** RFC-4180 quoting: wrap every field, double any embedded quote. */
-function cell(value: unknown): string {
-  if (value === null || value === undefined) return '""';
-  const text = typeof value === "string" ? value : JSON.stringify(value);
-  return `"${String(text).replace(/"/g, '""')}"`;
-}
-
+/**
+ * Hash-chain columns (ADM-017). Every column the chain hashes is exported, the
+ * JSON columns exactly as Postgres renders them, plus a final "#chain-head"
+ * line, so POST /api/admin/audit/verify-export (or anyone with
+ * lib/audit-chain.ts) can detect an edited, deleted or reordered row.
+ */
 export async function GET(req: Request) {
   const { authorized, response, session } = await verifySessionRole(Role.ADMIN);
   if (!authorized) return response;
@@ -40,36 +38,75 @@ export async function GET(req: Request) {
     to: sp.get("to") ?? undefined,
   };
   const where = buildAuditWhere(filters);
+  const filtered = Object.values(readAuditFilters(filters)).some((v) => v !== "");
+
+  // The head is read FIRST and the rows bounded by it, so a row appended while
+  // the export runs cannot make the file look like it lost its newest rows.
+  const head = await prisma.auditChainHead.findUnique({ where: { id: 1 } });
+  const headSeq = head?.seq ?? 0;
+  const headHash = head?.hash ?? GENESIS_HASH;
 
   // One row over the cap, so truncation is detectable without a second count.
   const logs = await prisma.adminActionLog.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
+    where: { AND: [where, { seq: { lte: headSeq } }] },
+    orderBy: { seq: "desc" },
     take: MAX_ROWS + 1,
     include: { admin: { select: { name: true, email: true } } },
   });
 
   const truncated = logs.length > MAX_ROWS;
-  const rows = (truncated ? logs.slice(0, MAX_ROWS) : logs).map((log) =>
-    [
-      cell(log.createdAt.toISOString()),
-      cell(log.admin ? log.admin.name || log.admin.email : "Platform"),
-      cell(log.action),
-      cell(log.entityType),
-      cell(log.entityId),
-      cell(log.note),
-      cell(log.oldValue),
-      cell(log.newValue),
-    ].join(",")
-  );
+  const kept = truncated ? logs.slice(0, MAX_ROWS) : logs;
 
-  if (truncated) {
-    rows.push(
-      [cell(`Truncated at ${MAX_ROWS} rows — narrow the filters for the rest.`), "", "", "", "", "", "", ""].join(",")
-    );
+  // JSON columns as Postgres' own text, which is what the chain hashed.
+  const jsonText = new Map<string, { oldValue: string | null; newValue: string | null; metadata: string | null }>();
+  const ids = kept.map((l) => l.id);
+  for (let i = 0; i < ids.length; i += 1000) {
+    const chunk = ids.slice(i, i + 1000);
+    const rows = await prisma.$queryRaw<Array<{ id: string; oldValue: string | null; newValue: string | null; metadata: string | null }>>`
+      SELECT "id", "oldValue"::text AS "oldValue", "newValue"::text AS "newValue", "metadata"::text AS "metadata"
+      FROM "AdminActionLog" WHERE "id" = ANY(${chunk})`;
+    for (const r of rows) jsonText.set(r.id, r);
   }
 
-  const csv = [HEADER, ...rows].join("\n");
+  const rows = kept.map((log) => {
+    const j = jsonText.get(log.id);
+    return auditCsvLine({
+      seq: log.seq ?? 0,
+      prevHash: log.prevHash ?? "",
+      hash: log.hash ?? "",
+      id: log.id,
+      adminId: log.adminId,
+      actorLabel: log.admin ? log.admin.name || log.admin.email : "Platform",
+      action: log.action,
+      entityType: log.entityType,
+      entityId: log.entityId,
+      note: log.note,
+      oldValueJson: j ? j.oldValue : log.oldValue == null ? null : JSON.stringify(log.oldValue),
+      newValueJson: j ? j.newValue : log.newValue == null ? null : JSON.stringify(log.newValue),
+      metadataJson: j ? j.metadata : log.metadata == null ? null : JSON.stringify(log.metadata),
+      ipAddress: log.ipAddress,
+      userAgent: log.userAgent,
+      schemaVersion: log.schemaVersion,
+      createdAt: log.createdAt.toISOString(),
+    });
+  });
+
+  if (truncated) {
+    rows.push([csvCell(`#truncated: Truncated at ${MAX_ROWS} rows — narrow the filters for the rest.`)].join(","));
+  }
+  rows.push(
+    chainHeadCsvLine({
+      headSeq,
+      headHash,
+      rows: kept.length,
+      filtered,
+      truncated,
+      filters: Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== undefined)),
+      exportedAt: new Date().toISOString(),
+    })
+  );
+
+  const csv = [AUDIT_CSV_HEADER.join(","), ...rows].join("\n");
   const filename = `audit-trail-${new Date().toISOString().slice(0, 10)}.csv`;
 
   // Taking a copy of the audit trail is itself an audited action. Recorded
@@ -77,7 +114,7 @@ export async function GET(req: Request) {
   // cap bit — an export that was silently truncated must not read later as a
   // complete one. The filters go in metadata, never the rows: the log must not
   // become a second copy of the data it is describing.
-  const exportedRows = truncated ? MAX_ROWS : rows.length;
+  const exportedRows = kept.length;
   await logAdminAction({
     adminId: session.user.id,
     action: "AUDIT_TRAIL_EXPORTED",
@@ -87,6 +124,7 @@ export async function GET(req: Request) {
     metadata: {
       rowCount: exportedRows,
       truncated,
+      headSeq,
       filters: Object.fromEntries(
         Object.entries(filters).filter(([, value]) => value !== undefined)
       ),

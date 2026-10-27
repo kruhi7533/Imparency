@@ -26,8 +26,18 @@ export async function POST(req: Request) {
 
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     if (!secret) {
+      // A deployment fault, not a bad request: answer a structured 503 so
+      // Razorpay keeps retrying until the secret is restored, and nothing is
+      // processed unverified in the meantime.
       console.error("RAZORPAY_WEBHOOK_SECRET is not configured");
-      return NextResponse.json({ error: "Configuration error" }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: "Payment webhook is not configured on this server.",
+          code: "WEBHOOK_NOT_CONFIGURED",
+          retryable: true,
+        },
+        { status: 503 },
+      );
     }
 
     if (!verifyRazorpaySignature(rawBody, signature, secret)) {

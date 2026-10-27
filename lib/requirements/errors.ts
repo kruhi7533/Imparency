@@ -5,10 +5,13 @@
  */
 export class RequirementWorkflowError extends Error {
   readonly status: number;
-  constructor(message: string, status = 400) {
+  /** Optional machine-readable code (e.g. EXTRACTION_PROVIDER_UNAVAILABLE, FLAGS_UNCONFIRMED). */
+  readonly code?: string;
+  constructor(message: string, status = 400, code?: string) {
     super(message);
     this.name = "RequirementWorkflowError";
     this.status = status;
+    if (code) this.code = code;
   }
 }
 

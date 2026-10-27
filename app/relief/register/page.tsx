@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 const inputClass =
-  "w-full rounded-xl border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500";
-const labelClass = "block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wide";
+  "w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500";
+const labelClass = "block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide";
 
 function RegisterInitiativeForm() {
   const router = useRouter();
@@ -34,9 +34,9 @@ function RegisterInitiativeForm() {
 
   if (!session?.user) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4">
+      <div className="min-h-screen bg-canvas text-gray-900 flex items-center justify-center p-4">
         <div className="max-w-sm text-center space-y-4">
-          <p className="text-gray-300">Sign in to register a relief initiative.</p>
+          <p className="text-gray-700">Sign in to register a relief initiative.</p>
           <button
             onClick={() => router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
             className="bg-red-600 hover:bg-red-500 text-white font-bold px-6 py-3 rounded-xl text-sm"
@@ -50,8 +50,8 @@ function RegisterInitiativeForm() {
 
   if (!crisisEventId) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4 text-center">
-        <p className="text-gray-400 max-w-sm">
+      <div className="min-h-screen bg-canvas text-gray-900 flex items-center justify-center p-4 text-center">
+        <p className="text-gray-600 max-w-sm">
           Start from an active crisis's page and use "Register an initiative" so we know which emergency this relates to.
         </p>
       </div>
@@ -96,13 +96,13 @@ function RegisterInitiativeForm() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4 text-center">
+      <div className="min-h-screen bg-canvas text-gray-900 flex items-center justify-center p-4 text-center">
         <div className="max-w-md space-y-4">
           <h1 className="font-display text-2xl font-semibold">Submitted for review</h1>
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-600 text-sm">
             Our team will verify your bank details and documents before this goes live. We'll email you once it's published — or if we need anything else from you.
           </p>
-          <button onClick={() => router.push(`/crisis`)} className="text-red-300 hover:text-red-200 font-bold text-sm">
+          <button onClick={() => router.push(`/crisis`)} className="text-red-700 hover:text-red-700 font-bold text-sm">
             ← Back to Emergency Relief
           </button>
         </div>
@@ -111,19 +111,19 @@ function RegisterInitiativeForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white font-sans">
+    <div className="min-h-screen bg-canvas text-gray-900 font-sans">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="mb-8 space-y-3">
           <span className="inline-flex items-center gap-1.5 bg-red-600 text-white text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full">
             Individual Relief Initiative
           </span>
           <h1 className="font-display text-3xl font-semibold tracking-tight">Register your relief effort</h1>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-600">
             For individuals or informal groups responding on the ground. Every submission is manually verified — including your bank details — before it can accept donations.
           </p>
         </div>
 
-        {error && <div className="mb-6 p-3.5 bg-red-950/30 border border-red-900 rounded-xl text-xs text-red-300">{error}</div>}
+        {error && <div className="mb-6 p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
@@ -156,7 +156,7 @@ function RegisterInitiativeForm() {
             </div>
           </div>
 
-          <div className="border-t border-gray-800 pt-5">
+          <div className="border-t border-gray-200 pt-5">
             <h3 className="font-display text-base font-semibold mb-1">Bank details</h3>
             <p className="text-xs text-gray-500 mb-4">Encrypted at rest, visible only to the verifying admin — never shown publicly.</p>
             <div className="grid grid-cols-2 gap-4 mb-4">
@@ -179,7 +179,7 @@ function RegisterInitiativeForm() {
             </div>
           </div>
 
-          <div className="border-t border-gray-800 pt-5">
+          <div className="border-t border-gray-200 pt-5">
             <div className="mb-4">
               <label className={labelClass}>Photos (up to 6, optional)</label>
               <input type="file" accept="image/*" multiple className={inputClass} onChange={(e) => setImages(Array.from(e.target.files || []).slice(0, 6))} />

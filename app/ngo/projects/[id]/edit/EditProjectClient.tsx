@@ -306,18 +306,18 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-12 px-4 sm:px-6 lg:px-8 font-sans transition-colors duration-200">
-      <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-8 sm:p-10 relative overflow-hidden">
+    <div className="py-8 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] border border-gray-200/80 dark:border-gray-800 p-5 sm:p-10 relative overflow-hidden">
         
-        <div className="mb-8 border-b border-gray-100 dark:border-gray-800 pb-5 flex justify-between items-center">
+        <div className="mb-8 border-b border-gray-100 dark:border-gray-800 pb-5 flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Edit Campaign</h1>
-              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">Edit Campaign</h1>
+              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-trust-50 text-trust-700 border border-trust-200">
                 v{project.version || 1}
               </span>
             </div>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-2 text-sm text-gray-600">
               {isLocked 
                 ? "This campaign has received donations. Budget and milestones are locked to protect donor transparency." 
                 : "Modify campaign parameters and sequence milestones. Milestones must sum up to target exactly."}
@@ -326,7 +326,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
           <button 
             type="button" 
             onClick={() => router.push("/ngo/dashboard")} 
-            className="px-4 py-2 border border-gray-300 dark:border-gray-700 hover:bg-gray-150 dark:hover:bg-gray-850 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-300 transition"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-700 bg-white hover:bg-gray-50 rounded-lg text-xs font-semibold text-gray-800 transition"
           >
             Back to Dashboard
           </button>
@@ -357,7 +357,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                   placeholder="e.g. Clean Water for Dharavi"
                   required
                 />
@@ -369,7 +369,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                   value={causeCategory}
                   onChange={(e) => setCauseCategory(e.target.value)}
                   disabled={isLocked}
-                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {CAUSE_CATEGORIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
@@ -387,7 +387,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                     value={targetAmount}
                     onChange={(e) => setTargetAmount(e.target.value)}
                     disabled={isLocked}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
                     placeholder="e.g. 50000"
                     required
                   />
@@ -400,7 +400,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                   type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                   placeholder="e.g. Dharavi, Mumbai"
                   required
                 />
@@ -424,7 +424,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
                 placeholder="Describe the scope, objectives, and impact goals of this project..."
                 required
               />
@@ -447,7 +447,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                 value={problemStatement}
                 onChange={(e) => setProblemStatement(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
                 placeholder="What issue or gap does this campaign address? e.g., '200 children in Dharavi lack access to basic learning materials...'"
               />
               <p className="text-[11px] text-gray-500 mt-1">Adding this helps donors understand your campaign's purpose and builds trust.</p>
@@ -470,7 +470,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                 value={expectedOutcome}
                 onChange={(e) => setExpectedOutcome(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
                 placeholder="What does success look like once this campaign is complete? e.g., 'Improved school attendance and literacy among 200 children...'"
               />
               <p className="text-[11px] text-gray-500 mt-1">Adding this helps donors understand your campaign's purpose and builds trust.</p>
@@ -487,7 +487,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
-                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 dark:file:bg-emerald-950/30 dark:file:text-emerald-400 hover:file:bg-emerald-100 cursor-pointer"
+                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-trust-50 file:text-trust-700 dark:file:bg-emerald-950/30 dark:file:text-emerald-400 hover:file:bg-trust-100 cursor-pointer"
               />
             </div>
           </div>
@@ -496,7 +496,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
           <div className="border-t border-gray-200 dark:border-gray-800 pt-8 space-y-6">
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Project Location & Geo Context</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-sm text-gray-600 mb-4">
                 Add precise coordinates to unlock AI Geo Intelligence for this project, helping donors understand the environmental and demographic context.
               </p>
             </div>
@@ -508,7 +508,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                   type="text"
                   value={districtName}
                   onChange={(e) => setDistrictName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                   placeholder="e.g. Hyderabad"
                 />
               </div>
@@ -518,7 +518,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                   type="text"
                   value={stateName}
                   onChange={(e) => setStateName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                   placeholder="e.g. Telangana"
                 />
               </div>
@@ -529,7 +529,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                   step="any"
                   value={latitude}
                   onChange={(e) => setLatitude(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                   placeholder="e.g. 17.385"
                 />
               </div>
@@ -540,7 +540,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                   step="any"
                   value={longitude}
                   onChange={(e) => setLongitude(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                   placeholder="e.g. 78.4867"
                 />
               </div>
@@ -552,7 +552,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                   type="button"
                   onClick={handleFetchGeo}
                   disabled={geoLoading}
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-5 py-2.5 bg-trust-600 hover:bg-trust-700 text-white rounded-lg text-sm font-semibold shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {geoLoading ? (
                     <>
@@ -563,10 +563,10 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                     <>🌍 {geoData ? "Refresh Area Intelligence" : "Fetch Area Intelligence"}</>
                   )}
                 </button>
-                {geoError && <p className="mt-2 text-sm text-red-500">{geoError}</p>}
+                {geoError && <p className="mt-2 text-sm text-red-600">{geoError}</p>}
 
                 {geoData && (
-                  <div className="mt-6 bg-white dark:bg-gray-900 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-6 shadow-sm">
+                  <div className="mt-6 bg-white dark:bg-gray-900 border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                     <div className="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-gray-800 pb-4">
                       <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                         {geoData.district}, {geoData.state}
@@ -580,19 +580,19 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="space-y-1">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Literacy Rate <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-gray-400 ml-1">Census 2011</span></p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Literacy Rate <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-gray-500 ml-1">Census 2011</span></p>
                         <p className="text-lg font-bold text-gray-900 dark:text-white">
                           {geoData.literacyRate ? `${geoData.literacyRate}%` : 'Data Unavailable'}
                         </p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Rural Population <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-gray-400 ml-1">Census 2011</span></p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Rural Population <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-gray-500 ml-1">Census 2011</span></p>
                         <p className="text-lg font-bold text-gray-900 dark:text-white">
                           {geoData.ruralPopulation ? geoData.ruralPopulation.toLocaleString() : 'Data Unavailable'}
                         </p>
                       </div>
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Vegetation (NDVI) <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-gray-400 ml-1">Satellite</span></p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Vegetation (NDVI) <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-gray-500 ml-1">Satellite</span></p>
                         <div className="flex flex-col gap-1">
                           <div className={`px-2 py-1 rounded w-fit text-xs font-bold ${
                             geoData.ndviScore > 0.5 ? 'bg-emerald-100 text-emerald-700' :
@@ -608,7 +608,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                         </div>
                       </div>
                     </div>
-                    <p className="mt-6 text-[11px] text-gray-400 italic">
+                    <p className="mt-6 text-[11px] text-gray-500 italic">
                       Data aggregated from data.gov.in and Agromonitoring satellite imagery
                     </p>
                   </div>
@@ -619,7 +619,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
 
           {/* Section 2: Sequential Milestone Builder */}
           <div className="border-t border-gray-200 dark:border-gray-800 pt-8 space-y-6">
-            <div className="flex justify-between items-start">
+            <div className="flex flex-col sm:flex-row gap-3 justify-between items-start">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">2. Sequential Milestone Builder</h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -632,7 +632,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                 <button
                   type="button"
                   onClick={handleAddMilestone}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition"
+                  className="px-4 py-2 bg-trust-600 hover:bg-trust-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
                 >
                   + Add Milestone Goal
                 </button>
@@ -643,8 +643,8 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
             {!isLocked && (
               <div className="p-4 bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800/60 rounded-xl space-y-3">
                 <div className="flex justify-between items-center text-xs font-semibold">
-                  <span className="text-gray-600 dark:text-gray-450">Milestones Allocated: ₹{totalAllocated.toLocaleString()} / ₹{projectTarget.toLocaleString()}</span>
-                  <span className={isAllocationValid ? "text-emerald-600" : "text-red-500"}>
+                  <span className="text-gray-600">Milestones Allocated: ₹{totalAllocated.toLocaleString()} / ₹{projectTarget.toLocaleString()}</span>
+                  <span className={isAllocationValid ? "text-emerald-700" : "text-red-600"}>
                     {isAllocationValid ? "✓ Balanced Target!" : "✗ Allocations Mismatch"}
                   </span>
                 </div>
@@ -672,7 +672,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                       <button
                         type="button"
                         onClick={() => handleRemoveMilestone(idx)}
-                        className="text-xs font-bold text-red-500 hover:text-red-650"
+                        className="text-xs font-bold text-red-600 hover:text-red-700"
                       >
                         Remove
                       </button>
@@ -687,7 +687,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                         value={milestone.title}
                         onChange={(e) => handleMilestoneChange(idx, "title", e.target.value)}
                         disabled={isLocked}
-                        className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 disabled:opacity-60 disabled:cursor-not-allowed"
                         placeholder="e.g. Purchase 500 textbooks"
                         required
                       />
@@ -703,7 +703,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                           value={milestone.targetAmount}
                           onChange={(e) => handleMilestoneChange(idx, "targetAmount", e.target.value)}
                           disabled={isLocked}
-                          className="w-full pl-7 pr-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="w-full pl-7 pr-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 disabled:opacity-60 disabled:cursor-not-allowed"
                           placeholder="e.g. 15000"
                           required
                         />
@@ -727,7 +727,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                         value={milestone.proofType}
                         onChange={(e) => handleMilestoneChange(idx, "proofType", e.target.value)}
                         disabled={isLocked}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {PROOF_TYPES.map((p) => (
                           <option key={p} value={p}>{p}</option>
@@ -757,7 +757,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                       onChange={(e) => handleMilestoneChange(idx, "description", e.target.value)}
                       disabled={isLocked}
                       rows={2}
-                      className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
                       placeholder="e.g. Buy and distribute physical textbooks to primary students..."
                       required
                     />
@@ -772,7 +772,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
           <div className="border-t border-gray-200 dark:border-gray-800 pt-8 space-y-6">
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">3. Theory of Change Check</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-sm text-gray-600 mb-4">
                 Verify if your activities (milestones) logically lead to your expected outcomes. 
                 <span className="italic ml-1 block mt-1">This is an advisory check — it does not affect publishing.</span>
               </p>
@@ -781,11 +781,11 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                 type="button"
                 onClick={handleCheckToc}
                 disabled={tocLoading || milestones.length === 0 || !expectedOutcome}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-5 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 rounded-lg text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {tocLoading ? (
                   <>
-                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <svg className="animate-spin h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                     Analysing your impact logic...
                   </>
                 ) : (
@@ -793,11 +793,11 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                 )}
               </button>
               
-              {tocError && <p className="mt-3 text-sm text-red-500">{tocError}</p>}
+              {tocError && <p className="mt-3 text-sm text-red-600">{tocError}</p>}
             </div>
 
             {tocData && (
-              <div className="bg-white dark:bg-gray-900 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl p-6 shadow-sm">
+              <div className="bg-white dark:bg-gray-900 border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                 <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100 dark:border-gray-800">
                   <div className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl shadow-sm ${
                     tocData.alignmentScore >= 75 ? "bg-emerald-100 text-emerald-700" :
@@ -809,7 +809,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">Alignment Score</h3>
                     <p className={`text-sm font-medium uppercase tracking-wider ${
                       tocData.alignmentScore >= 75 ? "text-emerald-600" :
-                      tocData.alignmentScore >= 50 ? "text-amber-600" : "text-red-500"
+                      tocData.alignmentScore >= 50 ? "text-amber-600" : "text-red-600"
                     }`}>
                       {tocData.alignmentScore >= 75 ? "Strong Alignment" :
                        tocData.alignmentScore >= 50 ? "Moderate Alignment" : "Weak Alignment"}
@@ -847,7 +847,7 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
                       <ul className="space-y-2">
                         {tocData.gaps.map((gap: string, i: number) => (
                           <li key={i} className="text-sm text-gray-600 dark:text-gray-300 flex items-start gap-2">
-                            <span className="text-amber-500 mt-0.5">•</span>
+                            <span className="text-amber-700 mt-0.5">•</span>
                             {gap}
                           </li>
                         ))}
@@ -874,14 +874,14 @@ export default function EditProjectClient({ project }: EditProjectClientProps) {
             <button
               type="button"
               onClick={() => router.push("/ngo/dashboard")}
-              className="px-5 py-2.5 border border-gray-300 dark:border-gray-700 hover:bg-gray-150 dark:hover:bg-gray-850 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 transition"
+              className="px-5 py-2.5 border border-gray-300 dark:border-gray-700 bg-white hover:bg-gray-50 rounded-lg text-sm font-semibold text-gray-800 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || (!isLocked && !isAllocationValid)}
-              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2.5 bg-trust-600 hover:bg-trust-700 text-white rounded-lg text-sm font-semibold shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Saving Changes..." : "Save Changes"}
             </button>

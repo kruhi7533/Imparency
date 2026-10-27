@@ -70,9 +70,9 @@ export default async function NgoInquiriesPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Inquiries &amp; Appeals</h1>
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">Inquiries &amp; Appeals</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Questions from the admin team and direct inquiries from your donors.
         </p>

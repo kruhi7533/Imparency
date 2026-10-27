@@ -2,6 +2,12 @@ import { Prisma, ContractPaymentMode, ContractPaymentStatus, ContractStatus, Tea
 import prisma from "@/lib/prisma";
 import { fundingState, type FundingState } from "@/lib/allocation";
 import { donorCan, resolveDonorAccount, type DonorRole } from "@/lib/donor-team";
+import {
+  computeMilestoneFunding,
+  unallocatedByPayment,
+  type AllocationLineRow,
+  type MilestoneFunding,
+} from "@/lib/contract-funding";
 
 /**
  * Week 6: money on the CSR contract track.
@@ -125,6 +131,7 @@ export function checkRecordPayment(args: {
     return { ok: false, status: 400, error: "mode must be SANDBOX or MANUAL." };
   }
   if (args.mode === ContractPaymentMode.MANUAL && (typeof args.reference !== "string" || !args.reference.trim())) {
+    // The route passes the normalised UTR here (lib/utr.ts); format is checked there.
     return { ok: false, status: 400, error: "A manual payment needs a reference (UTR or cheque number) to be reconciled." };
   }
 
@@ -219,19 +226,51 @@ export interface FundingSummary {
   reconciled: string;
   pending: string;
   disputed: string;
+  /** Recorded, not disputed, and not on any milestone (rejected or beyond the milestones). */
+  unallocated: string;
   /** From RECONCILED money only — a claim of payment is not funding. */
   state: FundingState;
-  milestones: Array<{ id: string; allocated: string; reconciled: string; pending: string; state: FundingState }>;
+  milestones: Array<{
+    id: string;
+    allocated: string;
+    reconciled: string;
+    pending: string;
+    /** Admin-approved allocation of reconciled money. */
+    approved: string;
+    outstanding: string;
+    state: FundingState;
+    fundingStatus: MilestoneFunding["fundingStatus"];
+  }>;
+}
+
+/**
+ * Lines for payments recorded with a milestone but read without allocation
+ * rows (callers that did not load them): the payment's own milestone.
+ */
+function legacyLines(payments: PaymentRow[]): AllocationLineRow[] {
+  return payments.flatMap((p, i) =>
+    p.contractMilestoneId
+      ? [{ paymentId: p.id ?? `row-${i}`, contractMilestoneId: p.contractMilestoneId, amount: p.amount, status: "PENDING_APPROVAL" }]
+      : [],
+  );
 }
 
 export function fundingSummary(
   contract: { totalGrantAmount: Amount },
   milestones: Array<{ id: string; allocatedAmount: Amount }>,
   payments: PaymentRow[],
+  lines?: AllocationLineRow[],
 ): FundingSummary {
   const by = (status: ContractPaymentStatus, list = payments) => sum(list.filter((p) => p.status === status));
   const reconciled = by(ContractPaymentStatus.RECONCILED);
   const pending = by(ContractPaymentStatus.PENDING_CONFIRMATION);
+  const withIds = payments.map((p, i) => ({ id: p.id ?? `row-${i}`, amount: p.amount, status: p.status }));
+  const effectiveLines = lines ?? legacyLines(payments);
+  const perMilestone = computeMilestoneFunding(milestones, withIds, effectiveLines);
+  const unallocated = Array.from(unallocatedByPayment(withIds, effectiveLines).values()).reduce(
+    (acc, v) => acc.plus(v),
+    new Prisma.Decimal(0),
+  );
 
   return {
     committed: dec(contract.totalGrantAmount).toFixed(2),
@@ -239,18 +278,18 @@ export function fundingSummary(
     reconciled: reconciled.toFixed(2),
     pending: pending.toFixed(2),
     disputed: by(ContractPaymentStatus.DISPUTED).toFixed(2),
+    unallocated: unallocated.toFixed(2),
     state: fundingState(contract.totalGrantAmount, reconciled),
-    milestones: milestones.map((m) => {
-      const mine = payments.filter((p) => p.contractMilestoneId === m.id);
-      const r = by(ContractPaymentStatus.RECONCILED, mine);
-      return {
-        id: m.id,
-        allocated: dec(m.allocatedAmount).toFixed(2),
-        reconciled: r.toFixed(2),
-        pending: by(ContractPaymentStatus.PENDING_CONFIRMATION, mine).toFixed(2),
-        state: fundingState(m.allocatedAmount, r),
-      };
-    }),
+    milestones: perMilestone.map((m) => ({
+      id: m.id,
+      allocated: m.committed,
+      reconciled: m.reconciled,
+      pending: m.pending,
+      approved: m.allocated,
+      outstanding: m.outstanding,
+      state: fundingState(m.committed, m.reconciled),
+      fundingStatus: m.fundingStatus,
+    })),
   };
 }
 
@@ -266,7 +305,16 @@ export function fundingPanelProps(
     status: ContractStatus;
     ngoAcceptedAt: Date | null;
     totalGrantAmount: Amount;
-    milestones: Array<{ id: string; title: string; allocatedAmount: Amount }>;
+    fundedAt?: Date | null;
+    milestones: Array<{ id: string; title: string; allocatedAmount: Amount; dueDate?: Date | null; orderIndex?: number }>;
+    paymentAllocations?: Array<{
+      id: string;
+      paymentId: string;
+      contractMilestoneId: string;
+      amount: Amount;
+      status: string;
+      rule: string;
+    }>;
     payments: Array<{
       id: string;
       amount: Amount;
@@ -284,7 +332,13 @@ export function fundingPanelProps(
 ) {
   const teamRole = party.party === "NGO" ? party.teamRole : null;
   const donorRole = party.party === "DONOR" ? party.donorRole : null;
-  const { milestones: perMilestone, ...summary } = fundingSummary(contract, contract.milestones, contract.payments);
+  const { milestones: perMilestone, ...summary } = fundingSummary(
+    contract,
+    contract.milestones,
+    contract.payments,
+    contract.paymentAllocations,
+  );
+  const now = Date.now();
   return {
     contractId: contract.id,
     contractStatus: contract.status,
@@ -297,6 +351,37 @@ export function fundingPanelProps(
       canPay: donorRole !== null && donorCan(donorRole, "pay"),
     },
     milestones: contract.milestones.map((m) => ({ id: m.id, title: m.title, allocatedAmount: Number(m.allocatedAmount.toString()) })),
+    contractFundedAt: contract.fundedAt ? contract.fundedAt.toISOString() : null,
+    /**
+     * ADM-008 receivable schedule: one expected instalment per milestone, in
+     * delivery order — committed (a promise) next to what has actually arrived.
+     */
+    schedule: [...contract.milestones]
+      .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
+      .map((m) => {
+        const f = perMilestone.find((x) => x.id === m.id)!;
+        const due = m.dueDate ?? null;
+        return {
+          milestoneId: m.id,
+          title: m.title,
+          dueDate: due ? due.toISOString() : null,
+          committed: f.allocated,
+          pending: f.pending,
+          reconciled: f.reconciled,
+          allocated: f.approved,
+          outstanding: f.outstanding,
+          fundingStatus: f.fundingStatus,
+          overdue: !!due && due.getTime() < now && f.fundingStatus !== "FUNDED",
+        };
+      }),
+    allocations: (contract.paymentAllocations ?? []).map((a) => ({
+      id: a.id,
+      paymentId: a.paymentId,
+      contractMilestoneId: a.contractMilestoneId,
+      amount: Number(a.amount.toString()),
+      status: a.status,
+      rule: a.rule,
+    })),
     payments: [...contract.payments]
       .sort((a, b) => b.paidAt.getTime() - a.paidAt.getTime())
       .map((p) => ({

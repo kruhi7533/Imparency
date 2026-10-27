@@ -68,7 +68,7 @@ export default function GapAnalysisDashboard({ params }: { params: { id: string 
 
   const getSeverityBadge = (sev: string) => {
     if (sev === 'HIGH') return <Badge variant="destructive" className="flex items-center gap-1"><AlertCircle className="w-3 h-3"/> HIGH</Badge>;
-    if (sev === 'MEDIUM') return <Badge variant="secondary" className="bg-yellow-500 hover:bg-yellow-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> MEDIUM</Badge>;
+    if (sev === 'MEDIUM') return <Badge variant="secondary" className="bg-amber-500 hover:bg-amber-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> MEDIUM</Badge>;
     return <Badge variant="outline" className="text-muted-foreground flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> LOW</Badge>;
   };
 
@@ -78,7 +78,7 @@ export default function GapAnalysisDashboard({ params }: { params: { id: string 
     <div className="container max-w-5xl mx-auto py-8 space-y-8">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gap Analysis: {report.sponsorRequirement.title}</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">Gap Analysis: {report.sponsorRequirement.title}</h1>
           <p className="text-muted-foreground mt-2">Internal review dashboard for assessing alignment with CSR requirements.</p>
         </div>
         <Badge variant={report.reviewStatus === 'APPROVED' ? 'default' : 'secondary'} className="text-sm px-3 py-1">

@@ -47,7 +47,7 @@ export default function ProposalActions({
 
   if (status === "APPROVED" || status === "REJECTED" || status === "WITHDRAWN") {
     return (
-      <p className="text-sm text-gray-500 dark:text-gray-400">
+      <p className="text-sm text-gray-500">
         This proposal is {status.toLowerCase()} and can no longer be changed.
       </p>
     );
@@ -55,7 +55,7 @@ export default function ProposalActions({
 
   if (status === "DRAFT") {
     return (
-      <p className="text-sm text-gray-500 dark:text-gray-400">
+      <p className="text-sm text-gray-500">
         Still a draft with the organisation. Nothing to review until they submit it.
       </p>
     );
@@ -88,7 +88,7 @@ export default function ProposalActions({
             type="button"
             disabled={!!busy}
             onClick={() => setRejecting(true)}
-            className="rounded-lg border border-red-200 dark:border-red-900/40 px-4 py-2 text-sm font-bold text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+            className="rounded-lg border border-red-200 px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50"
           >
             Reject
           </button>
@@ -102,7 +102,7 @@ export default function ProposalActions({
             onChange={(e) => setNote(e.target.value)}
             rows={3}
             placeholder="Why is this being rejected? The organisation is told this."
-            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
           />
           <div className="flex gap-2">
             <button
@@ -120,7 +120,7 @@ export default function ProposalActions({
                 setRejecting(false);
                 setNote("");
               }}
-              className="rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
             >
               Cancel
             </button>
@@ -128,7 +128,7 @@ export default function ProposalActions({
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
   );
 }

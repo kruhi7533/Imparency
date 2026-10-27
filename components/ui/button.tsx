@@ -6,18 +6,18 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 export function Button({ className, variant = "default", size = "default", ...props }: ButtonProps) {
-  let baseClass = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+  let baseClass = "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-trust-500/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
   
-  let variantClass = "bg-primary text-primary-foreground shadow hover:bg-primary/90"
-  if (variant === "destructive") variantClass = "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90"
-  else if (variant === "outline") variantClass = "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground"
-  else if (variant === "secondary") variantClass = "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80"
-  else if (variant === "ghost") variantClass = "hover:bg-accent hover:text-accent-foreground"
-  else if (variant === "link") variantClass = "text-primary underline-offset-4 hover:underline"
+  let variantClass = "bg-trust-600 text-white shadow-sm hover:bg-trust-700"
+  if (variant === "destructive") variantClass = "bg-red-600 text-white shadow-sm hover:bg-red-700"
+  else if (variant === "outline") variantClass = "border border-gray-300 bg-white text-gray-800 shadow-sm hover:bg-gray-50"
+  else if (variant === "secondary") variantClass = "bg-gray-100 text-gray-800 hover:bg-gray-200"
+  else if (variant === "ghost") variantClass = "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+  else if (variant === "link") variantClass = "text-trust-600 underline-offset-4 hover:text-trust-700 hover:underline"
   
   let sizeClass = "h-9 px-4 py-2"
-  if (size === "sm") sizeClass = "h-8 rounded-md px-3 text-xs"
-  else if (size === "lg") sizeClass = "h-10 rounded-md px-8"
+  if (size === "sm") sizeClass = "h-8 rounded-lg px-3 text-xs"
+  else if (size === "lg") sizeClass = "h-11 rounded-lg px-8"
   else if (size === "icon") sizeClass = "h-9 w-9"
 
   return (

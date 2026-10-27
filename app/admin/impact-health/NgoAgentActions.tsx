@@ -71,7 +71,7 @@ export default function NgoAgentActions({
         <button
           onClick={getInsight}
           disabled={loading !== null}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-lg border border-blue-200 dark:border-blue-900/40 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition disabled:opacity-50"
+          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 transition disabled:opacity-50"
         >
           <Sparkles size={12} />
           {loading === "insight" ? "Analyzing…" : "Trust insight"}
@@ -79,7 +79,7 @@ export default function NgoAgentActions({
         <button
           onClick={getDraft}
           disabled={loading !== null}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-lg border border-emerald-200 dark:border-emerald-900/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition disabled:opacity-50"
+          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-lg border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition disabled:opacity-50"
         >
           <MessageSquarePlus size={12} />
           {loading === "draft" ? "Drafting…" : "Draft reminder"}
@@ -89,21 +89,21 @@ export default function NgoAgentActions({
       {error && <p className="mt-2 text-xs font-semibold text-red-600">{error}</p>}
 
       {insight && (
-        <div className="mt-2 rounded-lg bg-blue-50/70 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 px-3 py-2">
-          <p className="text-[10px] font-extrabold uppercase tracking-wide text-blue-500 mb-0.5">Trust Insight</p>
-          <p className="text-xs text-gray-700 dark:text-gray-300">{insight}</p>
+        <div className="mt-2 rounded-lg bg-blue-50/70 border border-blue-100 px-3 py-2">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-blue-500 mb-0.5">Trust Insight</p>
+          <p className="text-xs text-gray-700">{insight}</p>
         </div>
       )}
 
       {draft && (
-        <div className="mt-2 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 px-3 py-2">
+        <div className="mt-2 rounded-lg bg-emerald-50/70 border border-emerald-100 px-3 py-2">
           <div className="flex items-center justify-between mb-0.5">
-            <p className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-600">Draft Reminder (edit before sending)</p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">Draft Reminder (edit before sending)</p>
             <button onClick={copyDraft} className="text-[10px] font-bold text-emerald-600 hover:underline">
               {copied ? "Copied!" : "Copy"}
             </button>
           </div>
-          <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{draft}</p>
+          <p className="text-xs text-gray-700 whitespace-pre-wrap">{draft}</p>
         </div>
       )}
     </div>

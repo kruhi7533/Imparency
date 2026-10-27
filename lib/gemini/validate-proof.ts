@@ -5,6 +5,7 @@ import {
   isBudgetViolation,
   normalizeBudgetStatus,
 } from "@/lib/budget-rule";
+import { aiStandInGate, callAi } from "@/lib/ai/telemetry";
 
 // The budget rule lives in lib/budget-rule.ts (no deps) so the admin client can
 // share it without bundling the Gemini SDK. Re-exported here for existing importers.
@@ -50,6 +51,7 @@ export async function validateMilestoneProof(
 
   if (!apiKey) {
     console.warn("GEMINI_API_KEY is not defined. Falling back to Mock validation in development.");
+    await aiStandInGate("validate-proof"); // AI-009/010: visible in telemetry; fails under fault injection
     const containsSuccess = proofDescription.toLowerCase().includes("success") || 
                             proofDescription.toLowerCase().includes("complete") || 
                             proofDescription.toLowerCase().includes("done");
@@ -151,7 +153,7 @@ Return ONLY valid JSON matching the required schema. No markdown, no preamble.`;
   }));
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callAi({ site: "validate-proof", model: "gemini-3.6-flash", promptVersion: "v1" }, () => ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents: [prompt, ...inlineFiles],
       config: {
@@ -180,7 +182,7 @@ Return ONLY valid JSON matching the required schema. No markdown, no preamble.`;
           required: ["score", "reasoning", "flags", "tocAlignmentScore", "tocReasoning", "tocStrengths", "tocGaps", "budgetStatus", "budgetReasoning"]
         }
       }
-    });
+    }));
 
     const text = response.text;
     if (!text) {

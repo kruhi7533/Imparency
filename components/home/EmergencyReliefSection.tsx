@@ -41,16 +41,16 @@ export default async function EmergencyReliefSection() {
   const [featured, ...rest] = serialized;
 
   return (
-    <section id="emergency-relief" className="border-y border-red-900/40 bg-gradient-to-b from-red-950/25 via-gray-950 to-gray-950 py-20">
+    <section id="emergency-relief" className="py-16 sm:py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between flex-wrap gap-4 mb-10">
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 bg-red-600 text-white text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full">
-              <span className="w-2 h-2 rounded-full bg-white animate-pulse" /> Emergency Relief
+            <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 ring-1 ring-red-200 text-[11px] font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-red-500 motion-safe:animate-pulse" /> Emergency Relief
             </span>
           </div>
           {rest.length > 0 && (
-            <Link href="/crisis" className="text-red-300 hover:text-red-200 font-bold text-sm flex items-center gap-1">
+            <Link href="/crisis" className="text-red-700 hover:text-red-800 font-semibold text-sm flex items-center gap-1">
               See all active crises <span>→</span>
             </Link>
           )}

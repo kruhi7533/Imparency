@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import ContractDetailClient from "@/app/donor/contracts/[id]/ContractDetailClient";
+import ContractImpactPanels from "@/components/contract/ContractImpactPanels";
 import { fundingPanelProps, resolveContractParty } from "@/lib/contract-payments";
 import { resolveDonorAccount } from "@/lib/donor-team";
 
@@ -71,6 +72,7 @@ export default async function ContractPageContent({ contractId, loginPath }: { c
         orderBy: { createdAt: "desc" },
       },
       payments: true,
+      paymentAllocations: true,
     },
   });
 
@@ -122,10 +124,12 @@ export default async function ContractPageContent({ contractId, loginPath }: { c
       createdAt: a.createdAt.toISOString(),
     })),
     payments: undefined,
+    paymentAllocations: undefined,
+    fundedAt: contract.fundedAt ? contract.fundedAt.toISOString() : null,
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-6">
         <ContractDetailClient
           contract={serializedContract}
@@ -137,6 +141,14 @@ export default async function ContractPageContent({ contractId, loginPath }: { c
             email: session.user.email || "",
           }}
         />
+        {(contract.status === "ACTIVE" || contract.status === "COMPLETED") && (
+          <ContractImpactPanels
+            contractId={contract.id}
+            projectId={contract.projectId}
+            role={userRole}
+            milestones={(contract.milestones || []).map((m: any) => ({ id: m.id, title: m.title }))}
+          />
+        )}
       </div>
     </div>
   );

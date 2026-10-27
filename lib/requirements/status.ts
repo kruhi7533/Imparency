@@ -41,8 +41,9 @@ const TRANSITIONS: Record<RequirementStatus, Partial<Record<RequirementStatus, A
   SELECTED: { CONTRACTED: ["DONOR", "NGO", "ADMIN"] },
   CONTRACTED: {},
   REJECTED: {},
-  // A failed extraction can be retried by the owner or an admin.
-  FAILED: { PROCESSING: ["DONOR", "ADMIN"], ...WITHDRAW },
+  // A failed extraction can be retried by the owner or an admin, or the owner
+  // can type the details in themselves (manual entry from the failed upload).
+  FAILED: { PROCESSING: ["DONOR", "ADMIN"], DONOR_REVIEW: ["DONOR"], ...WITHDRAW },
   WITHDRAWN: {},
 };
 

@@ -64,7 +64,7 @@ export default function PersonaEditor({
       <select
         value={persona}
         onChange={(e) => setPersona(e.target.value)}
-        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs text-gray-900 dark:text-white"
+        className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-900"
       >
         <option value="" disabled>
           Select…
@@ -82,14 +82,14 @@ export default function PersonaEditor({
             setPersona(current ?? "");
             setError("");
           }}
-          className="px-2 py-1 text-[11px] font-bold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
+          className="px-2 py-1 text-[11px] font-bold rounded-lg border border-gray-200 text-gray-600"
         >
           Cancel
         </button>
         <button
           disabled={busy || !persona || persona === current}
           onClick={save}
-          className="px-2 py-1 text-[11px] font-bold rounded-lg bg-emerald-600 text-white disabled:opacity-50"
+          className="px-2 py-1 text-[11px] font-bold rounded-lg bg-trust-600 text-white disabled:opacity-50"
         >
           {busy ? "Saving…" : "Save"}
         </button>

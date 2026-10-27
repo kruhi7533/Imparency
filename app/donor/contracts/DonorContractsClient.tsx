@@ -38,13 +38,13 @@ interface ContractItem {
 }
 
 const STATUS_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  DRAFT: { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-600 dark:text-gray-300", label: "Draft" },
-  PROPOSED: { bg: "bg-amber-100 dark:bg-amber-950/40", text: "text-amber-700 dark:text-amber-400", label: "Proposed" },
-  UNDER_REVIEW: { bg: "bg-purple-100 dark:bg-purple-950/40", text: "text-purple-700 dark:text-purple-400", label: "Under Review" },
-  ACTIVE: { bg: "bg-emerald-100 dark:bg-emerald-950/40", text: "text-emerald-700 dark:text-emerald-400", label: "Active" },
-  COMPLETED: { bg: "bg-blue-100 dark:bg-blue-950/40", text: "text-blue-700 dark:text-blue-400", label: "Completed" },
-  TERMINATED: { bg: "bg-red-100 dark:bg-red-950/40", text: "text-red-700 dark:text-red-400", label: "Terminated" },
-  REJECTED: { bg: "bg-rose-100 dark:bg-rose-950/40", text: "text-rose-700 dark:text-rose-400", label: "Rejected" },
+  DRAFT: { bg: "bg-gray-100", text: "text-gray-600", label: "Draft" },
+  PROPOSED: { bg: "bg-amber-100", text: "text-amber-700", label: "Proposed" },
+  UNDER_REVIEW: { bg: "bg-purple-100", text: "text-purple-700", label: "Under Review" },
+  ACTIVE: { bg: "bg-emerald-100", text: "text-emerald-700", label: "Active" },
+  COMPLETED: { bg: "bg-blue-100", text: "text-blue-700", label: "Completed" },
+  TERMINATED: { bg: "bg-red-100", text: "text-red-700", label: "Terminated" },
+  REJECTED: { bg: "bg-rose-100", text: "text-rose-700", label: "Rejected" },
 };
 
 export default function DonorContractsClient({
@@ -86,7 +86,7 @@ export default function DonorContractsClient({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-6">
+    <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-6">
       {/* Controls: Search & Tabs */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* Filter Pills */}
@@ -99,8 +99,8 @@ export default function DonorContractsClient({
                 onClick={() => handleTabClick(tab.key)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition ${
                   isActive
-                    ? "bg-emerald-600 text-white shadow-sm"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    ? "bg-trust-600 text-white shadow-sm"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
                 {tab.label}
@@ -116,11 +116,11 @@ export default function DonorContractsClient({
             placeholder="Search agreement, project, NGO…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full text-sm bg-white border border-gray-300 rounded-xl px-3.5 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
           />
           <button
             type="submit"
-            className="px-3.5 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 text-xs font-bold rounded-xl transition"
+            className="px-3.5 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs font-bold rounded-xl transition"
           >
             Search
           </button>
@@ -130,13 +130,13 @@ export default function DonorContractsClient({
       {/* Contracts List */}
       {contracts.length === 0 ? (
         <div className="text-center py-16 px-4">
-          <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+          <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h3 className="text-base font-bold text-gray-900 dark:text-white">No contracts found</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-md mx-auto">
+          <h3 className="text-base font-bold text-gray-900">No contracts found</h3>
+          <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
             {search || statusFilter !== "ALL"
               ? "No contracts match your current filters. Try resetting your search."
               : "You have not structured any grant agreements yet. Draft your first agreement linked to an NGO opportunity."}
@@ -144,7 +144,7 @@ export default function DonorContractsClient({
           <div className="mt-5">
             <Link
               href="/donor/contracts/new"
-              className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-sm"
+              className="inline-flex items-center px-4 py-2 bg-trust-600 hover:bg-trust-700 text-white text-xs font-semibold rounded-lg transition shadow-sm"
             >
               Draft Grant Agreement
             </Link>
@@ -153,7 +153,7 @@ export default function DonorContractsClient({
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 dark:bg-gray-800/50 text-xs font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 dark:border-gray-800">
+            <thead className="bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-100">
               <tr>
                 <th className="px-4 py-3">Contract & Project</th>
                 <th className="px-4 py-3">NGO Partner</th>
@@ -164,7 +164,7 @@ export default function DonorContractsClient({
                 <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-gray-100">
               {contracts.map((c) => {
                 const badge = STATUS_BADGE[c.status] || STATUS_BADGE.DRAFT;
                 const totalMilestones = c.milestones.length;
@@ -178,19 +178,19 @@ export default function DonorContractsClient({
                 const ngoSigned = !!c.ngoSignedAt;
 
                 return (
-                  <tr key={c.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition">
+                  <tr key={c.id} className="hover:bg-gray-50/70 transition">
                     <td className="px-4 py-4">
-                      <Link href={`/donor/contracts/${c.id}`} className="font-bold text-gray-900 dark:text-white hover:text-emerald-600 transition block">
+                      <Link href={`/donor/contracts/${c.id}`} className="font-bold text-gray-900 hover:text-trust-700 transition block">
                         {c.title}
                       </Link>
-                      <span className="text-xs font-mono text-gray-400 block mt-0.5">{c.contractNumber}</span>
-                      <span className="text-xs text-emerald-600 dark:text-emerald-400 block mt-0.5">{c.project.title}</span>
+                      <span className="text-xs font-mono text-gray-600 block mt-0.5">{c.contractNumber}</span>
+                      <span className="text-xs text-emerald-700 block mt-0.5">{c.project.title}</span>
                     </td>
                     <td className="px-4 py-4">
-                      <p className="font-medium text-gray-900 dark:text-white">{c.ngo.orgName}</p>
-                      <p className="text-xs text-gray-400">PAN: {c.ngo.panNumber}</p>
+                      <p className="font-medium text-gray-900">{c.ngo.orgName}</p>
+                      <p className="text-xs text-gray-600">PAN: {c.ngo.panNumber}</p>
                     </td>
-                    <td className="px-4 py-4 font-bold text-gray-900 dark:text-white">
+                    <td className="px-4 py-4 font-bold text-gray-900">
                       ₹{c.totalGrantAmount.toLocaleString("en-IN")}
                     </td>
                     <td className="px-4 py-4">
@@ -201,16 +201,16 @@ export default function DonorContractsClient({
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-1.5 text-xs">
                         <span
-                          className={`w-2 h-2 rounded-full ${donorSigned ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
+                          className={`w-2 h-2 rounded-full ${donorSigned ? "bg-emerald-500" : "bg-gray-300"}`}
                           title={donorSigned ? "Donor signed" : "Donor signature pending"}
                         />
-                        <span className="text-gray-500 dark:text-gray-400 text-[11px]">Donor</span>
-                        <span className="text-gray-300 dark:text-gray-600">·</span>
+                        <span className="text-gray-500 text-[11px]">Donor</span>
+                        <span className="text-gray-300">·</span>
                         <span
-                          className={`w-2 h-2 rounded-full ${ngoSigned ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
+                          className={`w-2 h-2 rounded-full ${ngoSigned ? "bg-emerald-500" : "bg-gray-300"}`}
                           title={ngoSigned ? "NGO signed" : "NGO signature pending"}
                         />
-                        <span className="text-gray-500 dark:text-gray-400 text-[11px]">NGO</span>
+                        <span className="text-gray-500 text-[11px]">NGO</span>
                       </div>
                     </td>
                     <td className="px-4 py-4">
@@ -219,7 +219,7 @@ export default function DonorContractsClient({
                           <span>{disbursedMilestones}/{totalMilestones} milestones</span>
                           <span className="font-bold">{progressPct}%</span>
                         </div>
-                        <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
                           <div
                             className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300"
                             style={{ width: `${progressPct}%` }}
@@ -230,14 +230,14 @@ export default function DonorContractsClient({
                     <td className="px-4 py-4 text-right">
                       <Link
                         href={`/donor/contracts/${c.id}`}
-                        className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg transition"
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
                       >
                         View & Manage →
                       </Link>
                       {(c.status === "ACTIVE" || c.status === "COMPLETED") && (
                         <Link
                           href={`/donor/funded/${c.project.id}`}
-                          className="block mt-1 px-3 py-1 text-[11px] font-semibold text-blue-600 hover:underline"
+                          className="block mt-1 px-3 py-1 text-[11px] font-semibold text-blue-700 hover:underline"
                         >
                           Progress & evidence →
                         </Link>

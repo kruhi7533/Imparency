@@ -26,11 +26,11 @@ export const dynamic = "force-dynamic";
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE:
-    "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:ring-emerald-900/40",
+    "bg-emerald-50 text-emerald-700 ring-emerald-200",
   DRAFT:
-    "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:ring-amber-900/40",
+    "bg-amber-50 text-amber-700 ring-amber-200",
   DEPRECATED:
-    "bg-gray-100 text-gray-600 ring-gray-200 dark:bg-gray-800/50 dark:text-gray-400 dark:ring-gray-700",
+    "bg-gray-100 text-gray-600 ring-gray-200",
 };
 
 export default async function MetricRegistryPage() {
@@ -58,19 +58,19 @@ export default async function MetricRegistryPage() {
   const activeCount = metrics.filter((m) => m.status === "ACTIVE").length;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
       <header className="space-y-2">
         <div className="flex items-center gap-2">
-          <Ruler className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Metric registry</h1>
+          <Ruler className="h-5 w-5 text-indigo-600" />
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Metric registry</h1>
         </div>
-        <p className="max-w-3xl text-sm text-gray-600 dark:text-gray-400">
+        <p className="max-w-3xl text-sm text-gray-600">
           The governed definition of every metric this platform will accept a number against. A
           number reaches a donor report only if an approved claim cites approved evidence for it —
           so a metric with no evidence rule cannot be activated, and a claim against a draft or
           deprecated metric is refused.
         </p>
-        <p className="max-w-3xl text-xs text-gray-500 dark:text-gray-500">
+        <p className="max-w-3xl text-xs text-gray-500">
           {activeCount} active {activeCount === 1 ? "metric" : "metrics"} of {metrics.length}.
           Codes are a published contract — the NGO portal files claims against them, so renaming
           one is deliberately not possible. Deprecate instead; existing approved claims are
@@ -79,8 +79,8 @@ export default async function MetricRegistryPage() {
       </header>
 
       {/* --- hygiene ------------------------------------------------------- */}
-      <section className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+      <section className="rounded-xl border border-gray-200 bg-white p-4">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
           <ShieldCheck className="h-4 w-4" />
           Registry health
         </h2>
@@ -128,11 +128,11 @@ export default async function MetricRegistryPage() {
 
       {/* --- the registry -------------------------------------------------- */}
       {metrics.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-900">
-          <p className="text-sm font-medium text-gray-900 dark:text-white">The registry is empty.</p>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
+          <p className="text-sm font-medium text-gray-900">The registry is empty.</p>
+          <p className="mt-1 text-sm text-gray-600">
             Seed the starter set with{" "}
-            <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">
+            <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">
               npx tsx -r dotenv/config tools/seed-metric-registry.ts -- --apply
             </code>
             .
@@ -143,12 +143,12 @@ export default async function MetricRegistryPage() {
           {metrics.map((m) => (
             <article
               key={m.code}
-              className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
+              className="rounded-xl border border-gray-200 bg-white p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <code className="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs font-semibold text-gray-900 dark:bg-gray-800 dark:text-gray-100">
+                    <code className="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs font-semibold text-gray-900">
                       {m.code}
                     </code>
                     <span
@@ -159,19 +159,19 @@ export default async function MetricRegistryPage() {
                       {m.status}
                     </span>
                     {m.version > 1 && (
-                      <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-500">
+                      <span className="text-[10px] font-semibold text-gray-500">
                         v{m.version}
                       </span>
                     )}
                     {!m.aggregatable && (
-                      <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-[10px] font-bold uppercase text-gray-600 ring-1 ring-gray-200 dark:bg-gray-800/50 dark:text-gray-400 dark:ring-gray-700">
+                      <span className="rounded-lg bg-gray-100 px-2 py-0.5 text-[10px] font-bold uppercase text-gray-600 ring-1 ring-gray-200">
                         not summable
                       </span>
                     )}
                   </div>
-                  <h3 className="mt-1.5 font-semibold text-gray-900 dark:text-white">
+                  <h3 className="mt-1.5 font-semibold text-gray-900">
                     {m.name}{" "}
-                    <span className="font-normal text-gray-500 dark:text-gray-400">
+                    <span className="font-normal text-gray-500">
                       · in {UNIT_LABELS[m.unit]}
                     </span>
                   </h3>
@@ -179,14 +179,14 @@ export default async function MetricRegistryPage() {
                 <MetricStatusActions code={m.code} status={m.status} claimCount={m._count.claims} />
               </div>
 
-              <p className="mt-2 max-w-3xl text-sm text-gray-700 dark:text-gray-300">{m.definition}</p>
+              <p className="mt-2 max-w-3xl text-sm text-gray-700">{m.definition}</p>
 
               <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs">
                 <div>
-                  <dt className="font-semibold text-gray-500 dark:text-gray-500">Evidence required</dt>
-                  <dd className="mt-0.5 text-gray-900 dark:text-gray-200">
+                  <dt className="font-semibold text-gray-500">Evidence required</dt>
+                  <dd className="mt-0.5 text-gray-900">
                     {m.requiredEvidence.length === 0 ? (
-                      <span className="text-red-600 dark:text-red-400">none — cannot be activated</span>
+                      <span className="text-red-600">none — cannot be activated</span>
                     ) : (
                       m.requiredEvidence
                         .map(
@@ -199,21 +199,21 @@ export default async function MetricRegistryPage() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="font-semibold text-gray-500 dark:text-gray-500">Claims</dt>
-                  <dd className="mt-0.5 text-gray-900 dark:text-gray-200">{m._count.claims}</dd>
+                  <dt className="font-semibold text-gray-500">Claims</dt>
+                  <dd className="mt-0.5 text-gray-900">{m._count.claims}</dd>
                 </div>
                 {m.sdgGoals.length > 0 && (
                   <div>
-                    <dt className="font-semibold text-gray-500 dark:text-gray-500">SDG</dt>
-                    <dd className="mt-0.5 text-gray-900 dark:text-gray-200">
+                    <dt className="font-semibold text-gray-500">SDG</dt>
+                    <dd className="mt-0.5 text-gray-900">
                       {m.sdgGoals.map((g) => SDG_MASTER[g] ?? g).join(", ")}
                     </dd>
                   </div>
                 )}
                 {m.irisCode && (
                   <div>
-                    <dt className="font-semibold text-gray-500 dark:text-gray-500">IRIS</dt>
-                    <dd className="mt-0.5 text-gray-900 dark:text-gray-200">
+                    <dt className="font-semibold text-gray-500">IRIS</dt>
+                    <dd className="mt-0.5 text-gray-900">
                       {m.irisCode} · {IRIS_MASTER[m.irisCode] ?? "unmapped code"}
                     </dd>
                   </div>
@@ -237,10 +237,10 @@ function Finding({
   children: React.ReactNode;
 }) {
   const styles = {
-    good: "text-emerald-700 dark:text-emerald-400",
-    warn: "text-amber-700 dark:text-amber-400",
-    bad: "text-red-700 dark:text-red-400",
-    neutral: "text-gray-600 dark:text-gray-400",
+    good: "text-emerald-700",
+    warn: "text-amber-700",
+    bad: "text-red-700",
+    neutral: "text-gray-600",
   }[tone];
   return (
     <div className={`flex items-start gap-2 ${styles}`}>

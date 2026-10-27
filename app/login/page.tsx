@@ -149,12 +149,22 @@ function LoginContent() {
         const session = await getSession();
         const actualRole = session?.user?.role;
 
-        if (actualRole === "NGO" || role === "NGO" || callbackUrl.includes("/ngo")) {
+        if (callbackUrl.startsWith("/invite/")) {
+          // NGO-003: signed in to accept a team invitation — go back to it.
+          router.push(callbackUrl);
+        } else if (actualRole === "NGO" || role === "NGO" || callbackUrl.includes("/ngo")) {
           // Already has an NGOProfile (existing/verified NGO) -> their dashboard.
           // No profile yet (fresh NGO signup) -> the registration form.
-          router.push(session?.user?.ngoProfileId ? "/ngo/dashboard" : "/ngo/register");
+          // A field worker's home is the field app, which shows only their tasks.
+          router.push(
+            session?.user?.ngoTeamRole === "FIELD_STAFF"
+              ? "/ngo/field"
+              : session?.user?.ngoProfileId
+              ? "/ngo/dashboard"
+              : "/ngo/register"
+          );
         } else if (actualRole === "ADMIN" || callbackUrl.includes("/admin")) {
-          router.push("/admin/dashboard");
+          router.push(session?.user?.adminRole === "FINANCE" ? "/admin/finance" : session?.user?.adminRole === "SUPPORT" ? "/admin/break-glass" : "/admin/dashboard");
         } else {
           // For DONOR: check if persona is set via a quick API call
           const personaRes = await fetch("/api/donor/persona/check");
@@ -183,19 +193,19 @@ function LoginContent() {
   // quiet card as the Suspense fallback instead of flashing the form.
   if (sessionStatus === "loading" || sessionStatus === "authenticated") {
     return (
-      <div className="max-w-md w-full bg-gray-900/40 border border-gray-800 border-t-2 border-t-gold-500/70 rounded-xl p-8 sm:p-10 flex items-center justify-center min-h-[300px]">
+      <div className="max-w-md w-full bg-white border border-gray-200/80 rounded-2xl shadow-[0_8px_30px_rgba(16,24,40,0.06)] p-8 sm:p-10 flex items-center justify-center min-h-[300px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-trust-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-md w-full bg-gray-900/40 border border-gray-800 border-t-2 border-t-gold-500/70 rounded-xl p-8 sm:p-10 relative">
+    <div className="max-w-md w-full bg-white border border-gray-200/80 rounded-2xl shadow-[0_8px_30px_rgba(16,24,40,0.06)] p-8 sm:p-10 relative">
 
       {/* Logo Branding */}
       <div className="text-center mb-8">
-        <Link href="/" className="font-display text-3xl font-semibold italic text-white tracking-tight">
-          ImpactBridge<span className="text-gold-400">.</span>
+        <Link href="/" className="font-display text-3xl font-semibold text-gray-900 tracking-tight">
+          ImpactBridge<span className="text-trust-600">.</span>
         </Link>
         <p className="font-mono text-[11px] text-gray-500 uppercase tracking-widest mt-2">
           Every rupee verified
@@ -204,16 +214,16 @@ function LoginContent() {
 
       {/* Form State Tabs */}
       {!isForgotPassword && (
-        <div className="flex border-b border-gray-800 mb-6">
+        <div className="flex border-b border-gray-200 mb-6">
           <button
             onClick={() => { setIsSignUp(false); setError(""); setSuccess(""); }}
-            className={`flex-1 pb-2.5 text-sm font-semibold transition ${!isSignUp ? "text-white border-b-2 border-trust-400" : "text-gray-500 hover:text-gray-300"}`}
+            className={`flex-1 pb-2.5 text-sm font-semibold transition ${!isSignUp ? "text-gray-900 border-b-2 border-trust-600" : "text-gray-500 hover:text-gray-900"}`}
           >
             Sign In
           </button>
           <button
             onClick={() => { setIsSignUp(true); setError(""); setSuccess(""); }}
-            className={`flex-1 pb-2.5 text-sm font-semibold transition ${isSignUp ? "text-white border-b-2 border-trust-400" : "text-gray-500 hover:text-gray-300"}`}
+            className={`flex-1 pb-2.5 text-sm font-semibold transition ${isSignUp ? "text-gray-900 border-b-2 border-trust-600" : "text-gray-500 hover:text-gray-900"}`}
           >
             Register Account
           </button>
@@ -221,30 +231,30 @@ function LoginContent() {
       )}
 
       {error && (
-        <div className="mb-4 p-3.5 bg-red-950/40 border-l-2 border-red-500 rounded-r text-xs text-red-300">
+        <div className="mb-4 p-3.5 bg-red-50 border-l-2 border-red-500 rounded-r text-xs text-red-700">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="mb-4 p-3.5 bg-emerald-950/30 border-l-2 border-emerald-500 rounded-r text-xs text-emerald-300">
+        <div className="mb-4 p-3.5 bg-emerald-50 border-l-2 border-emerald-500 rounded-r text-xs text-emerald-700">
           {success}
         </div>
       )}
 
       {isForgotPassword ? (
         <>
-          <p className="text-xs text-gray-400 mb-4">
+          <p className="text-xs text-gray-600 mb-4">
             Enter the email address on your account and we'll send you a link to reset your password.
           </p>
           <form onSubmit={handleForgotPassword} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1">Email Address *</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Email Address *</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition"
+                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
                 placeholder="e.g. name@organization.org"
                 required
               />
@@ -253,7 +263,7 @@ function LoginContent() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-trust-600 hover:bg-trust-500 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+              className="w-full bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
             >
               {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
               Send Reset Link
@@ -264,7 +274,7 @@ function LoginContent() {
             <button
               type="button"
               onClick={() => { setIsForgotPassword(false); setError(""); setSuccess(""); }}
-              className="text-xs text-trust-300 hover:text-trust-200 hover:underline"
+              className="text-xs text-trust-700 hover:text-trust-800 hover:underline"
             >
               Back to Sign In
             </button>
@@ -275,12 +285,12 @@ function LoginContent() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {isSignUp && (
           <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1">Full Name *</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Full Name *</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition [&:-webkit-autofill]:[-webkit-text-fill-color:#fff] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#030712]"
+              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
               placeholder="e.g. John Doe"
               required
             />
@@ -288,24 +298,24 @@ function LoginContent() {
         )}
 
         <div>
-          <label className="block text-xs font-semibold text-gray-400 mb-1">Email Address *</label>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Email Address *</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition [&:-webkit-autofill]:[-webkit-text-fill-color:#fff] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#030712]"
+            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
             placeholder="e.g. name@organization.org"
             required
           />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-gray-400 mb-1">Password *</label>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Password *</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition [&:-webkit-autofill]:[-webkit-text-fill-color:#fff] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#030712]"
+            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
             placeholder="••••••••"
             required
           />
@@ -314,7 +324,7 @@ function LoginContent() {
               <button
                 type="button"
                 onClick={() => { setIsForgotPassword(true); setError(""); setSuccess(""); }}
-                className="text-xs text-trust-300 hover:text-trust-200 hover:underline"
+                className="text-xs text-trust-700 hover:text-trust-800 hover:underline"
               >
                 Forgot password?
               </button>
@@ -325,11 +335,11 @@ function LoginContent() {
         {isSignUp && (
           <>
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1">Account Role *</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Account Role *</label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as "DONOR" | "NGO")}
-                className="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400 transition [&:-webkit-autofill]:[-webkit-text-fill-color:#fff] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#030712]"
+                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
               >
                 <option value="DONOR">Donor Account (Fund projects & track impact)</option>
                 <option value="NGO">NGO Organization (Publish projects & submit proof)</option>
@@ -345,11 +355,11 @@ function LoginContent() {
                   setConsentGiven(e.target.checked);
                   if (e.target.checked) setConsentError("");
                 }}
-                className="mt-1 h-4 w-4 rounded border-gray-800 bg-gray-950 text-trust-600 focus:ring-trust-500 focus:ring-offset-gray-950 transition cursor-pointer"
+                className="mt-1 h-4 w-4 rounded border-gray-200 bg-white text-trust-600 focus:ring-trust-500 focus:ring-offset-white transition cursor-pointer"
               />
-              <label htmlFor="consentCheckbox" className="text-xs text-gray-400 leading-normal cursor-pointer select-none">
+              <label htmlFor="consentCheckbox" className="text-xs text-gray-600 leading-normal cursor-pointer select-none">
                 I consent to ImpactBridge collecting and processing my personal data (name, email) for donation tracking and tax receipt generation, as required under India's DPDP Act 2023.{" "}
-                <Link href="/privacy-policy" target="_blank" className="text-trust-300 hover:text-trust-200 hover:underline">
+                <Link href="/privacy-policy" target="_blank" className="text-trust-700 hover:text-trust-800 hover:underline">
                   Privacy Policy
                 </Link>
               </label>
@@ -365,7 +375,7 @@ function LoginContent() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-trust-600 hover:bg-trust-500 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 mt-6"
+          className="w-full bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 mt-6"
         >
           {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
           {isSignUp ? "Register Account" : "Sign In"}
@@ -374,9 +384,9 @@ function LoginContent() {
 
       <div className="relative my-6 text-center">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-800"></div>
+          <div className="w-full border-t border-gray-200"></div>
         </div>
-        <span className="relative bg-gray-950 px-3 font-mono text-[10px] text-gray-600 uppercase tracking-widest">
+        <span className="relative bg-white px-3 font-mono text-[10px] text-gray-500 uppercase tracking-widest">
           or continue with
         </span>
       </div>
@@ -385,7 +395,7 @@ function LoginContent() {
       <button
         onClick={handleGoogleLogin}
         type="button"
-        className="w-full border border-gray-800 hover:border-gray-700 bg-gray-950 hover:bg-gray-900 text-gray-200 font-medium py-2.5 px-4 rounded-lg text-sm transition flex items-center justify-center gap-2"
+        className="w-full border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-800 font-medium py-2.5 px-4 rounded-lg text-sm transition flex items-center justify-center gap-2"
       >
         <svg className="h-4 w-4" viewBox="0 0 24 24">
           <path
@@ -416,17 +426,17 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-gray-950 bg-gradient-to-b from-trust-950/60 via-gray-950 to-gray-950 text-white flex flex-col items-center justify-center p-4 sm:p-6 font-sans relative overflow-hidden">
+    <div className="min-h-screen bg-canvas bg-gradient-to-b from-trust-50/70 via-canvas to-canvas text-gray-900 flex flex-col items-center justify-center p-4 sm:p-6 font-sans relative overflow-hidden">
 
       <Suspense fallback={
-        <div className="max-w-md w-full bg-gray-900/40 border border-gray-800 border-t-2 border-t-gold-500/70 rounded-xl p-8 sm:p-10 flex items-center justify-center min-h-[300px]">
+        <div className="max-w-md w-full bg-white border border-gray-200/80 rounded-2xl shadow-[0_8px_30px_rgba(16,24,40,0.06)] p-8 sm:p-10 flex items-center justify-center min-h-[300px]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-trust-500"></div>
         </div>
       }>
         <LoginContent />
       </Suspense>
 
-      <p className="font-mono text-[10px] text-gray-600 text-center mt-6">
+      <p className="font-mono text-[10px] text-gray-500 text-center mt-6">
         Secured by Razorpay · DPDP Act 2023 compliant
       </p>
     </div>

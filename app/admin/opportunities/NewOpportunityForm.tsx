@@ -100,7 +100,7 @@ export default function NewOpportunityForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-6 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+        className="mt-6 rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white hover:bg-trust-700"
       >
         New opportunity
       </button>
@@ -108,9 +108,9 @@ export default function NewOpportunityForm({
   }
 
   return (
-    <div className="mt-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
-      <h2 className="text-sm font-bold text-gray-900 dark:text-white">New opportunity</h2>
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+    <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
+      <h2 className="text-sm font-bold text-gray-900">New opportunity</h2>
+      <p className="mt-1 text-xs text-gray-500">
         Created as a draft. It cannot be matched against until you open it, and only the criteria you
         add here are evaluated — anything you leave out is never considered.
       </p>
@@ -120,20 +120,20 @@ export default function NewOpportunityForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Title"
-          className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white"
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
         />
         <input
           value={funderName}
           onChange={(e) => setFunderName(e.target.value)}
           placeholder="Funder"
-          className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white"
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
         />
         <input
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           inputMode="decimal"
           placeholder="Amount offered in ₹ (optional)"
-          className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white"
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
         />
       </div>
       <textarea
@@ -141,17 +141,17 @@ export default function NewOpportunityForm({
         onChange={(e) => setDescription(e.target.value)}
         placeholder="What this opportunity funds"
         rows={2}
-        className="mt-3 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white"
+        className="mt-3 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
       />
 
       <div className="mt-3">
-        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400">
+        <label className="block text-xs font-semibold text-gray-600">
           Funder account (optional)
         </label>
         <select
           value={funderUserId}
           onChange={(e) => setFunderUserId(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white"
+          className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
         >
           <option value="">No account — funder is offline</option>
           {funderAccounts.map((f) => (
@@ -161,7 +161,7 @@ export default function NewOpportunityForm({
             </option>
           ))}
         </select>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
+        <p className="mt-1 text-xs text-gray-500">
           {funderAccounts.length === 0
             ? "No institutional donor accounts exist yet, so no funder can be notified. The name above is still recorded."
             : "Link an account and the funder is notified whenever an organisation is shortlisted. Leave it unset and the funder name is a label only — nobody is told."}
@@ -174,9 +174,9 @@ export default function NewOpportunityForm({
           return (
             <div
               key={c.kind}
-              className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 dark:border-gray-800 px-3 py-2"
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 px-3 py-2"
             >
-              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 min-w-[180px]">
+              <span className="text-sm font-semibold text-gray-800 min-w-[180px]">
                 {rule.label}
               </span>
               {rule.param === "scalar" && (
@@ -184,7 +184,7 @@ export default function NewOpportunityForm({
                   value={c.value}
                   onChange={(e) => update(i, { value: e.target.value })}
                   placeholder={rule.paramHint ?? "Value"}
-                  className="w-28 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-1 text-sm text-gray-900 dark:text-white"
+                  className="w-28 rounded border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900"
                 />
               )}
               {rule.param === "set" && (
@@ -192,10 +192,10 @@ export default function NewOpportunityForm({
                   value={c.values}
                   onChange={(e) => update(i, { values: e.target.value })}
                   placeholder={rule.paramHint ?? "Comma-separated"}
-                  className="flex-1 min-w-[200px] rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-1 text-sm text-gray-900 dark:text-white"
+                  className="flex-1 min-w-[200px] rounded border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900"
                 />
               )}
-              <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+              <label className="flex items-center gap-1.5 text-xs text-gray-600">
                 <input
                   type="checkbox"
                   checked={c.required}
@@ -222,7 +222,7 @@ export default function NewOpportunityForm({
               key={k}
               type="button"
               onClick={() => addCriterion(k)}
-              className="rounded-full border border-gray-200 dark:border-gray-700 px-3 py-1 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100"
             >
               + {RULES[k].label}
             </button>
@@ -230,21 +230,21 @@ export default function NewOpportunityForm({
         </div>
       )}
 
-      {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
       <div className="mt-5 flex gap-2">
         <button
           type="button"
           disabled={saving || !title.trim() || !funderName.trim()}
           onClick={submit}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white hover:bg-trust-700 disabled:opacity-50"
         >
           {saving ? "Creating…" : "Create draft"}
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm text-gray-600 dark:text-gray-300"
+          className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600"
         >
           Cancel
         </button>

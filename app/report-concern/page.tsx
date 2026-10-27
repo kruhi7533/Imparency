@@ -31,16 +31,16 @@ export default async function ReportConcernPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-12">
+    <div className="min-h-screen bg-canvas dark:bg-gray-950 py-12">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Report a concern</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">Report a concern</h1>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           If you believe an organisation on this platform is misusing funds, has not done work it
           reported as finished, or has put someone at risk, tell us here. A person on the platform
           team reads every report.
         </p>
 
-        <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
+        <div className="mt-5 rounded-2xl border border-gray-200/80 shadow-[0_1px_2px_rgba(16,24,40,0.04)] dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
           <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Who sees this
           </h2>
@@ -67,14 +67,14 @@ export default async function ReportConcernPage() {
           {session?.user ? (
             <ReportConcernForm organisations={organisations} />
           ) : (
-            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+            <div className="rounded-2xl border border-gray-200/80 shadow-[0_1px_2px_rgba(16,24,40,0.04)] dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
               <p className="text-sm text-gray-700 dark:text-gray-300">
                 You need to be signed in to file a report. This is a limitation, not a policy
                 choice we are happy with — anonymous reporting is not built yet.
               </p>
               <Link
                 href="/login?next=/report-concern"
-                className="mt-4 inline-block rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700"
+                className="mt-4 inline-block rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white hover:bg-trust-700"
               >
                 Sign in to continue
               </Link>

@@ -4,7 +4,8 @@ import { Role } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { recordContractPaymentDispute } from "@/lib/finance-exceptions";
-import { notifyProjectFunded, stampProjectFundedIfComplete } from "@/lib/project-funding";
+import { notifyProjectFunded } from "@/lib/project-funding";
+import { notifyDonorMilestone, recalcContractFunding, type RecalcOutcome } from "@/lib/contract-funding";
 import {
   CAN_CONFIRM_PAYMENT,
   checkDecision,
@@ -55,7 +56,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const note = body.decision === "DISPUTE" ? String(body.note).trim().slice(0, 500) : null;
     const now = new Date();
 
-    let newlyFunded = false;
+    let funding: RecalcOutcome | null = null;
     const updated = await prisma.$transaction(async (tx) => {
       // Only a still-pending payment moves. A concurrent decision loses here.
       const { count } = await tx.contractPayment.updateMany({
@@ -82,9 +83,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           metadata: { paymentId: payment.id },
         },
       });
-      // "Project becomes FUNDED": this confirmation may be the last committed rupee.
+      // Reconciliation is the ONLY moment milestone funding moves: recompute
+      // each milestone's fundingStatus, and stamp contract / project FUNDED if
+      // this was the last committed rupee. A dispute moves nothing: the money
+      // was pending, so it never counted toward a milestone.
       if (body.decision === "CONFIRM") {
-        newlyFunded = await stampProjectFundedIfComplete(tx, payment.contract.projectId, now);
+        funding = await recalcContractFunding(tx, payment.contractId, now);
       }
       return tx.contractPayment.findUnique({ where: { id: payment.id } });
     });
@@ -93,7 +97,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: "This payment was decided by someone else just now. Refresh." }, { status: 409 });
     }
 
-    if (newlyFunded) await notifyProjectFunded(payment.contract.projectId);
+    const outcome = funding as RecalcOutcome | null;
+    if (outcome?.projectNewlyFunded) await notifyProjectFunded(payment.contract.projectId);
+    if (outcome?.newlyFundedMilestones.length) {
+      await notifyDonorMilestone({ contractId: payment.contractId, milestones: outcome.newlyFundedMilestones, event: "FUNDED" });
+    }
 
     if (body.decision === "DISPUTE") {
       // Outside the transaction: the dispute stands even if the queue write

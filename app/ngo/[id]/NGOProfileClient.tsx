@@ -124,16 +124,15 @@ export default function NGOProfileClient({
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
+    <div className="font-sans">
       
       {/* Banner / Header */}
-      <div className="h-64 w-full bg-gradient-to-r from-emerald-600 to-teal-500 relative">
-        <div className="absolute inset-0 bg-black/10"></div>
+      <div className="h-48 sm:h-56 w-full bg-trust-50 border-b border-trust-100 relative">
       </div>
 
       {/* Profile Info Details Card */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 pb-16 relative z-10">
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-[0_1px_2px_rgba(16,24,40,0.04)] flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center">
             
             {/* Logo Avatar Place-holder */}
@@ -144,24 +143,24 @@ export default function NGOProfileClient({
                 className="w-24 h-24 rounded-2xl object-cover shadow-md border-4 border-white dark:border-gray-900"
               />
             ) : (
-              <div className="w-24 h-24 bg-emerald-600 text-white rounded-2xl flex items-center justify-center font-black text-4xl shadow-md border-4 border-white dark:border-gray-900">
+              <div className="w-24 h-24 bg-trust-600 text-white rounded-2xl flex items-center justify-center font-black text-4xl shadow-md border-4 border-white dark:border-gray-900">
                 {ngo.orgName.charAt(0)}
               </div>
             )}
 
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-black text-gray-900 dark:text-white">{ngo.orgName}</h1>
-                <span className="text-xs px-2.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 rounded-full font-bold border border-emerald-100 dark:border-emerald-900/50">
+                <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">{ngo.orgName}</h1>
+                <span className="text-xs px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full font-bold ring-1 ring-emerald-200">
                   Verified NGO
                 </span>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+              <p className="text-xs text-gray-600 flex items-center gap-1">
                 <span>📍</span> {ngo.address.split(",").slice(-2).join(",").trim()}
                 {ngo.website && (
                   <>
                     <span className="mx-1.5">•</span>
-                    <a href={ngo.website} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 hover:underline">
+                    <a href={ngo.website} target="_blank" rel="noopener noreferrer" className="text-trust-700 hover:underline">
                       {ngo.website}
                     </a>
                   </>
@@ -169,7 +168,7 @@ export default function NGOProfileClient({
               </p>
               <div className="flex flex-wrap gap-1.5 mt-1.5">
                 {ngo.causeCategories.map((c) => (
-                  <span key={c} className="text-[10px] font-bold px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">
+                  <span key={c} className="text-[10px] font-bold px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
                     {c}
                   </span>
                 ))}
@@ -182,10 +181,10 @@ export default function NGOProfileClient({
             <button
               onClick={handleFollowToggle}
               disabled={followPending}
-              className={`w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-bold shadow-md transition disabled:opacity-60 ${
+              className={`w-full sm:w-auto px-6 py-3 rounded-lg text-sm font-semibold shadow-sm transition disabled:opacity-60 ${
                 isFollowed
-                  ? "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-                  : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/10"
+                  ? "bg-white border border-gray-300 hover:bg-gray-50 text-gray-800"
+                  : "bg-trust-600 hover:bg-trust-700 text-white"
               }`}
             >
               {isFollowed ? "Following Organization" : "Follow NGO"}
@@ -200,15 +199,15 @@ export default function NGOProfileClient({
           <div className="lg:col-span-2 space-y-8">
             
             {/* Tabs List */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 shadow-sm flex gap-2 overflow-x-auto">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] flex gap-2 overflow-x-auto">
               {(["active", "completed", "story", "about"] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-5 py-2 rounded-xl text-xs font-bold transition capitalize whitespace-nowrap ${
+                  className={`px-5 py-2 rounded-lg text-xs font-bold transition capitalize whitespace-nowrap ${
                     activeTab === tab
-                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/10"
-                      : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      ? "bg-trust-50 text-trust-700 ring-1 ring-trust-200"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
                 >
                   {tab === "active"
@@ -227,25 +226,25 @@ export default function NGOProfileClient({
               {activeTab === "active" && (
                 <div className="space-y-6">
                   {activeProjects.length === 0 ? (
-                    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center shadow-sm">
+                    <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-10 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                       <span className="text-3xl mb-3 block">📦</span>
                       <h4 className="text-sm font-bold text-gray-900 dark:text-white">No Active Campaigns</h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">This NGO does not have any active fundraising projects right now.</p>
+                      <p className="text-xs text-gray-600 mt-1">This NGO does not have any active fundraising projects right now.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       {activeProjects.map((project: Project) => (
                         <div
                           key={project.id}
-                          className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-150"
+                          className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-150"
                         >
                           <div className="h-40 bg-gray-200 dark:bg-gray-800 relative">
                             <ProjectCoverImage src={project.coverImage} alt={project.title} causeCategory={project.causeCategory} className="w-full h-full object-cover object-center" />
                           </div>
                           <div className="p-5 space-y-3">
-                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{project.causeCategory}</span>
+                            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">{project.causeCategory}</span>
                             <h4 className="text-base font-extrabold text-gray-900 dark:text-white mt-1 line-clamp-1">{project.title}</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{project.description}</p>
+                            <p className="text-xs text-gray-600 line-clamp-2">{project.description}</p>
                             <div className="pt-2">
                               <div className="flex justify-between text-[10px] font-bold text-gray-500 mb-1">
                                 <span>Raised: ₹{Number(project.raisedAmount).toLocaleString("en-IN")}</span>
@@ -261,7 +260,7 @@ export default function NGOProfileClient({
                             <div className="pt-2">
                               <Link
                                 href={`/projects/${project.id}`}
-                                className="block text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs shadow-md transition"
+                                className="block text-center bg-trust-600 hover:bg-trust-700 text-white font-semibold py-2 rounded-lg text-xs shadow-sm transition"
                               >
                                 View Details & Donate
                               </Link>
@@ -277,17 +276,17 @@ export default function NGOProfileClient({
               {activeTab === "completed" && (
                 <div className="space-y-6">
                   {completedProjects.length === 0 ? (
-                    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center shadow-sm">
+                    <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-10 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                       <span className="text-3xl mb-3 block">📦</span>
                       <h4 className="text-sm font-bold text-gray-900 dark:text-white">No Completed Campaigns</h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">No completed campaigns yet — check back as milestones are achieved</p>
+                      <p className="text-xs text-gray-600 mt-1">No completed campaigns yet — check back as milestones are achieved</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       {completedProjects.map((project: Project) => (
                         <div
                           key={project.id}
-                          className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm opacity-85 hover:opacity-100 transition duration-150 flex flex-col justify-between"
+                          className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)] opacity-85 hover:opacity-100 transition duration-150 flex flex-col justify-between"
                         >
                           <div>
                             <div className="h-40 bg-gray-200 dark:bg-gray-800 relative">
@@ -296,8 +295,8 @@ export default function NGOProfileClient({
                             </div>
                             <div className="p-5 space-y-2">
                               <h4 className="text-base font-extrabold text-gray-900 dark:text-white line-clamp-1">{project.title}</h4>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{project.description}</p>
-                              <div className="pt-2 text-xs font-semibold text-emerald-600">
+                              <p className="text-xs text-gray-600 line-clamp-2">{project.description}</p>
+                              <div className="pt-2 text-xs font-semibold text-emerald-700">
                                 ✓ ₹{Number(project.targetAmount).toLocaleString("en-IN")} raised and deployed successfully.
                               </div>
                             </div>
@@ -305,7 +304,7 @@ export default function NGOProfileClient({
                           <div className="p-5 pt-0">
                             <Link
                               href={`/projects/${project.id}`}
-                              className="block text-center border border-emerald-600/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 font-bold py-2 rounded-xl text-xs transition"
+                              className="block text-center bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-semibold py-2 rounded-lg text-xs transition"
                             >
                               View Milestones & Proofs
                             </Link>
@@ -318,41 +317,41 @@ export default function NGOProfileClient({
               )}
 
               {activeTab === "story" && (
-                <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-8 shadow-sm space-y-4">
+                <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-8 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white">Our Impact Story</h3>
                   <div className="bg-gray-50 dark:bg-gray-800/20 border border-gray-100 dark:border-gray-800/50 rounded-xl p-8 text-center w-full">
                     <span className="text-3xl mb-3 block">📖</span>
                     <h4 className="text-sm font-bold text-gray-900 dark:text-white">No Impact Story Shared</h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">This NGO hasn't shared their impact story yet.</p>
+                    <p className="text-xs text-gray-600 mt-1">This NGO hasn't shared their impact story yet.</p>
                   </div>
                 </div>
               )}
 
               {activeTab === "about" && (
-                <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-8 shadow-sm space-y-6">
+                <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-8 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-6">
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">About Organization</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{ngo.description}</p>
+                    <p className="text-sm text-gray-600 leading-relaxed">{ngo.description}</p>
                   </div>
                   <div className="border-t border-gray-100 dark:border-gray-800 pt-6 grid grid-cols-2 gap-4 text-sm text-gray-700 dark:text-gray-300">
                     <div>
-                      <strong className="block text-xs text-gray-400 font-semibold mb-0.5">Founded Year</strong>
+                      <strong className="block text-xs text-gray-500 font-semibold mb-0.5">Founded Year</strong>
                       {ngo.foundedYear}
                     </div>
                     <div>
-                      <strong className="block text-xs text-gray-400 font-semibold mb-0.5">Focus Cause Areas</strong>
+                      <strong className="block text-xs text-gray-500 font-semibold mb-0.5">Focus Cause Areas</strong>
                       {ngo.causeCategories.join(", ")}
                     </div>
                     <div>
-                      <strong className="block text-xs text-gray-400 font-semibold mb-0.5">Registration Number</strong>
+                      <strong className="block text-xs text-gray-500 font-semibold mb-0.5">Registration Number</strong>
                       {ngo.registrationNumber}
                     </div>
                     <div>
-                      <strong className="block text-xs text-gray-400 font-semibold mb-0.5">PAN Number</strong>
+                      <strong className="block text-xs text-gray-500 font-semibold mb-0.5">PAN Number</strong>
                       {ngo.panNumber}
                     </div>
                     <div className="col-span-2">
-                      <strong className="block text-xs text-gray-400 font-semibold mb-0.5">HQ Address</strong>
+                      <strong className="block text-xs text-gray-500 font-semibold mb-0.5">HQ Address</strong>
                       {ngo.address}
                     </div>
                   </div>
@@ -366,24 +365,24 @@ export default function NGOProfileClient({
           <div className="space-y-6">
             
             {/* Health Score Panel */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
               <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">NGO Health Details</h3>
               
               {/* Animated Big Score */}
               <div className="text-center py-6 border-b border-gray-100 dark:border-gray-800 mb-6">
                 {animatedScore !== null ? (
                   <>
-                    <span className="text-5xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+                    <span className="font-display text-5xl font-semibold text-emerald-700 tracking-tight">
                       {animatedScore.toFixed(0)}
                     </span>
-                    <span className="text-gray-400 text-sm font-bold">/100</span>
+                    <span className="text-gray-500 text-sm font-bold">/100</span>
                   </>
                 ) : (
                   <span className="text-lg font-black text-gray-500 dark:text-gray-400 tracking-tight block">
                     New NGO — Score Pending
                   </span>
                 )}
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 font-medium">Auto-computed NGO Health Score</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-2 font-medium">Auto-computed NGO Health Score</p>
               </div>
 
               {/* Metrics Progress bars */}
@@ -411,20 +410,20 @@ export default function NGOProfileClient({
             </div>
 
             {/* Quick Stats Panel */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">
               <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">Campaign Stats</h3>
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl">
                   <span className="block text-lg font-black text-gray-900 dark:text-white">{followersCount}</span>
-                  <span className="text-[10px] text-gray-400">Followers</span>
+                  <span className="text-[10px] text-gray-500">Followers</span>
                 </div>
                 <div className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl">
                   <span className="block text-lg font-black text-gray-900 dark:text-white">₹{totalRaised.toLocaleString("en-IN")}</span>
-                  <span className="text-[10px] text-gray-400">Total Raised</span>
+                  <span className="text-[10px] text-gray-500">Total Raised</span>
                 </div>
                 <div className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl col-span-2">
                   <span className="block text-lg font-black text-gray-900 dark:text-white">{donorsCount}</span>
-                  <span className="text-[10px] text-gray-400">Active Donors</span>
+                  <span className="text-[10px] text-gray-500">Active Donors</span>
                 </div>
               </div>
             </div>

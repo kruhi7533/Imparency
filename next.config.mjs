@@ -79,6 +79,21 @@ const nextConfig = {
     // document parsing fail with "Setting up fake worker failed".
     serverComponentsExternalPackages: ["@react-pdf/renderer", "@google/genai", "firebase-admin", "@napi-rs/canvas", "pdfjs-dist", "tesseract.js"],
     optimizePackageImports: ["lucide-react", "framer-motion", "react-icons"],
+    // pdfjs loads its worker (pdf.worker.mjs) and standard fonts by computed
+    // path at runtime, which Vercel's file tracer cannot see — without these the
+    // serverless bundle lacks them and CSR PDF parsing fails on staging only.
+    outputFileTracingIncludes: {
+      "/api/requirements/upload": [
+        "./node_modules/pdfjs-dist/legacy/build/**",
+        "./node_modules/pdfjs-dist/standard_fonts/**",
+        "./node_modules/@napi-rs/canvas*/**",
+      ],
+      "/api/requirements/[id]/rerun-extraction": [
+        "./node_modules/pdfjs-dist/legacy/build/**",
+        "./node_modules/pdfjs-dist/standard_fonts/**",
+        "./node_modules/@napi-rs/canvas*/**",
+      ],
+    },
   },
   eslint: {
     ignoreDuringBuilds: true,

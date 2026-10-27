@@ -17,11 +17,11 @@ import Link from "next/link";
  */
 export default function SupersededTrackNotice({ page }: { page: "opportunities" | "proposals" }) {
   return (
-    <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
-      <p className="text-sm font-extrabold text-amber-800 dark:text-amber-400">
+    <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+      <p className="text-sm font-bold text-amber-800">
         Superseded — this is the funder-led track
       </p>
-      <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
+      <p className="mt-1 text-sm text-amber-700">
         {page === "opportunities"
           ? "Opportunities created here are admin-run, on behalf of a funder with no account. "
           : "Proposals decided here are admin-approved, on behalf of a funder with no account. "}
@@ -31,7 +31,7 @@ export default function SupersededTrackNotice({ page }: { page: "opportunities" 
       </p>
       <Link
         href="/admin/requirements"
-        className="mt-2 inline-block text-xs font-bold text-amber-800 underline dark:text-amber-400"
+        className="mt-2 inline-block text-xs font-bold text-amber-800 underline"
       >
         Go to CSR requirements →
       </Link>

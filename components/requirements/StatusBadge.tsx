@@ -1,21 +1,21 @@
 import { STATUS_LABELS } from "@/lib/requirements/status";
 
 const STATUS_STYLES: Record<string, string> = {
-  UPLOADED: "bg-gray-800 text-gray-300 border-gray-700",
-  PROCESSING: "bg-sky-500/10 text-sky-300 border-sky-500/30",
-  AI_EXTRACTED: "bg-violet-500/10 text-violet-300 border-violet-500/30",
-  DONOR_REVIEW: "bg-amber-500/10 text-amber-300 border-amber-500/30",
-  PENDING_ADMIN_REVIEW: "bg-blue-500/10 text-blue-300 border-blue-500/30",
-  NEEDS_CORRECTION: "bg-orange-500/10 text-orange-300 border-orange-500/30",
-  VALIDATED: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
-  MATCHING: "bg-sky-500/10 text-sky-300 border-sky-500/30",
-  SHORTLISTED: "bg-teal-500/10 text-teal-300 border-teal-500/30",
-  NGO_RESPONSE: "bg-indigo-500/10 text-indigo-300 border-indigo-500/30",
-  SELECTED: "bg-emerald-500/15 text-emerald-200 border-emerald-400/40",
-  CONTRACTED: "bg-emerald-600/20 text-emerald-100 border-emerald-400/50",
-  REJECTED: "bg-red-500/10 text-red-300 border-red-500/30",
-  FAILED: "bg-red-500/10 text-red-300 border-red-500/30",
-  WITHDRAWN: "bg-gray-800 text-gray-400 border-gray-700",
+  UPLOADED: "bg-gray-100 text-gray-700 border-gray-300",
+  PROCESSING: "bg-sky-50 text-sky-700 border-sky-200",
+  AI_EXTRACTED: "bg-violet-50 text-violet-700 border-violet-200",
+  DONOR_REVIEW: "bg-amber-50 text-amber-700 border-amber-200",
+  PENDING_ADMIN_REVIEW: "bg-blue-50 text-blue-700 border-blue-200",
+  NEEDS_CORRECTION: "bg-orange-50 text-orange-700 border-orange-200",
+  VALIDATED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  MATCHING: "bg-sky-50 text-sky-700 border-sky-200",
+  SHORTLISTED: "bg-teal-50 text-teal-700 border-teal-200",
+  NGO_RESPONSE: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  SELECTED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  CONTRACTED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  REJECTED: "bg-red-50 text-red-700 border-red-200",
+  FAILED: "bg-red-50 text-red-700 border-red-200",
+  WITHDRAWN: "bg-gray-100 text-gray-600 border-gray-300",
 };
 
 export function StatusBadge({ status, className = "" }: { status: string; className?: string }) {

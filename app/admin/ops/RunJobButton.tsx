@@ -32,7 +32,7 @@ export default function RunJobButton({ job, label }: { job: string; label: strin
         type="button"
         onClick={run}
         disabled={state === "running"}
-        className="min-h-[36px] rounded-lg border border-gray-300 px-3 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+        className="min-h-[36px] rounded-lg border border-gray-300 px-3 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
       >
         {state === "running" ? "Running…" : "Run now"}
       </button>

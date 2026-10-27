@@ -11,6 +11,8 @@ const config: Config = {
     extend: {
       colors: {
         background: "var(--background)",
+        // Warm off-white page canvas behind white cards (light theme).
+        canvas: "#f7f6f2",
         foreground: "var(--foreground)",
         // Retint the darkest canvas shade from generic near-black to a deep
         // navy-black, so every `gray-950` surface app-wide carries the trust
@@ -23,17 +25,19 @@ const config: Config = {
         // purely additive: existing semantic colors (health scores, status badges, risk
         // levels) keep meaning exactly as before and are untouched by this palette.
         trust: {
-          50: "#f0f4fb",
-          100: "#dde6f6",
-          200: "#b9caed",
-          300: "#8ea9e0",
-          400: "#5f83cf",
-          500: "#3c62ba",
-          600: "#2b4a9c",
-          700: "#243c7d",
-          800: "#1f3266",
-          900: "#1b2b54",
-          950: "#0f1730",
+          // Brightened 2026-10-27 for the light redesign: primary actions are
+          // trust-600, hover trust-700, tints trust-50/100.
+          50: "#eef3ff",
+          100: "#dbe5ff",
+          200: "#bccdfc",
+          300: "#8eaaf6",
+          400: "#5b80ec",
+          500: "#3560dd",
+          600: "#1f4bc8",
+          700: "#1a3ea3",
+          800: "#1b3683",
+          900: "#1c3168",
+          950: "#141f40",
         },
         gold: {
           50: "#fdf8ed",

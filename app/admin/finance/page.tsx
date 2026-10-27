@@ -7,7 +7,8 @@ import { authOptions } from "@/lib/auth";
 import SchemaOutOfSync from "@/app/admin/components/SchemaOutOfSync";
 import { netAmount, CASH_ENTRY_TYPES } from "@/lib/ledger";
 import { loadFinanceLabels, shortId, EMPTY_LABELS, type FinanceLabels } from "@/lib/finance-labels";
-import { RunReconciliationButton, ResolveExceptionForm } from "./FinanceActions";
+import { RunReconciliationButton, ResolveExceptionForm, BankLineMatchForm } from "./FinanceActions";
+import { matchCandidates } from "@/lib/utr-sweep";
 // Shared with the Today inbox (SPEC-2.2) so both pages agree on which
 // exceptions are serious. See lib/finance-exception-labels.ts.
 import { EXCEPTION_LABEL, SEVERE_EXCEPTION_TYPES as SEVERE } from "@/lib/finance-exception-labels";
@@ -133,6 +134,18 @@ export default async function AdminFinancePage() {
     labels = EMPTY_LABELS;
   }
 
+  // UTR exception queue: the bank lines behind UNMATCHED_BANK_LINE findings and
+  // the pending contract payments each could be matched to (same NGO only).
+  const bankLineIds = exceptions.filter((e) => e.type === "UNMATCHED_BANK_LINE").map((e) => e.entityId);
+  const bankLines = bankLineIds.length
+    ? await prisma.bankStatementLine.findMany({
+        where: { id: { in: bankLineIds } },
+        select: { id: true, ngoId: true, valueDate: true, reference: true, description: true, amount: true, status: true },
+      })
+    : [];
+  const candidates = await matchCandidates(Array.from(new Set(bankLines.map((l) => l.ngoId))));
+  const bankLineById = new Map(bankLines.map((l) => [l.id, l]));
+
   const net = netAmount(
     totals.flatMap((t) =>
       t._sum.amount ? [{ direction: t.direction, amount: t._sum.amount }] : [],
@@ -142,12 +155,12 @@ export default async function AdminFinancePage() {
   const severeCount = exceptions.filter((e) => SEVERE.includes(e.type)).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Finance</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Finance</h1>
+            <p className="mt-1 text-sm text-gray-500 max-w-2xl">
               Every confirmed payment, recorded once and never edited, plus everything that does
               not add up against it. This checks the platform against its own ledger — it does not
               talk to the bank, so it cannot tell you money was settled, only that our records
@@ -158,18 +171,18 @@ export default async function AdminFinancePage() {
         </div>
 
         {/* When was this last checked — an empty queue means nothing without it. */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
           {!lastRun ? (
-            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+            <p className="text-sm font-medium text-amber-700">
               Reconciliation has never been run. An empty exception queue below proves nothing yet.
             </p>
           ) : lastRun.error ? (
-            <p className="text-sm font-medium text-red-600 dark:text-red-400">
+            <p className="text-sm font-medium text-red-600">
               The last run ({lastRun.startedAt.toLocaleString("en-IN")}) FAILED and did not finish
               checking. Treat the queue below as incomplete.
             </p>
           ) : (
-            <p className="text-sm text-gray-600 dark:text-gray-300">
+            <p className="text-sm text-gray-600">
               Last checked <strong>{lastRun.startedAt.toLocaleString("en-IN")}</strong> —{" "}
               {lastRun.projectsChecked} projects, {lastRun.donorsChecked} donors,{" "}
               {lastRun.donationsChecked} confirmed donations. {lastRun.opened} new finding
@@ -182,28 +195,28 @@ export default async function AdminFinancePage() {
           <span
             className={`px-3 py-1.5 rounded-full text-sm font-bold border ${
               severeCount > 0
-                ? "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30"
-                : "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30"
+                ? "bg-red-50 text-red-700 border-red-100"
+                : "bg-emerald-50 text-emerald-700 border-emerald-100"
             }`}
           >
             {severeCount} money {severeCount === 1 ? "discrepancy" : "discrepancies"}
           </span>
-          <span className="px-3 py-1.5 rounded-full text-sm font-bold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">
+          <span className="px-3 py-1.5 rounded-full text-sm font-bold border border-gray-200 text-gray-600">
             {exceptions.length} open exception{exceptions.length === 1 ? "" : "s"}
           </span>
-          <span className="px-3 py-1.5 rounded-full text-sm font-bold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">
+          <span className="px-3 py-1.5 rounded-full text-sm font-bold border border-gray-200 text-gray-600">
             {rupees(net)} cash across {entryCount} {entryCount === 1 ? "entry" : "entries"}
           </span>
         </div>
 
         {/* ── Exceptions ────────────────────────────────────────────────── */}
         <section>
-          <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400 mb-3">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-3">
             Open exceptions
           </h2>
           {exceptions.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-12 text-center">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+            <div className="rounded-xl border border-dashed border-gray-200 bg-white py-12 text-center">
+              <p className="text-sm font-medium text-gray-500">
                 {lastRun && !lastRun.error
                   ? "Everything the reconciler checks adds up."
                   : "Nothing recorded — run reconciliation to find out."}
@@ -214,54 +227,54 @@ export default async function AdminFinancePage() {
               {exceptions.map((exception) => (
                 <li
                   key={exception.id}
-                  className={`rounded-xl border bg-white dark:bg-gray-900 p-4 ${
+                  className={`rounded-xl border bg-white p-4 ${
                     SEVERE.includes(exception.type)
-                      ? "border-red-200 dark:border-red-900/40"
-                      : "border-gray-200 dark:border-gray-800"
+                      ? "border-red-200"
+                      : "border-gray-200"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">
+                      <p className="text-sm font-bold text-gray-900">
                         {EXCEPTION_LABEL[exception.type]}
                       </p>
                       {(() => {
                         const subject = describeSubject(exception, labels);
                         if (!subject) return null;
                         return (
-                          <p className="mt-0.5 text-sm font-medium text-gray-700 dark:text-gray-200">
+                          <p className="mt-0.5 text-sm font-medium text-gray-700">
                             {subject.line}
                             {subject.sub && (
-                              <span className="text-gray-400 font-normal"> · {subject.sub}</span>
+                              <span className="text-gray-500 font-normal"> · {subject.sub}</span>
                             )}
                           </p>
                         );
                       })()}
-                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{exception.summary}</p>
+                      <p className="mt-1 text-sm text-gray-600">{exception.summary}</p>
                       {exception.entityType === "DONATION" ? (
                         <Link
                           href={`/admin/finance/donations/${exception.entityId}`}
-                          className="mt-1 inline-block text-xs font-bold text-gray-600 dark:text-gray-300 underline underline-offset-2"
+                          className="mt-1 inline-block text-xs font-bold text-gray-600 underline underline-offset-2"
                         >
                           Open the full transaction →
                         </Link>
                       ) : null}
-                      <p className="mt-1 text-xs text-gray-400 font-mono break-all">
+                      <p className="mt-1 text-xs text-gray-500 font-mono break-all">
                         {exception.entityType} {exception.entityId}
                       </p>
-                      <p className="mt-1 text-xs text-gray-400">
+                      <p className="mt-1 text-xs text-gray-500">
                         First seen {exception.firstSeenAt.toLocaleDateString("en-IN")}
                         {exception.occurrences > 1 && ` · seen again ${exception.occurrences} times`}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
                       {exception.expectedAmount !== null && (
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-500">
                           ledger {rupees(exception.expectedAmount)}
                         </p>
                       )}
                       {exception.observedAmount !== null && (
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">
+                        <p className="text-sm font-bold text-gray-900">
                           {rupees(exception.observedAmount)}
                         </p>
                       )}
@@ -275,6 +288,27 @@ export default async function AdminFinancePage() {
                       )}
                     </div>
                   </div>
+                  {exception.type === "UNMATCHED_BANK_LINE" && bankLineById.get(exception.entityId) && (() => {
+                    const line = bankLineById.get(exception.entityId)!;
+                    return (
+                      <div className="mt-2 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+                        <p>
+                          Credit {rupees(line.amount)} on {line.valueDate.toLocaleDateString("en-IN")} · UTR{" "}
+                          <span className="font-mono">{line.reference ?? "—"}</span> · line {line.status.toLowerCase()}
+                        </p>
+                        <p className="text-gray-500 truncate">{line.description}</p>
+                        <BankLineMatchForm
+                          lineId={line.id}
+                          candidates={candidates
+                            .filter((p) => p.contract.ngoId === line.ngoId)
+                            .map((p) => ({
+                              id: p.id,
+                              label: `${p.contract.contractNumber} · ${rupees(p.amount)} · ${p.utr ?? p.reference ?? "no UTR"} · ${p.paidAt.toLocaleDateString("en-IN")}`,
+                            }))}
+                        />
+                      </div>
+                    );
+                  })()}
                   <ResolveExceptionForm exceptionId={exception.id} />
                 </li>
               ))}
@@ -284,20 +318,20 @@ export default async function AdminFinancePage() {
 
         {/* ── Ledger ────────────────────────────────────────────────────── */}
         <section>
-          <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400 mb-3">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-3">
             Recent ledger entries
           </h2>
           {entries.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-12 text-center">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+            <div className="rounded-xl border border-dashed border-gray-200 bg-white py-12 text-center">
+              <p className="text-sm font-medium text-gray-500">
                 No money events recorded yet. Entries are written by the payment webhook when a
                 payment is captured.
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
               <table className="min-w-full text-sm">
-                <thead className="text-xs uppercase tracking-wide text-gray-400 border-b border-gray-200 dark:border-gray-800">
+                <thead className="text-xs uppercase tracking-wide text-gray-500 border-b border-gray-200">
                   <tr>
                     <th className="text-left font-bold px-4 py-3">Occurred</th>
                     <th className="text-left font-bold px-4 py-3">From</th>
@@ -316,16 +350,16 @@ export default async function AdminFinancePage() {
                     const org = entry.ngoId ? labels.ngos.get(entry.ngoId) : undefined;
                     const isCommitment = !CASH_ENTRY_TYPES.includes(entry.entryType);
                     return (
-                    <tr key={entry.id} className="border-b last:border-0 border-gray-100 dark:border-gray-800">
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-500 dark:text-gray-400">
+                    <tr key={entry.id} className="border-b last:border-0 border-gray-100">
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-500">
                         <div>{entry.occurredAt.toLocaleDateString("en-IN")}</div>
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-gray-500">
                           {entry.occurredAt.toLocaleTimeString("en-IN")}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-gray-900 dark:text-white">
+                      <td className="px-4 py-3 text-gray-900">
                         {donor ?? (
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-gray-500">
                             {isCommitment ? "Opportunity budget" : shortId(entry.donorId)}
                           </span>
                         )}
@@ -333,36 +367,36 @@ export default async function AdminFinancePage() {
                       <td className="px-4 py-3">
                         {project ? (
                           <>
-                            <div className="text-gray-900 dark:text-white">{project.orgName}</div>
-                            <div className="text-xs text-gray-400">{project.title}</div>
+                            <div className="text-gray-900">{project.orgName}</div>
+                            <div className="text-xs text-gray-500">{project.title}</div>
                           </>
                         ) : org ? (
                           <>
-                            <div className="text-gray-900 dark:text-white">{org}</div>
-                            <div className="text-xs text-gray-400">committed, not paid</div>
+                            <div className="text-gray-900">{org}</div>
+                            <div className="text-xs text-gray-500">committed, not paid</div>
                           </>
                         ) : (
-                          <span className="font-mono text-xs text-gray-400">{shortId(entry.projectId)}</span>
+                          <span className="font-mono text-xs text-gray-500">{shortId(entry.projectId)}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">
+                      <td className="px-4 py-3 text-gray-900 font-medium">
                         {entry.entryType.replaceAll("_", " ").toLowerCase()}
                       </td>
                       <td
                         className={`px-4 py-3 text-right font-bold whitespace-nowrap ${
                           entry.direction === LedgerDirection.CREDIT
-                            ? "text-emerald-700 dark:text-emerald-400"
-                            : "text-red-700 dark:text-red-400"
+                            ? "text-emerald-700"
+                            : "text-red-700"
                         }`}
                       >
                         {entry.direction === LedgerDirection.CREDIT ? "+" : "−"}
                         {rupees(entry.amount)}
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-gray-400 break-all">
+                      <td className="px-4 py-3 font-mono text-xs text-gray-500 break-all">
                         {entry.donationId ? (
                           <Link
                             href={`/admin/finance/donations/${entry.donationId}`}
-                            className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-200"
+                            className="underline underline-offset-2 hover:text-gray-600"
                           >
                             {entry.externalRef ?? entry.donationId}
                           </Link>
@@ -377,7 +411,7 @@ export default async function AdminFinancePage() {
               </table>
             </div>
           )}
-          <p className="mt-2 text-xs text-gray-400">
+          <p className="mt-2 text-xs text-gray-500">
             Ledger entries are immutable. A correction is recorded as a new, opposing entry —
             nothing here is ever edited or deleted. Open a reference to see the whole transaction:
             documents, evidence, and everything that happened to it.

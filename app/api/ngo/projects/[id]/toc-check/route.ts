@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { GoogleGenAI, Type } from "@google/genai";
+import { callAi } from "@/lib/ai/telemetry";
 
 export async function POST(
   request: Request,
@@ -65,12 +66,15 @@ Return ONLY valid JSON (no markdown) in this shape:
     // 3. Call Gemini
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "Gemini API key is not configured" }, { status: 500 });
+      return NextResponse.json(
+        { error: "AI analysis is not configured on this server — human review required.", code: "AI_NOT_CONFIGURED", humanReviewRequired: true },
+        { status: 503 }
+      );
     }
 
     const ai = new GoogleGenAI({ apiKey });
     
-    const response = await ai.models.generateContent({
+    const response = await callAi({ site: "toc-check", model: "gemini-3.6-flash", promptVersion: "v1" }, () => ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents: prompt,
       config: {
@@ -87,7 +91,7 @@ Return ONLY valid JSON (no markdown) in this shape:
           required: ["alignmentScore", "verdict", "gaps", "strengths", "suggestion"]
         }
       }
-    });
+    }));
 
     if (!response.text) {
       throw new Error("Failed to generate Theory of Change analysis");
@@ -111,8 +115,9 @@ Return ONLY valid JSON (no markdown) in this shape:
   } catch (error: any) {
     console.error("Error in Theory of Change analysis:", error);
     return NextResponse.json(
-      { error: "Failed to generate Theory of Change analysis", details: error.message },
-      { status: 500 }
+      // AI-010: no raw error text to the client, and nothing stored.
+      { error: "AI unavailable — human review required. The Theory of Change analysis could not be generated.", code: "AI_UNAVAILABLE", humanReviewRequired: true },
+      { status: 503 }
     );
   }
 }

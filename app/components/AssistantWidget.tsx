@@ -81,15 +81,15 @@ export default function AssistantWidget() {
           exit={{ opacity: 0, scale: 0.92, y: 12 }}
           transition={{ type: "spring", stiffness: 380, damping: 30 }}
           style={{ transformOrigin: "bottom right" }}
-          className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm bg-gray-950 border border-gray-800 border-t-2 border-t-gold-500/70 rounded-xl shadow-2xl flex flex-col overflow-hidden"
+          className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm bg-white border border-gray-200 rounded-2xl shadow-2xl shadow-gray-900/10 flex flex-col overflow-hidden"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-gray-900/60">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white">
             <div>
-              <div className="font-display italic font-semibold text-white text-lg leading-tight">
-                Setu<span className="text-gold-400">.</span>
+              <div className="font-display font-semibold text-gray-900 text-lg leading-tight">
+                Setu<span className="text-trust-600">.</span>
               </div>
-              <div className="font-mono text-[10px] text-gray-400 uppercase tracking-widest">
+              <div className="text-[11px] text-gray-500">
                 24/7 · Every question answered
               </div>
             </div>
@@ -97,7 +97,7 @@ export default function AssistantWidget() {
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close assistant"
-              className="text-gray-500 hover:text-white transition p-1"
+              className="text-gray-500 hover:text-gray-900 transition p-1"
             >
               <X className="w-4 h-4" strokeWidth={1.75} />
             </button>
@@ -110,8 +110,8 @@ export default function AssistantWidget() {
                 <div
                   className={`max-w-[85%] px-3.5 py-2.5 rounded-lg text-sm leading-relaxed whitespace-pre-wrap ${
                     m.role === "user"
-                      ? "bg-trust-600/25 border border-trust-500/30 text-gray-100"
-                      : "bg-gray-900 border border-gray-800 text-gray-300"
+                      ? "bg-trust-600 text-white"
+                      : "bg-gray-50 border border-gray-200 text-gray-800"
                   }`}
                 >
                   {m.content}
@@ -121,11 +121,11 @@ export default function AssistantWidget() {
 
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-gray-900 border border-gray-800 rounded-lg px-3.5 py-2.5 flex items-center gap-1.5">
+                <div className="bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 flex items-center gap-1.5">
                   {[0, 1, 2].map((d) => (
                     <span
                       key={d}
-                      className="w-1.5 h-1.5 rounded-full bg-gold-400/70 animate-bounce"
+                      className="w-1.5 h-1.5 rounded-full bg-trust-400 motion-safe:animate-bounce"
                       style={{ animationDelay: `${d * 150}ms` }}
                     />
                   ))}
@@ -141,7 +141,7 @@ export default function AssistantWidget() {
                     key={s}
                     type="button"
                     onClick={() => send(s)}
-                    className="text-xs text-gray-300 border border-gray-800 hover:border-trust-500/50 hover:text-white bg-gray-900/60 rounded-lg px-3 py-1.5 transition"
+                    className="text-xs text-gray-700 border border-gray-200 hover:border-trust-300 hover:text-trust-700 hover:bg-trust-50 bg-white rounded-lg px-3 py-1.5 transition"
                   >
                     {s}
                   </button>
@@ -156,7 +156,7 @@ export default function AssistantWidget() {
               e.preventDefault();
               send(input);
             }}
-            className="flex items-center gap-2 border-t border-gray-800 px-3 py-3 bg-gray-900/40"
+            className="flex items-center gap-2 border-t border-gray-200 px-3 py-3 bg-white"
           >
             <input
               type="text"
@@ -164,13 +164,13 @@ export default function AssistantWidget() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask Setu anything…"
               maxLength={1000}
-              className="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-3.5 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-trust-400 transition"
+              className="flex-1 bg-white border border-gray-200 rounded-lg px-3.5 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-100 transition"
             />
             <button
               type="submit"
               disabled={loading || !input.trim()}
               aria-label="Send message"
-              className="bg-trust-600 hover:bg-trust-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg p-2.5 transition"
+              className="bg-trust-600 hover:bg-trust-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg p-2.5 transition"
             >
               <SendHorizonal className="w-4 h-4" strokeWidth={1.75} />
             </button>
@@ -184,7 +184,7 @@ export default function AssistantWidget() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={open ? "Close Setu assistant" : "Open Setu assistant"}
-        className="fixed bottom-6 right-4 sm:right-6 z-50 w-14 h-14 rounded-full bg-trust-600 hover:bg-trust-500 border border-trust-400/40 text-white flex items-center justify-center transition shadow-lg"
+        className="fixed bottom-6 right-4 sm:right-6 z-50 w-14 h-14 rounded-full bg-trust-600 hover:bg-trust-700 text-white shadow-trust-600/30 flex items-center justify-center transition shadow-lg"
       >
         {open ? <X className="w-5 h-5" strokeWidth={1.75} /> : <MessageCircle className="w-5 h-5" strokeWidth={1.75} />}
       </button>

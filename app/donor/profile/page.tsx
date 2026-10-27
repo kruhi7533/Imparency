@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import DonorProfileClient from "./DonorProfileClient";
+import NotificationPreferencesPanel from "./NotificationPreferencesPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,10 @@ export default async function DonorProfilePage() {
   };
 
   return (
-    <DonorProfileClient user={serializedUser} />
+    <>
+      <DonorProfileClient user={serializedUser} />
+      {/* DON-018: channel preferences + delivery log (emails link to ?tab=notifications). */}
+      <NotificationPreferencesPanel />
+    </>
   );
 }

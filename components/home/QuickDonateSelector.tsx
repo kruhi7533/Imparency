@@ -31,11 +31,11 @@ export default function QuickDonateSelector() {
               setCustomAmount("");
             }}
             className={`
-              px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-150
-              border-2 min-w-[100px] cursor-pointer
+              px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-150
+              border min-w-[100px] cursor-pointer
               ${selected === amount && !showCustom
-                ? "bg-gold-500/10 border-gold-400 text-gold-200"
-                : "bg-gray-900/60 border-gray-800 text-gray-300 hover:border-gold-700 hover:text-white hover:bg-gray-900"
+                ? "bg-trust-50 border-trust-500 text-trust-800 ring-1 ring-trust-500"
+                : "bg-white border-gray-300 text-gray-800 hover:border-trust-300 hover:bg-gray-50"
               }
             `}
           >
@@ -51,11 +51,11 @@ export default function QuickDonateSelector() {
             setSelected(null);
           }}
           className={`
-            px-6 py-3 rounded-2xl text-sm font-black transition-all duration-150
-            border-2 min-w-[140px] cursor-pointer
+            px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-150
+            border min-w-[140px] cursor-pointer
             ${showCustom
-              ? "bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-105"
-              : "bg-gray-900/60 border-gray-800 text-gray-300 hover:border-emerald-700 hover:text-white hover:bg-gray-900"
+              ? "bg-trust-50 border-trust-500 text-trust-800 ring-1 ring-trust-500"
+              : "bg-white border-gray-300 text-gray-800 hover:border-trust-300 hover:bg-gray-50"
             }
           `}
         >
@@ -65,7 +65,7 @@ export default function QuickDonateSelector() {
 
       {showCustom && (
         <div className="flex items-center justify-center gap-2 mt-2">
-          <span className="text-white font-bold text-lg">₹</span>
+          <span className="text-gray-700 font-semibold text-lg">₹</span>
           <input
             type="number"
             min="100"
@@ -74,10 +74,10 @@ export default function QuickDonateSelector() {
             placeholder="Enter amount"
             autoFocus
             className="
-              w-40 px-4 py-3 bg-gray-900 border-2 border-gold-500/50
-              rounded-lg text-white font-semibold text-center text-sm
-              focus:outline-none focus:border-gold-400
-              placeholder-gray-600
+              w-40 px-4 py-3 bg-white border border-gray-300
+              rounded-xl text-gray-900 font-semibold text-center text-sm
+              focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-100
+              placeholder-gray-400
               [appearance:textfield]
               [&::-webkit-outer-spin-button]:appearance-none
               [&::-webkit-inner-spin-button]:appearance-none
@@ -95,10 +95,10 @@ export default function QuickDonateSelector() {
           }}
           disabled={!isReady}
           className={`
-            px-10 py-4 rounded-lg text-sm font-semibold transition-all duration-200
+            px-8 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200
             ${isReady
-              ? "bg-trust-600 hover:bg-trust-500 text-white cursor-pointer"
-              : "bg-gray-900 text-gray-600 cursor-not-allowed border border-gray-800"
+              ? "bg-trust-600 hover:bg-trust-700 text-white cursor-pointer shadow-sm"
+              : "bg-gray-100 text-gray-500 cursor-not-allowed border border-gray-200"
             }
           `}
         >
@@ -109,7 +109,7 @@ export default function QuickDonateSelector() {
         </button>
       </div>
 
-      <p className="font-mono text-[10px] text-gray-600 mt-3 uppercase tracking-wider">
+      <p className="text-xs text-gray-500 mt-3 uppercase tracking-wider">
         Min ₹100 · Secured by Razorpay · 80G receipt auto-generated
       </p>
     </div>

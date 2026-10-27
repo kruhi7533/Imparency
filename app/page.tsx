@@ -1,23 +1,56 @@
 import React from "react";
 import Link from "next/link";
-import { BookOpen, HeartPulse, Sprout, Users, Tractor, Soup, CheckCircle2 } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  FileCheck2,
+  HandCoins,
+  HeartPulse,
+  IndianRupee,
+  Layers,
+  Megaphone,
+  ShieldCheck,
+  Sprout,
+  Soup,
+  Tractor,
+  Users,
+} from "lucide-react";
 import QuickDonateSelector from "@/components/home/QuickDonateSelector";
 import CountUpStat from "@/components/home/CountUpStat";
 import LiveActivityFeed from "@/components/home/LiveActivityFeed";
-import TiltCard from "@/components/home/TiltCard";
-import SmoothScroll from "@/components/home/SmoothScroll";
 import Reveal from "@/components/home/Reveal";
 import NgoMarquee from "@/components/home/NgoMarquee";
-import BridgeArt from "@/components/home/BridgeArt";
-import HeroField from "@/components/home/HeroField";
 import HeroCtas from "@/components/home/HeroCtas";
+import HeroVisual from "@/components/home/HeroVisual";
+import FeaturedCampaigns from "@/components/home/FeaturedCampaigns";
 import ImpactStories from "@/components/home/ImpactStories";
+import EmergencyReliefSection from "@/components/home/EmergencyReliefSection";
 import { getPlatformStats } from "@/lib/platform-stats";
+import { getHomeHighlights } from "@/lib/home-highlights";
 
 export const revalidate = 60;
 
+const CARD = "bg-white rounded-2xl border border-gray-200/80 shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
+const EYEBROW = "text-xs font-semibold uppercase tracking-[0.16em] text-trust-700";
+
+const AVATAR_TINTS = [
+  "bg-trust-100 text-trust-800",
+  "bg-emerald-100 text-emerald-800",
+  "bg-amber-100 text-amber-800",
+  "bg-violet-100 text-violet-800",
+];
+
+function IconBubble({ tint, children }: { tint: string; children: React.ReactNode }) {
+  return (
+    <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${tint}`} aria-hidden>
+      {children}
+    </span>
+  );
+}
+
 export default async function Home() {
-  const stats = await getPlatformStats();
+  const [stats, highlights] = await Promise.all([getPlatformStats(), getHomeHighlights()]);
 
   const causes = [
     { name: "Education", icon: BookOpen, desc: "Sponsor books, classrooms, and teacher training programs." },
@@ -28,293 +61,337 @@ export default async function Home() {
     { name: "Hunger", icon: Soup, desc: "Support community kitchens and nutritious food distribution." },
   ];
 
+  const steps = [
+    {
+      icon: ShieldCheck,
+      title: "NGOs are vetted first",
+      desc: "Registration certificate and PAN are checked by our team. An NGO can't publish a campaign until it passes.",
+    },
+    {
+      icon: Layers,
+      title: "Budgets split into milestones",
+      desc: "A ₹5 lakh campaign isn't a ₹5 lakh transfer — it's a series of releases, each tied to specific work and a deadline.",
+    },
+    {
+      icon: HandCoins,
+      title: "You give and follow it",
+      desc: "Donate to a campaign and track every milestone it funds. Your 80G receipt arrives on its own.",
+    },
+    {
+      icon: FileCheck2,
+      title: "Proof unlocks the next release",
+      desc: "Receipts and photos are screened and reviewed by a person — only then does the next instalment move.",
+    },
+  ];
+
   const latest = stats.recentActivity[0];
+  const donorCount = highlights.donorCount;
 
   return (
-    <div className="relative isolate min-h-screen bg-gray-950 text-white font-sans selection:bg-trust-500 selection:text-white">
-
-      <SmoothScroll />
-
-      {/* Hero atmosphere — navy radial wash + faint ledger rules, so the
-          opening viewport reads as brand paper, not a black void */}
-      <div
-        aria-hidden
-        className="absolute top-0 inset-x-0 h-[95vh] pointer-events-none -z-10 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(60,98,186,0.28),transparent_70%)]"
-      />
-      <div
-        aria-hidden
-        className="absolute top-0 inset-x-0 h-[85vh] pointer-events-none -z-10 bg-[repeating-linear-gradient(to_bottom,transparent,transparent_55px,rgba(142,169,224,0.05)_55px,rgba(142,169,224,0.05)_56px)] [mask-image:linear-gradient(to_bottom,black,transparent)]"
-      />
-      {/* The living sea — 3D particle water under the bridge, faded at both
-          edges so it stays atmosphere, never noise behind the headline */}
-      <div
-        aria-hidden
-        className="absolute top-0 inset-x-0 h-[95vh] pointer-events-none -z-10 [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_72%,transparent)]"
-      >
-        <HeroField />
-      </div>
-
-      {/* Hero — full-viewport statement */}
-      <section className="min-h-[85vh] flex items-center">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center space-y-10">
-          <h1 className="font-display font-semibold text-5xl sm:text-7xl lg:text-8xl tracking-tight leading-[1.25] sm:leading-[1.2]">
-            <Reveal>Transparency you can</Reveal>
-            <Reveal delay={0.12}>
-              <span className="italic text-gold-300">audit in real time</span>
+    <div className="relative min-h-screen bg-canvas text-gray-900 font-sans selection:bg-trust-100 selection:text-trust-900">
+      {/* ── Hero ─────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-0 bg-[radial-gradient(ellipse_60%_55%_at_85%_30%,rgba(31,75,200,0.07),transparent_70%),radial-gradient(ellipse_45%_35%_at_8%_55%,rgba(16,185,129,0.05),transparent_70%)]"
+        />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16 sm:pt-16 lg:pt-20 lg:pb-24 grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-10 items-center">
+          <div className="space-y-7 text-center lg:text-left">
+            <Reveal as="div" variant="fade">
+              <p className={EYEBROW}>Transparent · Accountable · Higher impact</p>
             </Reveal>
-          </h1>
-          <Reveal delay={0.24}>
-            <p className="text-gray-400 text-lg sm:text-xl max-w-2xl mx-auto">
-              Every campaign here is split into milestones. NGOs get funds one
-              step at a time, and the next instalment is released only after
-              their receipts and photos pass review. Your 80G tax receipt
-              arrives on its own — no forms, no follow-up emails.
-            </p>
-          </Reveal>
+            <h1 className="font-display font-semibold text-[2.5rem] leading-[1.1] sm:text-6xl lg:text-[4.25rem] tracking-tight text-gray-900">
+              <Reveal delay={0.06}>Real social impact,</Reveal>
+              <Reveal delay={0.14}>
+                built on <span className="text-trust-600">transparency.</span>
+              </Reveal>
+            </h1>
+            <Reveal as="div" variant="fade" delay={0.22}>
+              <p className="text-gray-600 text-base sm:text-lg leading-relaxed max-w-xl mx-auto lg:mx-0">
+                Every campaign is split into milestones. NGOs receive funds one step at a time, and the next
+                instalment is released only after their receipts and photos pass review.
+              </p>
+            </Reveal>
 
-          <Reveal delay={0.34}>
-            {/* Role-aware: visitors see both sides; signed-in users their own next step. */}
-            <HeroCtas />
-          </Reveal>
+            <Reveal as="div" variant="fade" delay={0.3}>
+              {/* Role-aware: visitors see both sides; signed-in users their own next step. */}
+              <HeroCtas />
+            </Reveal>
 
-          {/* A fragment of the real audit trail, sitting quietly in the hero */}
-          <Reveal delay={0.44}>
-            <p className="font-mono text-[11px] uppercase tracking-widest text-gold-400/90">
-              {latest
-                ? `Last verified donation · ₹${latest.amount.toLocaleString("en-IN")} · ${latest.projectTitle}`
-                : "Awaiting the first verified donation"}
-            </p>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* The bridge, drawn as line-art — an honest diagram of the product,
-          not a stock photo and not AI imagery */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
-        <BridgeArt />
-      </section>
-
-      {/* Verified NGOs marquee — the "partners strip", except every name is real */}
-      <NgoMarquee names={stats.verifiedNgoNames} />
-
-      {/* The ledger so far — oversized real numbers, live from the database */}
-      <section id="numbers" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-28 space-y-16">
-        <p className="font-mono text-[11px] uppercase tracking-widest text-gold-400 text-center">
-          The ledger so far
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-12">
-          <CountUpStat
-            value={stats.totalDonated}
-            format="compact-inr"
-            label="Donated so far"
-            emptyLabel="Just getting started"
-            accent
-          />
-          <CountUpStat
-            value={stats.verifiedNgoCount}
-            label="Verified NGOs"
-            emptyLabel="Onboarding our first NGOs"
-            index={1}
-          />
-          <CountUpStat
-            value={stats.activeProjectCount}
-            label="Active Campaigns"
-            emptyLabel="First campaigns coming soon"
-            index={2}
-          />
-          <CountUpStat
-            value={stats.completedMilestoneCount}
-            label="Milestones Verified"
-            emptyLabel="No milestones cleared yet"
-            index={3}
-          />
-        </div>
-
-        {/* Live activity — real, recent donations, not a vanity metric */}
-        <LiveActivityFeed activity={stats.recentActivity} />
-      </section>
-
-      {/* How it Works / Trust Stepper */}
-      <section id="protocol" className="border-t border-gray-900 bg-gray-900/20 py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-3 mb-16">
-            <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight">How the money actually moves</h2>
-            <p className="text-gray-400 text-sm max-w-xl mx-auto">
-              No lump-sum transfers. Three checkpoints stand between a donation and the last rupee spent.
-            </p>
-          </div>
-
-          {/* Milestone stepper — the same sequential-release shape donors see on every campaign */}
-          <div className="grid grid-cols-1 md:grid-cols-3 max-w-xl md:max-w-none mx-auto">
-            {[
-              {
-                step: "01",
-                title: "NGOs are vetted before they can raise a rupee",
-                desc: "Registration certificate and PAN are checked by our team. An NGO can't publish a campaign until it passes.",
-              },
-              {
-                step: "02",
-                title: "Budgets are split into milestones",
-                desc: "A ₹5 lakh campaign isn't a ₹5 lakh transfer. It's a series of smaller releases, each tied to a specific piece of work with its own budget and deadline.",
-              },
-              {
-                step: "03",
-                title: "Proof unlocks the next release",
-                desc: "The NGO uploads receipts and photos when a milestone is done. The evidence is screened by AI and reviewed by a person — only then does the next instalment move.",
-              },
-            ].map((item, idx, arr) => {
-              const isLast = idx === arr.length - 1;
-              return (
-                <div
-                  key={idx}
-                  className={`relative pl-12 pb-14 md:pl-0 md:pb-0 md:pt-14 md:pr-10 text-left border-l-2 md:border-l-0 md:border-t-2 ${
-                    isLast ? "border-l-transparent md:border-t-gray-700" : "border-l-gray-700 md:border-t-gray-700"
-                  }`}
-                >
-                  <span className="absolute -left-[19px] top-0 md:left-0 md:top-0 md:-translate-y-1/2 w-9 h-9 rounded-full bg-gray-900 border-2 border-gray-700 flex items-center justify-center">
-                    {isLast ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" strokeWidth={2} />
-                    ) : (
-                      <span className="font-mono text-xs text-trust-300">{item.step}</span>
-                    )}
-                  </span>
-                  <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed max-w-xs">{item.desc}</p>
+            {donorCount > 0 && (
+              <Reveal as="div" variant="fade" delay={0.38}>
+                <div className="flex items-center justify-center lg:justify-start gap-3">
+                  <div className="flex -space-x-2.5" aria-hidden>
+                    {highlights.donorInitials.map((ini, i) => (
+                      <span
+                        key={i}
+                        className={`flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-semibold ring-2 ring-canvas ${AVATAR_TINTS[i % AVATAR_TINTS.length]}`}
+                      >
+                        {ini}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-semibold text-gray-900 tabular-nums">{donorCount.toLocaleString("en-IN")}</span>{" "}
+                    {donorCount === 1 ? "person is" : "people are"} already making an impact
+                  </p>
                 </div>
-              );
-            })}
+              </Reveal>
+            )}
+          </div>
+
+          <HeroVisual
+            image={highlights.heroImage}
+            latestDonation={latest ? { amount: latest.amount, projectTitle: latest.projectTitle } : null}
+            onTimePct={highlights.onTimeMilestonePct}
+            approvedCount={highlights.approvedMilestoneCount}
+            verifiedMilestones={stats.completedMilestoneCount}
+          />
+        </div>
+      </section>
+
+      {/* ── Stats strip — live from the database ─────────────── */}
+      <section id="numbers" aria-label="Platform numbers" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-2">
+        <div className={`${CARD} p-6 sm:p-8`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-0 lg:divide-x lg:divide-gray-200">
+            <div className="lg:pr-6">
+              <CountUpStat
+                value={stats.verifiedNgoCount}
+                label="Verified NGOs"
+                emptyLabel="Onboarding our first NGOs"
+                icon={<IconBubble tint="bg-trust-50 text-trust-600"><ShieldCheck className="h-5 w-5" /></IconBubble>}
+              />
+            </div>
+            <div className="lg:px-6">
+              <CountUpStat
+                value={stats.totalDonated}
+                format="compact-inr"
+                label="Funds tracked"
+                emptyLabel="Just getting started"
+                accent
+                index={1}
+                icon={<IconBubble tint="bg-emerald-50 text-emerald-600"><IndianRupee className="h-5 w-5" /></IconBubble>}
+              />
+            </div>
+            <div className="lg:px-6">
+              <CountUpStat
+                value={stats.activeProjectCount}
+                label="Active campaigns"
+                emptyLabel="First campaigns coming soon"
+                index={2}
+                icon={<IconBubble tint="bg-amber-50 text-amber-600"><Megaphone className="h-5 w-5" /></IconBubble>}
+              />
+            </div>
+            <div className="lg:pl-6">
+              <CountUpStat
+                value={stats.completedMilestoneCount}
+                label="Milestones verified"
+                emptyLabel="No milestones cleared yet"
+                index={3}
+                icon={<IconBubble tint="bg-violet-50 text-violet-600"><CheckCircle2 className="h-5 w-5" /></IconBubble>}
+              />
+            </div>
+          </div>
+
+          {/* Live activity — real, recent donations, not a vanity metric */}
+          <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
+            <span className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden /> Latest on the ledger
+            </span>
+            <div className="min-w-0 flex-1">
+              <LiveActivityFeed activity={stats.recentActivity} />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Impact stories — what a rupee becomes, drawn in the same line-art
-          voice as the bridge: a first day of school, a girl who stays in it,
-          care reaching a village, the country it all compounds into */}
-      <section id="stories" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-28 space-y-14">
-        <div className="text-center space-y-3">
-          <p className="font-mono text-[11px] uppercase tracking-widest text-gold-400">
-            Impact stories
+      {/* ── Featured campaigns ────────────────────────────────── */}
+      <section id="campaigns" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24">
+        <FeaturedCampaigns campaigns={highlights.featured} />
+        <div className="mt-6 text-center">
+          <Link
+            href="/discover"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-trust-700 hover:text-trust-800"
+          >
+            See all campaigns and NGOs <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
+        </div>
+      </section>
+
+      {/* Verified NGOs strip — every name is a real, verified organisation */}
+      {stats.verifiedNgoNames.length > 0 && (
+        <section aria-label="Verified NGOs on ImpactBridge" className="pt-16">
+          <p className="text-center text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+            Verified NGOs raising on ImpactBridge
           </p>
-          <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight">
-            What a rupee <span className="italic text-gold-300">turns into</span>
+          <NgoMarquee names={stats.verifiedNgoNames} />
+        </section>
+      )}
+
+      {/* ── How it works ─────────────────────────────────────── */}
+      <section id="how-it-works" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24">
+        <div className="text-center space-y-3 mb-14">
+          <p className={EYEBROW}>How it works</p>
+          <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-gray-900">
+            How the money actually moves
           </h2>
+          <p className="text-gray-600 text-sm sm:text-base max-w-xl mx-auto">
+            No lump-sum transfers. Checkpoints stand between a donation and the last rupee spent.
+          </p>
         </div>
-        <ImpactStories />
+
+        <ol className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
+          {/* Dashed connector behind the step numbers (desktop) */}
+          <div
+            aria-hidden
+            className="hidden lg:block absolute top-7 left-[12.5%] right-[12.5%] border-t-2 border-dashed border-trust-200"
+          />
+          {steps.map((s, i) => {
+            const Icon = s.icon;
+            return (
+              <li key={s.title} className="relative text-center">
+                <Reveal as="div" variant="fade" delay={i * 0.08}>
+                  <div className="relative mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-white ring-1 ring-gray-200 shadow-sm">
+                    <Icon className="h-6 w-6 text-trust-600" aria-hidden />
+                    <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-trust-600 text-[11px] font-semibold text-white ring-2 ring-canvas">
+                      {i + 1}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900">{s.title}</h3>
+                  <p className="mt-2 text-sm text-gray-600 leading-relaxed max-w-[260px] mx-auto">{s.desc}</p>
+                </Reveal>
+              </li>
+            );
+          })}
+        </ol>
       </section>
 
-      {/* Causes grid */}
-      <section id="causes" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-28 space-y-12">
-        <div className="flex justify-between items-end">
+      {/* ── Emergency relief (renders only while a verified crisis is active) ── */}
+      <EmergencyReliefSection />
+
+      {/* ── Causes — real campaign counts per sector ─────────── */}
+      <section id="causes" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 sm:pb-24 space-y-10">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div className="space-y-2">
-            <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight">Explore Causes</h2>
-            <p className="text-gray-400 text-sm max-w-md">
-              Six sectors. Every NGO in them has already been verified.
-            </p>
+            <p className={EYEBROW}>Causes</p>
+            <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-gray-900">Explore causes</h2>
+            <p className="text-gray-600 text-sm max-w-md">Six sectors. Every NGO in them has already been verified.</p>
           </div>
-          <Link href="/discover" className="text-trust-300 hover:text-trust-200 font-bold text-sm flex items-center gap-1">
-            See all sectors <span>→</span>
+          <Link href="/discover" className="text-trust-700 hover:text-trust-800 font-semibold text-sm inline-flex items-center gap-1">
+            See all sectors <ArrowRight className="h-4 w-4" aria-hidden />
           </Link>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {causes.map((cause, causeIdx) => {
+          {causes.map((cause) => {
             const count = stats.causeCategoryCounts[cause.name] ?? 0;
             const Icon = cause.icon;
             return (
-              <Link key={cause.name} href={`/discover?causes=${encodeURIComponent(cause.name)}`} className="group block">
-                <TiltCard
-                  maxTilt={5}
-                  index={causeIdx}
-                  className="bg-gray-900/60 border border-gray-800 group-hover:border-gray-700 rounded-xl p-6 transition-colors"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <span className="p-3 bg-gray-950 border border-gray-800 rounded-lg group-hover:border-trust-700/60 transition">
-                      <Icon className="w-6 h-6 text-trust-300" strokeWidth={1.75} />
-                    </span>
-                    <span className="font-mono text-[11px] text-gray-400 uppercase tracking-widest">
-                      {count > 0 ? `${count} Campaigns` : "New sector"}
-                    </span>
-                  </div>
-                  <h3 className="text-base font-semibold text-white mb-1 group-hover:text-trust-300 transition">{cause.name}</h3>
-                  <p className="text-xs text-gray-400 leading-relaxed">{cause.desc}</p>
-                </TiltCard>
+              <Link
+                key={cause.name}
+                href={`/discover?causes=${encodeURIComponent(cause.name)}`}
+                className={`${CARD} group block p-6 transition duration-200 hover:border-trust-200 hover:shadow-lg hover:shadow-gray-900/[0.05] motion-safe:hover:-translate-y-0.5`}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-trust-50">
+                    <Icon className="w-5 h-5 text-trust-600" strokeWidth={1.75} aria-hidden />
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                      count > 0 ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {count > 0 ? `${count} ${count === 1 ? "campaign" : "campaigns"}` : "New sector"}
+                  </span>
+                </div>
+                <h3 className="text-base font-semibold text-gray-900 mb-1 group-hover:text-trust-700 transition">{cause.name}</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">{cause.desc}</p>
               </Link>
             );
           })}
         </div>
       </section>
 
-      {/* Quick Donate Section */}
-      <section id="give" className="border-t border-gray-900 bg-gradient-to-b from-gold-950/20 to-gray-950 py-28">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-10">
+      {/* ── Impact stories ───────────────────────────────────── */}
+      <section id="stories" className="border-y border-gray-200/80 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24 space-y-12">
+          <div className="text-center space-y-3">
+            <p className={EYEBROW}>Impact stories</p>
+            <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-gray-900">
+              What a rupee <span className="italic text-trust-600">turns into</span>
+            </h2>
+          </div>
+          <ImpactStories />
+        </div>
+      </section>
 
-          {/* Heading */}
+      {/* ── Quick donate ─────────────────────────────────────── */}
+      <section id="give" className="py-20 sm:py-24">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
           <div className="space-y-3">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-gold-400">
-              Ready to give?
-            </span>
-            <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-white">
+            <p className={EYEBROW}>Ready to give?</p>
+            <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-gray-900">
               Start with what you have
             </h2>
-            <p className="text-gray-400 text-sm max-w-lg mx-auto">
-              Pick an amount and we'll show you campaigns where it covers something concrete.
+            <p className="text-gray-600 text-sm max-w-lg mx-auto">
+              Pick an amount and we&apos;ll show you campaigns where it covers something concrete.
             </p>
           </div>
-
-          {/* Amount selector — QuickDonateSelector component */}
-          <QuickDonateSelector />
-
+          <div className={`${CARD} p-6 sm:p-8`}>
+            <QuickDonateSelector />
+          </div>
         </div>
       </section>
 
-      {/* Closing statement — the gold disc is our moon */}
-      <section className="relative border-t border-gray-900 py-32 sm:py-40 text-center overflow-hidden">
-        <div
-          aria-hidden
-          className="absolute left-1/2 -translate-x-1/2 -bottom-64 w-[560px] h-[560px] rounded-full border border-gold-500/25 bg-gradient-to-b from-gold-500/10 to-transparent pointer-events-none"
-        />
-        <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-          <h2 className="font-display font-semibold text-4xl sm:text-6xl tracking-tight leading-[1.1]">
-            <Reveal>Every rupee,</Reveal>
-            <Reveal delay={0.12}>
-              <span className="italic text-gold-300">watched over.</span>
-            </Reveal>
-          </h2>
-          <Reveal delay={0.24}>
-            <p className="text-gray-400 text-base sm:text-lg max-w-xl mx-auto">
+      {/* ── Mission band ─────────────────────────────────────── */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 sm:pb-24">
+        <div className="relative overflow-hidden rounded-3xl bg-trust-700 px-6 py-14 sm:px-12 sm:py-16 text-center">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full border border-white/10"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -left-16 -bottom-28 h-72 w-72 rounded-full border border-white/10"
+          />
+          <div className="relative max-w-2xl mx-auto space-y-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-trust-100">Our mission</p>
+            <blockquote className="font-display text-3xl sm:text-5xl font-semibold leading-tight tracking-tight text-white">
+              &ldquo;Every rupee, watched over.&rdquo;
+            </blockquote>
+            <p className="text-trust-100 text-base sm:text-lg">
               Give once and follow it to the ground — milestone by milestone, receipt by receipt.
             </p>
-          </Reveal>
-          <Reveal delay={0.34}>
             <Link
               href="/login?callbackUrl=/discover"
-              className="inline-block bg-trust-600 hover:bg-trust-500 text-white font-semibold px-10 py-4 rounded-lg text-base transition"
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-semibold text-trust-800 shadow-sm transition hover:bg-trust-50"
             >
-              Make your first donation
+              Make your first donation <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
-          </Reveal>
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-900 bg-gray-950 py-12 text-center text-xs text-gray-600">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-          <div className="flex justify-center items-center gap-2">
-            <span className="font-display italic text-base font-semibold text-white">
-              ImpactBridge<span className="text-gold-400">.</span>
+      {/* ── Footer ───────────────────────────────────────────── */}
+      <footer className="border-t border-gray-200/80 bg-white py-10 text-sm text-gray-500">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-5">
+          <div className="flex items-center gap-3">
+            <span className="font-display text-lg font-semibold text-gray-900">
+              ImpactBridge<span className="text-trust-600">.</span>
             </span>
-            <span className="mx-2">•</span>
+            <span className="text-gray-300" aria-hidden>•</span>
             <span>© {new Date().getFullYear()} ImpactBridge</span>
           </div>
-          <div className="flex justify-center gap-6 text-[10px] font-bold text-gray-500">
-            <Link href="/discover" className="hover:text-white transition">Discover</Link>
-            <Link href="/login?mode=signup&role=DONOR" className="hover:text-white transition">Join as donor</Link>
-            <Link href="/ngo/register" className="hover:text-white transition">Join as NGO</Link>
-            <Link href="/admin/dashboard" className="hover:text-white transition">Admin Panel</Link>
-          </div>
+          <nav aria-label="Footer" className="flex flex-wrap justify-center gap-x-6 gap-y-2 font-medium">
+            <Link href="/discover" className="hover:text-gray-900 transition">Discover</Link>
+            <Link href="/login?mode=signup&role=DONOR" className="hover:text-gray-900 transition">Join as donor</Link>
+            <Link href="/ngo/register" className="hover:text-gray-900 transition">Join as NGO</Link>
+            <Link href="/help" className="hover:text-gray-900 transition">Help</Link>
+            <Link href="/privacy-policy" className="hover:text-gray-900 transition">Privacy</Link>
+            <Link href="/admin/dashboard" className="hover:text-gray-900 transition">Admin Panel</Link>
+          </nav>
         </div>
       </footer>
-
     </div>
   );
 }

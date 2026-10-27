@@ -31,6 +31,9 @@ describe("Proposal Workflow (Week 5)", () => {
 
     // Mock Prisma behavior
     vi.spyOn(prisma.nGOProfile, "findUnique").mockResolvedValueOnce({ id: "ngo-profile-123" } as any);
+    // Workstream E: the NGO must be shortlisted on an OPEN opportunity (same gate as /api/ngo/proposals).
+    vi.spyOn(prisma.fundingOpportunity, "findUnique").mockResolvedValueOnce({ status: "OPEN" } as any);
+    vi.spyOn(prisma.matchCandidate, "findFirst").mockResolvedValueOnce({ id: "cand-1" } as any);
     vi.spyOn(prisma.proposal, "create").mockResolvedValueOnce({
       id: "proposal-1",
       opportunityId: "opp-1",
@@ -70,7 +73,16 @@ describe("Proposal Workflow (Week 5)", () => {
       user: { id: "donor-user-123", role: "DONOR" }
     });
 
-    vi.spyOn(prisma.proposal, "findUnique").mockResolvedValueOnce({ id: "proposal-1", status: "SUBMITTED", version: 1 } as any);
+    // Workstream E: the donor must act for the opportunity's funder account (an
+    // opportunity with no funder is platform-run and no donor may touch it).
+    vi.spyOn(prisma.proposal, "findUnique").mockResolvedValueOnce({
+      id: "proposal-1",
+      status: "SUBMITTED",
+      version: 1,
+      ngoId: "ngo-profile-123",
+      opportunity: { funderUserId: "donor-user-123" },
+    } as any);
+    vi.spyOn(prisma.donorTeamMember, "findUnique").mockResolvedValueOnce(null);
     vi.spyOn(prisma.proposal, "update").mockResolvedValueOnce({
       id: "proposal-1",
       status: "CHANGE_REQUESTED",
@@ -97,12 +109,16 @@ describe("Proposal Workflow (Week 5)", () => {
       user: { id: "ngo-user-123", role: "NGO" }
     });
 
+    // Workstream E: the caller must be a live member (here: owner) of the proposing NGO.
     vi.spyOn(prisma.proposal, "findUnique").mockResolvedValueOnce({ 
       id: "proposal-1", 
       status: "CHANGE_REQUESTED", 
       version: 1,
+      ngoId: "ngo-profile-123",
       history: "[]"
     } as any);
+    vi.spyOn(prisma.nGOProfile, "findFirst").mockResolvedValueOnce({ id: "ngo-profile-123" } as any);
+    vi.spyOn(prisma.nGOTeamMember, "findUnique").mockResolvedValueOnce(null);
 
     vi.spyOn(prisma.proposal, "update").mockResolvedValueOnce({
       id: "proposal-1",

@@ -34,9 +34,11 @@ interface SendEmailParams {
   body: string;
   attachments?: Attachment[];
   from?: string;
+  /** The body carries a secret (an invite link): never echo it to the console in mock mode. */
+  sensitive?: boolean;
 }
 
-async function sendEmail({ to, subject, body, attachments, from }: SendEmailParams) {
+async function sendEmail({ to, subject, body, attachments, from, sensitive }: SendEmailParams) {
   const html = body.replace(/\n/g, "<br/>");
 
   // 1. Gmail SMTP — preferred when a Gmail App Password is configured.
@@ -84,7 +86,7 @@ async function sendEmail({ to, subject, body, attachments, from }: SendEmailPara
     console.log(` Attachments: ${attachments.map(a => a.filename).join(", ")}`);
   }
   console.log("--------------------------------------------------");
-  console.log(body);
+  console.log(sensitive ? "[body withheld: it contains a secret link]" : body);
   console.log("==================================================\n");
   return { success: true, mock: true };
 }
@@ -725,6 +727,38 @@ If you believe this was a mistake, please contact your NGO administrator.
 Best regards,
 The ImpactBridge Team`;
   return sendEmail({ to, subject, body });
+}
+
+/**
+ * NGO-003: an NGO invited someone to its team. The link carries the one-time
+ * secret, so the body is never echoed to the console in mock mode. Returns the
+ * sendEmail result: `mock: true` means NOTHING was delivered.
+ */
+export async function sendNgoTeamInviteEmail({
+  to,
+  ngoName,
+  roleLabel,
+  acceptUrl,
+  expiresAt,
+}: {
+  to: string;
+  ngoName: string;
+  roleLabel: string;
+  acceptUrl: string;
+  expiresAt: Date;
+}) {
+  const subject = `You're invited to join ${ngoName} on ImpactBridge`;
+  const body = `Hello,
+
+${ngoName} has invited you to join its team on ImpactBridge as ${roleLabel}.
+
+Accept the invitation here (the link works once and expires on ${expiresAt.toUTCString()}):
+${acceptUrl}
+
+If you were not expecting this, you can ignore this email.
+
+The ImpactBridge Team`;
+  return sendEmail({ to, subject, body, sensitive: true });
 }
 
 /** A donor organisation invited someone to its CSR team (lib/donor-team-admin.ts). */

@@ -28,12 +28,12 @@ const PAGE_SIZE = 50;
 /** Best-effort approve/reject coloring, purely cosmetic — not a source of truth. */
 function decisionStyle(action: string): string {
   if (/REJECTED|DISMISSED|SUSPENDED|FAILED|FLAGGED/.test(action)) {
-    return "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30";
+    return "bg-red-50 text-red-700 border-red-100";
   }
   if (/APPROVED|OPENED|SHORTLISTED|VERIFIED|CLEARED|RESOLVED|FEATURED/.test(action)) {
-    return "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30";
+    return "bg-emerald-50 text-emerald-700 border-emerald-100";
   }
-  return "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
+  return "bg-gray-100 text-gray-600 border-gray-200";
 }
 
 /** Entity types with an existing detail page this trail can link out to. */
@@ -95,13 +95,19 @@ export default async function AdminAuditPage({
   const exportHref = `/api/admin/audit/export?${auditFilterQuery(searchParams).toString()}`;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Audit trail</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Audit trail</h1>
+        <p className="mt-1 text-sm text-gray-500 max-w-2xl">
           Every recorded admin decision, across every entity — who did it, what changed, and why.
           Read-only: this is the same {`AdminActionLog`} rows the NGO and donor pages already show
           scoped to one entity, gathered here so you can search across all of them.
+        </p>
+        <p className="mt-2 text-sm">
+          <Link href="/admin/audit/integrity" className="font-semibold text-emerald-700 hover:underline">
+            Audit integrity →
+          </Link>{" "}
+          <span className="text-gray-500">verify the hash chain or an exported CSV.</span>
         </p>
 
         <form className="mt-6 flex flex-wrap gap-3" method="GET">
@@ -110,19 +116,19 @@ export default async function AdminAuditPage({
             name="action"
             defaultValue={action}
             placeholder="Search action (e.g. REJECTED)…"
-            className="flex-1 min-w-[220px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="flex-1 min-w-[220px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500"
           />
           <input
             type="text"
             name="actor"
             defaultValue={actor}
             placeholder="Actor name or email…"
-            className="flex-1 min-w-[200px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="flex-1 min-w-[200px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500"
           />
           <AutoSubmitSelect
             name="entityType"
             defaultValue={entityType}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
           >
             <option value="">All entity types</option>
             {AUDIT_ENTITY_TYPES.map((t) => (
@@ -135,24 +141,24 @@ export default async function AdminAuditPage({
             type="date"
             name="from"
             defaultValue={from}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
           />
           <input
             type="date"
             name="to"
             defaultValue={to}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
           />
           <button
             type="submit"
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+            className="rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white hover:bg-trust-700"
           >
             Search
           </button>
           {hasFilters && (
             <Link
               href="/admin/audit"
-              className="rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
             >
               Clear
             </Link>
@@ -160,42 +166,42 @@ export default async function AdminAuditPage({
         </form>
 
         <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-500">
             {total} entr{total === 1 ? "y" : "ies"} · page {page} of {totalPages}
           </p>
           {total > 0 && (
             <a
               href={exportHref}
-              className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100"
             >
               Export CSV{hasFilters ? " (filtered)" : ""}
             </a>
           )}
         </div>
 
-        <div className="mt-3 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-            <thead className="bg-gray-50 dark:bg-gray-950/40">
+        <div className="mt-3 overflow-x-auto rounded-xl border border-gray-200 bg-white">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">When</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Actor</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Entity</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Change</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Note</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">When</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Actor</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Entity</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Change</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Note</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-gray-100">
               {logs.map((log) => {
                 const href = entityHref(log.entityType, log.entityId);
                 return (
-                  <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 align-top">
-                    <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  <tr key={log.id} className="hover:bg-gray-50 align-top">
+                    <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
                       {log.createdAt.toLocaleString("en-IN")}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                    <td className="px-4 py-3 text-sm text-gray-700">
                       {log.admin ? (log.admin.name || log.admin.email) : (
-                        <span className="italic text-gray-400 dark:text-gray-600">Platform</span>
+                        <span className="italic text-gray-500">Platform</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -203,34 +209,34 @@ export default async function AdminAuditPage({
                         {log.action}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
-                      <div className="font-semibold text-gray-800 dark:text-gray-200">{log.entityType}</div>
+                    <td className="px-4 py-3 text-xs text-gray-600">
+                      <div className="font-semibold text-gray-800">{log.entityType}</div>
                       {href ? (
-                        <Link href={href} className="text-emerald-600 hover:underline dark:text-emerald-400">
+                        <Link href={href} className="text-emerald-600 hover:underline">
                           {log.entityId}
                         </Link>
                       ) : (
                         <span className="break-all">{log.entityId}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-[11px] text-gray-500 dark:text-gray-400 max-w-xs">
+                    <td className="px-4 py-3 text-[11px] text-gray-500 max-w-xs">
                       {log.oldValue || log.newValue ? (
                         <code className="block whitespace-pre-wrap break-all">
                           {JSON.stringify(log.oldValue)} → {JSON.stringify(log.newValue)}
                         </code>
                       ) : (
-                        <span className="text-gray-300 dark:text-gray-600">—</span>
+                        <span className="text-gray-300">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 max-w-xs">
-                      {log.note || <span className="text-gray-300 dark:text-gray-600">—</span>}
+                    <td className="px-4 py-3 text-xs text-gray-600 max-w-xs">
+                      {log.note || <span className="text-gray-300">—</span>}
                     </td>
                   </tr>
                 );
               })}
               {logs.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">
                     No audit entries match this view.{" "}
                     {hasFilters && (
                       <Link href="/admin/audit" className="text-emerald-600 hover:underline">
@@ -249,10 +255,10 @@ export default async function AdminAuditPage({
             <Link
               href={qs({ page: Math.max(1, page - 1) })}
               aria-disabled={page <= 1}
-              className={`rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 ${
+              className={`rounded-lg border border-gray-200 px-3 py-1.5 ${
                 page <= 1
-                  ? "pointer-events-none text-gray-300 dark:text-gray-700"
-                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  ? "pointer-events-none text-gray-300"
+                  : "text-gray-600 hover:bg-gray-100"
               }`}
             >
               ← Newer
@@ -260,10 +266,10 @@ export default async function AdminAuditPage({
             <Link
               href={qs({ page: Math.min(totalPages, page + 1) })}
               aria-disabled={page >= totalPages}
-              className={`rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 ${
+              className={`rounded-lg border border-gray-200 px-3 py-1.5 ${
                 page >= totalPages
-                  ? "pointer-events-none text-gray-300 dark:text-gray-700"
-                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  ? "pointer-events-none text-gray-300"
+                  : "text-gray-600 hover:bg-gray-100"
               }`}
             >
               Older →

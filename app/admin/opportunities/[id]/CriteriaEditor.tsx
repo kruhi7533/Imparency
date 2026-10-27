@@ -119,7 +119,7 @@ export default function CriteriaEditor({
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+        className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
       >
         Revise criteria
       </button>
@@ -127,8 +127,8 @@ export default function CriteriaEditor({
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-white dark:bg-gray-900 p-4">
-      <p className="text-xs text-gray-500 dark:text-gray-500">
+    <div className="mt-3 rounded-xl border border-emerald-200 bg-white p-4">
+      <p className="text-xs text-gray-500">
         Saving replaces the full criteria list. Past matching runs keep the criteria they actually
         judged against — this only changes what the NEXT run evaluates.
       </p>
@@ -139,9 +139,9 @@ export default function CriteriaEditor({
           return (
             <div
               key={c.kind}
-              className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 dark:border-gray-800 px-3 py-2"
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 px-3 py-2"
             >
-              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 min-w-[180px]">
+              <span className="text-sm font-semibold text-gray-800 min-w-[180px]">
                 {rule.label}
               </span>
               {rule.param === "scalar" && (
@@ -149,7 +149,7 @@ export default function CriteriaEditor({
                   value={c.value}
                   onChange={(e) => update(i, { value: e.target.value })}
                   placeholder={rule.paramHint ?? "Value"}
-                  className="w-28 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-1 text-sm text-gray-900 dark:text-white"
+                  className="w-28 rounded border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900"
                 />
               )}
               {rule.param === "set" && (
@@ -157,10 +157,10 @@ export default function CriteriaEditor({
                   value={c.values}
                   onChange={(e) => update(i, { values: e.target.value })}
                   placeholder={rule.paramHint ?? "Comma-separated"}
-                  className="flex-1 min-w-[200px] rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-1 text-sm text-gray-900 dark:text-white"
+                  className="flex-1 min-w-[200px] rounded border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900"
                 />
               )}
-              <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+              <label className="flex items-center gap-1.5 text-xs text-gray-600">
                 <input
                   type="checkbox"
                   checked={c.required}
@@ -179,7 +179,7 @@ export default function CriteriaEditor({
           );
         })}
         {criteria.length === 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500">
             No criteria — saving now would clear this opportunity down to nothing evaluated.
           </p>
         )}
@@ -192,7 +192,7 @@ export default function CriteriaEditor({
               key={k}
               type="button"
               onClick={() => addCriterion(k)}
-              className="rounded-full border border-gray-200 dark:border-gray-700 px-3 py-1 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100"
             >
               + {RULES[k].label}
             </button>
@@ -200,21 +200,21 @@ export default function CriteriaEditor({
         </div>
       )}
 
-      {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
       <div className="mt-4 flex gap-2">
         <button
           type="button"
           disabled={saving}
           onClick={save}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white hover:bg-trust-700 disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save criteria"}
         </button>
         <button
           type="button"
           onClick={cancel}
-          className="rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm text-gray-600 dark:text-gray-300"
+          className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600"
         >
           Cancel
         </button>

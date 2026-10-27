@@ -59,10 +59,10 @@ const daysSince = (d: Date) => Math.floor((Date.now() - d.getTime()) / 86_400_00
 
 /** Shares are a quality signal, so the colour follows the number. */
 function shareTone(share: number | null): string {
-  if (share === null) return "text-gray-400 dark:text-gray-500";
-  if (share >= 0.9) return "text-emerald-600 dark:text-emerald-400";
-  if (share >= 0.6) return "text-amber-600 dark:text-amber-400";
-  return "text-red-600 dark:text-red-400";
+  if (share === null) return "text-gray-500";
+  if (share >= 0.9) return "text-emerald-600";
+  if (share >= 0.6) return "text-amber-600";
+  return "text-red-600";
 }
 
 function Stat({
@@ -77,12 +77,12 @@ function Stat({
   tone?: string;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-500">
+    <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
         {label}
       </p>
-      <p className={`mt-1 text-2xl font-bold ${tone ?? "text-gray-900 dark:text-white"}`}>{value}</p>
-      {hint && <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{hint}</p>}
+      <p className={`mt-1 text-2xl font-bold ${tone ?? "text-gray-900"}`}>{value}</p>
+      {hint && <p className="mt-1 text-xs text-gray-600">{hint}</p>}
     </div>
   );
 }
@@ -99,19 +99,19 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+    <section className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-        <h2 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h2>
+        <Icon className="h-4 w-4 text-indigo-600" />
+        <h2 className="text-sm font-bold text-gray-900">{title}</h2>
       </div>
-      <p className="mt-1 max-w-3xl text-xs text-gray-600 dark:text-gray-400">{subtitle}</p>
+      <p className="mt-1 max-w-3xl text-xs text-gray-600">{subtitle}</p>
       <div className="mt-3">{children}</div>
     </section>
   );
 }
 
-const TH = "px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-500";
-const TD = "px-3 py-2 text-sm text-gray-800 dark:text-gray-200";
+const TH = "px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-gray-500";
+const TD = "px-3 py-2 text-sm text-gray-800";
 
 export default async function ImpactQualityPage() {
   const [claims, metrics, approvedIndex, assertedTotal, oldestSubmitted] = await Promise.all([
@@ -206,15 +206,15 @@ export default async function ImpactQualityPage() {
     <div className="space-y-6">
       <header className="space-y-2">
         <div className="flex items-center gap-2">
-          <Gauge className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Impact quality</h1>
+          <Gauge className="h-5 w-5 text-indigo-600" />
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Impact quality</h1>
         </div>
-        <p className="max-w-3xl text-sm text-gray-600 dark:text-gray-400">
+        <p className="max-w-3xl text-sm text-gray-600">
           How much of what this platform reports is actually backed by evidence. Every figure below
           is a defect count, not an achievement — the question is whether the numbers we publish can
           be substantiated, not how large they are.
         </p>
-        <p className="max-w-3xl text-xs text-gray-500 dark:text-gray-500">
+        <p className="max-w-3xl text-xs text-gray-500">
           Looking for whether donor updates were delivered and opened? That is{" "}
           <Link href="/admin/impact-health" className="underline">
             impact health
@@ -226,12 +226,12 @@ export default async function ImpactQualityPage() {
       </header>
 
       {portfolio.assertedCount === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-900">
-          <Sigma className="mx-auto h-6 w-6 text-gray-400" />
-          <p className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
+          <Sigma className="mx-auto h-6 w-6 text-gray-500" />
+          <p className="mt-2 text-sm font-medium text-gray-900">
             No organisation has reported a number yet.
           </p>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          <p className="mt-1 text-sm text-gray-600">
             Once a claim is submitted against a governed metric it appears in{" "}
             <Link href="/admin/impact-review" className="underline">
               impact review
@@ -251,13 +251,13 @@ export default async function ImpactQualityPage() {
             <Stat
               label="Cannot be approved"
               value={String(portfolio.blockedCount)}
-              tone={portfolio.blockedCount > 0 ? "text-red-600 dark:text-red-400" : undefined}
+              tone={portfolio.blockedCount > 0 ? "text-red-600" : undefined}
               hint="A blocking finding stands in the way"
             />
             <Stat
               label="Need judgement"
               value={String(portfolio.needsReviewCount)}
-              tone={portfolio.needsReviewCount > 0 ? "text-amber-600 dark:text-amber-400" : undefined}
+              tone={portfolio.needsReviewCount > 0 ? "text-amber-600" : undefined}
               hint="Serious or open questions, approvable with an override"
             />
             <Stat
@@ -265,9 +265,9 @@ export default async function ImpactQualityPage() {
               value={queueAge === null ? "—" : `${queueAge}d`}
               tone={
                 queueSla === "breached"
-                  ? "text-red-600 dark:text-red-400"
+                  ? "text-red-600"
                   : queueSla === "at_risk"
-                    ? "text-amber-600 dark:text-amber-400"
+                    ? "text-amber-600"
                     : undefined
               }
               hint={
@@ -281,23 +281,23 @@ export default async function ImpactQualityPage() {
           {/* The loudest panel on the page, and the one that justifies re-triaging
               approved claims instead of trusting the approval. */}
           {portfolio.retractionCandidates.length > 0 && (
-            <section className="rounded-xl border border-red-300 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+            <section className="rounded-xl border border-red-300 bg-red-50 p-4">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-red-600 dark:text-red-400" />
-                <h2 className="text-sm font-bold text-red-900 dark:text-red-300">
+                <ShieldAlert className="h-4 w-4 text-red-600" />
+                <h2 className="text-sm font-bold text-red-900">
                   Approved, but the evidence no longer holds
                 </h2>
               </div>
-              <p className="mt-1 max-w-3xl text-xs text-red-800 dark:text-red-300/80">
+              <p className="mt-1 max-w-3xl text-xs text-red-800">
                 These numbers were backed when a human approved them and are not any more —
                 consent withdrawn, or cited evidence no longer approved. They are already published
                 figures, so each needs withdrawing and superseding rather than editing.
               </p>
               <ul className="mt-3 space-y-2">
                 {portfolio.retractionCandidates.map((c) => (
-                  <li key={c.claimId} className="text-sm text-red-900 dark:text-red-200">
+                  <li key={c.claimId} className="text-sm text-red-900">
                     <span className="font-semibold">{c.value}</span> on{" "}
-                    <code className="rounded bg-red-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold dark:bg-red-900/40">
+                    <code className="rounded bg-red-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold">
                       {c.metricCode}
                     </code>{" "}
                     — {c.orgName} · {c.findingCodes.join(", ")}
@@ -313,14 +313,14 @@ export default async function ImpactQualityPage() {
             subtitle="The same evidence counted by more than one approved claim on the same metric. Each one is a human override of a finding the platform raised — double counting is a HIGH finding, not a block, because one capture can legitimately document two distributions."
           >
             {incidents.length === 0 ? (
-              <p className="text-sm text-emerald-700 dark:text-emerald-400">
+              <p className="text-sm text-emerald-700">
                 No evidence is counted twice on the same metric.
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full">
                   <thead>
-                    <tr className="border-b border-gray-200 dark:border-gray-800">
+                    <tr className="border-b border-gray-200">
                       <th className={TH}>Metric</th>
                       <th className={TH}>Evidence</th>
                       <th className={TH}>Counted by</th>
@@ -330,19 +330,19 @@ export default async function ImpactQualityPage() {
                     {incidents.map((i) => (
                       <tr
                         key={`${i.metricCode}-${i.evidenceRef}`}
-                        className="border-b border-gray-100 last:border-0 dark:border-gray-800/60"
+                        className="border-b border-gray-100 last:border-0"
                       >
                         <td className={TD}>
                           <code className="font-mono text-[11px]">{i.metricCode}</code>
                         </td>
                         <td className={TD}>
-                          <code className="font-mono text-[11px] text-gray-600 dark:text-gray-400">
+                          <code className="font-mono text-[11px] text-gray-600">
                             {i.evidenceRef}
                           </code>
                         </td>
                         <td className={TD}>
                           <span className="font-semibold">{i.claimIds.length} claims</span>
-                          <span className="ml-2 font-mono text-[11px] text-gray-500 dark:text-gray-500">
+                          <span className="ml-2 font-mono text-[11px] text-gray-500">
                             {i.claimIds.join(", ")}
                           </span>
                         </td>
@@ -362,7 +362,7 @@ export default async function ImpactQualityPage() {
             <div className="overflow-x-auto">
               <table className="min-w-full">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-800">
+                  <tr className="border-b border-gray-200">
                     <th className={TH}>Metric</th>
                     <th className={TH}>Claims backed</th>
                     <th className={TH}>Value backed</th>
@@ -373,11 +373,11 @@ export default async function ImpactQualityPage() {
                   {portfolio.byMetric.map((m) => (
                     <tr
                       key={m.metricCode}
-                      className="border-b border-gray-100 last:border-0 dark:border-gray-800/60"
+                      className="border-b border-gray-100 last:border-0"
                     >
                       <td className={TD}>
                         <code className="font-mono text-[11px] font-semibold">{m.metricCode}</code>
-                        <p className="text-xs text-gray-500 dark:text-gray-500">{m.metricName}</p>
+                        <p className="text-xs text-gray-500">{m.metricName}</p>
                       </td>
                       <td className={TD}>
                         {m.backedCount} / {m.assertedCount}
@@ -386,12 +386,12 @@ export default async function ImpactQualityPage() {
                         {m.aggregatable ? (
                           <>
                             {m.backedValue} / {m.assertedValue}
-                            <span className="ml-1 text-xs text-gray-500 dark:text-gray-500">
+                            <span className="ml-1 text-xs text-gray-500">
                               {UNIT_LABELS[m.unit]}
                             </span>
                           </>
                         ) : (
-                          <span className="text-xs text-gray-500 dark:text-gray-500">
+                          <span className="text-xs text-gray-500">
                             not summable
                           </span>
                         )}
@@ -405,7 +405,7 @@ export default async function ImpactQualityPage() {
               </table>
             </div>
             {portfolio.nonAggregatableExcluded > 0 && (
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-500">
+              <p className="mt-2 text-xs text-gray-500">
                 {portfolio.nonAggregatableExcluded} claim
                 {portfolio.nonAggregatableExcluded === 1 ? "" : "s"} sit on metrics the registry
                 marks not summable (a percentage or a rate), so they carry a claim share but no
@@ -422,7 +422,7 @@ export default async function ImpactQualityPage() {
             <div className="overflow-x-auto">
               <table className="min-w-full">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-800">
+                  <tr className="border-b border-gray-200">
                     <th className={TH}>Organisation</th>
                     <th className={TH}>With findings</th>
                     <th className={TH}>Rate</th>
@@ -432,7 +432,7 @@ export default async function ImpactQualityPage() {
                   {portfolio.byOrg.map((o) => (
                     <tr
                       key={o.ngoId}
-                      className="border-b border-gray-100 last:border-0 dark:border-gray-800/60"
+                      className="border-b border-gray-100 last:border-0"
                     >
                       <td className={TD}>{o.orgName}</td>
                       <td className={TD}>
@@ -441,10 +441,10 @@ export default async function ImpactQualityPage() {
                       <td
                         className={`${TD} font-semibold ${
                           o.rate > 0.5
-                            ? "text-red-600 dark:text-red-400"
+                            ? "text-red-600"
                             : o.rate > 0
-                              ? "text-amber-600 dark:text-amber-400"
-                              : "text-emerald-600 dark:text-emerald-400"
+                              ? "text-amber-600"
+                              : "text-emerald-600"
                         }`}
                       >
                         {sharePercent(o.rate)}
@@ -465,17 +465,17 @@ export default async function ImpactQualityPage() {
       >
         <dl className="space-y-3">
           <div>
-            <dt className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+            <dt className="text-xs font-semibold text-gray-700">
               Active metrics with no evidence rule
             </dt>
             <dd className="mt-0.5 text-sm">
               {hygiene.activeWithoutEvidenceRule.length === 0 ? (
-                <span className="text-emerald-700 dark:text-emerald-400">
+                <span className="text-emerald-700">
                   None, as required. A metric with no evidence rule could never fail an evidence
                   check, so the registry refuses to activate one.
                 </span>
               ) : (
-                <span className="font-semibold text-red-600 dark:text-red-400">
+                <span className="font-semibold text-red-600">
                   {hygiene.activeWithoutEvidenceRule.join(", ")} — this must be impossible. The
                   guard in lib/metric-registry.ts has regressed.
                 </span>
@@ -483,26 +483,26 @@ export default async function ImpactQualityPage() {
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+            <dt className="text-xs font-semibold text-gray-700">
               Draft or deprecated metrics being claimed against
             </dt>
-            <dd className="mt-0.5 text-sm text-gray-700 dark:text-gray-300">
+            <dd className="mt-0.5 text-sm text-gray-700">
               {hygiene.closedBeingClaimed.length === 0
                 ? "None."
                 : hygiene.closedBeingClaimed.join(", ")}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+            <dt className="text-xs font-semibold text-gray-700">
               Active metrics never claimed against
             </dt>
-            <dd className="mt-0.5 text-sm text-gray-700 dark:text-gray-300">
+            <dd className="mt-0.5 text-sm text-gray-700">
               {hygiene.activeNeverClaimed.length === 0 ? (
                 "None — every published metric is in use."
               ) : (
                 <>
                   {hygiene.activeNeverClaimed.join(", ")}
-                  <span className="ml-1 text-xs text-gray-500 dark:text-gray-500">
+                  <span className="ml-1 text-xs text-gray-500">
                     (published but unused — not a defect, just a contract nobody took up)
                   </span>
                 </>
@@ -517,7 +517,7 @@ export default async function ImpactQualityPage() {
         title="Queue age"
         subtitle={target?.rationale ?? "No target declared for this queue."}
       >
-        <p className="text-sm text-gray-700 dark:text-gray-300">
+        <p className="text-sm text-gray-700">
           {queueAge === null ? (
             "Nothing is waiting on an impact-review decision."
           ) : (
@@ -529,7 +529,7 @@ export default async function ImpactQualityPage() {
             </>
           )}
         </p>
-        <p className="mt-2 text-xs text-gray-500 dark:text-gray-500">
+        <p className="mt-2 text-xs text-gray-500">
           Detection and visibility only. Nothing here escalates automatically and no breach
           notification is sent — a breach is surfaced to a human who is already looking, not pushed
           to one who is not. Same honesty note as{" "}

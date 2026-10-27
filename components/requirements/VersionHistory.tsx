@@ -56,16 +56,16 @@ export function VersionHistory({
           ? REQUIREMENT_FIELD_KEYS.filter((k) => JSON.stringify(newer.fields[k].value) !== JSON.stringify(e.fields[k].value))
           : [];
         return (
-          <li key={`${e.version}-${i}`} className="border border-gray-800 rounded-xl bg-gray-950/40">
+          <li key={`${e.version}-${i}`} className="border border-gray-200 rounded-xl bg-gray-50">
             <button
               type="button"
               onClick={() => setOpen(open === i ? null : i)}
               className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
             >
               <div className="min-w-0">
-                <span className="font-mono text-xs font-bold text-blue-300 mr-2">v{e.version}</span>
-                <span className="text-sm text-gray-100">{e.note ?? (e.version === 1 ? "AI extraction" : "Updated")}</span>
-                {e.current && <span className="ml-2 text-[10px] font-bold text-emerald-400">CURRENT</span>}
+                <span className="font-mono text-xs font-bold text-blue-700 mr-2">v{e.version}</span>
+                <span className="text-sm text-gray-900">{e.note ?? (e.version === 1 ? "AI extraction" : "Updated")}</span>
+                {e.current && <span className="ml-2 text-[10px] font-bold text-emerald-700">CURRENT</span>}
                 <p className="text-[11px] text-gray-500 mt-0.5">
                   {e.role ? ROLE_LABEL[e.role] ?? e.role : "—"}
                   {e.who ? ` · ${e.who}` : ""} · {new Date(e.at).toLocaleString("en-IN")}
@@ -77,7 +77,7 @@ export function VersionHistory({
             {open === i && (
               <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs">
                 {REQUIREMENT_FIELD_KEYS.map((k) => (
-                  <div key={k} className={changedKeys.includes(k) ? "text-amber-200" : "text-gray-300"}>
+                  <div key={k} className={changedKeys.includes(k) ? "text-amber-700" : "text-gray-700"}>
                     <span className="text-gray-500">{REQUIREMENT_FIELDS[k].label}: </span>
                     {formatValue(k, e.fields[k].value)}
                     <span className="text-gray-600"> ({e.fields[k].source.replace("_", " ").toLowerCase()})</span>

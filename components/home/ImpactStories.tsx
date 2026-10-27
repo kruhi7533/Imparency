@@ -32,11 +32,11 @@ type Scene = {
 
 // Palette shared with BridgeArt: structure gray, trust-200 figures,
 // gold for the funded thing, emerald for growth.
-const GRAY = "#4b5563";
-const TRUST = "#8ea9e0";
-const GOLD = "#e3a730";
-const GOLD_SOFT = "#edc158";
-const GREEN = "#34d399";
+const GRAY = "#9ca3af";
+const TRUST = "#1f4bc8";
+const GOLD = "#d97706";
+const GOLD_SOFT = "#f59e0b";
+const GREEN = "#059669";
 
 const SCENES: Scene[] = [
   {
@@ -239,11 +239,11 @@ export default function ImpactStories() {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="space-y-3"
           >
-            <p className="font-mono text-[11px] uppercase tracking-widest text-gold-400">{scene.kicker}</p>
-            <h3 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-white">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-trust-700">{scene.kicker}</p>
+            <h3 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">
               {scene.title}
             </h3>
-            <p className="text-gray-400 text-sm sm:text-base leading-relaxed max-w-md mx-auto md:mx-0">
+            <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto md:mx-0">
               {scene.body}
             </p>
           </motion.div>
@@ -257,7 +257,7 @@ export default function ImpactStories() {
               onClick={() => setActive(i)}
               aria-label={`Show story: ${s.title}`}
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                i === active ? "w-8 bg-gold-400" : "w-3 bg-gray-700 hover:bg-gray-600"
+                i === active ? "w-8 bg-trust-600" : "w-3 bg-gray-300 hover:bg-gray-400"
               }`}
             />
           ))}

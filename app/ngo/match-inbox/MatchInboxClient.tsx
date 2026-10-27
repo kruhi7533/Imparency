@@ -56,7 +56,7 @@ export default function MatchInboxClient({ opportunities, ngoId }: { opportuniti
 
   const getSeverityBadge = (sev: string) => {
     if (sev === 'HIGH') return <Badge variant="destructive" className="flex items-center gap-1 text-[10px]"><AlertCircle className="w-3 h-3"/> HIGH GAP</Badge>;
-    if (sev === 'MEDIUM') return <Badge variant="secondary" className="bg-yellow-500 hover:bg-yellow-600 flex items-center gap-1 text-[10px]"><AlertTriangle className="w-3 h-3"/> MEDIUM GAP</Badge>;
+    if (sev === 'MEDIUM') return <Badge variant="secondary" className="bg-amber-500 hover:bg-amber-600 flex items-center gap-1 text-[10px]"><AlertTriangle className="w-3 h-3"/> MEDIUM GAP</Badge>;
     return <Badge variant="outline" className="text-muted-foreground flex items-center gap-1 text-[10px]"><CheckCircle2 className="w-3 h-3"/> LOW GAP</Badge>;
   };
 
@@ -65,7 +65,7 @@ export default function MatchInboxClient({ opportunities, ngoId }: { opportuniti
       <Card>
         <CardContent className="py-12 flex flex-col items-center justify-center text-center">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <Sparkles className="w-8 h-8 text-gray-400" />
+            <Sparkles className="w-8 h-8 text-gray-600" />
           </div>
           <h3 className="text-xl font-semibold mb-2">No Match Opportunities Yet</h3>
           <p className="text-gray-500 max-w-md">

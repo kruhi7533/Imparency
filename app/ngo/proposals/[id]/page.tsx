@@ -58,10 +58,10 @@ export default function ProposalDashboardPage({ params }: { params: { id: string
   if (!proposal) return <div className="p-12 text-center">Loading...</div>;
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-zinc-900 py-12">
+    <main className="py-12">
       <div className="max-w-4xl mx-auto px-6">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Proposal Workspace (V{proposal.version})</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">Proposal Workspace (V{proposal.version})</h1>
           <Badge variant={proposal.status === "CHANGE_REQUESTED" ? "destructive" : "default"}>
             {proposal.status}
           </Badge>

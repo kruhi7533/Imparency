@@ -1,50 +1,39 @@
-import React from "react";
+const CARD = "rounded-2xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
 
 export default function AdminDashboardLoading() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
-      {/* Top Navbar Skeleton */}
-      <nav className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-6 py-4 flex justify-between items-center shadow-sm animate-pulse">
-        <div className="flex items-center gap-2">
-          <div className="h-6 w-32 bg-gray-200 dark:bg-gray-800 rounded"></div>
-          <div className="h-4.5 w-16 bg-gray-100 dark:bg-gray-800 rounded-full"></div>
-        </div>
-        <div className="h-5 w-24 bg-gray-200 dark:bg-gray-800 rounded"></div>
-      </nav>
-
-      {/* Main Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 animate-pulse">
-        {/* Page Title */}
-        <div className="h-8 w-48 bg-gray-250 dark:bg-gray-800 rounded"></div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm flex items-center justify-between">
-              <div className="space-y-2">
-                <div className="h-3 w-24 bg-gray-200 dark:bg-gray-800 rounded"></div>
-                <div className="h-8 w-16 bg-gray-200 dark:bg-gray-800 rounded"></div>
-              </div>
-              <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full"></div>
+    <div className="mx-auto max-w-[1400px] space-y-6 px-4 py-8 sm:px-6 lg:px-8 motion-safe:animate-pulse" aria-busy="true" aria-label="Loading dashboard">
+      <div className="space-y-2">
+        <div className="h-9 w-72 rounded-lg bg-gray-200" />
+        <div className="h-4 w-96 max-w-full rounded bg-gray-200/70" />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-6">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className={`${CARD} flex items-start justify-between p-5`}>
+            <div className="space-y-3">
+              <div className="h-3 w-24 rounded bg-gray-200" />
+              <div className="h-7 w-20 rounded bg-gray-200" />
+              <div className="h-3 w-32 rounded bg-gray-100" />
             </div>
-          ))}
-        </div>
-
-        {/* Big Chart Loader */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm h-64 flex flex-col justify-between">
-          <div className="h-4 w-40 bg-gray-200 dark:bg-gray-800 rounded"></div>
-          <div className="h-44 w-full bg-gray-100 dark:bg-gray-850 rounded-lg"></div>
-        </div>
-
-        {/* Tab & Table Skeletons */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
-          <div className="h-5 w-32 bg-gray-200 dark:bg-gray-800 rounded"></div>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 w-full bg-gray-100 dark:bg-gray-800 rounded-xl"></div>
-            ))}
+            <div className="h-10 w-10 rounded-full bg-gray-100" />
           </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className={`${CARD} h-80 p-6 xl:col-span-2`}>
+          <div className="h-4 w-56 rounded bg-gray-200" />
+          <div className="mt-6 h-56 rounded-lg bg-gray-100" />
         </div>
+        <div className={`${CARD} h-80 p-6`}>
+          <div className="h-4 w-40 rounded bg-gray-200" />
+          <div className="mx-auto mt-8 h-40 w-40 rounded-full bg-gray-100" />
+        </div>
+      </div>
+      <div className={`${CARD} space-y-3 p-6`}>
+        <div className="h-4 w-40 rounded bg-gray-200" />
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-12 rounded-xl bg-gray-100" />
+        ))}
       </div>
     </div>
   );

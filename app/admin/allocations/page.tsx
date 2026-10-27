@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import SchemaOutOfSync from "@/app/admin/components/SchemaOutOfSync";
 import { committedTotal, fundingState, paidTotal, remainingBudget } from "@/lib/allocation";
 import { ProposeAllocationForm, AllocationDecision, RecordPaymentForm } from "./AllocationActions";
+import ContractAllocationsSection from "./ContractAllocationsSection";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -99,17 +100,17 @@ export default async function AdminAllocationsPage() {
   const decided = allocations.filter((a) => a.status !== AllocationStatus.PENDING);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Allocations</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Allocations</h1>
+          <p className="mt-1 text-sm text-gray-500 max-w-2xl">
             Money committed to approved proposals. A commitment says an amount of an
             opportunity&rsquo;s budget is spoken for — it does not move money and does not pay
             anyone. Nothing here can be undone: an organisation that plans work against a
             commitment has to be able to rely on it.
           </p>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+          <p className="mt-2 text-sm text-gray-500 max-w-2xl">
             Once committed, each one tracks whether the funder&rsquo;s money was actually confirmed
             as received, and by whom. A commitment nobody confirms is chased by reconciliation
             after {" "}
@@ -120,12 +121,12 @@ export default async function AdminAllocationsPage() {
 
         {/* ── Waiting on a funding decision ─────────────────────────────── */}
         <section>
-          <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400 mb-3">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-3">
             Approved plans with no money behind them ({awaitingDecision.length})
           </h2>
           {awaitingDecision.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-10 text-center">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+            <div className="rounded-xl border border-dashed border-gray-200 bg-white py-10 text-center">
+              <p className="text-sm font-medium text-gray-500">
                 Every approved proposal has a funding decision.
               </p>
             </div>
@@ -137,25 +138,25 @@ export default async function AdminAllocationsPage() {
                 return (
                   <li
                     key={proposal.id}
-                    className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 space-y-3"
+                    className="rounded-xl border border-gray-200 bg-white p-4 space-y-3"
                   >
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">
+                        <p className="text-sm font-bold text-gray-900">
                           {proposal.ngo.orgName}
-                          <span className="text-gray-400 font-normal"> · {proposal.title}</span>
+                          <span className="text-gray-500 font-normal"> · {proposal.title}</span>
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-500">
                           {proposal.opportunity.title} · funded by {proposal.opportunity.funderName}
                           {proposal.decidedAt &&
                             ` · approved ${proposal.decidedAt.toLocaleDateString("en-IN")}`}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">
+                        <p className="text-sm font-bold text-gray-900">
                           {rupees(proposal.requestedAmount)}
                         </p>
-                        <p className="text-xs text-gray-400">requested</p>
+                        <p className="text-xs text-gray-500">requested</p>
                       </div>
                     </div>
                     <ProposeAllocationForm
@@ -172,12 +173,12 @@ export default async function AdminAllocationsPage() {
 
         {/* ── Waiting on approval ───────────────────────────────────────── */}
         <section>
-          <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400 mb-3">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-3">
             Commitments awaiting approval ({pending.length})
           </h2>
           {pending.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-10 text-center">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+            <div className="rounded-xl border border-dashed border-gray-200 bg-white py-10 text-center">
+              <p className="text-sm font-medium text-gray-500">
                 Nothing is waiting on a signature.
               </p>
             </div>
@@ -186,21 +187,21 @@ export default async function AdminAllocationsPage() {
               {pending.map((allocation) => (
                 <li
                   key={allocation.id}
-                  className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-white dark:bg-gray-900 p-4 space-y-3"
+                  className="rounded-xl border border-amber-200 bg-white p-4 space-y-3"
                 >
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">
+                      <p className="text-sm font-bold text-gray-900">
                         {allocation.proposal.ngo.orgName}
-                        <span className="text-gray-400 font-normal"> · {allocation.proposal.title}</span>
+                        <span className="text-gray-500 font-normal"> · {allocation.proposal.title}</span>
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-500">
                         from {allocation.proposal.opportunity.funderName} ·{" "}
                         {allocation.proposal.opportunity.title} · proposed{" "}
                         {allocation.proposedAt.toLocaleDateString("en-IN")}
                       </p>
                     </div>
-                    <p className="text-sm font-bold text-gray-900 dark:text-white shrink-0">
+                    <p className="text-sm font-bold text-gray-900 shrink-0">
                       {rupees(allocation.amount)}
                     </p>
                   </div>
@@ -214,31 +215,31 @@ export default async function AdminAllocationsPage() {
         {/* ── Decided ───────────────────────────────────────────────────── */}
         {decided.length > 0 && (
           <section>
-            <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400 mb-3">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-3">
               Decided ({decided.length})
             </h2>
             <ul className="space-y-2">
               {decided.map((allocation) => (
                 <li
                   key={allocation.id}
-                  className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4"
+                  className="rounded-xl border border-gray-200 bg-white p-4"
                 >
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      <p className="text-sm font-medium text-gray-900">
                         {allocation.proposal.opportunity.funderName}
-                        <span className="text-gray-400 font-normal"> → </span>
+                        <span className="text-gray-500 font-normal"> → </span>
                         {allocation.proposal.ngo.orgName}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-500">
                         {allocation.proposal.opportunity.title} · {allocation.proposal.title}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-500">
                         {allocation.status === AllocationStatus.APPROVED ? "committed" : "rejected"}{" "}
                         {allocation.decidedAt?.toLocaleDateString("en-IN")}
                       </p>
                       {allocation.decisionNote && (
-                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                        <p className="mt-1 text-sm text-gray-600">
                           {allocation.decisionNote}
                         </p>
                       )}
@@ -246,8 +247,8 @@ export default async function AdminAllocationsPage() {
                     <p
                       className={`text-sm font-bold shrink-0 ${
                         allocation.status === AllocationStatus.APPROVED
-                          ? "text-emerald-700 dark:text-emerald-400"
-                          : "text-gray-400 line-through"
+                          ? "text-emerald-700"
+                          : "text-gray-500 line-through"
                       }`}
                     >
                       {rupees(allocation.amount)}
@@ -264,14 +265,14 @@ export default async function AdminAllocationsPage() {
                       const outstanding = new Prisma.Decimal(allocation.amount.toString()).minus(paid);
                       const tone =
                         state === "FUNDED"
-                          ? "text-emerald-700 dark:text-emerald-400"
+                          ? "text-emerald-700"
                           : state === "UNFUNDED"
-                            ? "text-amber-700 dark:text-amber-400"
+                            ? "text-amber-700"
                             : state === "OVERFUNDED"
-                              ? "text-red-700 dark:text-red-400"
-                              : "text-gray-600 dark:text-gray-300";
+                              ? "text-red-700"
+                              : "text-gray-600";
                       return (
-                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+                        <div className="mt-3 pt-3 border-t border-gray-100">
                           <p className={`text-xs font-bold ${tone}`}>
                             {state === "UNFUNDED"
                               ? "No money confirmed as received yet"
@@ -284,13 +285,13 @@ export default async function AdminAllocationsPage() {
                           {allocation.payments.length > 0 && (
                             <ul className="mt-1 space-y-0.5">
                               {allocation.payments.map((payment) => (
-                                <li key={payment.id} className="text-xs text-gray-400">
+                                <li key={payment.id} className="text-xs text-gray-500">
                                   {rupees(payment.amount)} on{" "}
                                   {payment.paidAt.toLocaleDateString("en-IN")} ·{" "}
                                   {payment.reference ? (
                                     <span className="font-mono">{payment.reference}</span>
                                   ) : (
-                                    <span className="text-amber-600 dark:text-amber-400">
+                                    <span className="text-amber-600">
                                       no reference — nothing to match this against
                                     </span>
                                   )}
@@ -315,7 +316,9 @@ export default async function AdminAllocationsPage() {
           </section>
         )}
 
-        <p className="text-xs text-gray-400">
+        <ContractAllocationsSection />
+
+        <p className="text-xs text-gray-500">
           Every commitment is also written to the money log as a separate entry, on the commitment
           plane rather than the cash one — see{" "}
           <Link href="/admin/finance" className="underline">

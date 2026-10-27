@@ -33,6 +33,34 @@ export interface PanelSummary {
   state: "UNFUNDED" | "PARTIALLY_FUNDED" | "FUNDED" | "OVERFUNDED";
 }
 
+export interface PanelScheduleRow {
+  milestoneId: string;
+  title: string;
+  dueDate: string | null;
+  committed: string;
+  pending: string;
+  reconciled: string;
+  allocated: string;
+  outstanding: string;
+  fundingStatus: "UNFUNDED" | "PARTIALLY_FUNDED" | "FUNDED";
+  overdue: boolean;
+}
+
+export interface PanelAllocation {
+  id: string;
+  paymentId: string;
+  contractMilestoneId: string;
+  amount: number;
+  status: string;
+  rule: string;
+}
+
+const MILESTONE_FUNDING_BADGE: Record<PanelScheduleRow["fundingStatus"], { cls: string; label: string }> = {
+  UNFUNDED: { cls: "bg-gray-100 text-gray-600", label: "Unfunded" },
+  PARTIALLY_FUNDED: { cls: "bg-amber-100 text-amber-700", label: "Partially funded" },
+  FUNDED: { cls: "bg-emerald-100 text-emerald-700", label: "Funded" },
+};
+
 export interface PanelViewer {
   party: "DONOR" | "NGO" | "ADMIN";
   canAccept: boolean;
@@ -71,6 +99,9 @@ export default function ContractPaymentsPanel({
   milestones,
   payments,
   summary,
+  schedule = [],
+  allocations = [],
+  contractFundedAt = null,
 }: {
   contractId: string;
   contractStatus: string;
@@ -78,7 +109,10 @@ export default function ContractPaymentsPanel({
   viewer: PanelViewer;
   milestones: Array<{ id: string; title: string; allocatedAmount: number }>;
   payments: PanelPayment[];
-  summary: PanelSummary;
+  summary: PanelSummary & { unallocated?: string };
+  schedule?: PanelScheduleRow[];
+  allocations?: PanelAllocation[];
+  contractFundedAt?: string | null;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -99,6 +133,12 @@ export default function ContractPaymentsPanel({
   const accepted = !!ngoAcceptedAt;
   const badge = STATE_BADGE[summary.state];
   const milestoneTitle = (id: string | null) => milestones.find((m) => m.id === id)?.title ?? "Whole contract";
+  /** Where a payment's money went: its allocation lines, else its own milestone. */
+  const paymentSplit = (p: PanelPayment) => {
+    const lines = allocations.filter((a) => a.paymentId === p.id && a.status !== "REJECTED");
+    if (lines.length === 0) return milestoneTitle(p.contractMilestoneId);
+    return lines.map((l) => `${milestoneTitle(l.contractMilestoneId)} ${inr(l.amount)}${l.status === "APPROVED" ? " ✓" : ""}`).join(" · ");
+  };
 
   async function call(url: string, method: string, body: unknown, done: () => void) {
     setBusy(true);
@@ -156,15 +196,22 @@ export default function ContractPaymentsPanel({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-5">
+    <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold text-gray-900 dark:text-white">Funding & Reconciliation</h2>
+          <h2 className="text-base font-bold text-gray-900">Funding & Reconciliation</h2>
           <p className="text-xs text-gray-500 mt-0.5">
             The donor records a payment; it counts as funded only once the NGO confirms it arrived.
           </p>
         </div>
-        <span className={`self-start px-3 py-1 rounded-full text-xs font-extrabold ${badge.cls}`}>{badge.label}</span>
+        <div className="self-start text-right">
+          <span className={`px-3 py-1 rounded-full text-xs font-extrabold ${badge.cls}`}>{badge.label}</span>
+          {contractFundedAt && (
+            <p className="text-[11px] text-emerald-700 mt-1 font-semibold">
+              Contract FUNDED on {new Date(contractFundedAt).toLocaleDateString("en-IN")}
+            </p>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -173,15 +220,67 @@ export default function ContractPaymentsPanel({
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat label="Committed" value={inr(summary.committed)} />
-        <Stat label="Reconciled" value={inr(summary.reconciled)} tone="text-emerald-600" />
-        <Stat label="Awaiting confirmation" value={inr(summary.pending)} tone="text-amber-600" />
+        <Stat label="Reconciled" value={inr(summary.reconciled)} tone="text-emerald-700" />
+        <Stat label="Awaiting confirmation" value={inr(summary.pending)} tone="text-amber-700" />
         <Stat label="Disputed" value={inr(summary.disputed)} tone="text-red-600" />
       </div>
+      <p className="text-[11px] text-gray-500 -mt-2">
+        Committed is the contract&apos;s promise; only reconciled money is cash. Unreconciled money never counts toward a milestone.
+        {summary.unallocated && Number(summary.unallocated) > 0 && (
+          <> Un-allocated to any milestone: <strong>{inr(summary.unallocated)}</strong>.</>
+        )}
+      </p>
+
+      {/* Receivable schedule: one expected instalment per milestone (ADM-008). */}
+      {schedule.length > 0 && (
+        <div className="overflow-x-auto">
+          <h3 className="text-xs font-extrabold uppercase tracking-wide text-gray-600 mb-2">Receivable schedule by milestone</h3>
+          <table className="w-full text-left text-xs">
+            <thead className="bg-gray-50 text-[11px] font-bold uppercase tracking-wider text-gray-600">
+              <tr>
+                <th className="px-3 py-2">Milestone</th>
+                <th className="px-3 py-2">Due</th>
+                <th className="px-3 py-2 text-right">Committed</th>
+                <th className="px-3 py-2 text-right">Pending</th>
+                <th className="px-3 py-2 text-right">Reconciled</th>
+                <th className="px-3 py-2 text-right">Allocated (approved)</th>
+                <th className="px-3 py-2 text-right">Outstanding</th>
+                <th className="px-3 py-2">Funding</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {schedule.map((r) => {
+                const fb = MILESTONE_FUNDING_BADGE[r.fundingStatus];
+                return (
+                  <tr key={r.milestoneId}>
+                    <td className="px-3 py-2 font-semibold text-gray-900">{r.title}</td>
+                    <td className={`px-3 py-2 ${r.overdue ? "text-red-600 font-bold" : "text-gray-500"}`}>
+                      {r.dueDate ? new Date(r.dueDate).toLocaleDateString("en-IN") : "—"}
+                      {r.overdue && " · overdue"}
+                    </td>
+                    <td className="px-3 py-2 text-right">{inr(r.committed)}</td>
+                    <td className="px-3 py-2 text-right text-amber-700">{inr(r.pending)}</td>
+                    <td className="px-3 py-2 text-right text-emerald-700 font-bold">{inr(r.reconciled)}</td>
+                    <td className="px-3 py-2 text-right">{inr(r.allocated)}</td>
+                    <td className="px-3 py-2 text-right">{inr(r.outstanding)}</td>
+                    <td className="px-3 py-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${fb.cls}`}>{fb.label}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="text-[11px] text-gray-600 mt-1">
+            A payment not tied to a milestone fills milestones in order, each up to its committed amount. &ldquo;Allocated&rdquo; is reconciled money an admin has approved onto the milestone.
+          </p>
+        </div>
+      )}
 
       {/* Acceptance gate */}
       {isActive && !accepted && (
-        <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <p className="text-sm text-amber-800 dark:text-amber-300">
+        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-sm text-amber-800">
             {viewer.party === "NGO"
               ? "This contract is active. Accept the funded project to start receiving payments."
               : "Waiting for the NGO to accept the funded project before payments can be recorded."}
@@ -201,7 +300,7 @@ export default function ContractPaymentsPanel({
         </div>
       )}
       {accepted && (
-        <p className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+        <p className="text-xs text-emerald-700 font-semibold">
           ✓ Accepted by the NGO on {new Date(ngoAcceptedAt!).toLocaleDateString("en-IN")}
         </p>
       )}
@@ -217,26 +316,26 @@ export default function ContractPaymentsPanel({
               + Record payment
             </button>
           ) : (
-            <form onSubmit={record} className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40">
-              <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+            <form onSubmit={record} className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-gray-50">
+              <label className="text-xs font-bold text-gray-700">
                 Payment type
                 <select
                   value={form.mode}
                   onChange={(e) => setForm({ ...form, mode: e.target.value as "SANDBOX" | "MANUAL" })}
-                  className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
+                  className="mt-1 w-full text-sm rounded-lg border border-gray-200 bg-white px-3 py-2"
                 >
                   <option value="SANDBOX">Sandbox (simulated, no real money)</option>
                   <option value="MANUAL">Manual bank transfer (NEFT/RTGS/cheque)</option>
                 </select>
               </label>
-              <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+              <label className="text-xs font-bold text-gray-700">
                 Milestone
                 <select
                   value={form.contractMilestoneId}
                   onChange={(e) => setForm({ ...form, contractMilestoneId: e.target.value })}
-                  className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
+                  className="mt-1 w-full text-sm rounded-lg border border-gray-200 bg-white px-3 py-2"
                 >
-                  <option value="">Whole contract (not milestone-specific)</option>
+                  <option value="">Auto — fill milestones in order</option>
                   {milestones.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title} — {inr(m.allocatedAmount)}
@@ -244,7 +343,7 @@ export default function ContractPaymentsPanel({
                   ))}
                 </select>
               </label>
-              <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+              <label className="text-xs font-bold text-gray-700">
                 Amount (₹)
                 <input
                   type="number"
@@ -253,10 +352,10 @@ export default function ContractPaymentsPanel({
                   required
                   value={form.amount}
                   onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                  className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
+                  className="mt-1 w-full text-sm rounded-lg border border-gray-200 bg-white px-3 py-2"
                 />
               </label>
-              <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+              <label className="text-xs font-bold text-gray-700">
                 Paid on
                 <input
                   type="date"
@@ -264,26 +363,27 @@ export default function ContractPaymentsPanel({
                   value={form.paidAt}
                   max={new Date().toISOString().slice(0, 10)}
                   onChange={(e) => setForm({ ...form, paidAt: e.target.value })}
-                  className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
+                  className="mt-1 w-full text-sm rounded-lg border border-gray-200 bg-white px-3 py-2"
                 />
               </label>
-              {form.mode === "MANUAL" && (
-                <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                  Bank reference (UTR / cheque no.)
+              {(
+                <label className="text-xs font-bold text-gray-700">
+                  {form.mode === "MANUAL" ? "Bank reference (UTR / cheque no.)" : "UTR (optional — kept as the reference)"}
                   <input
-                    required
+                    required={form.mode === "MANUAL"}
+                    placeholder="e.g. HDFCN52026102700001"
                     value={form.reference}
                     onChange={(e) => setForm({ ...form, reference: e.target.value })}
-                    className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
+                    className="mt-1 w-full text-sm rounded-lg border border-gray-200 bg-white px-3 py-2"
                   />
                 </label>
               )}
-              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 sm:col-span-2">
+              <label className="text-xs font-bold text-gray-700 sm:col-span-2">
                 Note (optional)
                 <input
                   value={form.note}
                   onChange={(e) => setForm({ ...form, note: e.target.value })}
-                  className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
+                  className="mt-1 w-full text-sm rounded-lg border border-gray-200 bg-white px-3 py-2"
                 />
               </label>
               <div className="sm:col-span-2 flex justify-end gap-2">
@@ -305,11 +405,11 @@ export default function ContractPaymentsPanel({
 
       {/* Payments ledger */}
       {payments.length === 0 ? (
-        <p className="text-xs text-gray-400 italic">No payments recorded yet.</p>
+        <p className="text-xs text-gray-600 italic">No payments recorded yet.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-gray-50 dark:bg-gray-800/50 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+            <thead className="bg-gray-50 text-[11px] font-bold uppercase tracking-wider text-gray-600">
               <tr>
                 <th className="px-3 py-2">Paid on</th>
                 <th className="px-3 py-2">Amount</th>
@@ -319,25 +419,29 @@ export default function ContractPaymentsPanel({
                 <th className="px-3 py-2 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-gray-100">
               {payments.map((p) => {
                 const pb = PAYMENT_BADGE[p.status];
                 return (
                   <tr key={p.id}>
                     <td className="px-3 py-2 text-gray-500">{new Date(p.paidAt).toLocaleDateString("en-IN")}</td>
-                    <td className="px-3 py-2 font-bold text-gray-900 dark:text-white">{inr(p.amount)}</td>
+                    <td className="px-3 py-2 font-bold text-gray-900">{inr(p.amount)}</td>
                     <td className="px-3 py-2">
                       <span className={`mr-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${p.mode === "SANDBOX" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
                         {p.mode}
                       </span>
                       <span className="font-mono text-gray-500">{p.reference}</span>
                     </td>
-                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{milestoneTitle(p.contractMilestoneId)}</td>
+                    <td className="px-3 py-2 text-gray-600">{paymentSplit(p)}</td>
                     <td className="px-3 py-2">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${pb.cls}`}>{pb.label}</span>
                       {p.status === "RECONCILED" && p.reconciledVia && (
                         <p className="text-[11px] text-emerald-700 mt-1">
-                          {p.reconciledVia === "BANK_STATEMENT" ? "Matched on the NGO's bank statement" : "Confirmed by the NGO"}
+                          {p.reconciledVia === "BANK_STATEMENT"
+                            ? "Matched on the NGO's bank statement"
+                            : p.reconciledVia === "ADMIN_BANK_MATCH"
+                              ? "Matched to a bank credit by an admin"
+                              : "Confirmed by the NGO"}
                         </p>
                       )}
                       {p.disputeNote && <p className="text-[11px] text-red-600 mt-1">{p.disputeNote}</p>}
@@ -373,10 +477,10 @@ export default function ContractPaymentsPanel({
   );
 }
 
-function Stat({ label, value, tone = "text-gray-900 dark:text-white" }: { label: string; value: string; tone?: string }) {
+function Stat({ label, value, tone = "text-gray-900" }: { label: string; value: string; tone?: string }) {
   return (
     <div>
-      <p className="text-xs font-bold text-gray-400">{label}</p>
+      <p className="text-xs font-bold text-gray-600">{label}</p>
       <p className={`text-lg font-extrabold mt-0.5 ${tone}`}>{value}</p>
     </div>
   );

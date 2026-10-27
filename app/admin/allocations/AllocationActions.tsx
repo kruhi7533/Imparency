@@ -52,7 +52,7 @@ export function ProposeAllocationForm({
 
   if (remaining === null) {
     return (
-      <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+      <p className="text-xs font-medium text-amber-600">
         This opportunity has no budget recorded, so nothing can be committed against it yet.
       </p>
     );
@@ -60,27 +60,27 @@ export function ProposeAllocationForm({
 
   return (
     <div className="flex items-end gap-2 flex-wrap">
-      <label className="text-xs font-bold text-gray-500 dark:text-gray-400">
+      <label className="text-xs font-bold text-gray-500">
         Commit
         <div className="mt-1 flex items-center gap-1">
-          <span className="text-sm text-gray-400">₹</span>
+          <span className="text-sm text-gray-500">₹</span>
           <input
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             inputMode="decimal"
-            className="w-36 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm text-gray-900 dark:text-white"
+            className="w-36 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900"
           />
         </div>
       </label>
       <button
         onClick={propose}
         disabled={busy || amount.trim().length === 0}
-        className="px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold disabled:opacity-50"
+        className="px-3 py-1.5 rounded-lg bg-trust-600 hover:bg-trust-700 text-white text-xs font-bold disabled:opacity-50"
       >
         {busy ? "Saving…" : "Propose allocation"}
       </button>
-      <span className="text-xs text-gray-400">₹{remaining} left of the budget</span>
-      {error && <p className="w-full text-xs font-medium text-red-600 dark:text-red-400">{error}</p>}
+      <span className="text-xs text-gray-500">₹{remaining} left of the budget</span>
+      {error && <p className="w-full text-xs font-medium text-red-600">{error}</p>}
     </div>
   );
 }
@@ -129,7 +129,7 @@ export function AllocationDecision({ allocationId }: { allocationId: string }) {
         <button
           onClick={() => setRejecting((v) => !v)}
           disabled={busy}
-          className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300"
+          className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-600"
         >
           Reject
         </button>
@@ -141,7 +141,7 @@ export function AllocationDecision({ allocationId }: { allocationId: string }) {
             onChange={(e) => setNote(e.target.value)}
             rows={2}
             placeholder="Why is this not being funded? (required — the organisation is told this)"
-            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
           />
           <button
             onClick={() => decide("REJECT")}
@@ -152,7 +152,7 @@ export function AllocationDecision({ allocationId }: { allocationId: string }) {
           </button>
         </div>
       )}
-      {error && <p className="text-xs font-medium text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-xs font-medium text-red-600">{error}</p>}
     </div>
   );
 }
@@ -209,7 +209,7 @@ export function RecordPaymentForm({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="text-xs font-bold text-gray-600 dark:text-gray-300 underline underline-offset-2"
+        className="text-xs font-bold text-gray-600 underline underline-offset-2"
       >
         Confirm money received
       </button>
@@ -219,35 +219,35 @@ export function RecordPaymentForm({
   return (
     <div className="mt-3 space-y-2">
       <div className="flex gap-2 flex-wrap">
-        <label className="text-xs font-bold text-gray-500 dark:text-gray-400">
+        <label className="text-xs font-bold text-gray-500">
           Amount
           <input
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             inputMode="decimal"
-            className="mt-1 block w-32 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm"
+            className="mt-1 block w-32 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm"
           />
         </label>
-        <label className="text-xs font-bold text-gray-500 dark:text-gray-400">
+        <label className="text-xs font-bold text-gray-500">
           Date received
           <input
             type="date"
             value={paidAt}
             onChange={(e) => setPaidAt(e.target.value)}
-            className="mt-1 block rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm"
+            className="mt-1 block rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm"
           />
         </label>
-        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 flex-1 min-w-[12rem]">
+        <label className="text-xs font-bold text-gray-500 flex-1 min-w-[12rem]">
           Reference (UTR / cheque no.)
           <input
             value={reference}
             onChange={(e) => setReference(e.target.value)}
             placeholder="What can this be matched against?"
-            className="mt-1 block w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm"
+            className="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm"
           />
         </label>
       </div>
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-gray-500">
         Recorded as your attestation, under your name, and never as proof the platform received the
         money. Without a reference there is nothing to check it against.
       </p>
@@ -261,12 +261,12 @@ export function RecordPaymentForm({
         </button>
         <button
           onClick={() => { setOpen(false); setError(null); }}
-          className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300"
+          className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-600"
         >
           Cancel
         </button>
       </div>
-      {error && <p className="text-xs font-medium text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-xs font-medium text-red-600">{error}</p>}
     </div>
   );
 }

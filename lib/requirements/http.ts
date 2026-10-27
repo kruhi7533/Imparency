@@ -4,11 +4,22 @@ import { RequirementWorkflowError } from "./errors";
 /** Maps workflow errors to their HTTP status; anything else is a logged 500. */
 export function errorResponse(err: unknown, context: string): NextResponse {
   if (err instanceof RequirementWorkflowError) {
-    return NextResponse.json({ error: err.message }, { status: err.status });
+    const retryable = (err as any).retryable;
+    return NextResponse.json(
+      {
+        error: err.message,
+        ...(err.code ? { code: err.code } : {}),
+        ...(typeof retryable === "boolean" ? { retryable } : {}),
+      },
+      { status: err.status }
+    );
   }
   // LLM capacity outage (see llm.service LlmUnavailableError): temporary, retryable.
   if ((err as any)?.name === "LlmUnavailableError") {
-    return NextResponse.json({ error: (err as Error).message, retryable: true }, { status: 503 });
+    return NextResponse.json(
+      { error: (err as Error).message, code: "EXTRACTION_PROVIDER_OVERLOADED", retryable: true },
+      { status: 503 }
+    );
   }
   console.error(`[${context}]`, err);
   return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
