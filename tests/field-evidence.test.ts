@@ -423,6 +423,7 @@ describe("POST /api/field/evidence", () => {
 // ─── Photo access ────────────────────────────────────────────────────────────
 
 describe("GET /api/field/evidence/[id]/photo", () => {
+  beforeEach(() => vi.stubEnv("NEXTAUTH_SECRET", "test-secret-for-signing"));
   const EV = {
     ngoId: "ngo-a",
     projectId: "p1",
@@ -432,7 +433,12 @@ describe("GET /api/field/evidence/[id]/photo", () => {
     containsPeople: true,
     feedback: { consentToSharePhoto: true, withdrawnAt: null },
   };
-  const get = () => PHOTO(new Request("http://test"), { params: { id: "ev-1" } });
+  // Unsigned request -> 302 to a link signed for this viewer; follow it once.
+  const get = async () => {
+    const first = await PHOTO(new Request("http://test/api/field/evidence/ev-1/photo"), { params: { id: "ev-1" } });
+    if (first.status !== 302) return first;
+    return PHOTO(new Request(`http://test${first.headers.get("Location")}`), { params: { id: "ev-1" } });
+  };
 
   beforeEach(() => prismaMock.fieldEvidence.findUnique.mockResolvedValue(EV));
 

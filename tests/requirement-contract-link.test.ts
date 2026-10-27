@@ -6,6 +6,7 @@ const tx = vi.hoisted(() => ({
   requirementRevision: { create: vi.fn() },
   requirementAuditLog: { create: vi.fn() },
   contract: { create: vi.fn() },
+  opportunityResponse: { findFirst: vi.fn() },
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -44,6 +45,7 @@ beforeEach(() => {
   tx.contract.create.mockResolvedValue({ id: "contract-1", milestones: [], auditLogs: [] });
   tx.sponsorRequirement.updateMany.mockResolvedValue({ count: 1 });
   tx.requirementAuditLog.create.mockResolvedValue({});
+  tx.opportunityResponse.findFirst.mockResolvedValue(null);
 });
 
 describe("contract ↔ CSR requirement link", () => {
@@ -84,5 +86,29 @@ describe("contract ↔ CSR requirement link", () => {
     expect(tx.sponsorRequirement.findUnique).not.toHaveBeenCalled();
     expect(tx.sponsorRequirement.updateMany).not.toHaveBeenCalled();
     expect(tx.contract.create.mock.calls[0][0].data.requirementId).toBeNull();
+  });
+
+  // NEG-007: contract creation before proposal selection / approval is refused server-side.
+  it("refuses a contract linked to a requirement still collecting proposals (NGO_RESPONSE)", async () => {
+    tx.sponsorRequirement.findUnique.mockResolvedValue(selected({ status: "NGO_RESPONSE", selectedProjectId: null, selectedNgoId: null }));
+    await expect(createContract(params())).rejects.toThrow(/selected NGO project/);
+    expect(tx.contract.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses a contract linked to a requirement that is only shortlisted (no admin-approved selection)", async () => {
+    tx.sponsorRequirement.findUnique.mockResolvedValue(selected({ status: "SHORTLISTED", selectedProjectId: null, selectedNgoId: null }));
+    await expect(createContract(params())).rejects.toThrow(/selected NGO project/);
+    expect(tx.contract.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses an 'independent' contract that would bypass an open CSR selection for the same project", async () => {
+    tx.opportunityResponse.findFirst.mockResolvedValue({ requirementId: "req-1", requirement: { status: "NGO_RESPONSE" } });
+    await expect(createContract(params({ requirementId: null }))).rejects.toThrow(/under consideration/);
+    expect(tx.opportunityResponse.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ projectId: "proj-1", requirement: expect.objectContaining({ sponsorId: "donor-1" }) }),
+      })
+    );
+    expect(tx.contract.create).not.toHaveBeenCalled();
   });
 });

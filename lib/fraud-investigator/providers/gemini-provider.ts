@@ -3,6 +3,7 @@ import { MODEL } from "../config";
 import { SYSTEM_INSTRUCTION } from "../prompts";
 import { DECLARATIONS } from "../declarations";
 import { withModelRetry } from "../retry";
+import { callAi } from "@/lib/ai/telemetry";
 import type { ModelProvider, ProviderStepResult, ProviderToolCall } from "./types";
 
 /** The original implementation, unchanged in behaviour — just moved behind the ModelProvider seam. */
@@ -18,7 +19,7 @@ export function createGeminiProvider(apiKey: string): ModelProvider {
 
     async step(history: any[]): Promise<ProviderStepResult> {
       const response = await withModelRetry(() =>
-        ai.models.generateContent({
+        callAi({ site: "fraud-investigator", model: MODEL, promptVersion: "v1" }, () => ai.models.generateContent({
           model: MODEL,
           contents: history,
           config: {
@@ -27,7 +28,7 @@ export function createGeminiProvider(apiKey: string): ModelProvider {
             tools: [{ functionDeclarations: DECLARATIONS as any }],
             toolConfig: { functionCallingConfig: { mode: "AUTO" as any } },
           },
-        })
+        }))
       );
 
       const usage = response.usageMetadata;

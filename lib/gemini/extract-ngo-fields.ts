@@ -1,4 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { z } from "zod";
+import { claudeStructured, fileBlock, isClaudeConfigured } from "@/lib/ai/claude";
+import { callAi, runRules } from "@/lib/ai/telemetry";
 
 /**
  * Requirements Analyst agent — field-level extraction from NGO registration
@@ -104,53 +107,9 @@ export interface ExtractionFormData {
   registrationNumber: string;
 }
 
-function emptyFields(note: string): ExtractedFieldResult[] {
-  return EXTRACTION_FIELD_KEYS.map((fieldKey) => ({
-    fieldKey,
-    value: null,
-    confidence: 0,
-    sourceDocumentIndex: null,
-    note,
-  }));
-}
-
-/**
- * Reads the NGO's uploaded documents and reports, per field, what it found and
- * how confident it is. Never throws for content reasons — only for transport
- * failures, which the runner catches and stores as FAILED.
- */
-export async function extractNgoFields(
-  form: ExtractionFormData,
-  documents: ExtractionDocument[]
-): Promise<FieldExtractionResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  // Mock fallback (repo convention). Deliberately returns NULL values at zero
-  // confidence rather than echoing the form data back: a mock that invents
-  // plausible values would let every field pass the threshold and silently
-  // auto-validate compliance flags with no evidence behind them.
-  if (!apiKey) {
-    console.warn(
-      "GEMINI_API_KEY is not defined. Falling back to Mock NGO field extraction (all fields land in NEEDS_REVIEW)."
-    );
-    return {
-      documents: documents.map((_, i) => ({
-        documentIndex: i,
-        docType: "UNKNOWN" as ExtractionDocType,
-        docTypeConfidence: 0,
-        readable: false,
-        note: "Mock extraction — no GEMINI_API_KEY configured.",
-        orgNameOnDocument: null,
-      })),
-      fields: emptyFields("Mock extraction — no value read. Manual entry required."),
-      summary:
-        "Mock extraction (no GEMINI_API_KEY). No fields were read from the documents; every field requires manual review.",
-    };
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
-
-  const prompt = `You are a document analyst for an Indian charitable donation platform. An NGO has uploaded supporting documents during registration. The uploads are UNLABELLED — you must classify each one by its content.
+function buildPrompt(form: ExtractionFormData, documentCount: number): string {
+  const documents = { length: documentCount };
+  return `You are a document analyst for an Indian charitable donation platform. An NGO has uploaded supporting documents during registration. The uploads are UNLABELLED — you must classify each one by its content.
 
 WHAT THE NGO TYPED ON THE REGISTRATION FORM (for cross-checking only — do NOT copy these values into your answer):
 - Organisation name: "${form.orgName}"
@@ -181,6 +140,79 @@ RULES — these matter more than completeness:
 Finish with a one-sentence plain-text summary for the reviewing admin.
 
 Return ONLY valid JSON matching the response schema. No markdown, no preamble.`;
+}
+
+const ClaudeExtractionSchema = z.object({
+  documents: z.array(
+    z.object({
+      documentIndex: z.number().int(),
+      docType: z.enum(EXTRACTION_DOC_TYPES as [ExtractionDocType, ...ExtractionDocType[]]),
+      docTypeConfidence: z.number(),
+      readable: z.boolean(),
+      note: z.string().nullable(),
+      orgNameOnDocument: z.string().nullable(),
+    })
+  ),
+  fields: z.array(
+    z.object({
+      fieldKey: z.enum(EXTRACTION_FIELD_KEYS as [string, ...string[]]),
+      value: z.string().nullable(),
+      confidence: z.number(),
+      sourceDocumentIndex: z.number().int().nullable(),
+      note: z.string().nullable(),
+    })
+  ),
+  summary: z.string(),
+});
+
+async function extractWithClaude(
+  form: ExtractionFormData,
+  documents: ExtractionDocument[]
+): Promise<FieldExtractionResult> {
+  const content: any[] = [];
+  documents.forEach((doc, i) => {
+    content.push({ type: "text", text: `--- DOCUMENT ${i} ---` });
+    content.push(fileBlock(doc.buffer, doc.mimeType));
+  });
+  content.push({ type: "text", text: buildPrompt(form, documents.length) });
+  const parsed = await claudeStructured({ schema: ClaudeExtractionSchema, content, effort: "medium", site: "extract-ngo-fields" });
+  return normaliseResult(parsed, documents.length);
+}
+
+/**
+ * Reads the NGO's uploaded documents and reports, per field, what it found and
+ * how confident it is. Never throws for content reasons — only for transport
+ * failures, which the runner catches and stores as FAILED.
+ */
+export async function extractNgoFields(
+  form: ExtractionFormData,
+  documents: ExtractionDocument[]
+): Promise<FieldExtractionResult> {
+  // Provider order: Claude (when ANTHROPIC_API_KEY is set) → Gemini → rules.
+  let claudeFailed = false;
+  if (isClaudeConfigured()) {
+    try {
+      return await extractWithClaude(form, documents);
+    } catch (err: any) {
+      claudeFailed = true;
+      console.error("Claude NGO field extraction failed — trying the next provider:", err?.message);
+    }
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  // No model configured: read the documents with deterministic rules instead
+  // (lib/ngo-rule-extraction.ts). Like the model path it reports only what is
+  // printed in a document — never the form's values — so a field it cannot
+  // find stays null at zero confidence and lands in NEEDS_REVIEW.
+  if (!apiKey) {
+    const { extractNgoFieldsByRules } = await import("@/lib/ngo-rule-extraction");
+    return runRules("extract-ngo-fields", () => extractNgoFieldsByRules(documents), claudeFailed ? "anthropic" : null);
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = buildPrompt(form, documents.length);
 
   const contents: any[] = [prompt];
   documents.forEach((doc, i) => {
@@ -194,7 +226,7 @@ Return ONLY valid JSON matching the response schema. No markdown, no preamble.`;
   });
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callAi({ site: "extract-ngo-fields", model: "gemini-2.5-flash-lite", promptVersion: "v1" }, () => ai.models.generateContent({
       model: "gemini-2.5-flash-lite",
       contents,
       config: {
@@ -240,7 +272,7 @@ Return ONLY valid JSON matching the response schema. No markdown, no preamble.`;
           required: ["documents", "fields", "summary"],
         },
       },
-    });
+    }));
 
     const text = response.text;
     if (!text) {
@@ -250,8 +282,12 @@ Return ONLY valid JSON matching the response schema. No markdown, no preamble.`;
     const parsed = JSON.parse(text);
     return normaliseResult(parsed, documents.length);
   } catch (err: any) {
-    console.error("Gemini NGO field extraction API error:", err);
-    throw new Error(`Gemini NGO field extraction failed: ${err.message}`);
+    // A model outage must not leave the NGO unanalysed: fall back to the same
+    // rule-based read the keyless path uses, and say so in the summary.
+    console.error("Gemini NGO field extraction API error — falling back to rules:", err?.message);
+    const { extractNgoFieldsByRules } = await import("@/lib/ngo-rule-extraction");
+    const result = await runRules("extract-ngo-fields", () => extractNgoFieldsByRules(documents), "gemini");
+    return { ...result, summary: `AI extraction unavailable (${err?.message ?? "error"}). ${result.summary}` };
   }
 }
 

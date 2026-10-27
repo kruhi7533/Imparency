@@ -249,4 +249,19 @@ export const SEED_METRICS: MetricDefinitionInput[] = [
     requiredEvidence: ["MILESTONE_PROOF"],
     aggregatable: true,
   },
+  {
+    // A rate, measured at baseline and again at endline. Never summed
+    // (aggregatable: false); the report shows the change in percentage points,
+    // computed from verified figures only (lib/outcome-change.ts).
+    code: "IB-LITERACY-PCT-001",
+    name: "Learners reading at grade level",
+    unit: "PERCENTAGE",
+    definition:
+      "Share of assessed learners in the project cohort who read a grade-appropriate passage with comprehension, from one assessment round. Report one figure per round (baseline, endline). Does not count learners who were not assessed, and does not count a rate from a different cohort or assessment tool.",
+    status: "ACTIVE",
+    sdgGoals: ["SDG4"],
+    irisCode: null,
+    requiredEvidence: ["FIELD_PHOTO"],
+    aggregatable: false,
+  },
 ];

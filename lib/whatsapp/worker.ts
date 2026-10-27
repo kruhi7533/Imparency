@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { v2 as cloudinary } from 'cloudinary';
+import { callAi } from "@/lib/ai/telemetry";
 
 const prisma = new PrismaClient();
 
@@ -75,13 +76,11 @@ async function fetchWithRetryAndTimeout(prompt: string, systemPrompt: string): P
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Gemini API timeout")), TIMEOUT_MS)
+      // callAi applies the TIMEOUT_MS budget, fault injection and telemetry.
+      const result = await callAi(
+        { site: "whatsapp-proof-enrichment", model: "gemini-3.6-flash", promptVersion: "v1", timeoutMs: TIMEOUT_MS },
+        () => model.generateContent(prompt)
       );
-
-      const generatePromise = model.generateContent(prompt);
-
-      const result = await Promise.race([generatePromise, timeoutPromise]);
       const text = result.response.text();
       return text;
     } catch (error) {

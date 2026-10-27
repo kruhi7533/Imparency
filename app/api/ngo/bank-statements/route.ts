@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifySessionRole } from "@/lib/auth-guards";
+import { requireNgoMembership } from "@/lib/tenant-scope";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { BankStatementError, importBankStatement, loadReconciliationView, MAX_STATEMENT_BYTES } from "@/lib/bank-statement";
 
@@ -9,6 +10,9 @@ export const runtime = "nodejs";
 export async function GET() {
   const { authorized, response, session } = await verifySessionRole("NGO");
   if (!authorized) return response;
+  // Workstream E (NGO-011): bank lines are finance data — OWNER/ADMIN/FINANCE only.
+  const scope = await requireNgoMembership(session, null, "finance");
+  if (!scope.ok) return scope.response;
   const view = await loadReconciliationView(session.user);
   if (!view) return NextResponse.json({ error: "Your account is not linked to an NGO." }, { status: 403 });
   return NextResponse.json(view);

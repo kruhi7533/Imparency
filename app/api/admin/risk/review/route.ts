@@ -6,6 +6,58 @@ import { sendNGOSuspendedEmail, sendNGOReinstatedEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
+const REVIEW_STATUSES = ["OPEN", "CLEARED", "SUSPENDED", "ESCALATED", "REVIEWED"];
+
+/**
+ * Lists risk reviews so they can be found and decided through the API, not only
+ * from the Risk & Compliance screen (acceptance report v2, D1: the tester could
+ * not discover a reviewId anywhere). Filters: ?status=OPEN&ngoId=…; paged with
+ * ?page & ?pageSize (max 100). Findings are returned because this is admin-only.
+ */
+export async function GET(req: NextRequest) {
+  const { authorized, response } = await verifySessionRole("ADMIN");
+  if (!authorized) return response;
+
+  const url = new URL(req.url);
+  const status = url.searchParams.get("status")?.toUpperCase() ?? null;
+  const ngoId = url.searchParams.get("ngoId");
+  if (status && !REVIEW_STATUSES.includes(status)) {
+    return NextResponse.json({ error: `status must be one of ${REVIEW_STATUSES.join(", ")}` }, { status: 400 });
+  }
+  const page = Math.max(1, Number.parseInt(url.searchParams.get("page") ?? "1", 10) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number.parseInt(url.searchParams.get("pageSize") ?? "25", 10) || 25));
+
+  const where = { ...(status ? { status } : {}), ...(ngoId ? { ngoId } : {}) };
+  try {
+    const [total, reviews] = await Promise.all([
+      prisma.riskReview.count({ where }),
+      prisma.riskReview.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          ngoId: true,
+          riskLevel: true,
+          riskScore: true,
+          findings: true,
+          status: true,
+          reviewedBy: true,
+          reviewNote: true,
+          createdAt: true,
+          resolvedAt: true,
+          ngo: { select: { orgName: true, verificationStatus: true } },
+        },
+      }),
+    ]);
+    return NextResponse.json({ reviews, total, page, pageSize });
+  } catch (err) {
+    console.error("Risk review list failed:", err);
+    return NextResponse.json({ error: "Could not load risk reviews." }, { status: 500 });
+  }
+}
+
 // Actions: CLEAR | SUSPEND | ESCALATE
 export async function POST(req: NextRequest) {
   const { authorized, response, session } = await verifySessionRole("ADMIN");
@@ -16,7 +68,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("Risk review action failed:", err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Internal Server Error" },
+      { error: "The risk review action could not be completed. Please retry." },
       { status: 500 }
     );
   }

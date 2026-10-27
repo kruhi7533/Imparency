@@ -45,6 +45,41 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const [draftNotice, setDraftNotice] = useState<{ text: string; generator: string } | null>(null);
+
+  /** AI-005: fills the form with a draft (Claude → Gemini → template). Nothing is submitted. */
+  async function generateDraft() {
+    const hasText = plan.trim() || outcomes.trim() || compliance.trim() || milestones.length > 0;
+    if (hasText && !window.confirm("Replace the plan, outcomes, compliance notes and milestones with a generated draft?")) return;
+    setDrafting(true);
+    setError(null);
+    try {
+      const data = await requirementApi<{
+        draft: {
+          implementationPlan: string;
+          expectedOutcomes: string;
+          complianceNotes: string;
+          proposedDurationMonths: number | null;
+          milestones: Array<{ title: string; durationMonths: number | null }>;
+        };
+        generator: string;
+        notice: string;
+      }>(`/api/opportunities/${brief.id}/draft`, { method: "POST", body: JSON.stringify({ projectId }) });
+      setPlan(data.draft.implementationPlan);
+      setOutcomes(data.draft.expectedOutcomes);
+      setCompliance(data.draft.complianceNotes);
+      if (data.draft.proposedDurationMonths && !duration) setDuration(String(data.draft.proposedDurationMonths));
+      setMilestones(
+        data.draft.milestones.map((m) => ({ title: m.title, amount: "", durationMonths: m.durationMonths ? String(m.durationMonths) : "" }))
+      );
+      setDraftNotice({ text: data.notice, generator: data.generator });
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -172,6 +207,28 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
             </h2>
             {hasProposal && !changesRequested && (
               <p className="text-xs text-gray-500">Saving changes creates V{nextVersion}; the sponsor can still see every earlier version.</p>
+            )}
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={drafting || !projectId}
+                onClick={generateDraft}
+                className="px-4 py-2 rounded-lg border border-emerald-500/40 text-emerald-300 text-xs font-bold hover:bg-emerald-500/10 disabled:opacity-50"
+              >
+                {drafting ? "Drafting…" : "✎ Draft with proposal assistant"}
+              </button>
+              <span className="text-[11px] text-gray-500">Fills the text fields for you to edit. It never proposes a budget and never submits.</span>
+            </div>
+            {draftNotice && (
+              <p
+                className={`text-xs rounded-lg px-3 py-2 border ${
+                  draftNotice.generator === "TEMPLATE"
+                    ? "text-sky-200 bg-sky-500/10 border-sky-500/25"
+                    : "text-emerald-200 bg-emerald-500/10 border-emerald-500/25"
+                }`}
+              >
+                <span className="font-bold">{draftNotice.generator === "TEMPLATE" ? "Template draft" : "AI-assisted draft"}:</span> {draftNotice.text}
+              </p>
             )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label className="md:col-span-3 text-xs text-gray-400">

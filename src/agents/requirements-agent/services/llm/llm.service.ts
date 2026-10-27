@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { RequirementSchema, ExtractedRequirementJSON } from '../../validators/schema';
-import { SYSTEM_PROMPT } from '../../prompts';
+import { SYSTEM_PROMPT, wrapDocument } from '../../prompts';
 import crypto from 'crypto';
 
 export interface LLMExtractionResult {
@@ -39,6 +39,18 @@ export class LlmUnavailableError extends Error {
   }
 }
 
+/**
+ * Thrown when no model provider is configured (no GEMINI_API_KEY). Mapped to
+ * EXTRACTION_PROVIDER_UNAVAILABLE by lib/requirements/extraction-errors.ts —
+ * the honest answer; nothing is fabricated in its place.
+ */
+export class LlmNotConfiguredError extends Error {
+  constructor() {
+    super('GEMINI_API_KEY is not configured, so the CSR document cannot be analysed.');
+    this.name = 'LlmNotConfiguredError';
+  }
+}
+
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 // Phone numbers only where they are unambiguous: an explicit country code, or
 // right after a phone/mobile/tel/contact label. Bare digit runs are left alone
@@ -67,7 +79,7 @@ export function redactContactDetails(text: string): { text: string; tokens: Map<
   return { text: redacted, tokens };
 }
 
-function restoreContactDetails<T>(data: T, tokens: Map<string, string>): T {
+export function restoreContactDetails<T>(data: T, tokens: Map<string, string>): T {
   if (tokens.size === 0) return data;
   const restore = (s: string) => s.replace(/\[(EMAIL|PHONE)_\d+\]/g, (t) => tokens.get(t) ?? t);
   const walk = (v: any): any =>
@@ -119,6 +131,7 @@ const RESPONSE_SCHEMA = {
     contactPhone: field(STRING),
     specialConstraints: field(STRING),
     summary: field(STRING),
+    fcraRequired: field({ type: Type.BOOLEAN }),
   },
   required: [
     'sector', 'state', 'district', 'budgetMin', 'budgetMax', 'currency',
@@ -147,10 +160,7 @@ export class LlmService {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error(
-        'GEMINI_API_KEY is not configured, so the CSR document cannot be analysed. ' +
-        'Set GEMINI_API_KEY in the environment (or MOCK_AI=true for local development).'
-      );
+      throw new LlmNotConfiguredError();
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -169,7 +179,7 @@ export class LlmService {
           console.log(`Sending text to Gemini ${model} (Attempt ${attempt}/${maxRetries})...`);
           const response = await ai.models.generateContent({
             model,
-            contents: [llmText],
+            contents: [wrapDocument(llmText)],
             config: {
               systemInstruction: SYSTEM_PROMPT,
               responseMimeType: 'application/json',

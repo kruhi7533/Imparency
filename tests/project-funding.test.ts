@@ -7,7 +7,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  */
 
 const db = vi.hoisted(() => ({
-  contract: { findMany: vi.fn() },
+  // findUnique/updateMany/$queryRaw: milestone + contract funding recalculation
+  // (lib/contract-funding.ts) runs in the same transaction as a confirmation.
+  contract: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(async () => ({ id: "c-1", projectId: "p-1", totalGrantAmount: "1000000000", fundedAt: null, milestones: [], payments: [], paymentAllocations: [] })),
+    updateMany: vi.fn(),
+  },
+  contractPaymentAllocation: { createMany: vi.fn() },
+  contractMilestone: { update: vi.fn(), updateMany: vi.fn() },
+  $queryRaw: vi.fn(),
   project: { updateMany: vi.fn(), findUnique: vi.fn() },
   contractPayment: { findUnique: vi.fn(), updateMany: vi.fn() },
   contractAuditLog: { create: vi.fn() },

@@ -8,6 +8,10 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("next-auth/next", () => ({ getServerSession: vi.fn() }));
 vi.mock("@/lib/admin-log", () => ({ logAdminAction: vi.fn() }));
 vi.mock("@/lib/reconciliation", () => ({ runReconciliation: vi.fn() }));
+// The UTR bank-statement sweep has its own tests (tests/utr-sweep.test.ts).
+vi.mock("@/lib/utr-sweep", () => ({
+  runUtrSweep: vi.fn(async () => ({ ngosChecked: 0, matched: 0, amountMismatch: 0, queued: 0, autoResolved: 0, contractsRecalculated: 0 })),
+}));
 
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";

@@ -3,7 +3,8 @@ import { Prisma, TeamRole } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { CAN_CONFIRM_PAYMENT } from "@/lib/contract-payments";
 import { recordException } from "@/lib/finance-exceptions";
-import { notifyProjectFunded, stampProjectFundedIfComplete } from "@/lib/project-funding";
+import { notifyProjectFunded } from "@/lib/project-funding";
+import { notifyDonorMilestone, recalcContractFunding } from "@/lib/contract-funding";
 
 /**
  * Bank-statement matching for contract payments.
@@ -344,14 +345,26 @@ export interface RematchSummary {
  * number of times: a matched line is never re-examined, a payment moves only
  * from PENDING_CONFIRMATION (compare-and-swap), and matchedPaymentId is unique.
  */
-export async function rematchNgoStatements(ngoId: string, actorUserId: string, importId?: string): Promise<RematchSummary> {
+export async function rematchNgoStatements(
+  ngoId: string,
+  actorUserId: string,
+  importId?: string,
+  actorRole: "NGO" | "ADMIN" = "NGO",
+): Promise<RematchSummary> {
   const [lines, payments] = await Promise.all([
     prisma.bankStatementLine.findMany({
       where: { ngoId, direction: "CREDIT", status: { in: ["UNMATCHED", "AMBIGUOUS", "AMOUNT_MISMATCH"] } },
       orderBy: [{ valueDate: "asc" }, { createdAt: "asc" }],
     }),
     prisma.contractPayment.findMany({
-      where: { status: "PENDING_CONFIRMATION", mode: "MANUAL", bankLine: null, contract: { ngoId } },
+      // MANUAL payments, and SANDBOX payments the donor gave a real UTR for
+      // (lib/utr.ts) — a generated SANDBOX-… id is never on a bank statement.
+      where: {
+        status: "PENDING_CONFIRMATION",
+        bankLine: null,
+        contract: { ngoId },
+        OR: [{ mode: "MANUAL" }, { utr: { not: null } }],
+      },
       select: { id: true, amount: true, reference: true, paidAt: true, contractId: true, contract: { select: { donorId: true, contractNumber: true, projectId: true } } },
     }),
   ]);
@@ -375,7 +388,7 @@ export async function rematchNgoStatements(ngoId: string, actorUserId: string, i
         if (count === 0) {
           // Decided by someone else since we read it — leave the line for the next pass.
           await tx.bankStatementLine.update({ where: { id: line.id }, data: { status: "UNMATCHED", note: "The matching payment was decided by someone else meanwhile.", candidatePaymentIds: [] } });
-          return { reconciled: false, newlyFunded: false };
+          return { reconciled: false, newlyFunded: false, milestones: [] as Array<{ id: string; title: string }> };
         }
         await tx.bankStatementLine.update({
           where: { id: line.id },
@@ -386,17 +399,20 @@ export async function rematchNgoStatements(ngoId: string, actorUserId: string, i
             contractId: payment.contractId,
             action: "PAYMENT_RECONCILED",
             actorId: actorUserId,
-            actorRole: "NGO",
+            actorRole,
             detail: `Reconciled against the NGO's bank statement: credit of ₹${dec(line.amount).toFixed(2)} on ${line.valueDate.toISOString().slice(0, 10)} (ref ${payment.reference}).`,
             metadata: { paymentId: payment.id, bankLineId: line.id, via: "BANK_STATEMENT" },
           },
         });
         // Same rule as a manual confirmation: the payment that completes the
         // project's funding stamps fundedAt, once (compare-and-swap on null).
-        const newlyFunded = await stampProjectFundedIfComplete(tx, payment.contract.projectId, now);
-        return { reconciled: true, newlyFunded };
+        const funding = await recalcContractFunding(tx, payment.contractId, now);
+        return { reconciled: true, newlyFunded: funding.projectNewlyFunded, milestones: funding.newlyFundedMilestones };
       });
       if (outcome.newlyFunded) await notifyProjectFunded(payment.contract.projectId);
+      if (outcome.milestones.length) {
+        await notifyDonorMilestone({ contractId: payment.contractId, milestones: outcome.milestones, event: "FUNDED" });
+      }
       if (outcome.reconciled) {
         summary.matched.push({ paymentId: payment.id, contractId: payment.contractId, amount: dec(payment.amount).toFixed(2), reference: payment.reference });
         try {
@@ -505,7 +521,7 @@ export async function loadReconciliationView(user: { id: string; role: string })
       include: { matchedPayment: { select: { id: true, contractId: true, contract: { select: { contractNumber: true } } } } },
     }),
     prisma.contractPayment.findMany({
-      where: { status: "PENDING_CONFIRMATION", mode: "MANUAL", contract: { ngoId: actor.ngoId } },
+      where: { status: "PENDING_CONFIRMATION", contract: { ngoId: actor.ngoId }, OR: [{ mode: "MANUAL" }, { utr: { not: null } }] },
       orderBy: { paidAt: "desc" },
       select: { id: true, amount: true, reference: true, paidAt: true, contractId: true, contract: { select: { contractNumber: true } }, contractMilestone: { select: { title: true } } },
     }),

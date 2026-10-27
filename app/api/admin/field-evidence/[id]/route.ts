@@ -3,7 +3,7 @@ import { Role } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { logAdminAction } from "@/lib/admin-log";
-import { checkReview, isReviewDecision, isShareableWithDonor } from "@/lib/field-evidence";
+import { checkReview, evidenceFlags, isReviewDecision, isShareableWithDonor } from "@/lib/field-evidence";
 import { notifyContractDonorsEvidenceApproved } from "@/lib/contract-donor-updates";
 
 /**
@@ -27,18 +27,22 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         taskId: true,
         projectId: true,
         containsPeople: true,
+        duplicateVerdict: true,
+        duplicateOfId: true,
+        locationStatus: true,
         feedback: { select: { consentToSharePhoto: true, withdrawnAt: true } },
         task: { select: { project: { select: { title: true } }, milestone: { select: { title: true } } } },
       },
     });
-    if (!evidence) return NextResponse.json({ error: "Evidence not found" }, { status: 404 });
+    if (!evidence) return NextResponse.json({ error: "Evidence not found", code: "NOT_FOUND" }, { status: 404 });
 
     const body = await request.json().catch(() => ({}));
     if (!isReviewDecision(body.decision)) {
-      return NextResponse.json({ error: "decision must be APPROVE, REQUEST_RESUBMIT or REJECT." }, { status: 400 });
+      return NextResponse.json({ error: "decision must be APPROVE, REQUEST_RESUBMIT or REJECT.", code: "INVALID_DECISION" }, { status: 400 });
     }
-    const check = checkReview(evidence.status, body.decision, body.note);
-    if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
+    const flags = evidenceFlags(evidence);
+    const check = checkReview(evidence.status, body.decision, body.note, flags);
+    if (!check.ok) return NextResponse.json({ error: check.error, code: check.code, flags }, { status: check.status });
     if (check.noop) return NextResponse.json({ ok: true, status: evidence.status, replayed: true });
 
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 1000) || null : null;
@@ -50,12 +54,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       if (count === 0) return false;
       if (body.decision === "APPROVE") {
         await tx.fieldTask.updateMany({ where: { id: evidence.taskId, status: { not: "CANCELLED" } }, data: { status: "COMPLETED" } });
-      } else if (body.decision === "REQUEST_RESUBMIT") {
+      } else {
+        // Returned or rejected: the task still has no accepted evidence, so it
+        // reopens for a new capture (the rework loop). A rejected row stays
+        // rejected and can never be cited; only the task moves.
         await tx.fieldTask.updateMany({ where: { id: evidence.taskId, status: "SUBMITTED" }, data: { status: "OPEN" } });
       }
       return true;
     });
-    if (!moved) return NextResponse.json({ error: "Someone else reviewed this just now. Refresh." }, { status: 409 });
+    if (!moved) return NextResponse.json({ error: "Someone else reviewed this just now. Refresh.", code: "REVIEW_CONFLICT" }, { status: 409 });
 
     await logAdminAction({
       adminId,
@@ -65,7 +72,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       oldValue: { status: evidence.status },
       newValue: { status: check.target },
       note,
-      metadata: { taskId: evidence.taskId, projectId: evidence.projectId },
+      // Flag codes only: an approval over a DUPLICATE_IMAGE / GPS_MISMATCH flag
+      // is a recorded human override of the automatic check.
+      metadata: { taskId: evidence.taskId, projectId: evidence.projectId, flags, overriddenFlags: check.override },
       request,
     });
 
@@ -84,7 +93,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       }
     }
 
-    return NextResponse.json({ ok: true, status: check.target });
+    return NextResponse.json({ ok: true, status: check.target, overriddenFlags: check.override });
   } catch (error) {
     console.error("[api/admin/field-evidence/[id]] PATCH error:", error);
     return NextResponse.json({ error: "Failed to review evidence" }, { status: 500 });

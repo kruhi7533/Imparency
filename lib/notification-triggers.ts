@@ -8,6 +8,7 @@ import {
   sendNewProjectAlertEmail
 } from "@/lib/email";
 import { captureError } from "@/lib/observability";
+import { dispatchDonorNotification } from "@/lib/notification-dispatch";
 
 // Gemini's free-tier quota is 5 requests/minute per model — reproduced live,
 // firing all donors' narrative calls at once blows through that on the very
@@ -123,26 +124,28 @@ export async function triggerMilestoneCompleted(milestoneId: string) {
           }
         });
 
-        // Send push notification to donor
-        await sendPushNotification(
-          donor.id,
-          "Milestone Completed!",
-          `Your contribution helped complete the milestone "${milestone.title}" for campaign "${project.title}".`
-        );
-
-        // Send email to donor
-        if (donor.email) {
-          await sendMilestoneCompletedEmail(
-            donor.email,
-            donor.name,
-            project.title,
-            ngo.orgName,
-            milestone.title,
-            result.narrative,
-            result.sdgTags,
-            result.irisMetrics
-          );
-        }
+        // DON-018: in-app + WhatsApp, falling back to email, per the donor's
+        // channel preferences — every attempt lands in NotificationDeliveryLog.
+        // Keyed per milestone so a re-fired trigger sends nothing twice.
+        await dispatchDonorNotification({
+          userId: donor.id,
+          eventKey: `milestone-completed:${milestone.id}`,
+          topic: "PROJECT_UPDATE",
+          title: "Milestone Completed!",
+          body: `Your contribution helped complete the milestone "${milestone.title}" for campaign "${project.title}".`,
+          projectTitle: project.title,
+          emailSender: (to, name) =>
+            sendMilestoneCompletedEmail(
+              to,
+              name,
+              project.title,
+              ngo.orgName,
+              milestone.title,
+              result.narrative,
+              result.sdgTags,
+              result.irisMetrics
+            ) as Promise<{ success: boolean; error?: string }>,
+        });
     });
 
     const failures = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");

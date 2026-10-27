@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { NgoImpactCockpit } from "@/lib/outcome-cockpit";
 import type { OutcomeSuggestion } from "@/lib/gemini/extract-outcomes";
+import { rollupFigure } from "@/lib/outcome-format";
 
 /**
  * The NGO impact cockpit. Every rule is enforced server-side; this screen only
@@ -515,11 +516,16 @@ export default function ImpactCockpitClient({ cockpit, canEdit, verified }: { co
               once a reviewer approves it and its evidence still supports it — until then donors see it as unverified, never as zero.
             </p>
           </div>
+          <div className="flex flex-wrap gap-2">
+            <a href="/ngo/impact/report" className="px-4 py-2 rounded-xl border border-gray-700 text-gray-200 hover:bg-gray-900 text-sm font-bold">
+              Impact report draft
+            </a>
           {canEdit && verified && !mode && cockpit.projects.length > 0 && cockpit.metrics.length > 0 && (
-            <button type="button" onClick={() => setMode({ editing: null })} className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-sm font-bold">
-              Report an outcome
-            </button>
-          )}
+              <button type="button" onClick={() => setMode({ editing: null })} className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-sm font-bold">
+                Report an outcome
+              </button>
+            )}
+          </div>
         </div>
 
         {!verified && (
@@ -549,7 +555,7 @@ export default function ImpactCockpitClient({ cockpit, canEdit, verified }: { co
                 <div key={r.metricCode} className="border border-gray-800 bg-gray-900/40 rounded-2xl p-4">
                   <p className="text-xs text-gray-400">{r.metricName}</p>
                   <p className="text-2xl font-extrabold text-emerald-300 mt-1">
-                    {r.verifiedCount > 0 ? fmtValue(r.verifiedTotal, r.unit) : "—"}
+                    {rollupFigure(r) ?? "Unverified"}
                   </p>
                   <p className="text-[11px] text-gray-400 mt-1">
                     {r.verifiedCount} verified · {r.inReviewCount} in review · {r.draftCount} draft

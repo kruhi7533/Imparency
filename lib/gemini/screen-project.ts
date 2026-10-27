@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { aiStandInGate, callAi } from "@/lib/ai/telemetry";
 
 export interface ProjectScreeningResult {
   score: number; // 0-100 overall quality/trust score
@@ -38,6 +39,7 @@ export async function screenProject(
 
   if (!apiKey) {
     console.warn("GEMINI_API_KEY is not defined. Falling back to Mock project screening in development.");
+    await aiStandInGate("screen-project"); // AI-009/010: visible in telemetry; fails under fault injection
     const flags: string[] = [];
     if (!project.problemStatement) flags.push("No problem statement provided");
     if (!project.expectedOutcome) flags.push("No expected outcome provided");
@@ -91,7 +93,7 @@ Then give:
 Return ONLY valid JSON matching the required schema. No markdown, no preamble.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callAi({ site: "screen-project", model: "gemini-3.6-flash", promptVersion: "v1" }, () => ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents: [prompt],
       config: {
@@ -107,7 +109,7 @@ Return ONLY valid JSON matching the required schema. No markdown, no preamble.`;
           required: ["score", "recommendation", "reasoning", "flags"],
         },
       },
-    });
+    }));
 
     const text = response.text;
     if (!text) {

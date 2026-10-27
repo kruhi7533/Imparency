@@ -34,7 +34,11 @@ export type RequirementAuditAction =
   | "NGO_RESPONSE_REVISED"
   | "NGO_SELECTED"
   | "CONTRACT_INITIATED"
-  | "REQUIREMENT_WITHDRAWN";
+  | "REQUIREMENT_WITHDRAWN"
+  | "CSR_EXTRACTION_FLAGGED"
+  | "REQUIREMENT_FLAG_CONFIRMED"
+  | "REQUIREMENT_MANUAL_ENTRY_STARTED"
+  | "SHORTLIST_ADMIN_APPROVED";
 
 export interface RequirementAuditEvent {
   requirementId: string;

@@ -43,7 +43,7 @@ export default async function DonorRequirementDetailPage({
     <TeamRoleBanner role={actor.donorRole} />
     <RequirementDetailClient
       requirement={serializeRequirement(requirement, { includeRawText: true })}
-      matchRun={run ? serializeMatchRun(run) : null}
+      matchRun={run ? serializeMatchRun(run, { forDonor: true }) : null}
       responses={responses}
       contract={contract}
       initialTab={searchParams.tab}

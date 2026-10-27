@@ -4,6 +4,7 @@ import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/storage";
 import { validateMilestoneProof } from "@/lib/gemini/validate-proof";
+import { AI_UNAVAILABLE_MESSAGE } from "@/lib/ai/telemetry";
 import { Role } from "@prisma/client";
 import { recalculateNGOHealthScore } from "@/lib/ngo-health";
 import { extractGpsFromImage, classifyProofLocation } from "@/lib/proof-location";
@@ -165,8 +166,14 @@ export async function POST(request: Request) {
     const firstImage = fileBuffers.find((f) => f.mimeType.startsWith("image/"));
     const proofCoordinates = firstImage ? await extractGpsFromImage(firstImage.buffer) : null;
 
-    // Invoke Gemini AI Validation
-    const validationResult = await validateMilestoneProof(
+    // Invoke Gemini AI Validation. AI-010: a model failure (timeout, outage,
+    // injected fault) must not cost the NGO its submission and must not invent
+    // a score. The proof is saved with no AI score and an explicit
+    // "AI unavailable — human review required" marker; review is human anyway.
+    let validationResult: Awaited<ReturnType<typeof validateMilestoneProof>> | null = null;
+    let aiUnavailable = false;
+    try {
+    validationResult = await validateMilestoneProof(
       {
         title: milestone.title,
         description: milestone.description,
@@ -187,6 +194,11 @@ export async function POST(request: Request) {
         : description,
       fileBuffers
     );
+    } catch (aiErr) {
+      console.error("[submit-proof] AI validation unavailable; saving for human review:", (aiErr as Error)?.message);
+      aiUnavailable = true;
+    }
+    const aiUnavailableResult = { aiUnavailable: true, humanReviewRequired: true, message: AI_UNAVAILABLE_MESSAGE };
 
     // Earlier proofs sharing a file with this submission. Queried BEFORE the
     // new row is written, so the submission cannot match itself — the
@@ -212,12 +224,12 @@ export async function POST(request: Request) {
         description,
         mediaUrls,
         documentUrls,
-        aiValidationResult: JSON.stringify(validationResult),
-        aiValidationScore: validationResult.score,
-        theoryOfChangeAlignmentScore: validationResult.tocAlignmentScore,
-        theoryOfChangeReasoning: validationResult.tocReasoning,
-        theoryOfChangeStrengths: validationResult.tocStrengths || [],
-        theoryOfChangeGaps: validationResult.tocGaps || [],
+        aiValidationResult: JSON.stringify(validationResult ?? aiUnavailableResult),
+        aiValidationScore: validationResult?.score ?? null,
+        theoryOfChangeAlignmentScore: validationResult?.tocAlignmentScore,
+        theoryOfChangeReasoning: validationResult?.tocReasoning,
+        theoryOfChangeStrengths: validationResult?.tocStrengths || [],
+        theoryOfChangeGaps: validationResult?.tocGaps || [],
         proofLatitude: proofCoordinates?.latitude ?? null,
         proofLongitude: proofCoordinates?.longitude ?? null,
         gpsSource: proofCoordinates ? "EXIF" : null,
@@ -228,8 +240,9 @@ export async function POST(request: Request) {
 
     // Run Gemini score risk checks (creates RiskReview for admin — no auto-suspension)
     try {
-      const { checkGeminiScore } = require("@/lib/risk-agent");
-      await checkGeminiScore(milestone.id, validationResult.score);
+      const { checkGeminiScore } = await import("@/lib/risk-agent");
+      // No score to judge when the model did not answer — never a fake one.
+      if (validationResult) await checkGeminiScore(milestone.id, validationResult.score);
     } catch (fraudErr) {
       console.error("Failed to run Gemini score risk check:", fraudErr);
     }
@@ -311,7 +324,9 @@ export async function POST(request: Request) {
         // No media here: this event fires BEFORE admin review, and the feed
         // would show donors unreviewed photos. Media travels on the
         // MILESTONE_COMPLETED event that review-proof emits on approval.
-        payload: { proofId: proof.id, aiScore: validationResult.score },
+        // Ids only: this payload reaches the donor feed, and an unreviewed AI
+        // score is internal risk data (NEG-014).
+        payload: { proofId: proof.id },
       });
     } catch (impactErr) {
       console.error("Failed to emit impact event on proof submission:", impactErr);
@@ -324,14 +339,16 @@ export async function POST(request: Request) {
       console.error("Failed to recalculate health score on proof submission:", healthErr);
     }
 
-    console.log(`Milestone proof submitted for ${milestone.id}. AI Score: ${validationResult.score}. Awaiting admin review.`);
+    console.log(`Milestone proof submitted for ${milestone.id}. AI Score: ${validationResult?.score ?? "unavailable"}. Awaiting admin review.`);
 
     return NextResponse.json({
       success: true,
-      score: validationResult.score,
-      reasoning: validationResult.reasoning,
-      flags: validationResult.flags,
-      suggestion: validationResult.suggestion,
+      score: validationResult?.score ?? null,
+      reasoning: validationResult ? validationResult.reasoning : AI_UNAVAILABLE_MESSAGE,
+      flags: validationResult?.flags ?? [],
+      suggestion: validationResult?.suggestion,
+      aiStatus: aiUnavailable ? "AI_UNAVAILABLE" : "OK",
+      humanReviewRequired: true,
       proofId: proof.id,
       status: "PROOF_SUBMITTED",
     });

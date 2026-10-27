@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/prisma", () => ({
-  default: { adminActionLog: { findMany: vi.fn() } },
+  default: {
+    adminActionLog: { findMany: vi.fn() },
+    auditChainHead: { findUnique: vi.fn() },
+    $queryRaw: vi.fn(),
+  },
 }));
 vi.mock("next-auth/next", () => ({ getServerSession: vi.fn() }));
 
@@ -28,6 +32,14 @@ function req(query = "") {
 function log(overrides: Record<string, unknown> = {}) {
   return {
     id: "log_1",
+    seq: 1,
+    prevHash: "0".repeat(64),
+    hash: "a".repeat(64),
+    adminId: "admin_1",
+    metadata: null,
+    ipAddress: null,
+    userAgent: null,
+    schemaVersion: 1,
     createdAt: new Date("2026-09-18T10:30:00.000Z"),
     admin: { name: "Ada Admin", email: "ada@example.org" },
     action: "NGO_APPROVED",
@@ -44,6 +56,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   session.mockResolvedValue({ user: { id: "admin_1", role: "ADMIN" } });
   db.adminActionLog.findMany.mockResolvedValue([log()]);
+  db.auditChainHead.findUnique.mockResolvedValue({ id: 1, seq: 10, hash: "f".repeat(64) });
+  // JSON columns come back as Postgres' own text; none in the default fixture.
+  db.$queryRaw.mockResolvedValue([]);
 });
 
 describe("who may export the audit trail", () => {
@@ -81,8 +96,11 @@ describe("the exported file", () => {
     db.adminActionLog.findMany.mockResolvedValue([log(), log({ id: "log_2", action: "NGO_REJECTED" })]);
     const lines = (await (await GET(req())).text()).split("\n");
 
-    expect(lines[0]).toBe("When,Actor,Action,Entity Type,Entity ID,Note,Old Value,New Value");
-    expect(lines).toHaveLength(3);
+    expect(lines[0]).toBe(
+      "Seq,When,Actor,Actor ID,Action,Entity Type,Entity ID,Note,Old Value,New Value,Metadata,IP Address,User Agent,Schema Version,Record ID,Prev Hash,Hash"
+    );
+    expect(lines).toHaveLength(4); // header + 2 rows + chain-head line
+    expect(lines[3]).toMatch(/^"#chain-head",/);
     expect(lines[1]).toContain('"NGO_APPROVED"');
     expect(lines[2]).toContain('"NGO_REJECTED"');
   });
@@ -109,13 +127,14 @@ describe("the exported file", () => {
     expect(csv).toContain('"Rejected: said ""we are 12A"", comma, and\nnewline"');
   });
 
-  it("serialises JSON change snapshots rather than printing [object Object]", async () => {
+  it("serialises JSON change snapshots as Postgres renders them, rather than printing [object Object]", async () => {
     db.adminActionLog.findMany.mockResolvedValue([
       log({ oldValue: { status: "PENDING" }, newValue: { status: "VERIFIED" } }),
     ]);
+    db.$queryRaw.mockResolvedValue([{ id: "log_1", oldValue: '{"status": "PENDING"}', newValue: '{"status": "VERIFIED"}', metadata: null }]);
     const csv = await (await GET(req())).text();
-    expect(csv).toContain('"{""status"":""PENDING""}"');
-    expect(csv).toContain('"{""status"":""VERIFIED""}"');
+    expect(csv).toContain('"{""status"": ""PENDING""}"');
+    expect(csv).toContain('"{""status"": ""VERIFIED""}"');
   });
 });
 
@@ -123,13 +142,13 @@ describe("filters", () => {
   it("exports everything when no filter is given", async () => {
     await GET(req());
     expect(db.adminActionLog.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: {}, orderBy: { createdAt: "desc" } })
+      expect.objectContaining({ where: { AND: [{}, { seq: { lte: 10 } }] }, orderBy: { seq: "desc" } })
     );
   });
 
   it("applies the same filters the page uses", async () => {
     await GET(req("?action=APPROVED&entityType=NGO&actor=ada&from=2026-09-01&to=2026-09-18"));
-    const { where } = db.adminActionLog.findMany.mock.calls[0][0];
+    const where = db.adminActionLog.findMany.mock.calls[0][0].where.AND[0];
 
     expect(where.action).toEqual({ contains: "APPROVED", mode: "insensitive" });
     expect(where.entityType).toBe("NGO");
@@ -155,12 +174,13 @@ describe("when the log is larger than the cap", () => {
     );
 
     const lines = (await (await GET(req())).text()).split("\n");
-    expect(lines).toHaveLength(1 + 5000 + 1); // header + capped rows + the notice
-    expect(lines[lines.length - 1]).toContain("Truncated at 5000 rows");
+    expect(lines).toHaveLength(1 + 5000 + 2); // header + capped rows + the notice + chain head
+    expect(lines[lines.length - 2]).toContain("Truncated at 5000 rows");
+    expect(lines[lines.length - 1]).toContain('""truncated"":true');
   });
 
   it("adds no notice when the result fits", async () => {
     const csv = await (await GET(req())).text();
-    expect(csv).not.toContain("Truncated");
+    expect(csv).not.toContain("Truncated at");
   });
 });

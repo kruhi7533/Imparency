@@ -159,7 +159,34 @@ export type AdminAction =
   // donor can ever see the photo, so it is logged like any approval.
   | "FIELD_EVIDENCE_REVIEWED"
   // An admin ran a scheduled job by hand from /admin/ops.
-  | "JOB_RUN_MANUALLY";
+  | "JOB_RUN_MANUALLY"
+  // Workstream E — admin sub-roles and break-glass support access (ADM-020).
+  // Every request a SUPPORT admin makes under a grant is logged as
+  // BREAK_GLASS_ACTION with method + path (ids only), on top of whatever the
+  // route itself logs.
+  | "ADMIN_ROLE_CHANGED"
+  | "BREAK_GLASS_GRANTED"
+  | "BREAK_GLASS_REVOKED"
+  | "BREAK_GLASS_ACTION"
+  // Workstream F — audit-trail integrity (ADM-017): a verification is logged
+  // with its verdict and first break; a checkpoint with the head it signed.
+  | "AUDIT_CHAIN_VERIFIED"
+  | "AUDIT_EXPORT_VERIFIED"
+  | "AUDIT_CHECKPOINT_CREATED"
+  // Operator dead-letter queue (ADM-018).
+  | "DEAD_LETTER_REPLAYED"
+  | "DEAD_LETTER_DISMISSED"
+  // AI fault-injection switch (AI-010) — refused in production.
+  | "AI_FAULT_INJECTION_CHANGED"
+  // Workstream G: a stored funder report or an impact story leaving review.
+  // Publishing is what makes it donor- (or public-) visible, so it is logged
+  // like an approval. An admin asking an NGO to re-verify is logged with the
+  // admin's id — the platform's own flag uses NGO_REVERIFICATION_REQUIRED.
+  | "IMPACT_REPORT_PUBLISHED"
+  | "IMPACT_REPORT_RETURNED"
+  | "IMPACT_STORY_PUBLISHED"
+  | "IMPACT_STORY_REJECTED"
+  | "NGO_REVERIFICATION_REQUESTED";
 
 /**
  * Every entity an admin action can be recorded against.
@@ -201,6 +228,12 @@ export const ADMIN_ENTITY_TYPES = [
   "METRIC",
   "OUTCOME_CLAIM",
   "JOB",
+  "ADMIN_USER",
+  "BREAK_GLASS_GRANT",
+  "DEAD_LETTER",
+  "AI",
+  "IMPACT_REPORT",
+  "IMPACT_STORY",
 ] as const;
 
 export type AdminEntityType = (typeof ADMIN_ENTITY_TYPES)[number];

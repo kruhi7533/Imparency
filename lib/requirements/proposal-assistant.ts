@@ -3,6 +3,7 @@ import { normalizeFields, REQUIREMENT_FIELDS, REQUIREMENT_FIELD_KEYS } from "./p
 import { loadRequirementForActor, type Actor } from "./access";
 import { listResponses, type ResponseItem } from "./queries";
 import { RequirementWorkflowError } from "./errors";
+import { callAi } from "@/lib/ai/telemetry";
 
 /**
  * Grounded assistant for a donor reviewing NGO proposals on one requirement.
@@ -143,8 +144,23 @@ const geminiGenerate: Generate = async (prompt) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   const ai = new GoogleGenAI({ apiKey });
-  const response = await ai.models.generateContent({ model: "gemini-3.5-flash-lite", contents: [prompt] });
+  const response = await callAi({ site: "proposal-assistant", model: "gemini-3.5-flash-lite", promptVersion: "v1" }, () => ai.models.generateContent({ model: "gemini-3.5-flash-lite", contents: [prompt] }));
   return response.text?.trim() || null;
+};
+
+/** Provider order: Claude (ANTHROPIC_API_KEY) → Gemini → null (deterministic, labelled fallback). */
+const defaultGenerate: Generate = async (prompt) => {
+  try {
+    const { isClaudeConfigured, claudeStructured } = await import("@/lib/ai/claude");
+    if (isClaudeConfigured()) {
+      const { z } = await import("zod");
+      const out = await claudeStructured({ schema: z.object({ answer: z.string() }), content: [{ type: "text", text: prompt }], effort: "low" });
+      if (out.answer.trim()) return out.answer.trim();
+    }
+  } catch (err) {
+    console.error("[proposal-assistant] Claude failed — trying Gemini:", (err as Error)?.message);
+  }
+  return geminiGenerate(prompt);
 };
 
 /** Owner or admin asks a question about the proposals on their requirement. */
@@ -165,13 +181,22 @@ export async function answerProposalQuestion(args: {
 
   let raw: string | null = null;
   try {
-    raw = await (args.generate ?? geminiGenerate)(buildPrompt(question, sources));
+    raw = await (args.generate ?? defaultGenerate)(buildPrompt(question, sources));
   } catch (err) {
     console.error("[proposal-assistant] model call failed:", err);
   }
   if (!raw) {
     const answer = fallbackAnswer(sources);
-    return { answer, citations: checkGrounding(answer, sources).citations, invalidCitations: [], grounded: true, usedModel: false, sources: meta };
+    return {
+      answer,
+      citations: checkGrounding(answer, sources).citations,
+      invalidCitations: [],
+      grounded: true,
+      usedModel: false,
+      // Structured, so a client can tell "no provider" from a model answer.
+      code: "AI_PROVIDER_UNAVAILABLE" as const,
+      sources: meta,
+    };
   }
   return { ...checkGrounding(raw, sources), usedModel: true, sources: meta };
 }

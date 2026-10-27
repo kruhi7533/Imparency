@@ -15,6 +15,8 @@ import { MatchResults } from "@/components/requirements/MatchResults";
 import { ResponsesPanel } from "@/components/requirements/ResponsesPanel";
 import { AuditTrail } from "@/components/requirements/AuditTrail";
 import { requirementApi } from "@/components/requirements/api";
+import { ExtractionErrorDetail, ExtractionFlagsPanel, ExtractionMethodBanner } from "@/components/requirements/ExtractionNotices";
+import { ShortlistReview } from "@/components/requirements/ShortlistReview";
 
 type Tab = "requirements" | "history" | "matches" | "responses" | "audit";
 type Decision = "approve" | "correction" | "reject" | null;
@@ -104,6 +106,24 @@ export default function AdminRequirementClient({
       action === "approve" ? "Matching analysis approved." : "Matching analysis rejected — invitations are blocked until matching is re-run."
     ).then(() => setRunNote(""));
 
+  const confirmFlag = async (flagId: string, note: string) => {
+    let ok = false;
+    await perform(`flag:${flagId}`, async () => {
+      await post("confirm-flag", { flagId, note });
+      ok = true;
+    }, "Warning confirmed.");
+    return ok;
+  };
+  const approveShortlist = (payload: object) =>
+    perform(
+      "shortlist",
+      () => requirementApi(`/api/requirements/${id}/shortlist`, { method: "PUT", body: JSON.stringify(payload) }),
+      "Shortlist approved. The donor sees the approved candidates in your order and can invite them."
+    );
+  const invitedAny = !!matchRun?.matches.some((m) => m.invitedAt);
+  const canReviewShortlist = status === "SHORTLISTED" && !!matchRun && !invitedAny;
+  const openFlags = requirement.extractionFlags.filter((f) => f.blocking && !f.confirmedAt).length;
+
   const tabs: Tab[] = ["requirements", "history", ...(matchRun ? (["matches"] as Tab[]) : []), ...(responses.length ? (["responses"] as Tab[]) : []), "audit"];
 
   return (
@@ -132,12 +152,24 @@ export default function AdminRequirementClient({
         {notice && <p className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-4 py-2">{notice}</p>}
         {error && <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-4 py-2">{error}</p>}
 
+        {status === "FAILED" && (
+          <div className="border border-red-500/30 bg-red-500/5 rounded-2xl p-5 text-sm">
+            <ExtractionErrorDetail requirement={requirement} />
+          </div>
+        )}
+
         {/* Governance actions — shown only when the state machine allows them */}
         {(status === "PENDING_ADMIN_REVIEW" || CORRECTABLE.includes(status) || RERUNNABLE.includes(status)) && (
           <div className="border border-gray-800 bg-gray-900/40 rounded-2xl p-5 space-y-3">
             <div className="flex flex-wrap gap-2">
               {status === "PENDING_ADMIN_REVIEW" && (
-                <button type="button" onClick={() => setDecision("approve")} className="px-4 py-2 rounded-lg bg-emerald-500 text-gray-950 text-xs font-bold">
+                <button
+                  type="button"
+                  disabled={openFlags > 0}
+                  title={openFlags > 0 ? "Confirm the extraction warnings first" : undefined}
+                  onClick={() => setDecision("approve")}
+                  className="px-4 py-2 rounded-lg bg-emerald-500 text-gray-950 text-xs font-bold disabled:opacity-40"
+                >
                   Approve Requirement
                 </button>
               )}
@@ -242,6 +274,8 @@ export default function AdminRequirementClient({
                   <span className="text-blue-300">Donor corrected</span>, <span className="text-emerald-300">Admin verified</span>.
                   {editable ? " You can correct fields before approving." : ""}
                 </p>
+                <ExtractionMethodBanner requirement={requirement} />
+                <ExtractionFlagsPanel flags={requirement.extractionFlags} canConfirm={editable} onConfirm={confirmFlag} busy={busy} />
                 <FieldsEditor fields={requirement.fields} editable={editable} draft={draft} onChange={(k, v) => setDraft((d) => ({ ...d, [k]: v }))} />
                 {editable && (
                   <div className="flex justify-end">
@@ -274,18 +308,15 @@ export default function AdminRequirementClient({
             {tab === "matches" && matchRun && (
               <div className="space-y-4">
                 <div className="border border-gray-800 bg-gray-900/40 rounded-2xl p-4 space-y-2">
-                  <p className="text-xs font-bold text-gray-200">Review this matching analysis</p>
+                  <p className="text-xs font-bold text-gray-200">Reject this matching analysis</p>
                   <textarea
                     rows={2}
                     value={runNote}
                     onChange={(e) => setRunNote(e.target.value)}
-                    placeholder="Note (required to reject or request re-analysis)"
+                    placeholder="Note (required) — approve candidates with the shortlist review above"
                     className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-100"
                   />
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" disabled={!!busy} onClick={() => reviewRun("approve")} className="px-3 py-1.5 rounded-lg bg-emerald-500 text-gray-950 text-xs font-bold disabled:opacity-50">
-                      Approve analysis
-                    </button>
                     <button type="button" disabled={!!busy} onClick={() => reviewRun("request-reanalysis")} className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-200 text-xs font-bold disabled:opacity-50">
                       Request re-analysis
                     </button>
@@ -294,6 +325,7 @@ export default function AdminRequirementClient({
                     </button>
                   </div>
                 </div>
+                {canReviewShortlist && <ShortlistReview run={matchRun} onSubmit={approveShortlist} busy={busy === "shortlist"} />}
                 <MatchResults
                   run={matchRun}
                   canInvite={status === "SHORTLISTED" || status === "NGO_RESPONSE"}

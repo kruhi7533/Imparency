@@ -19,6 +19,7 @@ const NGO_LINKS: NavLink[] = [
   { href: "/ngo/opportunities", label: "CSR Opportunities", match: "prefix" },
   { href: "/ngo/contracts", label: "Contracts", match: "prefix" },
   { href: "/ngo/impact", label: "Impact", match: "prefix" },
+  { href: "/ngo/reporting", label: "Reporting", match: "prefix" },
   { href: "/ngo/bank-reconciliation", label: "Bank Reconciliation", match: "prefix" },
   { href: "/ngo/field", label: "Field App", match: "exact" },
 ];

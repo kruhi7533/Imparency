@@ -3,6 +3,7 @@ import { verifySessionRole } from "@/lib/auth-guards";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import prisma from "@/lib/prisma";
 import { screenProject } from "@/lib/gemini/screen-project";
+import { AI_UNAVAILABLE_MESSAGE } from "@/lib/ai/telemetry";
 import { logAdminAction } from "@/lib/admin-log";
 
 export const runtime = "nodejs";
@@ -36,7 +37,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    const screening = await screenProject(
+    // AI-010: a model failure is a structured 503, never a 500 and never a
+    // stored score — the reviewer simply decides without the advice.
+    let screening: Awaited<ReturnType<typeof screenProject>>;
+    try {
+    screening = await screenProject(
       {
         title: project.title,
         description: project.description,
@@ -53,6 +58,13 @@ export async function POST(request: Request) {
         deadline: m.deadline,
       }))
     );
+    } catch (aiErr) {
+      console.error("[screen-project] AI screening unavailable:", (aiErr as Error)?.message);
+      return NextResponse.json(
+        { error: AI_UNAVAILABLE_MESSAGE, code: "AI_UNAVAILABLE", humanReviewRequired: true },
+        { status: 503 }
+      );
+    }
 
     await prisma.project.update({
       where: { id: projectId },
@@ -80,7 +92,7 @@ export async function POST(request: Request) {
   } catch (err: any) {
     console.error("Screen-project route error:", err);
     return NextResponse.json(
-      { error: err.message || "Internal Server Error" },
+      { error: "Project screening failed." },
       { status: 500 }
     );
   }

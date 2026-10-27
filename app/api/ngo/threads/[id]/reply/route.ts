@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getNgoMembership } from "@/lib/tenant-scope";
 import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
@@ -21,11 +22,8 @@ export async function POST(
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
-    const profile = await prisma.nGOProfile.findUnique({
-      where: { userId: auth.session.user.id },
-      select: { id: true },
-    });
-    const ngoId = profile?.id ?? auth.session.user.ngoProfileId ?? null;
+    // Live membership (lib/tenant-scope.ts), never the JWT's ngoProfileId.
+    const ngoId = (await getNgoMembership(auth.session.user.id))?.ngoId ?? null;
     if (!ngoId) {
       return NextResponse.json({ error: "NGO profile not found" }, { status: 404 });
     }

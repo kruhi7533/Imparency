@@ -7,7 +7,8 @@ import { authOptions } from "@/lib/auth";
 import SchemaOutOfSync from "@/app/admin/components/SchemaOutOfSync";
 import { netAmount, CASH_ENTRY_TYPES } from "@/lib/ledger";
 import { loadFinanceLabels, shortId, EMPTY_LABELS, type FinanceLabels } from "@/lib/finance-labels";
-import { RunReconciliationButton, ResolveExceptionForm } from "./FinanceActions";
+import { RunReconciliationButton, ResolveExceptionForm, BankLineMatchForm } from "./FinanceActions";
+import { matchCandidates } from "@/lib/utr-sweep";
 // Shared with the Today inbox (SPEC-2.2) so both pages agree on which
 // exceptions are serious. See lib/finance-exception-labels.ts.
 import { EXCEPTION_LABEL, SEVERE_EXCEPTION_TYPES as SEVERE } from "@/lib/finance-exception-labels";
@@ -132,6 +133,18 @@ export default async function AdminFinancePage() {
   } catch {
     labels = EMPTY_LABELS;
   }
+
+  // UTR exception queue: the bank lines behind UNMATCHED_BANK_LINE findings and
+  // the pending contract payments each could be matched to (same NGO only).
+  const bankLineIds = exceptions.filter((e) => e.type === "UNMATCHED_BANK_LINE").map((e) => e.entityId);
+  const bankLines = bankLineIds.length
+    ? await prisma.bankStatementLine.findMany({
+        where: { id: { in: bankLineIds } },
+        select: { id: true, ngoId: true, valueDate: true, reference: true, description: true, amount: true, status: true },
+      })
+    : [];
+  const candidates = await matchCandidates(Array.from(new Set(bankLines.map((l) => l.ngoId))));
+  const bankLineById = new Map(bankLines.map((l) => [l.id, l]));
 
   const net = netAmount(
     totals.flatMap((t) =>
@@ -275,6 +288,27 @@ export default async function AdminFinancePage() {
                       )}
                     </div>
                   </div>
+                  {exception.type === "UNMATCHED_BANK_LINE" && bankLineById.get(exception.entityId) && (() => {
+                    const line = bankLineById.get(exception.entityId)!;
+                    return (
+                      <div className="mt-2 rounded-lg bg-gray-50 dark:bg-gray-800/40 p-3 text-xs text-gray-600 dark:text-gray-300">
+                        <p>
+                          Credit {rupees(line.amount)} on {line.valueDate.toLocaleDateString("en-IN")} · UTR{" "}
+                          <span className="font-mono">{line.reference ?? "—"}</span> · line {line.status.toLowerCase()}
+                        </p>
+                        <p className="text-gray-400 truncate">{line.description}</p>
+                        <BankLineMatchForm
+                          lineId={line.id}
+                          candidates={candidates
+                            .filter((p) => p.contract.ngoId === line.ngoId)
+                            .map((p) => ({
+                              id: p.id,
+                              label: `${p.contract.contractNumber} · ${rupees(p.amount)} · ${p.utr ?? p.reference ?? "no UTR"} · ${p.paidAt.toLocaleDateString("en-IN")}`,
+                            }))}
+                        />
+                      </div>
+                    );
+                  })()}
                   <ResolveExceptionForm exceptionId={exception.id} />
                 </li>
               ))}

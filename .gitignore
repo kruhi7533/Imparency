@@ -62,3 +62,6 @@ private-uploads/
 # Database backups contain personal data (tools/db-backup.mjs)
 backups/
 *.dump
+
+# Tesseract OCR language data downloaded at runtime
+*.traineddata

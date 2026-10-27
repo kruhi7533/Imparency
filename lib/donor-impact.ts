@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { loadDonorProjectOutcomes, rollupByMetric } from "@/lib/outcome-cockpit";
 import { FUNDING_CONTRACT_STATUSES, projectFunding } from "@/lib/project-funding";
+import { loadDonorFeedbackForProjects } from "@/lib/feedback-summary";
 
 /**
  * The donor's impact across everything they fund (roadmap row 12: "impact
@@ -59,7 +60,10 @@ export async function loadDonorImpact(donorId: string) {
     },
   });
 
-  const outcomes = await Promise.all(projects.map((p) => loadDonorProjectOutcomes(p.id)));
+  const [outcomes, feedback] = await Promise.all([
+    Promise.all(projects.map((p) => loadDonorProjectOutcomes(p.id))),
+    loadDonorFeedbackForProjects(projects.map((p) => p.id)),
+  ]);
 
   const rows = projects.map((p, i) => {
     const mine = contracts.filter((c) => c.projectId === p.id);
@@ -84,12 +88,16 @@ export async function loadDonorImpact(donorId: string) {
         verified: p.milestones.filter((m) => m.status === "VERIFIED" || m.status === "COMPLETED").length,
       },
       outcomes: outcomes[i].rows,
+      /** Baseline → endline per metric, from verified figures only; else INSUFFICIENT_DATA. */
+      changes: outcomes[i].changes ?? [],
+      /** Aggregates only, consented only, suppressed below the cohort minimum. */
+      beneficiaryFeedback: feedback[p.id] ?? { status: "INSUFFICIENT_DATA" as const, reason: "No consented beneficiary feedback yet." },
     };
   });
 
   const portfolio = rollupByMetric(
     rows.flatMap((r) =>
-      r.outcomes.map((o) => ({ metricCode: o.metricCode, metricName: o.metricName, unit: o.unit, status: o.status, display: o.display }))
+      r.outcomes.map((o) => ({ metricCode: o.metricCode, metricName: o.metricName, unit: o.unit, status: o.status, display: o.display, aggregatable: o.aggregatable, periodEnd: o.periodEnd }))
     )
   );
 
@@ -101,12 +109,17 @@ export type DonorImpact = Awaited<ReturnType<typeof loadDonorImpact>>;
 const csvCell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
 
 /**
- * One row per outcome claim. A figure that is not verified is exported as the
- * word "unverified" in the value column — a blank or 0 in a spreadsheet would
- * be summed as zero by whoever opens it.
+ * One row per outcome claim, then one row per baseline → endline change.
+ *
+ * A figure that is not verified is exported as the word "unverified" in the
+ * value column — a blank or 0 in a spreadsheet would be summed as zero by
+ * whoever opens it. A change that cannot be computed from verified figures is
+ * exported as the literal "INSUFFICIENT_DATA" with its reason.
  */
 export function impactReportCsv(report: DonorImpact): string {
-  const header = ["project", "organisation", "metric", "value", "unit", "period_start", "period_end", "status"];
+  // row_type/note are appended (not inserted) so existing spreadsheets that
+  // read columns by position keep working.
+  const header = ["project", "organisation", "metric", "value", "unit", "period_start", "period_end", "status", "row_type", "note"];
   const lines = [header.join(",")];
   for (const p of report.projects) {
     for (const o of p.outcomes) {
@@ -121,6 +134,27 @@ export function impactReportCsv(report: DonorImpact): string {
           o.periodStart.slice(0, 10),
           o.periodEnd.slice(0, 10),
           verified ? "verified" : "unverified",
+          "figure",
+          verified ? "" : (o.display as { reason: string }).reason,
+        ]
+          .map(csvCell)
+          .join(",")
+      );
+    }
+    for (const c of p.changes) {
+      const computed = c.status === "COMPUTED";
+      lines.push(
+        [
+          p.title,
+          p.ngoName,
+          c.metricName,
+          computed ? c.change : "INSUFFICIENT_DATA",
+          computed ? c.changeUnit : c.unit,
+          computed ? c.baseline.periodStart.slice(0, 10) : "",
+          computed ? c.endline.periodEnd.slice(0, 10) : "",
+          computed ? "verified" : "INSUFFICIENT_DATA",
+          "baseline_to_endline_change",
+          computed ? `baseline ${c.baseline.value} -> endline ${c.endline.value}` : c.reason,
         ]
           .map(csvCell)
           .join(",")

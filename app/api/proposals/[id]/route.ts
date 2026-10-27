@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getNgoMembership, ngoCan, redactForDonor } from "@/lib/tenant-scope";
+import { checkDonorAction } from "@/lib/donor-team";
+
+/**
+ * Tenant rules (Workstream E, NEG-001/002): an NGO reaches a proposal only
+ * through a live membership of the proposing NGO (never the JWT's
+ * ngoProfileId, which can be stale); a donor only when its ACCOUNT
+ * (lib/donor-team.ts) is the opportunity's funder — an opportunity with no
+ * funder is platform-run and no donor sees its proposals. Donors get the
+ * proposal without reviewer ids / internal fields.
+ */
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -28,18 +39,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     let isAllowed = role === "ADMIN";
 
     if (role === "NGO") {
-      if (!proposal.ngo || proposal.ngo.userId === userId || proposal.ngoId === session.user.ngoProfileId) {
-        isAllowed = true;
-      } else {
-        const isMember = await prisma.nGOTeamMember.findFirst({
-          where: { userId, ngoId: proposal.ngoId },
-        });
-        if (isMember) isAllowed = true;
-      }
+      isAllowed = !!(await getNgoMembership(userId, proposal.ngoId));
     } else if (role === "DONOR") {
-      if (!proposal.opportunity?.funderUserId || proposal.opportunity.funderUserId === userId) {
-        isAllowed = true;
-      }
+      const funder = proposal.opportunity?.funderUserId;
+      isAllowed = !!funder && (await checkDonorAction(userId, funder, "view")).ok;
     }
 
     if (!isAllowed) {
@@ -47,12 +50,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 
     // Map to frontend expected names
-    return NextResponse.json({
+    const body = {
       ...proposal,
       activities: proposal.plan,
       budget: proposal.requestedAmount,
       feedback: proposal.decisionNote,
-    });
+    };
+    return NextResponse.json(role === "DONOR" ? redactForDonor(body, ["userId"]) : body);
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch proposal" }, { status: 500 });
   }
@@ -86,9 +90,14 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     // Handle CSR requesting changes
     if (body.action === "REQUEST_CHANGE" && role === "DONOR") {
-      // Must be the funder who owns the opportunity if specified
-      if (existing.opportunity?.funderUserId && existing.opportunity.funderUserId !== userId) {
-        return NextResponse.json({ error: "Forbidden: You are not the funder for this opportunity" }, { status: 403 });
+      // Must act for the funder account, with the "decide" capability.
+      const funder = existing.opportunity?.funderUserId;
+      const check = funder ? await checkDonorAction(userId, funder, "decide") : { ok: false as const, reason: "not_party" as const };
+      if (!check.ok) {
+        return NextResponse.json(
+          { error: check.reason === "role" ? "Your role cannot request changes." : "Forbidden: You are not the funder for this opportunity" },
+          { status: 403 }
+        );
       }
 
       const updated = await prisma.proposal.update({
@@ -109,18 +118,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     // Handle NGO submitting V2
     if (body.action === "SUBMIT_V2" && role === "NGO") {
       // Verify caller belongs to the proposal's NGO
-      if (existing.ngo) {
-        let isOwnerOrAdmin = existing.ngo.userId === userId || existing.ngoId === session.user.ngoProfileId;
-        if (!isOwnerOrAdmin) {
-          const membership = await prisma.nGOTeamMember.findFirst({
-            where: { userId, ngoId: existing.ngoId, role: { in: ["OWNER", "ADMIN"] } },
-          });
-          if (membership) isOwnerOrAdmin = true;
-        }
-
-        if (!isOwnerOrAdmin) {
-          return NextResponse.json({ error: "Forbidden: You do not have permission to edit this proposal" }, { status: 403 });
-        }
+      const member = await getNgoMembership(userId, existing.ngoId);
+      if (!member || !ngoCan(member.teamRole, "manageProgramme")) {
+        return NextResponse.json({ error: "Forbidden: You do not have permission to edit this proposal" }, { status: 403 });
       }
 
       let history = Array.isArray(existing.history) ? existing.history : [];

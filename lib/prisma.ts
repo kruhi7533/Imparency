@@ -103,10 +103,22 @@ function recordRetry(
   );
 }
 
+// The Neon driver speaks WebSocket, which a plain local Postgres does not, so a
+// localhost DATABASE_URL (local dev, CI, e2e) connects with Prisma's own engine.
+function isLocalDatabase(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    const host = new URL(url).hostname;
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  } catch {
+    return false;
+  }
+}
+
 const prismaClientSingleton = () => {
-  const neonPool = new Pool({ connectionString: process.env.DATABASE_URL });
-  const adapter = new PrismaNeon(neonPool);
-  const client = new PrismaClient({ adapter });
+  const client = isLocalDatabase(process.env.DATABASE_URL)
+    ? new PrismaClient()
+    : new PrismaClient({ adapter: new PrismaNeon(new Pool({ connectionString: process.env.DATABASE_URL })) });
 
   // Retry transient connection failures with exponential backoff so a cold
   // Neon endpoint doesn't surface as a hard 500 to the user.

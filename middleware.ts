@@ -7,6 +7,13 @@ import {
   CORRELATION_HEADER,
 } from "@/lib/correlation";
 import { checkCsrf } from "@/lib/csrf";
+import { getToken } from "next-auth/jwt";
+import { adminApiDecision, adminHome, adminPageAllowed, isReadMethod, isRestrictedAdmin } from "@/lib/admin-roles";
+
+/** Stamped on every request (client values overwritten) so lib/auth-guards.ts can apply admin sub-role policy. */
+const METHOD_HEADER = "x-ib-method";
+const PATH_HEADER = "x-ib-path";
+const SESSION_COOKIES = ["next-auth.session-token", "__Secure-next-auth.session-token"];
 
 /**
  * Two jobs, deliberately separated: give every request a correlation id, and
@@ -77,8 +84,17 @@ const protectedPages = withAuth(
     if ((path.startsWith("/ngo/dashboard") || path.startsWith("/ngo/projects")) && token?.role !== "NGO") {
       return stamp(NextResponse.redirect(new URL("/unauthorized", req.url)));
     }
+    // A field worker's home is the field app (only their own tasks), not the org dashboard.
+    if (path.startsWith("/ngo/dashboard") && token?.ngoTeamRole === "FIELD_STAFF") {
+      return stamp(NextResponse.redirect(new URL("/ngo/field", req.url)));
+    }
     if (path.startsWith("/admin") && token?.role !== "ADMIN") {
       return stamp(NextResponse.redirect(new URL("/unauthorized", req.url)));
+    }
+    // Admin sub-roles (lib/admin-roles.ts): a finance admin opening a page
+    // outside finance is sent to their own home rather than a dead end.
+    if (path.startsWith("/admin") && !adminPageAllowed(token?.adminRole, path)) {
+      return stamp(NextResponse.redirect(new URL(adminHome(token?.adminRole), req.url)));
     }
     // Shared contract screen: /donor/contracts/[id] is reachable by DONOR, NGO
     // and ADMIN (the page decides access per contract; NGOs and admins also
@@ -119,6 +135,8 @@ export default async function middleware(req: NextRequest, event: NextFetchEvent
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set(TRACEPARENT_HEADER, traceparent);
   requestHeaders.set(CORRELATION_HEADER, trace.traceId);
+  requestHeaders.set(METHOD_HEADER, req.method);
+  requestHeaders.set(PATH_HEADER, req.nextUrl.pathname);
 
   const stamp = (res: NextResponse): NextResponse => {
     res.headers.set(TRACEPARENT_HEADER, traceparent);
@@ -138,6 +156,24 @@ export default async function middleware(req: NextRequest, event: NextFetchEvent
   });
   if (!csrf.ok) {
     return stamp(NextResponse.json({ error: "Cross-site request refused." }, { status: 403 }));
+  }
+
+  // Admin sub-roles on API writes: an auditor never writes, a finance admin
+  // writes only in finance. lib/auth-guards.ts enforces the same policy from
+  // the fresh session; this catches routes that never call verifySessionRole.
+  // Only decoded when a session cookie is present on a write.
+  if (
+    req.nextUrl.pathname.startsWith("/api/") &&
+    !isReadMethod(req.method) &&
+    SESSION_COOKIES.some((c) => req.cookies.has(c))
+  ) {
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET }).catch(() => null);
+    if (token?.role === "ADMIN" && isRestrictedAdmin(token.adminRole)) {
+      const decision = adminApiDecision(token.adminRole, req.method, req.nextUrl.pathname);
+      if (decision.kind === "deny") {
+        return stamp(NextResponse.json({ error: decision.reason, code: "ADMIN_ROLE_FORBIDDEN" }, { status: 403 }));
+      }
+    }
   }
 
   if (!isProtectedPage(req.nextUrl.pathname)) {

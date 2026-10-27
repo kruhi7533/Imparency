@@ -73,6 +73,23 @@ enum TeamRole {
   ADMIN
   FINANCE
   FIELD_STAFF
+  /// NGO-003: plans work and assigns field tasks; no finance, no team management.
+  PROGRAM_MANAGER
+}
+
+/// Admin sub-role (only meaningful when User.role = ADMIN; null = SUPER).
+/// Policy lives in lib/admin-roles.ts and is enforced centrally.
+enum AdminRole {
+  SUPER
+  FINANCE
+  AUDITOR
+  SUPPORT
+}
+
+enum TeamInviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
 }
 
 model User {
@@ -80,6 +97,8 @@ model User {
   email                   String                @unique
   passwordHash            String
   role                    Role                  @default(DONOR)
+  /// Admin sub-role; null on an ADMIN means SUPER (lib/admin-roles.ts).
+  adminRole               AdminRole?
   name                    String                @default("Anonymous")
   avatar                  String?
   googleId                String?               @unique
@@ -1303,9 +1322,117 @@ model AdminActionLog {
   schemaVersion Int      @default(1) // payload shape version for future replay/migration
   createdAt     DateTime @default(now())
 
+  /// Hash chain (ADM-017). Assigned by the BEFORE INSERT trigger in migration
+  /// 20261027150000_audit_hash_chain — never by the app; anything the client
+  /// sends is overwritten. Nullable only because Prisma must not require them
+  /// on create. Rows are append-only (UPDATE/DELETE rejected by trigger).
+  seq      Int?    @unique
+  prevHash String?
+  hash     String?
+
   @@index([entityType, entityId])
   @@index([adminId])
   @@index([createdAt])
+}
+
+/// Single row (id = 1): the current tip of the audit hash chain. Locked FOR
+/// UPDATE by the append trigger so appends are serialised.
+model AuditChainHead {
+  id        Int      @id
+  seq       Int      @default(0)
+  hash      String
+  updatedAt DateTime @default(now())
+}
+
+/// A signed snapshot of the chain head (seq + hash, HMAC'd with
+/// AUDIT_CHAIN_KEY when set). Lets a later verify detect a wholesale rewrite
+/// of the chain by someone who does not hold the key. Append-only.
+model AuditChainCheckpoint {
+  id             String   @id @default(uuid())
+  seq            Int
+  hash           String
+  hmac           String?
+  keyFingerprint String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  @@index([seq])
+}
+
+/// Operator dead-letter queue (ADM-018). Ids only in `refs`.
+/// kind: JOB_RUN | IMPACT_DELIVERY | NOTIFICATION_DELIVERY
+/// status: OPEN | REPLAYING | REPLAYED | REPLAY_FAILED | DISMISSED
+model DeadLetter {
+  id            String    @id @default(uuid())
+  kind          String
+  sourceId      String
+  refs          Json?
+  errorMessage  String?
+  attempts      Int       @default(0)
+  status        String    @default("OPEN")
+  replayedAt    DateTime?
+  replayedById  String?
+  replayResult  Json?
+  dismissedAt   DateTime?
+  dismissedById String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([kind, sourceId])
+  @@index([status, createdAt])
+}
+
+/// AI call telemetry (AI-009). No prompt/response text.
+/// outcome: OK | ERROR | TIMEOUT
+model AiCallLog {
+  id            String   @id @default(uuid())
+  site          String
+  /// gemini | anthropic | openai-compatible | rules (no model — deterministic)
+  provider      String   @default("gemini")
+  model         String
+  promptVersion String
+  outcome       String
+  faultInjected Boolean  @default(false)
+  latencyMs     Int
+  tokensIn      Int?
+  tokensOut     Int?
+  costUsd       Decimal? @db.Decimal(12, 6)
+  errorCode     String?
+  correlationId String?
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([site, createdAt])
+}
+
+/// Per-channel donor notification switches (DON-018). No row = all on.
+model NotificationPreference {
+  userId    String   @id
+  whatsapp  Boolean  @default(true)
+  email     Boolean  @default(true)
+  inApp     Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+/// One row per channel attempt of a donor message (DON-018 / NEG-011).
+/// channel: WHATSAPP | EMAIL | IN_APP
+/// status: SENT | FAILED | OPTED_OUT | PROVIDER_NOT_CONFIGURED
+model NotificationDeliveryLog {
+  id        String   @id @default(uuid())
+  userId    String
+  eventKey  String
+  topic     String
+  channel   String
+  status    String
+  reason    String?
+  attempt   Int      @default(1)
+  title     String
+  body      String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, eventKey, channel, attempt])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 // Append-only donor lifecycle events (category declarations, PAN changes, …).
@@ -1458,17 +1585,46 @@ model ImpactDelivery {
 }
 
 model TeamInvite {
-  id        String     @id @default(cuid())
-  email     String
-  role      TeamRole   @default(FIELD_STAFF)
-  ngoId     String
-  ngo       NGOProfile @relation(fields: [ngoId], references: [id])
-  token     String     @unique @default(cuid())
-  accepted  Boolean    @default(false)
-  createdAt DateTime   @default(now())
-  expiresAt DateTime
+  id             String           @id @default(cuid())
+  email          String
+  role           TeamRole         @default(FIELD_STAFF)
+  ngoId          String
+  ngo            NGOProfile       @relation(fields: [ngoId], references: [id])
+  /// Legacy plaintext column, now only a random row handle (never the secret).
+  token          String           @unique @default(cuid())
+  /// sha256 of the secret invite token (lib/ngo-team-invites.ts). The secret itself is never stored.
+  tokenHash      String?          @unique
+  status         TeamInviteStatus @default(PENDING)
+  accepted       Boolean          @default(false)
+  invitedById    String?
+  acceptedUserId String?
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  revokedById    String?
+  lastSentAt     DateTime?
+  sendCount      Int              @default(0)
+  createdAt      DateTime         @default(now())
+  expiresAt      DateTime
 
   @@unique([email, ngoId])
+}
+
+/// ADM-020: time-boxed, reasoned, revocable elevated access for a SUPPORT admin
+/// to ONE organisation. Every action taken under it is audited.
+model BreakGlassGrant {
+  id          String    @id @default(uuid())
+  adminId     String
+  /// "NGO" (NGOProfile.id) or "DONOR" (donor account user id)
+  orgType     String
+  orgId       String
+  reason      String
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  revokedById String?
+
+  @@index([adminId, expiresAt])
+  @@index([orgType, orgId])
 }
 
 // ─── Donor-NGO Inquiry Chat System ──────────────────────────────────────────
@@ -1552,6 +1708,11 @@ model SponsorRequirement {
   // Per field: { value, confidence, source: AI_EXTRACTED | DONOR_CORRECTED | ADMIN_VERIFIED, aiConfidence? }
   extractedFields   Json              @default("{}")
   confidenceScores  Json              @default("{}")
+  /// Last extraction failure: { code, message, retryable, at }. Cleared on success.
+  extractionError   Json?
+  /// Deterministic findings over the document text (budget conflict, suspected
+  /// prompt injection). Blocking flags need human confirmation before submit/validate.
+  extractionFlags   Json?
   // DEPRECATED — free-text pre-workflow status. Superseded by `status`.
   extractionStatus  String            @default("UPLOADED")
   status            RequirementStatus @default(UPLOADED)
@@ -1631,26 +1792,33 @@ model RequirementAuditLog {
 
 // One row per candidate project evaluated in a matching run (GapReport).
 model RequirementMatch {
-  id              String             @id @default(uuid())
-  requirementId   String
-  requirement     SponsorRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
-  gapReportId     String
-  gapReport       GapReport          @relation(fields: [gapReportId], references: [id], onDelete: Cascade)
-  projectId       String
-  project         Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  ngoId           String
-  ngo             NGOProfile         @relation(fields: [ngoId], references: [id], onDelete: Cascade)
-  eligible        Boolean
-  rank            Int? // null when hard-ineligible
-  score           Int? // 0-100 over scored dimensions only; null when ineligible
-  coverage        Int // % of scoring weight that had data on both sides
-  hardEligibility Json // [{ rule, passed, explanation }]
-  dimensionScores Json // [{ dimension, requirementValue, projectValue, result, weight, explanation }]
-  gaps            Json // [{ dimension, severity, description, recommendation }]
-  explanation     String
-  invitedAt       DateTime? // brief shared with this NGO
-  invitedById     String?
-  createdAt       DateTime           @default(now())
+  id               String             @id @default(uuid())
+  requirementId    String
+  requirement      SponsorRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  gapReportId      String
+  gapReport        GapReport          @relation(fields: [gapReportId], references: [id], onDelete: Cascade)
+  projectId        String
+  project          Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ngoId            String
+  ngo              NGOProfile         @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  eligible         Boolean
+  rank             Int? // null when hard-ineligible
+  score            Int? // 0-100 over scored dimensions only; null when ineligible
+  coverage         Int // % of scoring weight that had data on both sides
+  hardEligibility  Json // [{ rule, passed, explanation }]
+  dimensionScores  Json // [{ dimension, requirementValue, projectValue, result, weight, explanation }]
+  gaps             Json // [{ dimension, severity, description, recommendation }]
+  explanation      String
+  invitedAt        DateTime? // brief shared with this NGO
+  invitedById      String?
+  /// Admin shortlist review before any invitation: "APPROVED" | "REJECTED" (null = not reviewed).
+  adminDecision    String?
+  /// Admin-approved order (1 = first). The donor sees approved candidates in this order.
+  adminRank        Int?
+  adminNote        String?
+  adminDecidedAt   DateTime?
+  adminDecidedById String?
+  createdAt        DateTime           @default(now())
 
   @@unique([gapReportId, projectId])
   @@index([requirementId])
@@ -1835,9 +2003,14 @@ model Contract {
   ngoAcceptedAt   DateTime?
   ngoAcceptedById String?
 
-  milestones ContractMilestone[]
-  auditLogs  ContractAuditLog[]
-  payments   ContractPayment[]
+  milestones         ContractMilestone[]
+  auditLogs          ContractAuditLog[]
+  payments           ContractPayment[]
+  paymentAllocations ContractPaymentAllocation[]
+
+  /// When reconciled payments first covered totalGrantAmount (the contract is
+  /// FUNDED). Stamped once, compare-and-swap on null (lib/contract-funding.ts).
+  fundedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1849,23 +2022,78 @@ model Contract {
 }
 
 model ContractMilestone {
-  id                 String                  @id @default(uuid())
+  id                 String                      @id @default(uuid())
   contractId         String
-  contract           Contract                @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contract           Contract                    @relation(fields: [contractId], references: [id], onDelete: Cascade)
   projectMilestoneId String?
   title              String
   description        String
-  allocatedAmount    Decimal                 @db.Decimal(10, 2)
-  status             ContractMilestoneStatus @default(PENDING)
+  allocatedAmount    Decimal                     @db.Decimal(10, 2)
+  status             ContractMilestoneStatus     @default(PENDING)
   deliverables       String[]
   dueDate            DateTime?
   completedAt        DateTime?
-  orderIndex         Int                     @default(0)
+  orderIndex         Int                         @default(0)
   payments           ContractPayment[]
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
+  paymentAllocations ContractPaymentAllocation[]
+  /// Cash state, separate from the delivery `status` above. Recalculated from
+  /// RECONCILED payment allocations only (lib/contract-funding.ts) — a pending
+  /// payment never moves it.
+  fundingStatus      MilestoneFundingStatus      @default(UNFUNDED)
+  /// First time this milestone became FUNDED; the donor is notified once.
+  fundedAt           DateTime?
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
 
   @@index([contractId])
+}
+
+/// Funding state of one contract milestone, from reconciled money only.
+enum MilestoneFundingStatus {
+  UNFUNDED
+  PARTIALLY_FUNDED
+  FUNDED
+}
+
+/// Admin approval state of a payment-to-milestone allocation line.
+enum PaymentAllocationStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+/// How much of one contract payment is applied to one contract milestone.
+///
+/// Created in the same transaction as the payment: either the milestone the
+/// donor chose (rule EXPLICIT) or split across milestones in order
+/// (AUTO_MILESTONE_ORDER — see planAutoAllocation in lib/contract-funding.ts).
+/// An admin approves or rejects each line; a rejected line stops counting and
+/// its amount can be re-allocated by hand (ADMIN_MANUAL).
+model ContractPaymentAllocation {
+  id                  String                  @id @default(uuid())
+  paymentId           String
+  payment             ContractPayment         @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  contractId          String
+  contract            Contract                @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contractMilestoneId String
+  contractMilestone   ContractMilestone       @relation(fields: [contractMilestoneId], references: [id], onDelete: Cascade)
+  amount              Decimal                 @db.Decimal(12, 2)
+  /// "EXPLICIT" | "AUTO_MILESTONE_ORDER" | "ADMIN_MANUAL"
+  rule                String
+  status              PaymentAllocationStatus @default(PENDING_APPROVAL)
+  createdById         String?
+  decidedById         String?
+  decidedAt           DateTime?
+  /// Required on a rejection.
+  decisionNote        String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  /// One line per (payment, milestone): replaying an allocation is a no-op.
+  @@unique([paymentId, contractMilestoneId])
+  @@index([contractId])
+  @@index([contractMilestoneId])
+  @@index([status])
 }
 
 /// How a donor-recorded contract payment was made. Neither moves money through
@@ -1901,13 +2129,18 @@ model ContractPayment {
   contractMilestoneId String?
   contractMilestone   ContractMilestone? @relation(fields: [contractMilestoneId], references: [id], onDelete: SetNull)
 
-  amount    Decimal             @db.Decimal(12, 2)
-  mode      ContractPaymentMode
-  /// UTR / cheque number for MANUAL; a generated SANDBOX-… id for SANDBOX.
-  reference String?
+  amount         Decimal             @db.Decimal(12, 2)
+  mode           ContractPaymentMode
+  /// What is shown as the payment's reference: the donor's UTR / cheque number
+  /// when given (any mode), else a generated SANDBOX-… id.
+  reference      String?
+  /// The donor-supplied UTR, normalised (lib/utr.ts). Null when none was given.
+  utr            String?
+  /// The donor account (Contract.donorId) — the scope a UTR must be unique in.
+  payerAccountId String?
   /// When the money moved, per the donor — not when it was recorded.
-  paidAt    DateTime
-  note      String?
+  paidAt         DateTime
+  note           String?
 
   recordedById String
   recordedAt   DateTime @default(now())
@@ -1915,7 +2148,7 @@ model ContractPayment {
   /// Client-generated key, unique, so a double-submitted form records once.
   idempotencyKey String @unique
 
-  status        ContractPaymentStatus @default(PENDING_CONFIRMATION)
+  status        ContractPaymentStatus       @default(PENDING_CONFIRMATION)
   confirmedById String?
   confirmedAt   DateTime?
   /// Required when the NGO disputes the payment.
@@ -1925,7 +2158,11 @@ model ContractPayment {
   reconciledVia String?
   /// The statement line that evidenced this payment, if any.
   bankLine      BankStatementLine?
+  allocations   ContractPaymentAllocation[]
 
+  /// One bank transfer funds one payment: a donor account cannot record the
+  /// same UTR twice, on any of its contracts (lib/utr.ts explains the scope).
+  @@unique([payerAccountId, utr])
   @@index([contractId])
   @@index([contractMilestoneId])
   @@index([status])
@@ -2743,6 +2980,9 @@ enum FinanceExceptionType {
   /// reference, but for a different amount than the donor recorded. The
   /// statement is the stronger evidence; the record or the transfer is wrong.
   BANK_LINE_AMOUNT_MISMATCH
+  /// A credit on an NGO's imported bank statement that the admin UTR sweep
+  /// could not match to exactly one pending contract payment.
+  UNMATCHED_BANK_LINE
 }
 
 enum FinanceExceptionStatus {
@@ -3177,12 +3417,17 @@ model BeneficiaryFeedback {
   beneficiaryRef String?
 
   consentToRecord     Boolean
-  consentToSharePhoto Boolean       @default(false)
+  consentToSharePhoto Boolean           @default(false)
   consentMethod       ConsentMethod
-  policyVersion       String        @default("1.0")
+  policyVersion       String            @default("1.0")
   withdrawnAt         DateTime?
   /// Who recorded the withdrawal on the beneficiary's behalf (an NGO user).
   withdrawnById       String?
+  /// Separate consent purpose: may this feedback be quoted (anonymously) in an
+  /// impact story, and to whom. NONE until recorded explicitly — consent to
+  /// record feedback is not consent to publish it (lib/impact-stories.ts).
+  storyConsent        StoryConsentScope @default(NONE)
+  storyConsentAt      DateTime?
 
   rating       Int?
   feedbackText String?
@@ -3563,6 +3808,8 @@ enum DonorTeamRole {
   ADMIN
   APPROVER
   VIEWER
+  /// DON-002: records/confirms payments and sees finance; cannot approve or edit.
+  FINANCE
 }
 
 model DonorTeamMember {
@@ -3587,4 +3834,204 @@ model DonorTeamInvite {
   expiresAt DateTime
 
   @@unique([email, accountId])
+}
+
+// ---------------------------------------------------------------------------
+// Workstream G (2026-10-27) — stored contract impact reports, donor renewal /
+// next-opportunity requests, consent-filtered impact stories, NGO expense
+// recording per contract milestone, and NGO registration drafts.
+//
+// Additive only. Ids into other models are plain columns (no back-relations)
+// so no existing model changes shape; every route checks ownership itself.
+// ---------------------------------------------------------------------------
+
+/// Which audience a beneficiary agreed their feedback may be quoted to.
+enum StoryConsentScope {
+  NONE
+  DONOR_ONLY
+  PUBLIC
+}
+
+enum ContractReportStatus {
+  DRAFT
+  SUBMITTED
+  RETURNED
+  PUBLISHED
+}
+
+/// An NGO's report to its funder for one contract and period, built only from
+/// outcome claims. Figures are rendered through claimDisplay() at read time,
+/// so a claim whose evidence later fails (e.g. consent withdrawn) reads
+/// "unverified" even on an already-published report.
+model ContractImpactReport {
+  id          String               @id @default(uuid())
+  contractId  String
+  ngoId       String
+  donorId     String
+  projectId   String
+  title       String
+  summary     String               @default("")
+  periodStart DateTime
+  periodEnd   DateTime
+  status      ContractReportStatus @default(DRAFT)
+  /// Outcome claims in the period, pinned when the report is submitted.
+  claimIds    String[]
+
+  createdById   String
+  submittedById String?
+  submittedAt   DateTime?
+  publishedById String?
+  publishedAt   DateTime?
+  /// Required when an admin returns the report to the NGO.
+  reviewNote    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  renewalRequests RenewalRequest[]
+
+  @@index([contractId, status])
+  @@index([ngoId, status])
+  @@index([donorId, status])
+  @@index([status, submittedAt])
+}
+
+enum RenewalRequestKind {
+  RENEWAL
+  NEXT_OPPORTUNITY
+}
+
+enum RenewalRequestStatus {
+  OPEN
+  ACCEPTED
+  DECLINED
+}
+
+/// A donor acting on a published report: renew this grant, or ask what the
+/// organisation would do next. One per (report, kind), so a retry is a replay.
+model RenewalRequest {
+  id             String               @id @default(uuid())
+  reportId       String
+  report         ContractImpactReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  contractId     String
+  ngoId          String
+  donorId        String
+  kind           RenewalRequestKind
+  message        String?
+  proposedAmount Decimal?             @db.Decimal(12, 2)
+  status         RenewalRequestStatus @default(OPEN)
+  requestedById  String
+  ngoResponse    String?
+  respondedById  String?
+  respondedAt    DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@unique([reportId, kind])
+  @@index([ngoId, status])
+  @@index([donorId])
+}
+
+enum ImpactStoryVariant {
+  PUBLIC
+  DONOR
+}
+
+enum ImpactStoryStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  REJECTED
+  NEEDS_REGENERATION
+}
+
+enum ImpactStoryGenerator {
+  CLAUDE
+  GEMINI
+  TEMPLATE
+}
+
+/// A generated impact narrative. Beneficiary material is consent-filtered
+/// BEFORE generation (lib/impact-stories.ts); the ids actually used are kept so
+/// a later consent withdrawal can find and unpublish every affected story.
+model ImpactStory {
+  id                 String               @id @default(uuid())
+  ngoId              String
+  projectId          String
+  contractId         String?
+  variant            ImpactStoryVariant
+  status             ImpactStoryStatus    @default(DRAFT)
+  generator          ImpactStoryGenerator
+  title              String
+  body               String
+  sourceFeedbackIds  String[]
+  sourceEvidenceIds  String[]
+  /// How many beneficiary items were excluded for want of consent.
+  excludedCount      Int                  @default(0)
+  createdById        String
+  submittedAt        DateTime?
+  reviewedById       String?
+  reviewedAt         DateTime?
+  reviewNote         String?
+  publishedAt        DateTime?
+  regenerationReason String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@index([ngoId, status])
+  @@index([projectId, variant, status])
+  @@index([status])
+}
+
+enum ExpenseCategory {
+  PERSONNEL
+  MATERIALS
+  TRAVEL
+  EQUIPMENT
+  TRAINING
+  ADMINISTRATIVE
+  OTHER
+}
+
+/// Money an NGO spent against a contract milestone. Receipt in PRIVATE storage,
+/// served only through an authenticated route.
+model ContractExpense {
+  id                  String          @id @default(uuid())
+  contractId          String
+  contractMilestoneId String
+  ngoId               String
+  amount              Decimal         @db.Decimal(12, 2)
+  category            ExpenseCategory
+  description         String
+  spentOn             DateTime
+  receiptKey          String?
+  receiptMime         String?
+  /// Client-generated, unique: a double-submitted form records once.
+  idempotencyKey      String          @unique
+  recordedById        String
+  createdAt           DateTime        @default(now())
+
+  @@index([contractId])
+  @@index([contractMilestoneId])
+}
+
+enum RegistrationDraftStatus {
+  DRAFT
+  SUBMITTED
+}
+
+/// Save-and-resume for NGO registration. Lives apart from NGOProfile so a
+/// half-filled form never appears in the verification queue.
+model NgoRegistrationDraft {
+  id          String                  @id @default(uuid())
+  userId      String                  @unique
+  status      RegistrationDraftStatus @default(DRAFT)
+  /// Non-file form fields, as entered.
+  fields      Json
+  /// Uploaded document slots: { regFile: { url, name }, ... } (private storage).
+  documents   Json                    @default("{}")
+  submittedAt DateTime?
+  profileId   String?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
 }

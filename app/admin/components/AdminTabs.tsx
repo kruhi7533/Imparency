@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { hubForPath, isTabActive } from "./hubs";
+import { adminPageAllowed } from "@/lib/admin-roles";
 
 /**
  * The tab bar inside a hub.
@@ -16,9 +17,10 @@ import { hubForPath, isTabActive } from "./hubs";
  * No badges here. Counts live in the top-level nav, where they tell you which
  * hub to open; repeating them inside the hub you already opened is noise.
  */
-export default function AdminTabs() {
+export default function AdminTabs({ adminRole }: { adminRole?: string | null } = {}) {
   const pathname = usePathname();
-  const hub = hubForPath(pathname);
+  const fullHub = hubForPath(pathname);
+  const hub = fullHub ? { ...fullHub, tabs: fullHub.tabs.filter((t) => adminPageAllowed(adminRole, t.href)) } : null;
 
   if (!hub || hub.tabs.length <= 1) return null;
 

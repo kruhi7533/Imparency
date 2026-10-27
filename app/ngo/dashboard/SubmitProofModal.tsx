@@ -45,11 +45,12 @@ export default function SubmitProofModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [aiResult, setAiResult] = useState<{
-    score: number;
+    score: number | null;
     reasoning: string;
     flags: string[];
     suggestion?: string;
     status: string;
+    aiStatus?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -251,9 +252,15 @@ export default function SubmitProofModal({
               <p className="text-xs text-gray-400 mt-1">Audit result for: {milestoneTitle}</p>
             </div>
 
+            {aiResult.score === null ? (
+              <div className="flex flex-col items-center py-6 border-b border-gray-100 dark:border-gray-800 text-center">
+                <span className="text-lg font-black text-amber-600">AI unavailable — human review required</span>
+                <span className="mt-2 text-xs text-gray-500">Your proof was saved. No AI score was produced; an admin will review it directly.</span>
+              </div>
+            ) : (
             <div className="flex flex-col items-center py-6 border-b border-gray-100 dark:border-gray-800">
               <span className={`text-5xl font-black tracking-tight ${
-                aiResult.score >= 70 
+                (aiResult.score ?? 0) >= 70 
                   ? "text-emerald-600 dark:text-emerald-400" 
                   : "text-amber-500"
               }`}>
@@ -262,13 +269,14 @@ export default function SubmitProofModal({
               <span className="text-[10px] font-bold text-gray-400 mt-1">AUDIT SCORE (MIN 70)</span>
               
               <span className={`mt-3 text-xs font-bold px-3 py-1 rounded-full uppercase ${
-                aiResult.score >= 70
+                (aiResult.score ?? 0) >= 70
                   ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
                   : "bg-amber-50 text-amber-700 border border-amber-100"
               }`}>
-                {aiResult.score >= 70 ? "Strong evidence · awaiting admin review" : "Awaiting admin review"}
+                {(aiResult.score ?? 0) >= 70 ? "Strong evidence · awaiting admin review" : "Awaiting admin review"}
               </span>
             </div>
+            )}
 
             <div className="space-y-4 text-xs">
               <div>

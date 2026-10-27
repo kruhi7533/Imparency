@@ -1,17 +1,56 @@
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
-import * as mammoth from 'mammoth';
-import { createWorker } from 'tesseract.js';
 import path from 'path';
 import fs from 'fs';
 import { pathToFileURL } from 'url';
 
-// Conditionally load canvas to prevent failure if it is missing in any environments
+/*
+ * Every parser is loaded LAZILY, inside the call that needs it. These used to be
+ * top-level imports, which meant a module that cannot load in the serverless
+ * runtime (pdfjs-dist needs DOMMatrix, @napi-rs/canvas is a native binary,
+ * tesseract.js spawns workers) crashed the whole upload route at import time —
+ * Next.js then answers 500 with an EMPTY body, before any handler code runs.
+ * Loaded here, a failure is an ordinary error that the extraction pipeline
+ * classifies (DOCUMENT_PARSER_UNAVAILABLE) and reports.
+ */
+
+/** Thrown for documents that open but contain no usable text, or cannot be opened. */
+export class DocumentReadError extends Error {
+  readonly code: 'PDF_NO_TEXT' | 'PDF_UNREADABLE' | 'DOCUMENT_PARSER_UNAVAILABLE';
+  constructor(code: DocumentReadError['code'], message: string) {
+    super(message);
+    this.name = 'DocumentReadError';
+    this.code = code;
+  }
+}
+
+let canvasLoaded = false;
 let createCanvas: any = null;
-try {
-  const canvasModule = require('@napi-rs/canvas');
-  createCanvas = canvasModule.createCanvas;
-} catch (e) {
-  console.warn('Canvas module (@napi-rs/canvas) is not available. PDF page rendering will be skipped.');
+function loadCanvas(): any {
+  if (!canvasLoaded) {
+    canvasLoaded = true;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      createCanvas = require('@napi-rs/canvas').createCanvas;
+    } catch {
+      console.warn('Canvas module (@napi-rs/canvas) is not available. Scanned-PDF OCR will be skipped.');
+    }
+  }
+  return createCanvas;
+}
+
+async function loadPdfjs(): Promise<any> {
+  try {
+    return await import('pdfjs-dist/legacy/build/pdf.mjs');
+  } catch (err: any) {
+    throw new DocumentReadError('DOCUMENT_PARSER_UNAVAILABLE', `pdfjs-dist failed to load: ${err?.message ?? err}`);
+  }
+}
+
+async function loadTesseract(): Promise<any> {
+  try {
+    return await import('tesseract.js');
+  } catch (err: any) {
+    throw new DocumentReadError('DOCUMENT_PARSER_UNAVAILABLE', `tesseract.js failed to load: ${err?.message ?? err}`);
+  }
 }
 
 // pdfjs wants a URL with a trailing slash, not an OS path — `require.resolve`
@@ -66,6 +105,7 @@ export class OcrService {
     fileBuffer: Buffer,
     onStatusChange?: (status: 'OCR_RUNNING' | 'EXTRACTING') => void
   ): Promise<{ text: string; wasOcrUsed: boolean }> {
+    const pdfjs = await loadPdfjs();
     const uint8Array = new Uint8Array(fileBuffer);
     const loadingTask = pdfjs.getDocument({
       data: uint8Array,
@@ -74,7 +114,13 @@ export class OcrService {
       // scanned page is rendered for the Tesseract fallback.
       standardFontDataUrl: PDFJS_STANDARD_FONTS,
     });
-    const pdfDoc = await loadingTask.promise;
+    let pdfDoc: any;
+    try {
+      pdfDoc = await loadingTask.promise;
+    } catch (err: any) {
+      // InvalidPDFException, PasswordException, FormatError…
+      throw new DocumentReadError('PDF_UNREADABLE', `${err?.name ?? 'Error'}: ${err?.message ?? err}`);
+    }
 
     let textContent = '';
     let hasSelectableText = false;
@@ -94,15 +140,17 @@ export class OcrService {
     }
 
     // 2. Fallback to OCR if selectable text is sparse and canvas is available
+    const createCanvas = loadCanvas();
     if (!createCanvas) {
-      console.warn('PDF has no selectable text, and canvas is not loaded. Returning empty text.');
-      return { text: '', wasOcrUsed: false };
+      if (cleanedText.trim()) return { text: cleanedText, wasOcrUsed: false };
+      throw new DocumentReadError('PDF_NO_TEXT', 'PDF has no selectable text and OCR (canvas) is not available.');
     }
 
     if (onStatusChange) onStatusChange('OCR_RUNNING');
     console.log(`PDF contains no selectable text. Executing Tesseract OCR on ${pdfDoc.numPages} pages...`);
 
     let ocrText = '';
+    const { createWorker } = await loadTesseract();
     const worker = await createWorker('eng');
     try {
       for (let i = 1; i <= pdfDoc.numPages; i++) {
@@ -136,14 +184,25 @@ export class OcrService {
    * Parse Microsoft DOCX files using mammoth.
    */
   private static async parseDocx(fileBuffer: Buffer): Promise<string> {
-    const result = await mammoth.extractRawText({ buffer: fileBuffer });
-    return result.value;
+    let mammoth: any;
+    try {
+      mammoth = await import('mammoth');
+    } catch (err: any) {
+      throw new DocumentReadError('DOCUMENT_PARSER_UNAVAILABLE', `mammoth failed to load: ${err?.message ?? err}`);
+    }
+    try {
+      const result = await (mammoth.extractRawText ?? mammoth.default.extractRawText)({ buffer: fileBuffer });
+      return result.value;
+    } catch (err: any) {
+      throw new DocumentReadError('PDF_UNREADABLE', `DOCX could not be read: ${err?.message ?? err}`);
+    }
   }
 
   /**
    * Performs Tesseract OCR on a single image buffer.
    */
   public static async performOcr(imageBuffer: Buffer): Promise<string> {
+    const { createWorker } = await loadTesseract();
     const worker = await createWorker('eng');
     try {
       const { data } = await worker.recognize(imageBuffer);

@@ -103,6 +103,8 @@ describe("DonorOrg / Opportunity Contracts Subsystem", () => {
 
       prismaMock.$transaction.mockImplementationOnce(async (cb: any) => {
         const tx = {
+          // NEG-007 side-door check: no open CSR selection involves this project.
+          opportunityResponse: { findFirst: vi.fn().mockResolvedValue(null) },
           contract: {
             create: vi.fn().mockResolvedValue({
               id: "contract-001",

@@ -31,9 +31,9 @@ vi.mock("@/lib/matching/funder", () => ({ checkFunderEligibility: vi.fn(async ()
 import { getServerSession } from "next-auth/next";
 import { uploadPrivateFile } from "@/lib/storage";
 import { SponsorRequirementRepository } from "@/src/agents/requirements-agent/repositories/requirement.repository";
-import { LlmUnavailableError } from "@/src/agents/requirements-agent/services/llm/llm.service";
 import { runExtraction } from "@/lib/requirements/extraction";
 import { POST } from "@/app/api/requirements/upload/route";
+import { ExtractionError } from "@/lib/requirements/extraction-errors";
 
 const repo = SponsorRequirementRepository as any;
 const PDF = "%PDF-1.4 identical CSR document bytes";
@@ -114,11 +114,43 @@ describe("POST /api/requirements/upload", () => {
   });
 
   it("returns a retryable 503 with the requirement id when Gemini is overloaded", async () => {
-    (runExtraction as any).mockRejectedValue(new LlmUnavailableError("The AI service (Google Gemini) is temporarily overloaded"));
+    (runExtraction as any).mockRejectedValue(new ExtractionError("EXTRACTION_PROVIDER_OVERLOADED"));
     const res = await POST(uploadRequest());
     const data = await res.json();
     expect(res.status).toBe(503);
-    expect(data).toMatchObject({ retryable: true, requirementId: "req-new" });
+    expect(data).toMatchObject({ retryable: true, requirementId: "req-new", code: "EXTRACTION_PROVIDER_OVERLOADED" });
     expect(data.error).toMatch(/temporarily overloaded/);
+  });
+
+  // DON-004: the staging defect was a 500 with an EMPTY body. Every failure is JSON with a code.
+  it("extraction failure → structured, retryable error with the requirement id (never an empty body)", async () => {
+    (runExtraction as any).mockRejectedValue(new ExtractionError("PDF_NO_TEXT"));
+    const res = await POST(uploadRequest());
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ code: "PDF_NO_TEXT", requirementId: "req-new", canEnterManually: true, error: expect.any(String) });
+  });
+
+  it("an unclassified extraction crash is a JSON 500 with a code and no internals", async () => {
+    (runExtraction as any).mockRejectedValue(new Error("TypeError at /var/task/node_modules/pdfjs-dist secret"));
+    const res = await POST(uploadRequest());
+    const body = await res.json();
+    expect(res.status).toBe(500);
+    expect(body).toMatchObject({ code: "EXTRACTION_FAILED", requirementId: "req-new", retryable: true });
+    expect(JSON.stringify(body)).not.toContain("secret");
+  });
+
+  it("private storage failing (e.g. read-only serverless FS) is a 503 PRIVATE_STORAGE_UNAVAILABLE and creates nothing", async () => {
+    (uploadPrivateFile as any).mockRejectedValueOnce(Object.assign(new Error("EROFS: read-only file system"), { code: "EROFS" }));
+    const res = await POST(uploadRequest());
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ code: "PRIVATE_STORAGE_UNAVAILABLE", retryable: true });
+    expect(db.sponsorRequirement.create).not.toHaveBeenCalled();
+  });
+
+  it("anything thrown before the handler's own catch still answers JSON (UPLOAD_FAILED)", async () => {
+    repo.findByHash.mockRejectedValueOnce(new Error("db down"));
+    const res = await POST(uploadRequest());
+    expect(res.status).toBe(500);
+    expect(await res.json()).toMatchObject({ code: "UPLOAD_FAILED", error: expect.any(String) });
   });
 });

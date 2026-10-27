@@ -103,6 +103,12 @@ export default async function AdminAuditPage({
           Read-only: this is the same {`AdminActionLog`} rows the NGO and donor pages already show
           scoped to one entity, gathered here so you can search across all of them.
         </p>
+        <p className="mt-2 text-sm">
+          <Link href="/admin/audit/integrity" className="font-semibold text-emerald-700 hover:underline dark:text-emerald-400">
+            Audit integrity →
+          </Link>{" "}
+          <span className="text-gray-500 dark:text-gray-400">verify the hash chain or an exported CSV.</span>
+        </p>
 
         <form className="mt-6 flex flex-wrap gap-3" method="GET">
           <input

@@ -16,8 +16,17 @@ const db = vi.hoisted(() => ({
   contractPayment: { findMany: vi.fn(), updateMany: vi.fn() },
   contractAuditLog: { create: vi.fn() },
   notification: { create: vi.fn(), createMany: vi.fn() },
-  contract: { findMany: vi.fn() },
+  // findUnique/updateMany/$queryRaw: milestone + contract funding recalculation
+  // (lib/contract-funding.ts) runs inside the reconciling transaction.
+  contract: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(async () => ({ id: "c-1", projectId: "proj-1", totalGrantAmount: "1000000000", fundedAt: null, milestones: [], payments: [], paymentAllocations: [] })),
+    updateMany: vi.fn(),
+  },
+  contractPaymentAllocation: { createMany: vi.fn() },
+  contractMilestone: { update: vi.fn(), updateMany: vi.fn() },
   project: { updateMany: vi.fn(), findUnique: vi.fn() },
+  $queryRaw: vi.fn(),
   $transaction: vi.fn(),
 }));
 vi.mock("@/lib/prisma", () => ({ default: db }));
@@ -234,14 +243,16 @@ describe("import and reconcile", () => {
     expect(r).toMatchObject({ newLines: 0, duplicateLines: 2 });
   });
 
-  it("tenant scope: only this NGO's lines and this NGO's pending MANUAL payments are considered", async () => {
+  it("tenant scope: only this NGO's lines and this NGO's pending MANUAL (or UTR-carrying) payments are considered", async () => {
     await rematchNgoStatements("ngo-1", "ngo-user-1");
     expect(db.bankStatementLine.findMany.mock.calls[0][0].where).toMatchObject({ ngoId: "ngo-1", direction: "CREDIT" });
+    // SANDBOX payments with a donor-supplied UTR are matchable too (D5); a
+    // generated SANDBOX-… id never appears on a statement.
     expect(db.contractPayment.findMany.mock.calls[0][0].where).toEqual({
       status: "PENDING_CONFIRMATION",
-      mode: "MANUAL",
       bankLine: null,
       contract: { ngoId: "ngo-1" },
+      OR: [{ mode: "MANUAL" }, { utr: { not: null } }],
     });
     // Matched lines are never re-examined.
     expect(db.bankStatementLine.findMany.mock.calls[0][0].where.status).toEqual({ in: ["UNMATCHED", "AMBIGUOUS", "AMOUNT_MISMATCH"] });

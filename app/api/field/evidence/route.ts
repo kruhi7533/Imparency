@@ -5,9 +5,9 @@ import { Role } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { isUniqueConstraintError } from "@/lib/razorpay-webhook";
-import { deletePrivateFile, uploadPrivateFile } from "@/lib/storage";
+import { deletePrivateFile, isStorageError, uploadPrivateFile } from "@/lib/storage";
 import { classifyProofLocation } from "@/lib/proof-location";
-import { canManageTasks, MAX_PHOTO_BYTES, parseCapture, resolveNgoActor, sniffImage } from "@/lib/field-evidence";
+import { ACCEPTED_PHOTO_TYPES, canManageTasks, MAX_PHOTO_BYTES, parseCapture, resolveNgoActor, sniffImage } from "@/lib/field-evidence";
 import { findPriorEvidence } from "@/lib/evidence-duplicates";
 import { createFraudAlert } from "@/lib/fraud-alerts";
 import {
@@ -19,6 +19,15 @@ import {
 } from "@/lib/proof-fingerprint";
 
 export const runtime = "nodejs";
+
+/**
+ * Structured error. `code` tells the field app (and a tester) which stage
+ * failed; `retryable` tells the offline queue whether resending can help.
+ * Never a raw provider/Prisma message.
+ */
+function fail(status: number, code: string, error: string, extra: Record<string, unknown> = {}) {
+  return NextResponse.json({ error, code, retryable: status >= 500 || status === 429, ...extra }, { status });
+}
 
 /**
  * Sync one capture from the field app: a photo + GPS + note against a task,
@@ -38,13 +47,13 @@ export async function POST(request: Request) {
     const userId: string = session.user.id;
 
     const actor = await resolveNgoActor(userId);
-    if (!actor) return NextResponse.json({ error: "No NGO membership" }, { status: 403 });
+    if (!actor) return fail(403, "NO_NGO_MEMBERSHIP", "No NGO membership");
 
     let form: FormData;
     try {
       form = await request.formData();
     } catch {
-      return NextResponse.json({ error: "Expected multipart form data." }, { status: 400 });
+      return fail(400, "INVALID_FORM", "Expected multipart form data.");
     }
     const fields: Record<string, unknown> = {};
     form.forEach((v, k) => {
@@ -52,7 +61,7 @@ export async function POST(request: Request) {
     });
 
     const parsed = parseCapture(fields);
-    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+    if (!parsed.ok) return fail(parsed.status, "INVALID_CAPTURE", parsed.error);
     const capture = parsed.value;
 
     const task = await prisma.fieldTask.findUnique({
@@ -60,31 +69,34 @@ export async function POST(request: Request) {
       include: { project: { select: { id: true, latitude: true, longitude: true } } },
     });
     // Another NGO's task is "not found", not a hint that it exists.
-    if (!task || task.ngoId !== actor.ngoId) return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    if (!task || task.ngoId !== actor.ngoId) return fail(404, "TASK_NOT_FOUND", "Task not found");
     if (task.assignedToId !== userId && !canManageTasks(actor)) {
-      return NextResponse.json({ error: "This task is assigned to someone else." }, { status: 403 });
+      return fail(403, "TASK_NOT_ASSIGNED", "This task is assigned to someone else.");
     }
 
     const replay = await findReplay(capture.clientId, capture.feedback?.clientId ?? null, actor.ngoId);
     if (replay) return replay;
 
     if (task.status === "CANCELLED" || task.status === "COMPLETED") {
-      return NextResponse.json({ error: `This task is ${task.status.toLowerCase()}.` }, { status: 409 });
+      return fail(409, "TASK_CLOSED", `This task is ${task.status.toLowerCase()}.`);
     }
 
     const photo = form.get("photo");
     const hasPhoto = photo instanceof Blob && photo.size > 0;
     if (!hasPhoto && !capture.feedback) {
-      return NextResponse.json({ error: "Send a photo, beneficiary feedback, or both." }, { status: 400 });
+      return fail(400, "NOTHING_TO_SYNC", "Send a photo, beneficiary feedback, or both.");
     }
 
     let evidenceData: Record<string, unknown> | null = null;
     let duplicate: DuplicateResult | null = null;
+    let duplicateCheck: "DONE" | "FAILED" | "SKIPPED" = "SKIPPED";
     if (hasPhoto) {
-      if (photo.size > MAX_PHOTO_BYTES) return NextResponse.json({ error: "Photo is larger than 8 MB." }, { status: 413 });
+      if (photo.size > MAX_PHOTO_BYTES) return fail(413, "PHOTO_TOO_LARGE", "Photo is larger than 8 MB.");
       const bytes = Buffer.from(await photo.arrayBuffer());
+      // The type is sniffed from the bytes; the client's Content-Type and file
+      // name are never trusted.
       const kind = sniffImage(bytes);
-      if (!kind) return NextResponse.json({ error: "Photo must be a JPEG, PNG or WebP image." }, { status: 415 });
+      if (!kind) return fail(415, "UNSUPPORTED_MEDIA_TYPE", `Photo must be a ${ACCEPTED_PHOTO_TYPES} image.`);
 
       const photoSha256 = createHash("sha256").update(bytes).digest("hex");
       // Same verdict table as milestone proofs, over BOTH evidence tables, so a
@@ -98,8 +110,13 @@ export async function POST(request: Request) {
           projectId: task.projectId,
           ngoId: task.ngoId,
         });
+        duplicateCheck = "DONE";
       } catch (dupErr) {
-        console.error("[api/field/evidence] duplicate check failed:", dupErr);
+        // DUPLICATE_LOOKUP_FAILED is reported in the response (duplicateCheck)
+        // and the row stores a null verdict, which the review queue shows as
+        // "duplicate check unavailable" — never as "no duplicate".
+        duplicateCheck = "FAILED";
+        console.error("[api/field/evidence] DUPLICATE_LOOKUP_FAILED:", dupErr);
       }
       const location = classifyProofLocation(
         capture.latitude !== null ? { latitude: capture.latitude, longitude: capture.longitude! } : null,
@@ -108,7 +125,15 @@ export async function POST(request: Request) {
           : null,
       );
 
-      uploadedKey = await uploadPrivateFile(bytes, kind.ext, "field-evidence");
+      try {
+        uploadedKey = await uploadPrivateFile(bytes, kind.ext, "field-evidence");
+      } catch (storageErr) {
+        console.error("[api/field/evidence] STORAGE_UPLOAD_FAILED:", storageErr);
+        if (isStorageError(storageErr) && storageErr.code === "STORAGE_NOT_CONFIGURED") {
+          return fail(503, "STORAGE_NOT_CONFIGURED", "Photo storage is not configured on this server. The capture is kept on your phone; tell your administrator.");
+        }
+        return fail(503, "STORAGE_UPLOAD_FAILED", "The photo could not be stored. It is kept on your phone and will be retried.");
+      }
       evidenceData = {
         taskId: task.id,
         ngoId: task.ngoId,
@@ -153,6 +178,9 @@ export async function POST(request: Request) {
         }
         return { evidence, feedback };
       });
+      // Committed: the stored photo now belongs to a row and must never be
+      // cleaned up by a later failure (alert, response building).
+      uploadedKey = null;
 
       // Only after the row committed, so a failed sync never leaves an alert
       // pointing at evidence that does not exist. createFraudAlert dedupes on
@@ -179,6 +207,8 @@ export async function POST(request: Request) {
             status: result.evidence.status,
             locationStatus: result.evidence.locationStatus,
             duplicate: isDuplicate(result.evidence.duplicateVerdict, result.evidence.duplicateOfId),
+            duplicateVerdict: result.evidence.duplicateVerdict,
+            duplicateCheck,
           },
           feedbackId: result.feedback?.id ?? null,
         },
@@ -193,12 +223,14 @@ export async function POST(request: Request) {
           return replayAfterRace;
         }
       }
-      throw err;
+      await cleanup(uploadedKey);
+      console.error("[api/field/evidence] EVIDENCE_SAVE_FAILED:", err);
+      return fail(500, "EVIDENCE_SAVE_FAILED", "The capture could not be saved. It is kept on your phone and will be retried.");
     }
   } catch (error) {
     await cleanup(uploadedKey);
     console.error("[api/field/evidence] POST error:", error);
-    return NextResponse.json({ error: "Failed to sync capture" }, { status: 500 });
+    return fail(500, "SYNC_FAILED", "Failed to sync capture");
   }
 }
 
@@ -217,7 +249,7 @@ async function findReplay(clientId: string, feedbackClientId: string | null, ngo
     : null;
   if (!evidence && !feedback) return null;
   if ((evidence && evidence.ngoId !== ngoId) || (feedback && feedback.ngoId !== ngoId)) {
-    return NextResponse.json({ error: "clientId already used." }, { status: 409 });
+    return fail(409, "CLIENT_ID_CONFLICT", "clientId already used.");
   }
   return NextResponse.json(
     {

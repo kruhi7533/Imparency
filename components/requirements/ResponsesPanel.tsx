@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ResponseItem } from "@/lib/requirements/queries";
 import type { ResponseRevisionItem } from "@/lib/requirements/dto";
 import { CHANGE_NOTE_MIN, CHANGE_NOTE_MAX, RESPONSE_STATUS_LABELS } from "@/lib/requirements/response-status";
+import { diffProposals, type ProposalSnapshot } from "@/lib/requirements/proposal-diff";
 
 const STATUS_TONE: Record<string, string> = {
   INTERESTED: "text-gray-300 border-gray-700",
@@ -84,6 +85,95 @@ function PreviousVersions({ revisions }: { revisions: ResponseRevisionItem[] }) 
         ))}
       </ol>
     </details>
+  );
+}
+
+/**
+ * DON-008 — explicit side-by-side comparison of any two versions of one
+ * proposal (default: the previous version vs the current one), with word-level
+ * highlights: removed text struck through in red, added text in green.
+ */
+function CompareVersions({ r }: { r: ResponseItem }) {
+  const versions: ProposalSnapshot[] = [
+    ...[...r.revisions].sort((a, b) => a.version - b.version),
+    {
+      version: r.version,
+      proposedBudget: r.proposedBudget,
+      proposedDurationMonths: r.proposedDurationMonths,
+      implementationPlan: r.implementationPlan,
+      expectedOutcomes: r.expectedOutcomes,
+      complianceNotes: r.complianceNotes,
+      milestones: r.milestones,
+    },
+  ];
+  const [open, setOpen] = useState(false);
+  const [from, setFrom] = useState(versions[versions.length - 2]?.version ?? 1);
+  const [to, setTo] = useState(r.version);
+  if (versions.length < 2) return null;
+  const a = versions.find((v) => v.version === from)!;
+  const b = versions.find((v) => v.version === to)!;
+  const rows = a && b ? diffProposals(a, b) : [];
+  const changedCount = rows.filter((x) => x.changed).length;
+  const select = "bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100";
+
+  return (
+    <div className="border border-blue-500/25 rounded-xl">
+      <button type="button" onClick={() => setOpen((o) => !o)} className="w-full text-left px-3 py-2 text-xs font-bold text-blue-200">
+        {open ? "▾" : "▸"} Compare versions side by side
+      </button>
+      {open && (
+        <div className="px-3 pb-3 space-y-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-300">
+            <label htmlFor={`cmp-from-${r.id}`}>Compare</label>
+            <select id={`cmp-from-${r.id}`} value={from} onChange={(e) => setFrom(Number(e.target.value))} className={select}>
+              {versions.map((v) => <option key={v.version} value={v.version}>V{v.version}</option>)}
+            </select>
+            <label htmlFor={`cmp-to-${r.id}`}>with</label>
+            <select id={`cmp-to-${r.id}`} value={to} onChange={(e) => setTo(Number(e.target.value))} className={select}>
+              {versions.map((v) => <option key={v.version} value={v.version}>V{v.version}{v.version === r.version ? " (current)" : ""}</option>)}
+            </select>
+            <span className="text-gray-500">{changedCount} of {rows.length} fields changed</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left align-top">
+              <thead className="text-gray-500 uppercase text-[10px]">
+                <tr>
+                  <th className="py-1 pr-2 w-32">Field</th>
+                  <th className="py-1 pr-2">V{from}</th>
+                  <th className="py-1">V{to}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.key} className={`border-t border-gray-800 ${row.changed ? "bg-blue-500/5" : ""}`}>
+                    <td className="py-2 pr-2 font-semibold text-gray-300">
+                      {row.label}
+                      {row.changed && <span className="block text-[10px] text-blue-300">changed</span>}
+                    </td>
+                    <td className="py-2 pr-2 text-gray-400 whitespace-pre-wrap">
+                      {row.tokens
+                        ? row.tokens.filter((t) => t.op !== "added").map((t, i) => (
+                            <span key={i} className={t.op === "removed" ? "bg-red-500/20 text-red-200 line-through" : ""}>{t.text}</span>
+                          ))
+                        : row.before}
+                      {!row.before && "—"}
+                    </td>
+                    <td className="py-2 text-gray-200 whitespace-pre-wrap">
+                      {row.tokens
+                        ? row.tokens.filter((t) => t.op !== "removed").map((t, i) => (
+                            <span key={i} className={t.op === "added" ? "bg-emerald-500/20 text-emerald-200" : ""}>{t.text}</span>
+                          ))
+                        : row.after}
+                      {!row.after && "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -197,6 +287,7 @@ function ResponseCard({
       )}
       {r.complianceNotes && <p className="text-xs text-gray-400">Compliance: {r.complianceNotes}</p>}
 
+      <CompareVersions r={r} />
       <PreviousVersions revisions={r.revisions} />
 
       {canDecide && r.status === "INTERESTED" && (

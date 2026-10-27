@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import SchemaOutOfSync from "@/app/admin/components/SchemaOutOfSync";
 import { committedTotal, fundingState, paidTotal, remainingBudget } from "@/lib/allocation";
 import { ProposeAllocationForm, AllocationDecision, RecordPaymentForm } from "./AllocationActions";
+import ContractAllocationsSection from "./ContractAllocationsSection";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -314,6 +315,8 @@ export default async function AdminAllocationsPage() {
             </ul>
           </section>
         )}
+
+        <ContractAllocationsSection />
 
         <p className="text-xs text-gray-400">
           Every commitment is also written to the money log as a separate entry, on the commitment

@@ -4,7 +4,9 @@ import { RequirementWorkflowError } from "./errors";
  * Field-level provenance for extracted CSR requirements.
  *
  * Every field is stored as { value, confidence, source, aiConfidence? }:
- *   - AI_EXTRACTED    straight from the Requirements Analyst Agent
+ *   - AI_EXTRACTED    straight from the Requirements Analyst Agent (LLM)
+ *   - RULES           from the deterministic rule-based extractor (no model key,
+ *                     or the model failed) — lib/requirements/rule-extractor.ts
  *   - DONOR_ENTERED   typed by the donor in the structured form (no document)
  *   - DONOR_CORRECTED the donor changed the value (confidence 1.0)
  *   - ADMIN_VERIFIED  an admin changed or verified the value
@@ -12,7 +14,10 @@ import { RequirementWorkflowError } from "./errors";
  * blanket-upgrades untouched AI guesses to 100%. `aiConfidence` keeps the
  * model's original confidence after a human overrides the value.
  */
-export type FieldSource = "AI_EXTRACTED" | "DONOR_ENTERED" | "DONOR_CORRECTED" | "ADMIN_VERIFIED";
+export type FieldSource = "AI_EXTRACTED" | "RULES" | "DONOR_ENTERED" | "DONOR_CORRECTED" | "ADMIN_VERIFIED";
+
+/** Machine-extracted (LLM or rules) — shown with a confidence and a "please verify" when low. */
+export const isMachineSource = (s: FieldSource) => s === "AI_EXTRACTED" || s === "RULES";
 
 export interface ProvenancedField<T = unknown> {
   value: T | null;
@@ -21,12 +26,12 @@ export interface ProvenancedField<T = unknown> {
   aiConfidence?: number;
 }
 
-type FieldKind = "string" | "number" | "string[]";
+type FieldKind = "string" | "number" | "string[]" | "boolean";
 
 /** `extractedByAgent` marker for requirements typed into the form (no document, no AI). */
 export const FORM_ENTRY_AGENT = "DONOR_FORM";
 
-/** The 18 dimensions extracted by the Requirements Analyst Agent. */
+/** The dimensions extracted by the Requirements Analyst Agent (plus the structured FCRA flag). */
 export const REQUIREMENT_FIELDS: Record<string, { kind: FieldKind; label: string }> = {
   summary: { kind: "string", label: "Executive summary" },
   sector: { kind: "string", label: "CSR sector / programme" },
@@ -46,6 +51,9 @@ export const REQUIREMENT_FIELDS: Record<string, { kind: FieldKind; label: string
   contactEmail: { kind: "string", label: "Contact email" },
   contactPhone: { kind: "string", label: "Contact phone" },
   specialConstraints: { kind: "string", label: "Special constraints" },
+  // Structured hard rule for matching (lib/requirements/facts.ts requiresFcra).
+  // null = not stated; matching then falls back to reading the text for "FCRA".
+  fcraRequired: { kind: "boolean", label: "FCRA registration required" },
 };
 
 export type RequirementFieldKey = keyof typeof REQUIREMENT_FIELDS;
@@ -55,7 +63,12 @@ export type RequirementFields = Record<RequirementFieldKey, ProvenancedField>;
 /** Fields below this confidence are highlighted for human verification. */
 export const LOW_CONFIDENCE_THRESHOLD = 0.75;
 
-const SOURCES: FieldSource[] = ["AI_EXTRACTED", "DONOR_ENTERED", "DONOR_CORRECTED", "ADMIN_VERIFIED"];
+const SOURCES: FieldSource[] = ["AI_EXTRACTED", "RULES", "DONOR_ENTERED", "DONOR_CORRECTED", "ADMIN_VERIFIED"];
+
+/** `extractedByAgent` / `modelVersion` marker for rule-based extraction. */
+export const RULE_EXTRACTION_AGENT = "RuleBasedExtractor";
+/** `extractedByAgent` when Claude produced the fields (Gemini keeps "RequirementsAnalystAgent"). */
+export const CLAUDE_EXTRACTION_AGENT = "ClaudeRequirementsAgent";
 
 /**
  * Normalizes stored JSON (including legacy rows written before provenance
@@ -77,15 +90,18 @@ export function normalizeFields(raw: unknown): RequirementFields {
   return out;
 }
 
-/** Tags freshly extracted LLM output as AI_EXTRACTED. */
-export function withAiProvenance(extracted: Record<string, { value: unknown; confidence: number }>): RequirementFields {
+/** Tags freshly extracted output: AI_EXTRACTED for the model, RULES for the rule-based extractor. */
+export function withAiProvenance(
+  extracted: Record<string, { value: unknown; confidence: number }>,
+  source: "AI_EXTRACTED" | "RULES" = "AI_EXTRACTED"
+): RequirementFields {
   const out = {} as RequirementFields;
   for (const key of REQUIREMENT_FIELD_KEYS) {
     const f = extracted[key];
     out[key] = {
       value: (f?.value as any) ?? null,
       confidence: typeof f?.confidence === "number" ? f.confidence : 0,
-      source: "AI_EXTRACTED",
+      source,
     };
   }
   return out;
@@ -119,6 +135,13 @@ export function coerceFieldValue(key: string, value: unknown): unknown {
     const trimmed = value.trim();
     if (trimmed.length > 5000) throw new RequirementWorkflowError(`${spec.label} is too long.`, 400);
     return trimmed === "" ? null : trimmed;
+  }
+  if (spec.kind === "boolean") {
+    if (typeof value === "boolean") return value;
+    if (value === "true" || value === "yes") return true;
+    if (value === "false" || value === "no") return false;
+    if (value === "") return null;
+    throw new RequirementWorkflowError(`${spec.label} must be yes or no.`, 400);
   }
   if (spec.kind === "number") {
     const n = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
@@ -163,7 +186,7 @@ export function applyEdits(
       confidence: 1,
       // A donor revising their own form entry is still an entry, not a correction of the AI.
       source: editor === "ADMIN" ? "ADMIN_VERIFIED" : prev.source === "DONOR_ENTERED" ? "DONOR_ENTERED" : "DONOR_CORRECTED",
-      aiConfidence: prev.aiConfidence ?? (prev.source === "AI_EXTRACTED" ? prev.confidence : undefined),
+      aiConfidence: prev.aiConfidence ?? (isMachineSource(prev.source) ? prev.confidence : undefined),
     };
     if (fields[k].aiConfidence === undefined) delete fields[k].aiConfidence;
     changedKeys.push(k);
@@ -186,7 +209,7 @@ export function verifyAll(current: RequirementFields): RequirementFields {
       ...f,
       source: "ADMIN_VERIFIED",
       confidence: f.value === null ? f.confidence : 1,
-      ...(f.source === "AI_EXTRACTED" && f.aiConfidence === undefined ? { aiConfidence: f.confidence } : {}),
+      ...(isMachineSource(f.source) && f.aiConfidence === undefined ? { aiConfidence: f.confidence } : {}),
     };
   }
   return out;

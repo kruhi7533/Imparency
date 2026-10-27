@@ -12,6 +12,7 @@ const db = vi.hoisted(() => ({
   contract: { findMany: vi.fn() },
   donation: { groupBy: vi.fn() },
   project: { findMany: vi.fn() },
+  beneficiaryFeedback: { findMany: vi.fn(async () => []) },
 }));
 vi.mock("@/lib/prisma", () => ({ default: db }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
@@ -98,8 +99,8 @@ describe("impactReportCsv", () => {
   it("exports an unverified figure as the word 'unverified', never blank or 0", async () => {
     const csv = impactReportCsv(await loadDonorImpact("donor-1"));
     const lines = csv.trim().split("\n");
-    expect(lines[0]).toBe("project,organisation,metric,value,unit,period_start,period_end,status");
-    expect(lines[1]).toBe("Digital classrooms,Akshar,Students reached,1200,COUNT_PEOPLE,2026-04-01,2026-09-30,verified");
+    expect(lines[0]).toBe("project,organisation,metric,value,unit,period_start,period_end,status,row_type,note");
+    expect(lines[1]).toBe("Digital classrooms,Akshar,Students reached,1200,COUNT_PEOPLE,2026-04-01,2026-09-30,verified,figure,");
     expect(lines[2]).toContain(",unverified,COUNT_PEOPLE,");
     expect(lines[2]).not.toMatch(/,0,/);
   });

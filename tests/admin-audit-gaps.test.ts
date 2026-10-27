@@ -24,6 +24,9 @@ vi.mock("@/lib/prisma", () => ({
     fcraQuarterlyReport: { findUnique: vi.fn() },
     reliefInitiative: { findUnique: vi.fn() },
     project: { findUnique: vi.fn(), update: vi.fn() },
+    // ADM-017: the export reads the chain head and Postgres' JSON text.
+    auditChainHead: { findUnique: vi.fn().mockResolvedValue({ id: 1, seq: 100, hash: "f".repeat(64) }) },
+    $queryRaw: vi.fn().mockResolvedValue([]),
   },
 }));
 vi.mock("next-auth/next", () => ({ getServerSession: vi.fn() }));
@@ -335,7 +338,8 @@ describe("running the project screening agent", () => {
   it("writes no log when the model call fails and nothing was stored", async () => {
     (screenProject as any).mockRejectedValue(new Error("model timeout"));
     const res = await call();
-    expect(res.status).toBe(500);
+    // AI-010: a structured "AI unavailable — human review required", not a 500.
+    expect(res.status).toBe(503);
     expect(db.project.update).not.toHaveBeenCalled();
     expect(logged).not.toHaveBeenCalled();
   });

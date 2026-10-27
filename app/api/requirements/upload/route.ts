@@ -4,15 +4,19 @@ import crypto from 'crypto';
 import prisma from '@/lib/prisma';
 import { uploadPrivateFile, deletePrivateFile } from '@/lib/storage';
 import { SponsorRequirementRepository } from '@/src/agents/requirements-agent/repositories/requirement.repository';
-import { LlmUnavailableError } from '@/src/agents/requirements-agent/services/llm/llm.service';
 import { donorAccountFor, getActor, requireVerifiedFunder } from '@/lib/requirements/access';
 import { recordRequirementEvent, recordRequirementEventBestEffort } from '@/lib/requirements/audit';
 import { runExtraction } from '@/lib/requirements/extraction';
 import { serializeRequirement } from '@/lib/requirements/dto';
 import { RequirementWorkflowError } from '@/lib/requirements/errors';
+import { ExtractionError, classifyExtractionFailure } from '@/lib/requirements/extraction-errors';
 import { detectRequirementFileType, MAX_REQUIREMENT_FILE_BYTES } from '@/lib/requirements/file-types';
 
 export const runtime = 'nodejs';
+// Parsing + a model call (with retries across two models) can exceed the
+// platform's default function timeout; a timed-out function is another way to
+// get a body-less error. Extraction failures are still reported in-band.
+export const maxDuration = 60;
 
 /**
  * Donor uploads a CSR/RFP document:
@@ -21,6 +25,23 @@ export const runtime = 'nodejs';
  *   → Requirements Analyst Agent → AI_EXTRACTED (or FAILED, retryable).
  */
 export async function POST(request: Request) {
+  // Last line of defence: nothing thrown below may become Next.js's default
+  // empty-body 500. Every path answers JSON with an error code.
+  try {
+    return await handleUpload(request);
+  } catch (err) {
+    if (err instanceof RequirementWorkflowError) {
+      return NextResponse.json({ error: err.message, ...(err.code ? { code: err.code } : {}) }, { status: err.status });
+    }
+    console.error('CSR upload: unhandled error:', err);
+    return NextResponse.json(
+      { error: 'The document could not be uploaded. Please try again.', code: 'UPLOAD_FAILED', retryable: true },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleUpload(request: Request): Promise<Response> {
   const rl = await checkRateLimit(request, "requirements/upload", 10, 600);
   if (rl.isBlocked) return rl.response;
   const actor = await getActor();
@@ -94,7 +115,19 @@ export async function POST(request: Request) {
     });
   }
 
-  const storageKey = await uploadPrivateFile(buffer, `.${type.ext}`, 'requirements');
+  let storageKey: string;
+  try {
+    storageKey = await uploadPrivateFile(buffer, `.${type.ext}`, 'requirements');
+  } catch (err) {
+    // e.g. local private storage on a read-only serverless filesystem (EROFS),
+    // or a missing/unauthorised private bucket. Nothing was created.
+    console.error('CSR upload: private storage failed:', err);
+    const failure = new ExtractionError('PRIVATE_STORAGE_UNAVAILABLE', String((err as Error)?.message ?? err));
+    return NextResponse.json(
+      { error: failure.message, code: failure.code, retryable: failure.retryable },
+      { status: failure.status }
+    );
+  }
   let requirement;
   try {
     requirement = await prisma.$transaction(async (tx) => {
@@ -107,7 +140,7 @@ export async function POST(request: Request) {
           mimeType: type.mime,
           fileSize: buffer.length,
           status: 'UPLOADED',
-          modelVersion: 'gemini-3.6-flash',
+          modelVersion: 'pending',
         },
       });
       await recordRequirementEvent(tx, {
@@ -124,7 +157,7 @@ export async function POST(request: Request) {
   } catch (err) {
     await deletePrivateFile(storageKey).catch(() => {});
     console.error('CSR upload: failed to create requirement:', err);
-    return NextResponse.json({ error: 'Could not save the document. Please try again.' }, { status: 500 });
+    return NextResponse.json({ error: 'Could not save the document. Please try again.', code: 'UPLOAD_FAILED', retryable: true }, { status: 500 });
   }
 
   try {
@@ -139,18 +172,19 @@ export async function POST(request: Request) {
       isDuplicate: false,
       message: 'CSR document processed successfully.',
     });
-  } catch (err: any) {
-    // The requirement exists (status FAILED) — return its id so the UI can offer a retry.
-    const unavailable = err instanceof LlmUnavailableError;
-    const status = unavailable ? 503 : err instanceof RequirementWorkflowError ? err.status : 500;
-    if (!unavailable && !(err instanceof RequirementWorkflowError)) console.error('CSR Requirement Upload Error:', err);
+  } catch (err: unknown) {
+    // The requirement exists (status FAILED, with the stored error) — return its
+    // id and the structured reason so the UI can offer retry / manual entry.
+    const failure = classifyExtractionFailure(err);
     return NextResponse.json(
       {
-        error: unavailable || err instanceof RequirementWorkflowError ? err.message : 'Document processing failed. You can retry extraction.',
-        retryable: true,
+        error: failure.message,
+        code: failure.code,
+        retryable: failure.retryable,
         requirementId: requirement.id,
+        canEnterManually: true,
       },
-      { status }
+      { status: failure.status }
     );
   }
 }

@@ -1,3 +1,4 @@
+import { breakGlassPageGate } from "@/app/admin/break-glass/BreakGlassGate";
 import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -6,6 +7,7 @@ import { buildNgoRiskAndFraudView } from "@/lib/risk-compliance-view";
 import { deriveComplianceEvidence } from "@/lib/compliance-evidence";
 import { assessVerificationStanding } from "@/lib/verification-standing";
 import TrustInsight from "./TrustInsight";
+import RequestReverification from "./RequestReverification";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,6 +63,8 @@ function Badge({ children, className }: { children: React.ReactNode; className: 
 }
 
 export default async function NgoDetailPage({ params }: { params: { id: string } }) {
+  const breakGlass = await breakGlassPageGate({ orgType: "NGO", orgId: params.id });
+  if (breakGlass) return breakGlass;
   const ngo = await prisma.nGOProfile.findUnique({
     where: { id: params.id },
     include: {
@@ -200,6 +204,13 @@ export default async function NgoDetailPage({ params }: { params: { id: string }
         </div>
 
         <TrustInsight ngoId={ngo.id} />
+
+        <RequestReverification
+          ngoId={ngo.id}
+          verificationStatus={ngo.verificationStatus}
+          dueAt={ngo.reverificationRequiredAt ? (ngo.reverificationDueAt ?? ngo.reverificationRequiredAt).toISOString() : null}
+          reason={ngo.reverificationReason ?? null}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Registration details */}

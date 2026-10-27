@@ -2,6 +2,7 @@ import { checkRateLimit } from "@/lib/rate-limiter";
 import { NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
 import { verifySessionRole } from "@/lib/auth-guards";
+import { callAi } from "@/lib/ai/telemetry";
 
 export async function POST(request: Request) {
   const rl = await checkRateLimit(request, "ai/suggest-milestones", 10, 60);
@@ -92,7 +93,7 @@ Rules:
 
 Return ONLY valid JSON matching the schema. No markdown, no preamble.`;
 
-      const geminiResponse = await ai.models.generateContent({
+      const geminiResponse = await callAi({ site: "suggest-milestones", model: "gemini-3.6-flash", promptVersion: "v1" }, () => ai.models.generateContent({
         model: "gemini-3.6-flash",
         contents: prompt,
         config: {
@@ -124,7 +125,7 @@ Return ONLY valid JSON matching the schema. No markdown, no preamble.`;
             required: ["milestones"],
           },
         },
-      });
+      }));
 
       const responseText = geminiResponse.text?.trim() || "";
       if (!responseText) {
@@ -189,8 +190,9 @@ Return ONLY valid JSON matching the schema. No markdown, no preamble.`;
   } catch (err: any) {
     console.error("AI Milestone Suggestion API Error:", err);
     return NextResponse.json(
-      { error: "Couldn't generate suggestions, please add milestones manually." },
-      { status: 500 }
+      // AI-010: a structured "AI unavailable" — never invented milestones.
+      { error: "Couldn't generate suggestions, please add milestones manually.", code: "AI_UNAVAILABLE", humanReviewRequired: true },
+      { status: 503 }
     );
   }
 }

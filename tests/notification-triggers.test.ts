@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /**
  * notification-triggers.ts is the fan-out layer: one milestone completion turns
@@ -22,6 +22,10 @@ const prismaMock = vi.hoisted(() => ({
   impactReport: { create: vi.fn() },
   project: { findUnique: vi.fn() },
   nGOFollower: { findMany: vi.fn() },
+  // DON-018: milestone updates go through lib/notification-dispatch.ts.
+  user: { findUnique: vi.fn() },
+  notificationPreference: { findUnique: vi.fn() },
+  notificationDeliveryLog: { findMany: vi.fn(), create: vi.fn() },
 }));
 
 const generateImpactNarrative = vi.hoisted(() => vi.fn());
@@ -42,6 +46,7 @@ vi.mock("@/lib/email", () => ({
   sendNewProjectAlertEmail,
 }));
 vi.mock("@/lib/observability", () => ({ captureError }));
+vi.mock("@/lib/dead-letter", () => ({ recordDeadLetter: vi.fn() }));
 
 import {
   triggerMilestoneCompleted,
@@ -99,6 +104,19 @@ beforeEach(() => {
   sendNewProjectAlertEmail.mockResolvedValue({ success: true });
   prismaMock.impactReport.create.mockResolvedValue({ id: "ir-1" });
   prismaMock.milestone.findFirst.mockResolvedValue(null);
+  // Dispatcher: no WhatsApp provider here, so every donor falls back to email
+  // (configured via RESEND_API_KEY; lib/email is mocked, nothing is sent).
+  process.env.RESEND_API_KEY = "test-key";
+  prismaMock.user.findUnique.mockImplementation(({ where }: any) =>
+    Promise.resolve({ id: where.id, name: "Donor", email: `${where.id}@example.com`, phone: null, projectUpdatesOptOut: false })
+  );
+  prismaMock.notificationPreference.findUnique.mockResolvedValue(null);
+  prismaMock.notificationDeliveryLog.findMany.mockResolvedValue([]);
+  prismaMock.notificationDeliveryLog.create.mockImplementation(() => Promise.resolve({ id: `log-${Math.random()}` }));
+});
+
+afterEach(() => {
+  delete process.env.RESEND_API_KEY;
 });
 
 describe("triggerMilestoneCompleted — per-donor fan-out", () => {
@@ -147,10 +165,17 @@ describe("triggerMilestoneCompleted — per-donor fan-out", () => {
       )
     );
 
+    prismaMock.user.findUnique.mockImplementation(({ where }: any) =>
+      Promise.resolve({ id: where.id, name: "Donor", email: where.id === "donor-0" ? null : "d1@example.com", phone: null, projectUpdatesOptOut: false })
+    );
+
     await triggerMilestoneCompleted("m-1");
 
     expect(sendPushNotification).toHaveBeenCalledTimes(2);
     expect(sendMilestoneCompletedEmail).toHaveBeenCalledTimes(1);
+    // ...and the skipped email is on the delivery log with its reason, not silent.
+    const rows = prismaMock.notificationDeliveryLog.create.mock.calls.map((c: any) => c[0].data);
+    expect(rows).toContainEqual(expect.objectContaining({ userId: "donor-0", channel: "EMAIL", status: "PROVIDER_NOT_CONFIGURED", reason: expect.stringContaining("No email address") }));
   });
 
   it("does nothing at all when the project has no successful donations", async () => {

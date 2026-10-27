@@ -51,6 +51,7 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
           donor: { select: { name: true, companyName: true } },
           milestones: { orderBy: { orderIndex: "asc" } },
           payments: true,
+          paymentAllocations: true,
         },
       },
     },
@@ -255,7 +256,10 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
                         <td className="py-2 font-semibold text-gray-900 dark:text-white">{m.title}</td>
                         <td className="py-2 text-gray-500">{m.dueDate ? m.dueDate.toLocaleDateString("en-IN") : "—"}</td>
                         <td className="py-2 font-bold">{inr(m.allocatedAmount)}</td>
-                        <td className="py-2 text-gray-600">{m.status}</td>
+                        <td className="py-2 text-gray-600">
+                          {m.status}
+                          <span className="block text-[10px] font-bold text-gray-400">Funding: {m.fundingStatus.replace("_", " ").toLowerCase()}</span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

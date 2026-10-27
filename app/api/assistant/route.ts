@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { getPlatformStats } from "@/lib/platform-stats";
+import { callAi } from "@/lib/ai/telemetry";
 
 export const runtime = "nodejs";
 
@@ -117,7 +118,7 @@ export async function POST(req: NextRequest) {
     }
 
     const genAI = new GoogleGenAI({ apiKey });
-    const result = await genAI.models.generateContent({
+    const result = await callAi({ site: "assistant", model: "gemini-3.6-flash", promptVersion: "v1" }, () => genAI.models.generateContent({
       model: "gemini-3.6-flash",
       contents: history.map((m) => ({
         role: m.role === "assistant" ? "model" : "user",
@@ -128,7 +129,7 @@ export async function POST(req: NextRequest) {
         temperature: 0.7,
         maxOutputTokens: 2000,
       },
-    });
+    }));
 
     const reply = result.text?.trim();
     if (!reply) {

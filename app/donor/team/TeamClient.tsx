@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type Role = "ADMIN" | "APPROVER" | "VIEWER";
+type Role = "ADMIN" | "APPROVER" | "FINANCE" | "VIEWER";
 
 interface Team {
   orgName: string;
@@ -15,6 +15,7 @@ interface Team {
 const ROLE_HELP: Record<Role, string> = {
   ADMIN: "Everything the owner can do, including managing the team.",
   APPROVER: "Runs matching, reviews and approves proposals, signs contracts, records payments. Cannot edit requirements.",
+  FINANCE: "Records and releases contract payments and sees finance. Cannot approve proposals, sign contracts or edit requirements.",
   VIEWER: "Sees requirements, contracts and reports. Changes nothing.",
 };
 
@@ -131,6 +132,7 @@ export default function TeamClient({
                       >
                         {isOwner && <option value="ADMIN">Admin</option>}
                         <option value="APPROVER">Approver</option>
+                        <option value="FINANCE">Finance</option>
                         <option value="VIEWER">Viewer</option>
                       </select>
                       <button
@@ -195,6 +197,7 @@ export default function TeamClient({
             <select id="invite-role" value={role} onChange={(e) => setRole(e.target.value as Role)} className={input}>
               {isOwner && <option value="ADMIN">Admin</option>}
               <option value="APPROVER">Approver</option>
+              <option value="FINANCE">Finance</option>
               <option value="VIEWER">Viewer</option>
             </select>
             <button type="submit" disabled={busy !== null} className="min-h-[44px] px-4 rounded-lg bg-emerald-500 text-gray-950 text-sm font-bold disabled:opacity-50">

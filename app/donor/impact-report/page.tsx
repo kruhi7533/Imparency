@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { loadDonorImpact } from "@/lib/donor-impact";
-import { formatOutcome, inr } from "@/lib/outcome-format";
+import { formatOutcome, inr, rollupFigure } from "@/lib/outcome-format";
 import PrintButton from "./PrintButton";
 
 export const dynamic = "force-dynamic";
@@ -76,7 +76,7 @@ export default async function DonorImpactReportPage() {
                   <li key={m.metricCode} className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 print:border-gray-300 print:bg-white">
                     <p className="text-xs text-gray-400 print:text-gray-700">{m.metricName}</p>
                     <p className="mt-1 text-2xl font-extrabold text-emerald-300 print:text-black">
-                      {m.verifiedCount > 0 ? formatOutcome(m.verifiedTotal, m.unit) : "Unverified"}
+                      {rollupFigure(m) ?? "Unverified"}
                     </p>
                     <p className="mt-1 text-[11px] text-gray-400 print:text-gray-700">
                       {m.verifiedCount} verified
@@ -136,6 +136,48 @@ export default async function DonorImpactReportPage() {
                     </dd>
                   </div>
                 </dl>
+
+                {p.changes.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-400 print:text-gray-700">Baseline → endline</h4>
+                    <ul className="mt-2 space-y-1 text-sm">
+                      {p.changes.map((c) => (
+                        <li key={c.metricCode} className="flex flex-wrap items-baseline gap-x-2">
+                          <span>{c.metricName}:</span>
+                          {c.status === "COMPUTED" ? (
+                            <>
+                              <strong className="text-emerald-300 print:text-black">{c.label}</strong>
+                              <span className="text-xs text-gray-400 print:text-gray-700">
+                                ({formatOutcome(c.baseline.value, c.unit)} → {formatOutcome(c.endline.value, c.unit)}, verified figures only)
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <strong className="font-mono text-amber-300 print:text-black">INSUFFICIENT_DATA</strong>
+                              <span className="text-xs text-gray-400 print:text-gray-700">{c.reason}</span>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="mt-4 text-sm">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-400 print:text-gray-700">Beneficiary feedback</h4>
+                  {p.beneficiaryFeedback.status === "AVAILABLE" ? (
+                    <p className="mt-1">
+                      {p.beneficiaryFeedback.respondents} consenting respondents
+                      {p.beneficiaryFeedback.averageRating ? ` · average rating ${p.beneficiaryFeedback.averageRating} / 5` : ""}
+                      <span className="text-xs text-gray-400 print:text-gray-700"> · aggregated, no individual responses shown</span>
+                    </p>
+                  ) : (
+                    <p className="mt-1">
+                      <strong className="font-mono text-amber-300 print:text-black">INSUFFICIENT_DATA</strong>{" "}
+                      <span className="text-xs text-gray-400 print:text-gray-700">{p.beneficiaryFeedback.reason}</span>
+                    </p>
+                  )}
+                </div>
 
                 {p.outcomes.length === 0 ? (
                   <p className="mt-4 text-xs text-gray-400 print:text-gray-700">No outcomes reported yet.</p>

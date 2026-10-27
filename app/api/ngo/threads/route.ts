@@ -3,16 +3,15 @@ import { verifySessionRole } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { notifyAdminsOfNgoThreadActivity } from "@/lib/notify-admin-thread";
+import { getNgoMembership } from "@/lib/tenant-scope";
 
 export const runtime = "nodejs";
 
 /** Resolve the NGO profile id for the logged-in NGO user (owner or team member). */
 async function resolveNgoId(session: any): Promise<string | null> {
-  const profile = await prisma.nGOProfile.findUnique({
-    where: { userId: session.user.id },
-    select: { id: true },
-  });
-  return profile?.id ?? session.user.ngoProfileId ?? null;
+  // Live membership (lib/tenant-scope.ts), never the JWT's ngoProfileId, which
+  // outlives a removed team member's access.
+  return (await getNgoMembership(session.user.id))?.ngoId ?? null;
 }
 
 /** List this NGO's review threads (admin inquiries + own appeals). */

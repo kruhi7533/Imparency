@@ -99,6 +99,14 @@ export default async function NGODashboardPage() {
                 <span className="mt-2 text-xs font-semibold text-gray-400">Verified</span>
               </div>
             </div>
+
+            <p className="mt-8 text-xs text-gray-500 dark:text-gray-400">
+              Uploaded the wrong file, or a document has changed?{" "}
+              <Link href="/ngo/register" className="font-semibold text-trust-600 dark:text-trust-300 underline underline-offset-2">
+                Replace your documents
+              </Link>{" "}
+              — they are re-checked automatically and the review continues on the new files.
+            </p>
           </div>
         )}
 
@@ -165,6 +173,22 @@ export default async function NGODashboardPage() {
                 Open Appeal & Inquiry Thread →
               </Link>
             </div>
+          </div>
+        )}
+
+        {/* Re-verification due (ADM-004): still VERIFIED, but a human has asked
+            for the evidence again. Says why, by when, and what to do. */}
+        {status === "VERIFIED" && profile.reverificationRequiredAt && (
+          <div role="status" className="mb-6 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-5 text-sm text-amber-900 dark:text-amber-200">
+            <h2 className="font-extrabold text-base mb-1">Re-verification due{profile.reverificationDueAt ? ` by ${profile.reverificationDueAt.toLocaleDateString("en-IN")}` : ""}</h2>
+            {profile.reverificationReason && <p className="mb-2"><b>Reason:</b> {profile.reverificationReason}</p>}
+            <p className="mb-1 font-semibold">What to do:</p>
+            <ol className="list-decimal ml-5 space-y-0.5">
+              <li>Check that your registration certificate, PAN and 80G/12A documents are current.</li>
+              <li>Re-upload any expired or changed document from <Link href="/ngo/register" className="underline">your registration details</Link> (resubmitting sends your profile back to review).</li>
+              <li>Reply to any admin question in <Link href="/ngo/inquiries" className="underline">Inquiries</Link>.</li>
+            </ol>
+            <p className="mt-2 text-xs">Your organisation stays verified and can keep working while an admin re-checks.</p>
           </div>
         )}
 

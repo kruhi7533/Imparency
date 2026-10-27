@@ -23,7 +23,10 @@ export const RequirementSchema = z.object({
   contactEmail: fieldSchema(z.string()),
   contactPhone: fieldSchema(z.string()),
   specialConstraints: fieldSchema(z.string()),
-  summary: fieldSchema(z.string())
+  summary: fieldSchema(z.string()),
+  // Optional so older fixtures/models that do not return it still validate;
+  // missing means "not stated" and matching falls back to the text rule.
+  fcraRequired: fieldSchema(z.boolean()).optional()
 });
 
 export type ExtractedRequirementJSON = z.infer<typeof RequirementSchema>;

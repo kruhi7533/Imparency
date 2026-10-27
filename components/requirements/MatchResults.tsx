@@ -29,7 +29,15 @@ function MatchCard({
     <div className="border border-gray-800 rounded-2xl bg-gray-900/40 p-5 space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-bold text-gray-500">#{match.rank}</p>
+          <p className="text-[11px] font-bold text-gray-500">
+            {match.adminDecision === "APPROVED" && match.adminRank ? (
+              <span className="text-emerald-300">Admin-approved #{match.adminRank}</span>
+            ) : (
+              <>#{match.rank}</>
+            )}
+            {match.adminDecision === "APPROVED" && match.adminRank && <span className="ml-2 font-normal">(engine rank #{match.rank})</span>}
+            {match.adminDecision === "REJECTED" && <span className="ml-2 text-red-300">Excluded by admin</span>}
+          </p>
           <h4 className="text-base font-bold text-white">{match.ngoName}</h4>
           <p className="text-xs text-gray-400">{match.projectTitle}</p>
         </div>
@@ -71,6 +79,8 @@ function MatchCard({
         </button>
         {match.invitedAt ? (
           <span className="text-xs font-bold text-emerald-300">✓ Brief shared {new Date(match.invitedAt).toLocaleDateString("en-IN")}</span>
+        ) : match.adminDecision === "REJECTED" ? (
+          <span className="text-xs text-red-300">Not approved by the platform{match.adminNote ? `: ${match.adminNote}` : ""}</span>
         ) : canInvite && onInvite ? (
           <button
             type="button"
@@ -177,6 +187,11 @@ export function MatchResults({
           Admin review: {run.reviewStatus.toLowerCase()}
         </span>
       </div>
+      {run.reviewStatus === "PENDING" && eligible.length > 0 && (
+        <p className="text-xs text-amber-200 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2">
+          Awaiting admin approval of this shortlist. NGOs can be invited once an admin has approved the candidates and their order.
+        </p>
+      )}
       {run.reviewStatus === "REJECTED" && run.reviewNote && (
         <p className="text-xs text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-3 py-2">
           Analysis rejected by admin: {run.reviewNote}
@@ -192,7 +207,11 @@ export function MatchResults({
         <p className="text-sm text-gray-400">No eligible NGO projects matched this requirement.</p>
       ) : (
         eligible.map((m) => (
-          <MatchCard key={m.id} match={m} canInvite={canInvite && run.reviewStatus !== "REJECTED"} inviting={invitingId === m.id} onInvite={onInvite} />
+          <MatchCard
+            key={m.id}
+            match={m}
+            canInvite={canInvite && run.reviewStatus === "APPROVED" && m.adminDecision === "APPROVED"}
+            inviting={invitingId === m.id} onInvite={onInvite} />
         ))
       )}
 

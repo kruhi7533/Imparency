@@ -9,6 +9,51 @@ import { isUniqueConstraintError } from "@/lib/razorpay-webhook";
 export const runtime = "nodejs";
 
 /**
+ * ADMIN-only. Both allocation queues in one read: commitments against
+ * approved proposals (the opportunity flow) and payment → milestone lines on
+ * the requirement → contract flow. ?status filters both (PENDING maps to the
+ * contract flow's PENDING_APPROVAL).
+ */
+export async function GET(request: Request) {
+  const { authorized, response } = await verifySessionRole(Role.ADMIN);
+  if (!authorized) return response;
+  const status = new URL(request.url).searchParams.get("status");
+  const proposalStatus = status && (Object.values(AllocationStatus) as string[]).includes(status) ? (status as AllocationStatus) : undefined;
+  const contractStatus =
+    status === "PENDING" || status === "PENDING_APPROVAL" ? "PENDING_APPROVAL" : status === "APPROVED" || status === "REJECTED" ? status : undefined;
+
+  const [proposalAllocations, contractAllocations] = await Promise.all([
+    prisma.allocation.findMany({
+      where: proposalStatus ? { status: proposalStatus } : {},
+      orderBy: { proposedAt: "desc" },
+      take: 200,
+      select: { id: true, proposalId: true, opportunityId: true, ngoId: true, amount: true, status: true, proposedAt: true, decidedAt: true },
+    }),
+    prisma.contractPaymentAllocation.findMany({
+      where: contractStatus ? { status: contractStatus } : {},
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      select: {
+        id: true,
+        contractId: true,
+        paymentId: true,
+        contractMilestoneId: true,
+        amount: true,
+        rule: true,
+        status: true,
+        createdAt: true,
+        decidedAt: true,
+        contract: { select: { contractNumber: true, requirementId: true } },
+      },
+    }),
+  ]);
+  return NextResponse.json({
+    proposalAllocations: proposalAllocations.map((a) => ({ ...a, amount: a.amount.toFixed(2) })),
+    contractAllocations: contractAllocations.map((a) => ({ ...a, amount: a.amount.toFixed(2) })),
+  });
+}
+
+/**
  * ADMIN-only. Propose committing money to an approved proposal.
  *
  * This creates a PENDING allocation — an admin's stated intent. It commits
@@ -64,7 +109,13 @@ export async function POST(request: Request) {
   });
 
   if (!proposal) {
-    return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
+    return NextResponse.json(
+      {
+        error:
+          "Proposal not found. Money on the requirement → contract flow is allocated per payment, onto contract milestones — use /api/admin/contract-allocations (or the Contract milestone allocations section of /admin/allocations).",
+      },
+      { status: 404 },
+    );
   }
 
   const siblings = await prisma.allocation.findMany({

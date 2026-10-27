@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { queue, shrinkPhoto, syncOutcome, toFormData, type QueuedCapture } from "@/lib/field-queue";
+import { describeFailure, queue, shrinkPhoto, syncOutcome, uploadCapture, type QueuedCapture } from "@/lib/field-queue";
 
 /**
  * Week 7 mobile field app. Every capture goes into the on-device queue first
@@ -47,6 +47,8 @@ export default function FieldApp({ userName }: { userName: string }) {
   const [tasksFromCache, setTasksFromCache] = useState(false);
   const [queued, setQueued] = useState<QueuedCapture[]>([]);
   const [syncing, setSyncing] = useState(false);
+  // Upload progress of the capture being sent right now (0..1).
+  const [progress, setProgress] = useState<{ clientId: string; fraction: number } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const [active, setActive] = useState<Task | null>(null);
@@ -91,27 +93,24 @@ export default function FieldApp({ userName }: { userName: string }) {
     try {
       for (const c of await queue.all()) {
         if (c.error) continue;
-        let status: number | "network-error";
-        let error = "";
-        try {
-          const res = await fetch("/api/field/evidence", { method: "POST", body: toFormData(c) });
-          status = res.status;
-          if (!res.ok) error = (await res.json().catch(() => ({}))).error || `Error ${res.status}`;
-        } catch {
-          status = "network-error";
-        }
-        const outcome = syncOutcome(status);
+        setProgress({ clientId: c.clientId, fraction: 0 });
+        const result = await uploadCapture(c, (fraction) => setProgress({ clientId: c.clientId, fraction }));
+        const outcome = syncOutcome(result.status);
         if (outcome === "done") {
           await queue.remove(c.clientId);
           sent++;
         } else if (outcome === "failed") {
-          await queue.put({ ...c, error });
+          await queue.put({ ...c, error: describeFailure(result), errorCode: result.body.code });
         } else {
-          break; // offline or server trouble — try again later
+          // Offline or server trouble: keep it queued, but say why, so a
+          // storage outage is visible instead of a silent "waiting to sync".
+          await queue.put({ ...c, lastAttemptError: describeFailure(result), errorCode: result.body.code });
+          break;
         }
       }
     } finally {
       setSyncing(false);
+      setProgress(null);
       await refreshQueue();
       if (sent > 0) {
         setMessage(`Synced ${sent} capture${sent === 1 ? "" : "s"}.`);
@@ -169,6 +168,10 @@ export default function FieldApp({ userName }: { userName: string }) {
     e.preventDefault();
     if (!active) return;
     if (!photo && !form.withFeedback) return setMessage("Take a photo or record beneficiary feedback.");
+    const shrunk = photo ? await shrinkPhoto(photo) : null;
+    // Same limit the server enforces (MAX_PHOTO_BYTES), checked before queueing
+    // so the worker can retake now rather than find a refused capture later.
+    if (shrunk && shrunk.size > 8 * 1024 * 1024) return setMessage("This photo is larger than 8 MB. Take it again at a lower resolution.");
     const capture: QueuedCapture = {
       clientId: newId(),
       taskId: active.id,
@@ -179,7 +182,7 @@ export default function FieldApp({ userName }: { userName: string }) {
       accuracyM: gps?.accuracyM ?? null,
       note: form.note.trim(),
       containsPeople: form.containsPeople,
-      photo: photo ? await shrinkPhoto(photo) : null,
+      photo: shrunk,
       feedback: form.withFeedback
         ? {
             beneficiaryRef: form.beneficiaryRef.trim(),
@@ -196,6 +199,12 @@ export default function FieldApp({ userName }: { userName: string }) {
     setActive(null);
     setMessage(online ? "Saved. Syncing…" : "Saved on this phone. It will sync when you are back online.");
     if (navigator.onLine) sync();
+  };
+
+  const retry = async (c: QueuedCapture) => {
+    await queue.put({ ...c, error: undefined, errorCode: undefined, lastAttemptError: undefined });
+    await refreshQueue();
+    sync();
   };
 
   const discard = async (clientId: string) => {
@@ -240,13 +249,48 @@ export default function FieldApp({ userName }: { userName: string }) {
             {syncing ? "Syncing…" : "Sync now"}
           </button>
         </section>
+        {pending.length > 0 && (
+          <ul className="space-y-2" aria-label="Captures waiting to sync">
+            {pending.map((p) => {
+              const sending = progress?.clientId === p.clientId;
+              return (
+                <li key={p.clientId} className="bg-white rounded-2xl p-3 shadow-sm text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-bold truncate">{p.taskTitle}</p>
+                    <span className="text-xs text-gray-600 shrink-0">
+                      {sending ? `Uploading ${Math.round((progress?.fraction ?? 0) * 100)}%` : p.photo ? "Photo queued" : "Feedback queued"}
+                    </span>
+                  </div>
+                  {sending && (
+                    <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((progress?.fraction ?? 0) * 100)}>
+                      <div className="h-full bg-emerald-600 transition-all" style={{ width: `${Math.round((progress?.fraction ?? 0) * 100)}%` }} />
+                    </div>
+                  )}
+                  {!sending && p.lastAttemptError && (
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <p className="text-xs text-amber-800">Last attempt failed: {p.lastAttemptError}</p>
+                      <button onClick={() => retry(p)} disabled={syncing || !online} className="min-h-[44px] px-3 text-sm font-bold text-emerald-800 underline disabled:opacity-40">
+                        Retry
+                      </button>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
         {failed.map((f) => (
           <section key={f.clientId} role="alert" className="bg-red-50 border border-red-200 rounded-2xl p-3 text-sm">
             <p className="font-bold text-red-800">{f.taskTitle}: not accepted</p>
             <p className="text-red-700 text-xs">{f.error}</p>
-            <button onClick={() => discard(f.clientId)} className="mt-1 min-h-[44px] px-2 -ml-2 text-sm font-bold text-red-700 underline">
-              Discard
-            </button>
+            <div className="flex gap-4">
+              <button onClick={() => retry(f)} disabled={syncing || !online} className="mt-1 min-h-[44px] px-2 -ml-2 text-sm font-bold text-emerald-800 underline disabled:opacity-40">
+                Retry
+              </button>
+              <button onClick={() => discard(f.clientId)} className="mt-1 min-h-[44px] px-2 text-sm font-bold text-red-700 underline">
+                Discard
+              </button>
+            </div>
           </section>
         ))}
 
@@ -260,7 +304,7 @@ export default function FieldApp({ userName }: { userName: string }) {
             </div>
 
             <label className="block text-sm font-bold">
-              Photo
+              Photo <span className="font-normal text-gray-500">(JPEG, PNG, WebP or HEIC, up to 8 MB)</span>
               <input
                 type="file"
                 accept="image/*"

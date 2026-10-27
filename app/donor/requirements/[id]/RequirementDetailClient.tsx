@@ -15,6 +15,13 @@ import { MatchResults } from "@/components/requirements/MatchResults";
 import { ResponsesPanel } from "@/components/requirements/ResponsesPanel";
 import { ProposalAssistant } from "@/components/requirements/ProposalAssistant";
 import { requirementApi } from "@/components/requirements/api";
+import { ExtractionErrorDetail, ExtractionFlagsPanel, ExtractionMethodBanner } from "@/components/requirements/ExtractionNotices";
+
+const METHOD_LABEL: Record<string, string> = {
+  CLAUDE: "AI (Claude)",
+  GEMINI: "AI (Gemini)",
+  RULES: "rule-based extraction (no AI)",
+};
 
 type Tab = "requirements" | "document" | "history" | "matches" | "responses";
 const TABS: Tab[] = ["requirements", "document", "history", "matches", "responses"];
@@ -112,6 +119,28 @@ export default function RequirementDetailClient({
         : "Requirement withdrawn."
     );
   const retry = () => perform("retry", () => requirementApi(`/api/requirements/${id}/rerun-extraction`, { method: "POST" }), "Extraction complete.");
+  const manualEntry = () =>
+    perform(
+      "manual",
+      async () => {
+        await requirementApi(`/api/requirements/${id}/manual-entry`, { method: "POST" });
+        setTab("requirements");
+      },
+      "Fill in the requirement details below, then submit them for admin verification."
+    );
+  const confirmFlag = async (flagId: string, note: string) => {
+    let ok = false;
+    await perform(
+      `flag:${flagId}`,
+      async () => {
+        await requirementApi(`/api/requirements/${id}/confirm-flag`, { method: "POST", body: JSON.stringify({ flagId, note }) });
+        ok = true;
+      },
+      "Warning confirmed."
+    );
+    return ok;
+  };
+  const openFlags = requirement.extractionFlags.filter((f) => f.blocking && !f.confirmedAt).length;
   const findMatches = () =>
     perform("match", async () => {
       await requirementApi(`/api/requirements/${id}/matches`, { method: "POST" });
@@ -166,7 +195,13 @@ export default function RequirementDetailClient({
         <p className="text-xs text-gray-500 mt-1">
           {requirement.isFormEntry
             ? `Created ${new Date(requirement.createdAt).toLocaleString("en-IN")} · Entered via the requirement form`
-            : `Uploaded ${new Date(requirement.createdAt).toLocaleString("en-IN")} · Extracted with ${requirement.modelVersion}`}
+            : `Uploaded ${new Date(requirement.createdAt).toLocaleString("en-IN")}${
+                requirement.extractionMethod === "MANUAL"
+                  ? " · Extraction failed — details entered manually"
+                  : requirement.extractionMethod && requirement.extractionMethod !== "FORM"
+                  ? ` · Extracted with ${METHOD_LABEL[requirement.extractionMethod]} (${requirement.modelVersion})`
+                  : ""
+              }`}
         </p>
         <div className="mt-4">
           <RequirementStepper status={status} />
@@ -182,10 +217,17 @@ export default function RequirementDetailClient({
           <p>Processing the document and extracting requirements…</p>
         ) : status === "FAILED" ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-red-300">Document processing failed. You can retry extraction.</p>
-            <button type="button" disabled={!!busy} onClick={retry} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-950 text-xs font-bold disabled:opacity-50">
-              {busy === "retry" ? "Retrying…" : "Retry extraction"}
-            </button>
+            <ExtractionErrorDetail requirement={requirement} />
+            <div className="flex flex-wrap gap-2">
+              {requirement.hasDocument && (
+                <button type="button" disabled={!!busy} onClick={retry} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-950 text-xs font-bold disabled:opacity-50">
+                  {busy === "retry" ? "Retrying…" : "Retry extraction"}
+                </button>
+              )}
+              <button type="button" disabled={!!busy} onClick={manualEntry} className="px-4 py-2 rounded-lg border border-gray-600 text-gray-100 text-xs font-bold disabled:opacity-50">
+                {busy === "manual" ? "Opening…" : "Enter details manually"}
+              </button>
+            </div>
           </div>
         ) : (status === "AI_EXTRACTED" || status === "DONOR_REVIEW") && requirement.isFormEntry ? (
           <p>Check the details you entered and fill any gaps — sector, location, budget and KPIs drive NGO matching — then submit for admin verification.</p>
@@ -217,7 +259,11 @@ export default function RequirementDetailClient({
         ) : status === "MATCHING" ? (
           <p>Finding compatible NGOs…</p>
         ) : status === "SHORTLISTED" ? (
-          <p>Your ranked shortlist is ready. Invite the NGOs you want to hear from — they receive a sanitized brief, never your document.</p>
+          matchRun?.reviewStatus === "APPROVED" ? (
+            <p>An admin has approved your shortlist in the order shown. Invite the NGOs you want to hear from — they receive a sanitized brief, never your document.</p>
+          ) : (
+            <p>Your ranked shortlist is ready and is awaiting admin approval. Once an admin approves (and, if needed, reorders) it, you can invite NGOs.</p>
+          )
         ) : status === "NGO_RESPONSE" ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p>
@@ -321,6 +367,8 @@ export default function RequirementDetailClient({
 
       {tab === "requirements" && (
         <div className="space-y-4">
+          <ExtractionMethodBanner requirement={requirement} />
+          <ExtractionFlagsPanel flags={requirement.extractionFlags} canConfirm={editable} onConfirm={confirmFlag} busy={busy} />
           <FieldsEditor fields={requirement.fields} editable={editable} draft={draft} onChange={(k, v) => setDraft((d) => ({ ...d, [k]: v }))} />
           {editable && (
             <div className="flex flex-wrap justify-end gap-3 pt-2">
@@ -334,7 +382,8 @@ export default function RequirementDetailClient({
               </button>
               <button
                 type="button"
-                disabled={!!busy}
+                disabled={!!busy || openFlags > 0}
+                title={openFlags > 0 ? "Confirm the extraction warnings above first" : undefined}
                 onClick={submit}
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 text-gray-950 text-sm font-bold disabled:opacity-50"
               >

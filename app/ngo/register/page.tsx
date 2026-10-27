@@ -50,6 +50,47 @@ export default function NGORegistrationPage() {
   const [a12Error, setA12Error] = useState("");
   const [fcraError, setFcraError] = useState("");
 
+  // Save-and-resume (NGO-001): documents already stored on the server-side draft.
+  const [draftDocs, setDraftDocs] = useState<Record<string, { name: string }>>({});
+  const [draftMsg, setDraftMsg] = useState("");
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [resubmitting, setResubmitting] = useState(false);
+
+  useEffect(() => {
+    if (status !== "authenticated" || session?.user?.role !== "NGO" || draftLoaded) return;
+    setDraftLoaded(true);
+    fetch("/api/ngo/register/draft")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const apply = (f: any) => {
+          if (!f) return;
+          if (f.orgName) setOrgName(f.orgName);
+          if (f.registrationNumber) setRegNum(f.registrationNumber);
+          if (f.panNumber) setPanNum(f.panNumber);
+          if (f.address) setAddress(f.address);
+          if (f.website) setWebsite(f.website);
+          if (f.foundedYear) setFoundedYear(String(f.foundedYear));
+          if (f.description) setDescription(f.description);
+          if (f.fcraNumber) setFcraNumber(f.fcraNumber);
+          if (Array.isArray(f.causeCategories) && f.causeCategories.length) setSelectedCauses(f.causeCategories);
+        };
+        const p = j?.profile;
+        const d = j?.draft;
+        // Existing application first, then a NEWER draft on top of it.
+        if (p) {
+          apply(p.fields);
+          setResubmitting(true);
+        }
+        if (d && (!p || new Date(d.updatedAt) > new Date(p.updatedAt))) {
+          apply(d.fields);
+          setDraftDocs(d.documents || {});
+          setDraftMsg(`Resumed your draft saved ${new Date(d.updatedAt).toLocaleString("en-IN")}.`);
+        }
+      })
+      .catch(() => {});
+  }, [status, session, draftLoaded]);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -100,6 +141,38 @@ export default function NGORegistrationPage() {
     }
   };
 
+  const saveDraft = async () => {
+    setSavingDraft(true);
+    setError("");
+    setDraftMsg("");
+    try {
+      const fd = new FormData();
+      fd.append("orgName", orgName);
+      fd.append("registrationNumber", regNum);
+      fd.append("panNumber", panNum);
+      fd.append("address", address);
+      fd.append("website", website);
+      fd.append("foundedYear", foundedYear);
+      fd.append("description", description);
+      fd.append("fcraNumber", fcraNumber);
+      fd.append("causeCategories", JSON.stringify(selectedCauses));
+      if (regFile) fd.append("regFile", regFile);
+      if (panFile) fd.append("panFile", panFile);
+      if (taxFile) fd.append("taxFile", taxFile);
+      if (a12File) fd.append("a12File", a12File);
+      if (fcraFile) fd.append("fcraFile", fcraFile);
+      const res = await fetch("/api/ngo/register/draft", { method: "PUT", body: fd });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "Could not save draft");
+      setDraftDocs(j.draft.documents || {});
+      setDraftMsg("Draft saved. You can leave and resume later — nothing is submitted for review until you click Submit.");
+    } catch (err: any) {
+      setError(err.message || "Could not save draft");
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -123,7 +196,7 @@ export default function NGORegistrationPage() {
       return;
     }
 
-    if (!regFile || !panFile || !taxFile) {
+    if ((!regFile && !draftDocs.regFile) || (!panFile && !draftDocs.panFile) || (!taxFile && !draftDocs.taxFile)) {
       setError("Please upload all three verification documents (PDF only)");
       setLoading(false);
       return;
@@ -140,9 +213,10 @@ export default function NGORegistrationPage() {
       formData.append("description", description);
       formData.append("causeCategories", JSON.stringify(selectedCauses));
       
-      formData.append("regFile", regFile);
-      formData.append("panFile", panFile);
-      formData.append("taxFile", taxFile);
+      // A slot left empty falls back to the document saved on the draft (server-side).
+      if (regFile) formData.append("regFile", regFile);
+      if (panFile) formData.append("panFile", panFile);
+      if (taxFile) formData.append("taxFile", taxFile);
       
       formData.append("dataProcessingConsent", consent ? "true" : "false");
       formData.append("consentVersion", consentVersion);
@@ -191,6 +265,21 @@ export default function NGORegistrationPage() {
         {error && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/30 border-l-4 border-red-500 rounded text-sm text-red-700 dark:text-red-300">
             {error}
+          </div>
+        )}
+
+        {resubmitting && (
+          <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/30 border-l-4 border-amber-500 rounded text-sm text-amber-900 dark:text-amber-200">
+            You&apos;re updating a submitted application — upload the corrected documents; they&apos;ll be re-checked automatically.
+          </div>
+        )}
+
+        {draftMsg && (
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950/30 border-l-4 border-blue-500 rounded text-sm text-blue-800 dark:text-blue-300">
+            {draftMsg}
+            {Object.keys(draftDocs).length > 0 && (
+              <span className="block mt-1 text-xs">Documents on your draft: {Object.values(draftDocs).map((v) => v.name).join(", ")}. Leave a slot empty to use the saved file.</span>
+            )}
           </div>
         )}
 
@@ -330,7 +419,7 @@ export default function NGORegistrationPage() {
                     accept=".pdf"
                     onChange={(e) => handleFileChange(e, setRegFile, setRegError)}
                     className="hidden"
-                    required={!regFile}
+                    required={!regFile && !draftDocs.regFile}
                   />
                   {regFile ? (
                     <div className="flex flex-col items-center gap-2">
@@ -365,7 +454,7 @@ export default function NGORegistrationPage() {
                     accept=".pdf"
                     onChange={(e) => handleFileChange(e, setPanFile, setPanError)}
                     className="hidden"
-                    required={!panFile}
+                    required={!panFile && !draftDocs.panFile}
                   />
                   {panFile ? (
                     <div className="flex flex-col items-center gap-2">
@@ -400,7 +489,7 @@ export default function NGORegistrationPage() {
                     accept=".pdf"
                     onChange={(e) => handleFileChange(e, setTaxFile, setTaxError)}
                     className="hidden"
-                    required={!taxFile}
+                    required={!taxFile && !draftDocs.taxFile}
                   />
                   {taxFile ? (
                     <div className="flex flex-col items-center gap-2">
@@ -542,7 +631,15 @@ export default function NGORegistrationPage() {
             </label>
           </div>
 
-          <div className="pt-4">
+          <div className="pt-4 space-y-3">
+            <button
+              type="button"
+              onClick={saveDraft}
+              disabled={savingDraft || loading || success}
+              className="w-full border border-emerald-600 text-emerald-700 dark:text-emerald-400 font-bold py-3 px-4 rounded-xl disabled:opacity-50"
+            >
+              {savingDraft ? "Saving draft…" : "Save draft and finish later"}
+            </button>
             <button
               type="submit"
               disabled={loading || success || !!regError || !!panError || !!taxError || !!a12Error || !!fcraError}

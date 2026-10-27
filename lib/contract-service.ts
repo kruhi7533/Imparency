@@ -81,6 +81,26 @@ export async function createContract(params: CreateContractParams) {
       ) {
         throw new Error("A contract can only be linked to a CSR requirement whose selected NGO project matches this contract.");
       }
+    } else {
+      // NEG-007: an "independent" contract must not become a side door around
+      // CSR selection. If this donor has an open CSR requirement in which this
+      // project is still competing (shortlisted / responding — no approved
+      // proposal yet), the contract has to wait for that selection and then be
+      // created against the requirement, so it is bound to the approved version.
+      const pending = await tx.opportunityResponse.findFirst({
+        where: {
+          projectId: params.projectId,
+          requirement: { sponsorId: params.donorId, status: { in: ["SHORTLISTED", "NGO_RESPONSE", "SELECTED"] } },
+        },
+        select: { requirementId: true, requirement: { select: { status: true } } },
+      });
+      if (pending) {
+        throw new Error(
+          pending.requirement.status === "SELECTED"
+            ? "This project's proposal was approved on one of your CSR requirements — create the contract from that requirement so it is bound to the approved proposal."
+            : "This project is still under consideration on one of your CSR requirements. Approve its proposal first; the contract is then created from the requirement."
+        );
+      }
     }
 
     const contract = await tx.contract.create({

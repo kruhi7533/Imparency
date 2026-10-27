@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { callAi } from "@/lib/ai/telemetry";
 
 /**
  * Trust Insight agent — admin-only.
@@ -73,10 +74,10 @@ Write ONE short paragraph (40-70 words) that:
 - Output PLAIN TEXT only, no markdown, no bullet points, no quotes around it.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callAi({ site: "ngo-trust-insight", model: "gemini-3.5-flash-lite", promptVersion: "v1" }, () => ai.models.generateContent({
       model: "gemini-3.5-flash-lite",
       contents: [prompt],
-    });
+    }));
 
     const text = response.text?.trim();
     if (!text) return fallback;

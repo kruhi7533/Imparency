@@ -21,6 +21,7 @@ export type FieldDraft = Record<string, string>;
 export function fieldToDraft(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "boolean") return value ? "true" : "false";
   return String(value);
 }
 
@@ -38,6 +39,7 @@ export function draftEdits(fields: RequirementFields, draft: FieldDraft): Record
     if (raw.trim() === "") edits[key] = null;
     else if (kind === "number") edits[key] = Number(raw.replace(/,/g, ""));
     else if (kind === "string[]") edits[key] = raw.split(",").map((s) => s.trim()).filter(Boolean);
+    else if (kind === "boolean") edits[key] = raw === "true";
     else edits[key] = raw;
   }
   return edits;
@@ -45,13 +47,14 @@ export function draftEdits(fields: RequirementFields, draft: FieldDraft): Record
 
 const SOURCE_LABEL: Record<string, string> = {
   AI_EXTRACTED: "AI",
+  RULES: "Rules",
   DONOR_ENTERED: "Donor entered",
   DONOR_CORRECTED: "Donor corrected",
   ADMIN_VERIFIED: "Admin verified",
 };
 
 function isLow(f: ProvenancedField) {
-  return f.value !== null && f.source === "AI_EXTRACTED" && f.confidence < LOW_CONFIDENCE_THRESHOLD;
+  return f.value !== null && (f.source === "AI_EXTRACTED" || f.source === "RULES") && f.confidence < LOW_CONFIDENCE_THRESHOLD;
 }
 
 function ProvenanceChip({ field }: { field: ProvenancedField }) {
@@ -68,8 +71,8 @@ function ProvenanceChip({ field }: { field: ProvenancedField }) {
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${tone}`}>
       {SOURCE_LABEL[field.source] ?? field.source}
       {field.value !== null && <span className="opacity-80">· {pct}%</span>}
-      {field.aiConfidence !== undefined && field.source !== "AI_EXTRACTED" && (
-        <span className="opacity-60 font-medium">(AI was {Math.round(field.aiConfidence * 100)}%)</span>
+      {field.aiConfidence !== undefined && field.source !== "AI_EXTRACTED" && field.source !== "RULES" && (
+        <span className="opacity-60 font-medium">(extracted at {Math.round(field.aiConfidence * 100)}%)</span>
       )}
     </span>
   );
@@ -91,6 +94,7 @@ const DISPLAY_ORDER: RequirementFieldKey[] = [
   "contactPerson",
   "contactEmail",
   "contactPhone",
+  "fcraRequired",
   "primaryKPIs",
   "secondaryKPIs",
   "requiredDocuments",
@@ -99,7 +103,8 @@ const DISPLAY_ORDER: RequirementFieldKey[] = [
 const WIDE = new Set<RequirementFieldKey>(["summary", "specialConstraints", "primaryKPIs", "secondaryKPIs", "requiredDocuments"]);
 
 function formatValue(key: RequirementFieldKey, value: unknown): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return key === "fcraRequired" ? "Not stated" : "—";
+  if (typeof value === "boolean") return value ? "Yes — only FCRA-registered NGOs" : "No";
   if (Array.isArray(value)) return value.join(", ");
   if (typeof value === "number" && (key === "budgetMin" || key === "budgetMax")) return `₹${value.toLocaleString("en-IN")}`;
   if (typeof value === "number") return value.toLocaleString("en-IN");
@@ -151,7 +156,18 @@ export function FieldsEditor({
                 </div>
               </div>
               {editable && draft && onChange ? (
-                key === "summary" || key === "specialConstraints" ? (
+                spec.kind === "boolean" ? (
+                  <select
+                    id={`field-${key}`}
+                    value={draft[key] ?? ""}
+                    onChange={(e) => onChange(key, e.target.value)}
+                    className="w-full bg-gray-900/70 border border-gray-800 text-sm rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="">Not stated</option>
+                    <option value="true">Yes — only FCRA-registered NGOs</option>
+                    <option value="false">No</option>
+                  </select>
+                ) : key === "summary" || key === "specialConstraints" ? (
                   <textarea
                     id={`field-${key}`}
                     rows={3}

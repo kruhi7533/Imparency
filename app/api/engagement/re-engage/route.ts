@@ -1,16 +1,23 @@
 import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 import { verifySessionRole } from "@/lib/auth-guards";
 import { reEngage } from "@/lib/re-engagement";
+import { isRenewalKind, requestRenewal } from "@/lib/renewal-requests";
 
 /**
- * POST /api/engagement/re-engage { reportId } — the signed-in donor asks for
- * their next-step suggestion on one of their own impact reports.
+ * POST /api/engagement/re-engage { reportId, kind?, message?, proposedAmount? }
  *
- * The logic lives in lib/re-engagement.ts, shared with the daily cron
- * (/api/cron/re-engagement) that replaced the webhook's 48-hour setTimeout.
- * The old internal-secret path existed only for that timer and is gone; this
- * route is donor-session only. Idempotent per report: a repeat returns the
- * existing event and sends no second email.
+ * Two kinds of report id are accepted:
+ *
+ *  1. A stored contract impact report (ContractImpactReport, NGO-017). The
+ *     donor acts on it: kind RENEWAL (default) or NEXT_OPPORTUNITY creates a
+ *     RenewalRequest the NGO sees and answers (lib/renewal-requests.ts).
+ *     Idempotent per (report, kind).
+ *  2. A per-donation ImpactReport (legacy). The signed-in donor asks for their
+ *     next-step suggestion; the logic lives in lib/re-engagement.ts, shared
+ *     with the daily cron. Idempotent per report.
+ *
+ * Donor-session only. Any id that is not the caller's report is 404.
  */
 export async function POST(request: Request) {
   const { authorized, session, response } = await verifySessionRole("DONOR");
@@ -21,6 +28,27 @@ export async function POST(request: Request) {
   if (!reportId) return NextResponse.json({ error: "reportId is required" }, { status: 400 });
 
   try {
+    const stored = await prisma.contractImpactReport.findUnique({ where: { id: reportId }, select: { id: true } });
+    if (stored) {
+      const kind = body?.kind === undefined ? "RENEWAL" : body.kind;
+      if (!isRenewalKind(kind)) return NextResponse.json({ error: "kind must be RENEWAL or NEXT_OPPORTUNITY" }, { status: 400 });
+      const r = await requestRenewal({ reportId, userId: session!.user.id, kind, message: body?.message, proposedAmount: body?.proposedAmount });
+      switch (r.status) {
+        case "not_found":
+          return NextResponse.json({ error: "Report not found" }, { status: 404 });
+        case "forbidden":
+          return NextResponse.json({ error: r.error }, { status: 403 });
+        case "not_published":
+          return NextResponse.json({ error: "This report has not been published yet." }, { status: 409 });
+        case "invalid":
+          return NextResponse.json({ error: r.error }, { status: 400 });
+        case "exists":
+          return NextResponse.json({ success: true, request: r.request, existing: true });
+        case "created":
+          return NextResponse.json({ success: true, request: r.request }, { status: 201 });
+      }
+    }
+
     const result = await reEngage({ reportId, donorId: session!.user.id });
     if (result.status === "not_found") return NextResponse.json({ error: "Report not found" }, { status: 404 });
     if (result.status === "opted_out") return NextResponse.json({ success: true, skipped: "opted_out" });

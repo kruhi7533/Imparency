@@ -14,6 +14,7 @@ vi.mock("@/lib/prisma", () => ({
     nGOProfile: { findUnique: vi.fn() },
     nGOTeamMember: { findFirst: vi.fn() },
     beneficiaryFeedback: { findUnique: vi.fn(), updateMany: vi.fn() },
+    impactStory: { updateMany: vi.fn() },
   },
 }));
 vi.mock("next-auth/next", () => ({ getServerSession: vi.fn() }));
@@ -38,6 +39,7 @@ beforeEach(() => {
   );
   prismaMock.beneficiaryFeedback.findUnique.mockResolvedValue({ id: "fb-1", ngoId: "ngo-a", withdrawnAt: null });
   prismaMock.beneficiaryFeedback.updateMany.mockResolvedValue({ count: 1 });
+  prismaMock.impactStory.updateMany.mockResolvedValue({ count: 0 });
 });
 
 describe("checkWithdrawal", () => {

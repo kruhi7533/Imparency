@@ -10,7 +10,7 @@ import ProjectUpdatesToggle from "./ProjectUpdatesToggle";
 import { loadDonorProjectOutcomes } from "@/lib/outcome-cockpit";
 import { loadProjectFunding } from "@/lib/project-funding";
 import { ProjectFundingBadge } from "@/components/projects/ProjectFundingBadge";
-import { formatOutcome, inr } from "@/lib/outcome-format";
+import { formatOutcome, inr, rollupFigure } from "@/lib/outcome-format";
 import UpdateFeedback from "@/components/donor/UpdateFeedback";
 import { resolveDonorAccount } from "@/lib/donor-team";
 
@@ -161,7 +161,7 @@ export default async function DonorFundedProjectPage({ params }: { params: { pro
                   <div key={r.metricCode} className="rounded-xl border border-gray-100 dark:border-gray-800 p-4">
                     <p className="text-xs text-gray-500">{r.metricName}</p>
                     {r.verifiedCount > 0 ? (
-                      <p className="text-2xl font-extrabold text-emerald-600 mt-1">{formatOutcome(r.verifiedTotal, r.unit)}</p>
+                      <p className="text-2xl font-extrabold text-emerald-600 mt-1">{rollupFigure(r)}</p>
                     ) : (
                       <p className="text-sm font-bold text-amber-600 mt-2">Unverified</p>
                     )}

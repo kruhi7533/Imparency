@@ -49,11 +49,25 @@ const EXEMPT: Record<string, string> = {
     "Read-only. Returns live connection and retry counters, and touches no record.",
   initiatives:
     "Read-only list. The detail route is the one that discloses bank details, and it logs.",
+  "field-evidence":
+    "Read-only review queue (GET list with filters). Decisions go through field-evidence/[id], which logs.",
   threads:
     "Read-only list of review threads. Replying and resolving are separate routes, and both log.",
   search:
     "Read-only lookup across the catalogue. Searching changes nothing, and logging each query would copy " +
     "what admins typed (emails, PANs) into the audit log, which outlives PII retention.",
+  users:
+    "Read-only list of admin accounts and their sub-roles. Changing a role goes through users/[id], which logs ADMIN_ROLE_CHANGED.",
+  // Workstream F — read-only operator views. The actions on them (replay,
+  // dismiss, fault-injection toggle) are separate routes and all log.
+  "ai-telemetry":
+    "Read-only list of AI call metadata (site, model, latency, tokens, outcome). No prompt text, no PII, changes nothing.",
+  "dead-letters":
+    "Read-only dead-letter list (ids only). Replay and dismiss are dead-letters/[id]/replay and /dismiss, which log.",
+  "dead-letters/[id]":
+    "Read-only inspect of one dead letter and its source row's ids/statuses. Replay and dismiss log.",
+  "notification-deliveries":
+    "Read-only donor notification delivery log (ids, channel, status, reason). No email or phone; changes nothing.",
   "today/visit":
     "Writes AdminInboxVisit, but that is the admin's own marker for when they last looked at " +
     "Today — per-admin UI bookkeeping, not a platform state change. Logging every page view " +
@@ -72,6 +86,9 @@ const EXEMPT: Record<string, string> = {
 const LOGS_VIA_LIB: Record<string, string> = {
   "ngos/[id]/inquiry": "lib/inquiry-thread.ts",
   "matching/candidates/[candidateId]/notify": "lib/inquiry-thread.ts",
+  // Workstream E (ADM-020): grant open/revoke are logged by lib/break-glass.ts.
+  "break-glass": "lib/break-glass.ts",
+  "break-glass/[id]/revoke": "lib/break-glass.ts",
 };
 
 const routes = findRoutes(ADMIN_API);

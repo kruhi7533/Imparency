@@ -343,32 +343,90 @@ export async function hasDuplicateIdentity(
   return !!match;
 }
 
+/** Note written on a triage review that a later, cleaner analysis replaced. */
+export const TRIAGE_SUPERSEDED_NOTE =
+  "Superseded automatically: the NGO resubmitted documents and re-analysis no longer raises these findings.";
+
 /**
- * Applies the triage result. Clean NGOs get nothing written — the absence of a
- * RiskReview IS the "safe" state, and the extracted fields are the evidence an
- * admin approves from. Defective ones open one RiskReview and, for serious
- * findings, a FraudAlert so they surface in the existing risk queue.
+ * A review this module opened, as opposed to one a human flagged
+ * (app/api/admin/risk/flag sets `reviewedBy` at creation) or one the fraud
+ * agent opened (lib/risk-agent.ts stores an object, not a findings array).
+ * Only triage's own reviews may be rewritten or closed by a triage re-run —
+ * evidence from new documents says nothing about a suspicion raised elsewhere.
+ */
+export function isTriageReview(review: { reviewedBy: string | null; findings: unknown }): boolean {
+  return review.reviewedBy === null && Array.isArray(review.findings);
+}
+
+/**
+ * Applies the triage result. Clean NGOs get nothing new written — the absence
+ * of an open RiskReview IS the "safe" state, and the extracted fields are the
+ * evidence an admin approves from. Defective ones open one RiskReview and, for
+ * serious findings, a FraudAlert so they surface in the existing risk queue.
+ *
+ * Every run describes the documents CURRENTLY on file, so it replaces what an
+ * earlier run said about older documents. Before 2026-10-27 a SAFE verdict
+ * returned early and left the previous OPEN review in place: an NGO that fixed
+ * a wrong document was re-analysed as clean, yet verify-ngo kept refusing on
+ * the stale identity conflict and nothing in the product could clear it
+ * (acceptance report v2, defect D1). Now a SAFE run closes triage's own open
+ * review and resolves the alerts it raised; a defective run rewrites them.
+ * Reviews and alerts raised by a human or another engine are never touched.
  *
  * Never throws: a triage failure must not break registration, and it must never
  * make approval easier — a missing RiskReview is recoverable by re-running
  * extraction from the admin console.
  */
 export async function applyTriage(ngoId: string, result: TriageResult): Promise<void> {
-  if (result.verdict === "SAFE") return;
-
   try {
-    // One open review per NGO. A re-run must update the existing case rather
-    // than stack duplicates in the admin's queue.
-    const existing = await prisma.riskReview.findFirst({
+    const openReviews = await prisma.riskReview.findMany({
       where: { ngoId, status: "OPEN" },
-      select: { id: true },
+      select: { id: true, reviewedBy: true, findings: true },
+      orderBy: { createdAt: "desc" },
+    });
+    const ownReviews = openReviews.filter(isTriageReview);
+
+    const currentHigh = new Set(
+      result.verdict === "SAFE"
+        ? []
+        : result.findings.filter((f) => f.severity === "HIGH").map((f) => f.issue)
+    );
+    // Alerts from an earlier run whose finding no longer holds. Keyed on
+    // description, exactly as createFraudAlert dedupes them.
+    await prisma.fraudAlert.updateMany({
+      where: {
+        type: "VERIFICATION_DEFECT",
+        entityId: ngoId,
+        resolved: false,
+        ...(currentHigh.size > 0 ? { description: { notIn: Array.from(currentHigh) } } : {}),
+      },
+      data: { resolved: true, resolvedAt: new Date(), resolutionNote: TRIAGE_SUPERSEDED_NOTE },
     });
 
-    if (existing) {
+    if (result.verdict === "SAFE") {
+      if (ownReviews.length > 0) {
+        await prisma.riskReview.updateMany({
+          where: { id: { in: ownReviews.map((r) => r.id) }, status: "OPEN" },
+          data: { status: "CLEARED", reviewNote: TRIAGE_SUPERSEDED_NOTE, resolvedAt: new Date() },
+        });
+      }
+      return;
+    }
+
+    // One open triage review per NGO. A re-run must update it rather than
+    // stack duplicates in the admin's queue.
+    const [current, ...extra] = ownReviews;
+    if (current) {
       await prisma.riskReview.update({
-        where: { id: existing.id },
+        where: { id: current.id },
         data: { riskLevel: result.riskLevel, findings: result.findings as any },
       });
+      if (extra.length > 0) {
+        await prisma.riskReview.updateMany({
+          where: { id: { in: extra.map((r) => r.id) }, status: "OPEN" },
+          data: { status: "CLEARED", reviewNote: TRIAGE_SUPERSEDED_NOTE, resolvedAt: new Date() },
+        });
+      }
     } else {
       await prisma.riskReview.create({
         data: {

@@ -13,7 +13,7 @@ import { requirementApi } from "./api";
  * POST /api/requirements; the server re-validates everything.
  */
 
-type TextKey = Exclude<RequirementFieldKey, "requiredDocuments">;
+type TextKey = Exclude<RequirementFieldKey, "requiredDocuments" | "fcraRequired">;
 type Draft = Record<TextKey, string>;
 
 const EMPTY: Draft = {
@@ -70,6 +70,8 @@ export function RequirementForm() {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [docs, setDocs] = useState<Set<string>>(new Set());
   const [otherDocs, setOtherDocs] = useState("");
+  // Structured FCRA hard rule: "" = not stated, "true" / "false" = explicit.
+  const [fcra, setFcra] = useState<"" | "true" | "false">("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,6 +102,7 @@ export function RequirementForm() {
     }
     const documents = [...COMMON_DOCUMENTS.filter((d) => docs.has(d)), ...otherDocs.split(/[\n,]/).map((d) => d.trim()).filter(Boolean)];
     values.requiredDocuments = documents.length ? documents : null;
+    values.fcraRequired = fcra === "" ? null : fcra === "true";
     return values;
   }
 
@@ -228,6 +231,17 @@ export function RequirementForm() {
             })}
           </div>
           <input aria-label="Other required documents" value={otherDocs} onChange={(e) => setOtherDocs(e.target.value)} placeholder="Other documents, comma separated" className={`${inputCls} mt-3`} />
+        </div>
+        <div className="md:col-span-2">
+          <Label htmlFor="rf-fcraRequired" hint="a hard rule in matching">FCRA registration required?</Label>
+          <select id="rf-fcraRequired" value={fcra} onChange={(e) => setFcra(e.target.value as "" | "true" | "false")} className={inputCls}>
+            <option value="">Not stated</option>
+            <option value="true">Yes — only NGOs with an active FCRA registration (e.g. foreign-source funds)</option>
+            <option value="false">No — FCRA is not required</option>
+          </select>
+          <p className="text-[11px] text-gray-500 mt-1">
+            When set to Yes, NGOs without an active FCRA registration are excluded from matching.
+          </p>
         </div>
         <div className="md:col-span-2">
           <Label htmlFor="rf-specialConstraints" hint="optional">Special constraints</Label>

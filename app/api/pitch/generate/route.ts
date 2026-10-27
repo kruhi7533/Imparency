@@ -8,6 +8,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { callAi } from "@/lib/ai/telemetry";
 
 const execAsync = promisify(exec);
 
@@ -40,7 +41,7 @@ Keep it under 3 sentences and extremely punchy. Do not include any quotes.
 Original description:
 ${description}`;
 
-    const result = await model.generateContent(prompt);
+    const result = await callAi({ site: "pitch-rewrite", model: "gemini-3.6-flash", promptVersion: "v1" }, () => model.generateContent(prompt));
     return result.response.text().trim().replace(/^["']|["']$/g, '');
   } catch (error) {
     console.error("[pitch] Gemini rewriting failed:", error);

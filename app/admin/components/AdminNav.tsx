@@ -2,7 +2,8 @@
 
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { ADMIN_HUBS, hubForPath } from "./hubs";
+import { hubForPath, hubsForRole } from "./hubs";
+import { ADMIN_ROLE_LABEL, effectiveAdminRole } from "@/lib/admin-roles";
 
 interface AdminNavProps {
   pendingProjectCount: number;
@@ -11,6 +12,8 @@ interface AdminNavProps {
   fieldsNeedingReview?: number;
   /** Donor CSR requirements submitted for admin validation. */
   pendingRequirementCount?: number;
+  /** Admin sub-role; the nav shows only what it can open (lib/admin-roles.ts). */
+  adminRole?: string | null;
 }
 
 /**
@@ -25,6 +28,7 @@ export default function AdminNav({
   inquiriesNeedingResponse,
   fieldsNeedingReview,
   pendingRequirementCount,
+  adminRole,
 }: AdminNavProps) {
   const pathname = usePathname();
 
@@ -52,7 +56,7 @@ export default function AdminNav({
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Administrator</span>
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{ADMIN_ROLE_LABEL[effectiveAdminRole(adminRole)]}</span>
           <button
             type="button"
             onClick={() => signOut({ callbackUrl: "/login" })}
@@ -64,7 +68,7 @@ export default function AdminNav({
       </div>
 
       <div className="max-w-7xl mx-auto mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
-        {ADMIN_HUBS.map((hub) => {
+        {hubsForRole(adminRole).map((hub) => {
           const active = activeHub?.key === hub.key;
           const badge = badgeFor[hub.key];
           return (

@@ -25,8 +25,15 @@ vi.mock("@/lib/prisma", () => ({
     // funded (lib/project-funding.ts); no signed contracts here, so it is not.
     contract: { findUnique: vi.fn(), updateMany: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     project: { updateMany: vi.fn() },
-    contractMilestone: { findUnique: vi.fn() },
-    contractPayment: { findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
+    contractMilestone: { findUnique: vi.fn(), findMany: vi.fn().mockResolvedValue([]), update: vi.fn(), updateMany: vi.fn() },
+    contractPayment: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    contractPaymentAllocation: { findMany: vi.fn().mockResolvedValue([]), createMany: vi.fn() },
     contractAuditLog: { create: vi.fn() },
     $queryRaw: vi.fn(),
     $transaction: vi.fn((cb: any) => cb(prismaMock)),
@@ -229,7 +236,7 @@ describe("POST /api/contracts/[id]/payments", () => {
     prismaMock.contract.findUnique.mockImplementation(({ select }: any) =>
       Promise.resolve(
         select?.payments
-          ? { status: "ACTIVE", ngoAcceptedAt: new Date(), totalGrantAmount: D("100000"), payments: [] }
+          ? { status: "ACTIVE", ngoAcceptedAt: new Date(), totalGrantAmount: D("100000"), payments: [], milestones: [], paymentAllocations: [] }
           : CONTRACT,
       ),
     );
@@ -310,6 +317,15 @@ describe("PATCH /api/contracts/[id]/payments/[paymentId]", () => {
     ngoDirectory({ "u-finance": "FINANCE", "u-field": "FIELD_STAFF" });
     prismaMock.contractPayment.findUnique.mockResolvedValue(PAYMENT);
     prismaMock.contractPayment.updateMany.mockResolvedValue({ count: 1 });
+    // Read by the funding recalculation (lib/contract-funding.ts) on CONFIRM.
+    prismaMock.contract.findUnique.mockResolvedValue({
+      ...CONTRACT,
+      totalGrantAmount: D("100000"),
+      fundedAt: null,
+      milestones: [],
+      payments: [],
+      paymentAllocations: [],
+    });
   });
 
   it("NGO finance confirms receipt → RECONCILED", async () => {

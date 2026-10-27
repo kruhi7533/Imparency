@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { EvidenceKind, MetricUnit } from "@prisma/client";
+import { callAi } from "@/lib/ai/telemetry";
 
 /**
  * Outcome extraction (Week 8, NGO track: "AI extraction with INSUFFICIENT_DATA").
@@ -159,7 +160,7 @@ const geminiGenerate: Generate = async (prompt) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   const ai = new GoogleGenAI({ apiKey });
-  const response = await ai.models.generateContent({
+  const response = await callAi({ site: "extract-outcomes", model: "gemini-2.5-flash-lite", promptVersion: "v1" }, () => ai.models.generateContent({
     model: "gemini-2.5-flash-lite",
     contents: [prompt],
     config: {
@@ -191,7 +192,7 @@ const geminiGenerate: Generate = async (prompt) => {
         required: ["outcomes"],
       },
     },
-  });
+  }));
   return response.text?.trim() || null;
 };
 

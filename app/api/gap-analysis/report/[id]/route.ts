@@ -54,6 +54,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     const report = await loadReport(params.id);
+    // Approval of a CSR shortlist is per candidate and ordered (ADM-006):
+    // PUT /api/requirements/[id]/shortlist. A bare "approve" here would mark the
+    // run approved with no approved candidate, so nobody could be invited.
+    if (action === "approve") {
+      throw new RequirementWorkflowError(
+        "Approve the shortlist candidate by candidate (and in order) from the requirement's Matches tab.",
+        400,
+        "USE_SHORTLIST_REVIEW"
+      );
+    }
     const reviewStatus = action === "approve" ? "APPROVED" : "REJECTED";
     const detail =
       action === "approve"

@@ -1,3 +1,4 @@
+import { breakGlassPageGate } from "@/app/admin/break-glass/BreakGlassGate";
 import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -34,6 +35,8 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default async function DonorDetailPage({ params }: { params: { id: string } }) {
+  const breakGlass = await breakGlassPageGate({ orgType: "DONOR", orgId: params.id });
+  if (breakGlass) return breakGlass;
   const donor = await prisma.user.findUnique({
     where: { id: params.id },
     include: {

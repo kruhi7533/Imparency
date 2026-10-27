@@ -27,6 +27,10 @@ export interface QueuedCapture {
   };
   /** Set when the server refused it for a reason a retry will not fix. */
   error?: string;
+  /** Last transient failure (offline, 5xx, storage outage) — shown, and retried. */
+  lastAttemptError?: string;
+  /** Structured error code from the server, e.g. STORAGE_UPLOAD_FAILED. */
+  errorCode?: string;
 }
 
 /**
@@ -42,6 +46,51 @@ export function syncOutcome(status: number | "network-error"): "done" | "failed"
   return "failed";
 }
 
+const PHOTO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/heic": "heic",
+  "image/heif": "heic",
+};
+
+export interface UploadResult {
+  status: number | "network-error";
+  body: { error?: string; code?: string; retryable?: boolean } & Record<string, unknown>;
+}
+
+/**
+ * POSTs one capture with upload progress (fetch has no upload progress).
+ * Never throws: a network failure is reported as "network-error".
+ */
+export function uploadCapture(c: QueuedCapture, onProgress?: (fraction: number) => void): Promise<UploadResult> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/field/evidence");
+    xhr.timeout = 120_000;
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
+    };
+    xhr.onload = () => {
+      let body: UploadResult["body"] = {};
+      try {
+        body = JSON.parse(xhr.responseText || "{}");
+      } catch {}
+      resolve({ status: xhr.status, body });
+    };
+    xhr.onerror = () => resolve({ status: "network-error", body: {} });
+    xhr.ontimeout = () => resolve({ status: "network-error", body: {} });
+    xhr.send(toFormData(c));
+  });
+}
+
+/** One line for the field worker, from a failed attempt. */
+export function describeFailure(r: UploadResult): string {
+  if (r.status === "network-error") return "No connection — will retry.";
+  const base = r.body.error || `Error ${r.status}`;
+  return r.body.code ? `${base} (${r.body.code})` : base;
+}
+
 export function toFormData(c: QueuedCapture): FormData {
   const fd = new FormData();
   fd.set("clientId", c.clientId);
@@ -54,7 +103,7 @@ export function toFormData(c: QueuedCapture): FormData {
   }
   if (c.note) fd.set("note", c.note);
   fd.set("containsPeople", String(c.containsPeople));
-  if (c.photo) fd.set("photo", c.photo, "capture.jpg");
+  if (c.photo) fd.set("photo", c.photo, `capture.${PHOTO_EXT[c.photo.type] ?? "jpg"}`);
   if (c.feedback) {
     fd.set("hasFeedback", "true");
     fd.set("beneficiaryRef", c.feedback.beneficiaryRef);

@@ -10,6 +10,8 @@ import prisma from "@/lib/prisma";
  *   OWNER     the account itself — everything
  *   ADMIN     everything except removing the owner
  *   APPROVER  decides: shortlists, approves proposals, signs, records payments
+ *   FINANCE   records and releases payments and sees finance; decides nothing
+ *             (cannot approve a proposal, sign, edit a requirement) — DON-002
  *   VIEWER    reads everything, changes nothing
  *
  * Every donor-side ownership check goes through `resolveDonorAccount` /
@@ -18,7 +20,7 @@ import prisma from "@/lib/prisma";
  * Donations stay personal — they are an individual's money, not the company's.
  */
 
-export type DonorRole = "OWNER" | "ADMIN" | "APPROVER" | "VIEWER";
+export type DonorRole = "OWNER" | "ADMIN" | "APPROVER" | "FINANCE" | "VIEWER";
 
 export type DonorCapability =
   /** See the account's requirements, contracts, reports. */
@@ -35,10 +37,10 @@ export type DonorCapability =
   | "manageTeam";
 
 const CAN: Record<DonorCapability, DonorRole[]> = {
-  view: ["OWNER", "ADMIN", "APPROVER", "VIEWER"],
+  view: ["OWNER", "ADMIN", "APPROVER", "FINANCE", "VIEWER"],
   editRequirements: ["OWNER", "ADMIN"],
   decide: ["OWNER", "ADMIN", "APPROVER"],
-  pay: ["OWNER", "ADMIN", "APPROVER"],
+  pay: ["OWNER", "ADMIN", "APPROVER", "FINANCE"],
   terminate: ["OWNER", "ADMIN"],
   manageTeam: ["OWNER", "ADMIN"],
 };

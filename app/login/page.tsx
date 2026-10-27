@@ -149,12 +149,22 @@ function LoginContent() {
         const session = await getSession();
         const actualRole = session?.user?.role;
 
-        if (actualRole === "NGO" || role === "NGO" || callbackUrl.includes("/ngo")) {
+        if (callbackUrl.startsWith("/invite/")) {
+          // NGO-003: signed in to accept a team invitation — go back to it.
+          router.push(callbackUrl);
+        } else if (actualRole === "NGO" || role === "NGO" || callbackUrl.includes("/ngo")) {
           // Already has an NGOProfile (existing/verified NGO) -> their dashboard.
           // No profile yet (fresh NGO signup) -> the registration form.
-          router.push(session?.user?.ngoProfileId ? "/ngo/dashboard" : "/ngo/register");
+          // A field worker's home is the field app, which shows only their tasks.
+          router.push(
+            session?.user?.ngoTeamRole === "FIELD_STAFF"
+              ? "/ngo/field"
+              : session?.user?.ngoProfileId
+              ? "/ngo/dashboard"
+              : "/ngo/register"
+          );
         } else if (actualRole === "ADMIN" || callbackUrl.includes("/admin")) {
-          router.push("/admin/dashboard");
+          router.push(session?.user?.adminRole === "FINANCE" ? "/admin/finance" : session?.user?.adminRole === "SUPPORT" ? "/admin/break-glass" : "/admin/dashboard");
         } else {
           // For DONOR: check if persona is set via a quick API call
           const personaRes = await fetch("/api/donor/persona/check");

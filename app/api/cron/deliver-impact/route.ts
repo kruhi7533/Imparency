@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runJob, type JobHandle } from "@/lib/job-runner";
 import prisma from "@/lib/prisma";
 import { sendImpactUpdateEmail } from "@/lib/email";
+import { recordDeadLetter } from "@/lib/dead-letter";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
@@ -142,6 +143,16 @@ async function drainImpactDeliveries(job: JobHandle): Promise<NextResponse> {
           ...(attempts >= MAX_ATTEMPTS ? { status: "FAILED" } : {}),
         },
       });
+      // ADM-018: exhausted retries go to the operator dead-letter queue.
+      if (attempts >= MAX_ATTEMPTS) {
+        await recordDeadLetter({
+          kind: "IMPACT_DELIVERY",
+          sourceId: delivery.id,
+          refs: { deliveryId: delivery.id, eventId: delivery.eventId, donorId: delivery.donorId, channel: delivery.channel },
+          errorMessage: String(err?.message ?? err).slice(0, 500),
+          attempts,
+        });
+      }
       failed++;
     }
   }

@@ -112,10 +112,12 @@ afterEach(() => {
 });
 
 describe("webhook signature verification", () => {
-  it("returns 500 when the webhook secret is not configured", async () => {
+  it("returns a structured 503 when the webhook secret is not configured", async () => {
     vi.stubEnv("RAZORPAY_WEBHOOK_SECRET", "");
     const res = await POST(signedRequest(capturedEvent()));
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(503);
+    await expect(res.json()).resolves.toMatchObject({ code: "WEBHOOK_NOT_CONFIGURED", retryable: true });
+    expect(prisma.donation.findFirst).not.toHaveBeenCalled();
   });
 
   it("rejects a request signed with the wrong secret", async () => {
