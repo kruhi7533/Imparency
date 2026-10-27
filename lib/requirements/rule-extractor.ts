@@ -227,7 +227,9 @@ function extractDocuments(text: string, ls: string[]): RuleField {
 
 function extractFcra(text: string): RuleField {
   if (/\bFCRA\b[^.\n]{0,40}\b(not required|not mandatory|not applicable|not needed)\b/i.test(text) ||
-      /\b(no|without)\s+FCRA\b/i.test(text)) {
+      /\b(no|without)\s+FCRA\b/i.test(text) ||
+      // A form-style answer: "FCRA registration required: No" — the "No" is the answer.
+      /\bFCRA\b[^.\n]{0,60}\b(required|mandatory)\b\??\s*[:\-–]\s*(no|false|not required|n\/a)\b/i.test(text)) {
     return found(false, LABELLED);
   }
   if (/\bFCRA\b[^.\n]{0,60}\b(required|mandatory|must|necessary|registered|registration)\b/i.test(text) ||

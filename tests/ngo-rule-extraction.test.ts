@@ -72,3 +72,11 @@ describe("extractNgoFieldsByRules", () => {
     expect(r.fields.every((x) => x.value === null)).toBe(true);
   });
 });
+
+describe("findOrgName — unlabelled PAN-card line", () => {
+  it("strips a generic 'Name:' prefix so the PAN and registration certificate agree", async () => {
+    const { findOrgName } = await import("@/lib/ngo-rule-extraction");
+    const pan = "Income Tax Department\nPermanent Account Number Card\nPAN: AAATR1234K\nName: Jeevan Jyoti Rural Development Trust";
+    expect(findOrgName(pan)?.value).toBe("Jeevan Jyoti Rural Development Trust");
+  });
+});

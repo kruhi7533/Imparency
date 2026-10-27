@@ -90,7 +90,12 @@ export function findOrgName(text: string): { value: string; confidence: number }
     .split("\n")
     .map((l) => l.trim())
     .find((l) => /\b(trust|society|foundation|samiti|sangh|sanstha|association|mission|federation)\b/i.test(l) && l.length <= 100 && !/act\b/i.test(l));
-  return line ? { value: line.replace(/[.,;:]+$/, ""), confidence: UNLABELLED } : null;
+  // A generic "Name:" prefix (as printed on PAN cards) is a label, not part of the
+  // name — left in, it made one organisation's PAN "disagree" with its own
+  // registration certificate in the cross-document check.
+  return line
+    ? { value: line.replace(/^(?:name|org(?:ani[sz]ation)?(?: name)?)\s*[:\-–]\s*/i, "").replace(/[.,;:]+$/, ""), confidence: UNLABELLED }
+    : null;
 }
 
 interface FieldRule {

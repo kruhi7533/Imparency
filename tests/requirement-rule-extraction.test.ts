@@ -210,3 +210,12 @@ describe("structured fcraRequired (ADM-005 / AI-004 rely on it)", () => {
     expect(requiresFcra({ ...plain, fcraRequired: { value: true, confidence: 1, source: "DONOR_ENTERED" } })).toBe(true);
   });
 });
+
+describe("extractByRules — FCRA form answers", () => {
+  it('"FCRA registration required: No" means FCRA is NOT required', () => {
+    expect(extractByRules("CSR Sector: Education\nFCRA registration required: No\n").data.fcraRequired.value).toBe(false);
+  });
+  it('"FCRA registration required: Yes" still means required', () => {
+    expect(extractByRules("CSR Sector: Education\nFCRA registration required: Yes\n").data.fcraRequired.value).toBe(true);
+  });
+});
