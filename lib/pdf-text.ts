@@ -9,6 +9,8 @@
  * it is loaded by Node at runtime rather than bundled by webpack.
  */
 
+import "@/lib/promise-polyfills";
+
 export type PdfTextErrorCode = "PDF_UNREADABLE" | "PDF_NO_TEXT" | "PDF_TOO_LARGE";
 
 export class PdfTextError extends Error {

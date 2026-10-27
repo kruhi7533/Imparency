@@ -1,6 +1,8 @@
 import path from 'path';
 import fs from 'fs';
 import { pathToFileURL } from 'url';
+// pdfjs-dist v6 needs Promise.withResolvers (Node 22+); CI/Vercel may run Node 20.
+import '@/lib/promise-polyfills';
 
 /*
  * Every parser is loaded LAZILY, inside the call that needs it. These used to be
