@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { motion, useInView, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, useInView, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import { formatCompactINR } from "@/lib/format-currency";
 
 interface CountUpStatProps {
@@ -10,18 +10,23 @@ interface CountUpStatProps {
   format?: "compact-inr" | "plain";
   suffix?: string;
   emptyLabel?: string;
-  /** Gold numerals — reserved for rupee amounts (money is always gold). */
+  /** Emphasised numerals — reserved for rupee amounts. */
   accent?: boolean;
+  /** Optional icon/visual rendered beside the figure (server-rendered node). */
+  icon?: React.ReactNode;
   /** Position in the strip — staggers the reveal. */
   index?: number;
 }
 
 function formatValue(n: number, format: CountUpStatProps["format"], suffix?: string) {
-  const base = format === "compact-inr" ? formatCompactINR(n) : Math.round(n).toLocaleString("en-IN");
+  // Round every animation frame: a spring passes through fractions, and
+  // "₹30,058.072" mid-count reads as a wrong figure.
+  const base = format === "compact-inr" ? formatCompactINR(Math.round(n)) : Math.round(n).toLocaleString("en-IN");
   return suffix ? `${base}${suffix}` : base;
 }
 
-export default function CountUpStat({ value, label, format = "plain", suffix, emptyLabel, accent, index = 0 }: CountUpStatProps) {
+export default function CountUpStat({ value, label, format = "plain", suffix, emptyLabel, accent, icon, index = 0 }: CountUpStatProps) {
+  const reduceMotion = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-40px" });
   const motionValue = useMotionValue(0);
@@ -32,28 +37,37 @@ export default function CountUpStat({ value, label, format = "plain", suffix, em
 
   useEffect(() => {
     if (inView && value > 0) {
+      // Reduced motion: land on the real figure immediately, no count-up.
+      if (reduceMotion) spring.jump(value);
       motionValue.set(value);
     }
-  }, [inView, value, motionValue]);
+  }, [inView, value, motionValue, spring, reduceMotion]);
 
   const showEmpty = value === 0 && emptyLabel;
 
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0 }}
-      animate={inView ? { opacity: 1 } : {}}
-      transition={{ duration: 0.35, ease: "easeOut", delay: index * 0.08 }}
-      className="border-t border-gray-700 pt-6 text-center"
+      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.4, ease: "easeOut", delay: index * 0.08 }}
+      className="flex items-center gap-4"
     >
-      {showEmpty ? (
-        <div className="text-lg font-semibold text-gray-300 leading-[3.75rem]">{emptyLabel}</div>
-      ) : (
-        <motion.div className={`font-mono text-5xl sm:text-6xl font-semibold tabular-nums leading-none ${accent ? "text-gold-300" : "text-white"}`}>
-          {display}
-        </motion.div>
-      )}
-      <div className="font-mono text-[11px] text-gray-400 mt-4 uppercase tracking-widest">{label}</div>
+      {icon}
+      <div className="min-w-0">
+        {showEmpty ? (
+          <div className="text-base font-semibold text-gray-700 leading-8">{emptyLabel}</div>
+        ) : (
+          <motion.div
+            className={`text-2xl sm:text-[1.75rem] font-semibold tabular-nums leading-8 tracking-tight ${
+              accent ? "text-emerald-700" : "text-gray-900"
+            }`}
+          >
+            {display}
+          </motion.div>
+        )}
+        <div className="text-sm text-gray-500 mt-0.5">{label}</div>
+      </div>
     </motion.div>
   );
 }

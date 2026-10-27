@@ -26,7 +26,7 @@ export interface HubTab {
 }
 
 export interface Hub {
-  /** Stable key, also used to pick the badge count in AdminNav. */
+  /** Stable key, also used to pick the badge count in AdminShell. */
   key: string;
   label: string;
   /** Where the top-level nav link points — always the hub's first tab. */

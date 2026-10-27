@@ -27,33 +27,33 @@ export default function AdminTabs({ adminRole }: { adminRole?: string | null } =
   const activeTab = hub.tabs.find((t) => isTabActive(pathname, t.href));
 
   return (
-    <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center gap-1 -mb-px overflow-x-auto">
+    <div className="border-b border-gray-200/80 bg-white">
+      <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 sm:px-6 lg:px-8 md:flex-row md:items-center md:gap-4">
+        <nav aria-label={`${hub.label} sections`} className="-mb-px flex items-center gap-1 overflow-x-auto [scrollbar-width:none]">
           {hub.tabs.map((tab) => {
             const active = isTabActive(pathname, tab.href);
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`whitespace-nowrap px-3.5 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+                aria-current={active ? "page" : undefined}
+                className={`whitespace-nowrap border-b-2 px-3 py-3 text-[13px] font-medium transition-colors ${
                   active
-                    ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
-                    : "border-transparent text-gray-500 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-300"
+                    ? "border-trust-600 text-trust-700"
+                    : "border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900"
                 }`}
               >
                 {tab.label}
               </Link>
             );
           })}
-        </div>
+        </nav>
+        {activeTab?.hint && (
+          <p className="pb-2 text-xs text-gray-500 md:ml-auto md:max-w-md md:truncate md:pb-0" title={activeTab.hint}>
+            {activeTab.hint}
+          </p>
+        )}
       </div>
-
-      {activeTab?.hint && (
-        <div className="max-w-7xl mx-auto px-6 pb-2.5 -mt-px">
-          <p className="text-xs text-gray-500 dark:text-gray-500">{activeTab.hint}</p>
-        </div>
-      )}
     </div>
   );
 }

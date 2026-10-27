@@ -54,17 +54,17 @@ export default async function ContractAllocationsSection() {
 
   return (
     <section>
-      <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400 mb-1">
+      <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1">
         Contract milestone allocations — requirement → contract ({pendingLines} awaiting approval)
       </h2>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-3xl">
+      <p className="text-xs text-gray-500 mb-3 max-w-3xl">
         Each contract payment is split onto milestones when it is recorded (the donor&rsquo;s chosen milestone, or
         milestones filled in order). A milestone is funded only by <strong>reconciled</strong> money. Approving a line
         vouches that reconciled cash belongs to that milestone; rejecting one frees it to be allocated by hand.
       </p>
       {contracts.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-10 text-center">
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No signed contracts yet.</p>
+        <div className="rounded-xl border border-dashed border-gray-200 bg-white py-10 text-center">
+          <p className="text-sm font-medium text-gray-500">No signed contracts yet.</p>
         </div>
       ) : (
         <ul className="space-y-4">
@@ -80,10 +80,10 @@ export default async function ContractAllocationsSection() {
               .filter((m) => m.room.greaterThan(0))
               .map((m) => ({ ...m, room: m.room.toFixed(2) }));
             return (
-              <li key={c.id} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 space-y-3">
+              <li key={c.id} className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-bold text-gray-900 dark:text-white">
+                    <p className="text-sm font-bold text-gray-900">
                       {c.contractNumber} · {c.title}
                     </p>
                     <p className="text-xs text-gray-500">
@@ -104,7 +104,7 @@ export default async function ContractAllocationsSection() {
                       <strong className="text-emerald-700">{inr(summary.reconciled)}</strong> · Pending{" "}
                       <strong className="text-amber-700">{inr(summary.pending)}</strong>
                     </p>
-                    <p className={c.fundedAt ? "text-emerald-700 font-bold" : "text-gray-400"}>
+                    <p className={c.fundedAt ? "text-emerald-700 font-bold" : "text-gray-500"}>
                       {c.fundedAt ? `Contract FUNDED ${c.fundedAt.toLocaleDateString("en-IN")}` : "Not fully funded"}
                     </p>
                   </div>
@@ -112,7 +112,7 @@ export default async function ContractAllocationsSection() {
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
-                    <thead className="text-[11px] uppercase tracking-wide text-gray-400">
+                    <thead className="text-[11px] uppercase tracking-wide text-gray-500">
                       <tr>
                         <th className="text-left py-1">Receivable (milestone)</th>
                         <th className="text-left py-1">Due</th>
@@ -124,13 +124,13 @@ export default async function ContractAllocationsSection() {
                         <th className="text-right py-1">Funding</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    <tbody className="divide-y divide-gray-100">
                       {c.milestones.map((m) => {
                         const f = summary.milestones.find((x) => x.id === m.id)!;
                         const overdue = !!m.dueDate && m.dueDate.getTime() < Date.now() && f.fundingStatus !== "FUNDED";
                         return (
                           <tr key={m.id}>
-                            <td className="py-1.5 font-medium text-gray-900 dark:text-white">{m.title}</td>
+                            <td className="py-1.5 font-medium text-gray-900">{m.title}</td>
                             <td className={`py-1.5 ${overdue ? "text-red-600 font-bold" : "text-gray-500"}`}>
                               {m.dueDate ? m.dueDate.toLocaleDateString("en-IN") : "—"}
                               {overdue && " · overdue"}
@@ -141,7 +141,7 @@ export default async function ContractAllocationsSection() {
                             <td className="py-1.5 text-right">{inr(f.approved)}</td>
                             <td className="py-1.5 text-right">{inr(f.outstanding)}</td>
                             <td className="py-1.5 text-right">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${FUNDING_CLS[f.fundingStatus]}`}>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${FUNDING_CLS[f.fundingStatus]}`}>
                                 {f.fundingStatus.replace("_", " ")}
                               </span>
                             </td>
@@ -155,7 +155,7 @@ export default async function ContractAllocationsSection() {
                 {c.paymentAllocations.length > 0 && (
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
-                      <thead className="text-[11px] uppercase tracking-wide text-gray-400">
+                      <thead className="text-[11px] uppercase tracking-wide text-gray-500">
                         <tr>
                           <th className="text-left py-1">Payment (ref)</th>
                           <th className="text-left py-1">Payment status</th>
@@ -166,7 +166,7 @@ export default async function ContractAllocationsSection() {
                           <th className="text-right py-1">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                      <tbody className="divide-y divide-gray-100">
                         {c.paymentAllocations.map((a) => {
                           const p = payment(a.paymentId);
                           return (
@@ -177,7 +177,7 @@ export default async function ContractAllocationsSection() {
                               <td className="py-1.5 text-right font-bold">{inr(a.amount)}</td>
                               <td className="py-1.5 pl-3 text-gray-500">{a.rule.replaceAll("_", " ").toLowerCase()}</td>
                               <td className="py-1.5">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${LINE_CLS[a.status]}`}>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${LINE_CLS[a.status]}`}>
                                   {a.status.replace("_", " ")}
                                 </span>
                               </td>
@@ -197,8 +197,8 @@ export default async function ContractAllocationsSection() {
                 {Array.from(unallocated.entries())
                   .filter(([, left]) => left.greaterThan(0))
                   .map(([paymentId, left]) => (
-                    <div key={paymentId} className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-2 text-xs space-y-1">
-                      <p className="text-amber-800 dark:text-amber-300">
+                    <div key={paymentId} className="rounded-lg bg-amber-50 p-2 text-xs space-y-1">
+                      <p className="text-amber-800">
                         Payment {payment(paymentId)?.reference ?? paymentId.slice(0, 8)} has <strong>{inr(left)}</strong> not
                         allocated to any milestone.
                       </p>

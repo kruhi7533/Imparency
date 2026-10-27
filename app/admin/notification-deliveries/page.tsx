@@ -11,10 +11,10 @@ export const dynamic = "force-dynamic";
 const STATUSES = ["SENT", "FAILED", "OPTED_OUT", "PROVIDER_NOT_CONFIGURED"];
 const CHANNELS = ["IN_APP", "WHATSAPP", "EMAIL"];
 const STATUS_STYLE: Record<string, string> = {
-  SENT: "text-emerald-700 dark:text-emerald-400",
-  FAILED: "text-red-700 dark:text-red-400",
-  OPTED_OUT: "text-gray-600 dark:text-gray-300",
-  PROVIDER_NOT_CONFIGURED: "text-amber-700 dark:text-amber-400",
+  SENT: "text-emerald-700",
+  FAILED: "text-red-700",
+  OPTED_OUT: "text-gray-600",
+  PROVIDER_NOT_CONFIGURED: "text-amber-700",
 };
 
 export default async function NotificationDeliveriesPage({
@@ -42,10 +42,10 @@ export default async function NotificationDeliveriesPage({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Notification deliveries</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-3xl">
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Notification deliveries</h1>
+        <p className="mt-1 text-sm text-gray-500 max-w-3xl">
           Every donor notification attempt per channel. WhatsApp is tried first and falls back to email; in-app is
           always attempted while on. Failed attempts also appear in the dead-letter queue.
         </p>
@@ -57,23 +57,23 @@ export default async function NotificationDeliveriesPage({
           ))}
         </div>
         <form method="GET" className="mt-4 flex flex-wrap gap-2">
-          <select name="status" defaultValue={status ?? ""} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+          <select name="status" defaultValue={status ?? ""} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
             <option value="">All statuses</option>
             {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-          <select name="channel" defaultValue={channel ?? ""} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+          <select name="channel" defaultValue={channel ?? ""} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
             <option value="">All channels</option>
             {CHANNELS.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <input name="userId" defaultValue={userId} placeholder="Donor user id" className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
-          <button type="submit" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Filter</button>
+          <input name="userId" defaultValue={userId} placeholder="Donor user id" className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm" />
+          <button type="submit" className="rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white hover:bg-trust-700">Filter</button>
         </form>
         {rows.length === 0 ? (
-          <p className="mt-8 rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700">No delivery attempts recorded.</p>
+          <p className="mt-8 rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500">No delivery attempts recorded.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+          <div className="mt-4 overflow-x-auto rounded-xl border border-gray-200 bg-white">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800">
+              <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
                 <tr>
                   <th className="px-3 py-2">When (UTC)</th>
                   <th className="px-3 py-2">Donor id</th>
@@ -86,12 +86,12 @@ export default async function NotificationDeliveriesPage({
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-t border-gray-100 align-top dark:border-gray-800">
-                    <td className="px-3 py-2 whitespace-nowrap text-gray-600 dark:text-gray-300">{r.createdAt.toISOString().replace("T", " ").slice(0, 19)}</td>
+                  <tr key={r.id} className="border-t border-gray-100 align-top">
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">{r.createdAt.toISOString().replace("T", " ").slice(0, 19)}</td>
                     <td className="px-3 py-2 font-mono text-[11px] text-gray-500">{r.userId}</td>
-                    <td className="px-3 py-2 text-xs text-gray-700 dark:text-gray-200">
+                    <td className="px-3 py-2 text-xs text-gray-700">
                       <div>{r.title}</div>
-                      <div className="font-mono text-[11px] text-gray-400">{r.eventKey}</div>
+                      <div className="font-mono text-[11px] text-gray-500">{r.eventKey}</div>
                     </td>
                     <td className="px-3 py-2 text-xs">{r.channel}</td>
                     <td className={`px-3 py-2 text-xs font-semibold ${STATUS_STYLE[r.status] ?? ""}`}>{r.status}</td>

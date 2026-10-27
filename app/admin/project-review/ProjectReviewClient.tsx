@@ -60,9 +60,9 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 const RECO_STYLE: Record<AiScreening["recommendation"], { label: string; classes: string }> = {
-  APPROVE: { label: "AI: Approve", classes: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900" },
-  REVIEW: { label: "AI: Review carefully", classes: "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900" },
-  REJECT: { label: "AI: Reject", classes: "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900" },
+  APPROVE: { label: "AI: Approve", classes: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  REVIEW: { label: "AI: Review carefully", classes: "bg-amber-100 text-amber-700 border-amber-200" },
+  REJECT: { label: "AI: Reject", classes: "bg-red-100 text-red-700 border-red-200" },
 };
 
 export default function ProjectReviewClient({ initialPending, initialAudit }: Props) {
@@ -131,21 +131,21 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
   return (
     <div className="space-y-10">
       {error && (
-        <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm font-medium text-red-700 dark:text-red-300">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {error}
         </div>
       )}
 
       {/* Pending queue */}
       <section>
-        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">
           Awaiting Approval{" "}
           <span className="ml-1 text-sm font-bold text-emerald-600">({pending.length})</span>
         </h2>
 
         {pending.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-16 text-center">
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+          <div className="rounded-xl border border-dashed border-gray-200 bg-white py-16 text-center">
+            <p className="text-sm font-medium text-gray-500">
               No projects awaiting approval. You&apos;re all caught up. 🎉
             </p>
           </div>
@@ -156,20 +156,20 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
               return (
                 <div
                   key={p.id}
-                  className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden"
+                  className="rounded-xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] overflow-hidden"
                 >
                   <div className="flex flex-col sm:flex-row">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={p.coverImage}
                       alt={p.title}
-                      className="h-40 w-full sm:w-56 object-cover bg-gray-100 dark:bg-gray-800"
+                      className="h-40 w-full sm:w-56 object-cover bg-gray-100"
                     />
                     <div className="flex-1 p-5">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{p.title}</h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <h3 className="text-lg font-bold text-gray-900">{p.title}</h3>
+                          <p className="text-sm text-gray-500">
                             <a href={`/admin/ngos/${p.ngo.id}`} className="hover:text-emerald-600 hover:underline">
                               {p.ngo.orgName}
                             </a>{" "}
@@ -178,13 +178,13 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-sm font-bold text-emerald-600">{inr(p.targetAmount)}</p>
-                          <p className="text-xs text-gray-400">target</p>
+                          <p className="text-xs text-gray-500">target</p>
                         </div>
                       </div>
 
-                      <p className="mt-3 text-sm text-gray-600 dark:text-gray-300 line-clamp-3">{p.description}</p>
+                      <p className="mt-3 text-sm text-gray-600 line-clamp-3">{p.description}</p>
 
-                      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
                         <span>Submitted {fmtDate(p.createdAt)}</span>
                         <span>NGO health: {p.ngo.healthScore != null ? p.ngo.healthScore : "—"}</span>
                         <span>{p.milestones.length} milestone{p.milestones.length === 1 ? "" : "s"}</span>
@@ -194,15 +194,15 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
 
                   {/* AI screening recommendation */}
                   {p.aiScreening ? (
-                    <div className={`border-t border-gray-100 dark:border-gray-800 px-5 py-4`}>
+                    <div className={`border-t border-gray-100 px-5 py-4`}>
                       <div className="flex flex-wrap items-center gap-3">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${RECO_STYLE[p.aiScreening.recommendation].classes}`}>
                           {RECO_STYLE[p.aiScreening.recommendation].label}
                         </span>
-                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                        <span className="text-xs font-semibold text-gray-500">
                           Score {p.aiScreening.score}/100
                         </span>
-                        <span className="text-[11px] text-gray-400">Advisory only — your decision stands.</span>
+                        <span className="text-[11px] text-gray-500">Advisory only — your decision stands.</span>
                         <button
                           disabled={screeningId === p.id}
                           onClick={() => runScreening(p.id)}
@@ -212,23 +212,23 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
                         </button>
                       </div>
                       {p.aiScreening.reasoning && (
-                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{p.aiScreening.reasoning}</p>
+                        <p className="mt-2 text-sm text-gray-600">{p.aiScreening.reasoning}</p>
                       )}
                       {p.aiScreening.flags.length > 0 && (
                         <ul className="mt-2 list-disc list-inside space-y-0.5">
                           {p.aiScreening.flags.map((f, i) => (
-                            <li key={i} className="text-xs text-amber-700 dark:text-amber-400">{f}</li>
+                            <li key={i} className="text-xs text-amber-700">{f}</li>
                           ))}
                         </ul>
                       )}
                     </div>
                   ) : (
-                    <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-3 flex items-center justify-between gap-3">
-                      <span className="text-xs text-gray-400">AI screening has not been run for this project yet.</span>
+                    <div className="border-t border-gray-100 px-5 py-3 flex items-center justify-between gap-3">
+                      <span className="text-xs text-gray-500">AI screening has not been run for this project yet.</span>
                       <button
                         disabled={screeningId === p.id}
                         onClick={() => runScreening(p.id)}
-                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-emerald-200 dark:border-emerald-900 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition disabled:opacity-50 whitespace-nowrap"
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition disabled:opacity-50 whitespace-nowrap"
                       >
                         {screeningId === p.id ? "Running AI screening…" : "Run AI screening"}
                       </button>
@@ -236,14 +236,14 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
                   )}
 
                   {/* Milestones + rationale */}
-                  <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 grid gap-4 md:grid-cols-2">
+                  <div className="border-t border-gray-100 px-5 py-4 grid gap-4 md:grid-cols-2">
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Milestones</p>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-2">Milestones</p>
                       <ol className="space-y-2">
                         {p.milestones.map((m) => (
-                          <li key={m.id} className="text-sm text-gray-700 dark:text-gray-300">
+                          <li key={m.id} className="text-sm text-gray-700">
                             <span className="font-semibold">{m.sequenceOrder}. {m.title}</span>{" "}
-                            <span className="text-gray-400">— {inr(m.targetAmount)}, due {fmtDate(m.deadline)}</span>
+                            <span className="text-gray-500">— {inr(m.targetAmount)}, due {fmtDate(m.deadline)}</span>
                           </li>
                         ))}
                       </ol>
@@ -251,21 +251,21 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
                     <div className="space-y-3">
                       {p.problemStatement && (
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Problem</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3">{p.problemStatement}</p>
+                          <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1">Problem</p>
+                          <p className="text-sm text-gray-600 line-clamp-3">{p.problemStatement}</p>
                         </div>
                       )}
                       {p.expectedOutcome && (
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Expected outcome</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3">{p.expectedOutcome}</p>
+                          <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1">Expected outcome</p>
+                          <p className="text-sm text-gray-600 line-clamp-3">{p.expectedOutcome}</p>
                         </div>
                       )}
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-3 flex items-center gap-3">
+                  <div className="border-t border-gray-100 px-5 py-3 flex items-center gap-3">
                     <div className="mr-auto">
                       <AskNgoBox
                         ngoId={p.ngo.id}
@@ -281,7 +281,7 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
                         setRejectTarget(p);
                         setRejectReason("");
                       }}
-                      className="px-4 py-2 text-sm font-semibold rounded-lg border border-red-200 dark:border-red-900 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition disabled:opacity-50"
+                      className="px-4 py-2 text-sm font-semibold rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition disabled:opacity-50"
                     >
                       Reject
                     </button>
@@ -309,13 +309,13 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
 
       {/* Audit trail */}
       <section>
-        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Recent Decisions</h2>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Recent Decisions</h2>
         {initialAudit.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">No decisions recorded yet.</p>
+          <p className="text-sm text-gray-500">No decisions recorded yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800">
+          <div className="overflow-x-auto rounded-xl border border-gray-100">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-900 text-left text-xs font-bold uppercase tracking-wide text-gray-400">
+              <thead className="bg-gray-50 text-left text-xs font-bold uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-4 py-3">Project</th>
                   <th className="px-4 py-3">NGO</th>
@@ -325,25 +325,25 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
                   <th className="px-4 py-3">When</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
+              <tbody className="divide-y divide-gray-100 bg-white">
                 {initialAudit.map((r) => (
                   <tr key={r.id}>
-                    <td className="px-4 py-3 text-gray-900 dark:text-white">{r.project.title}</td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{r.project.orgName}</td>
+                    <td className="px-4 py-3 text-gray-900">{r.project.title}</td>
+                    <td className="px-4 py-3 text-gray-500">{r.project.orgName}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                           r.action === "APPROVED"
-                            ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                            : "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-red-100 text-red-700"
                         }`}
                       >
                         {r.action}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400 max-w-xs truncate">{r.note || "—"}</td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{r.admin.name || r.admin.email}</td>
-                    <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{fmtDate(r.reviewedAt)}</td>
+                    <td className="px-4 py-3 text-gray-500 max-w-xs truncate">{r.note || "—"}</td>
+                    <td className="px-4 py-3 text-gray-500">{r.admin.name || r.admin.email}</td>
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDate(r.reviewedAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -354,10 +354,10 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
 
       {/* Reject modal */}
       {rejectTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Reject project</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900">Reject project</h3>
+            <p className="mt-1 text-sm text-gray-500">
               &ldquo;{rejectTarget.title}&rdquo; will be returned to {rejectTarget.ngo.orgName} as a draft. They&apos;ll see your note.
             </p>
             <textarea
@@ -365,12 +365,12 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
               onChange={(e) => setRejectReason(e.target.value)}
               rows={4}
               placeholder="Explain what the NGO needs to fix before resubmitting…"
-              className="mt-4 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="mt-4 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500"
             />
             <div className="mt-4 flex justify-end gap-3">
               <button
                 onClick={() => setRejectTarget(null)}
-                className="px-4 py-2 text-sm font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                className="px-4 py-2 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
               >
                 Cancel
               </button>
@@ -388,10 +388,10 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
 
       {/* AI-override approve modal */}
       {overrideTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Approve against AI recommendation</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900">Approve against AI recommendation</h3>
+            <p className="mt-1 text-sm text-gray-500">
               The AI scored &ldquo;{overrideTarget.title}&rdquo; at{" "}
               <span className="font-bold text-red-600">{overrideTarget.aiScreening?.score}/100</span>.
               A written justification is required and will be recorded in the audit log.
@@ -401,12 +401,12 @@ export default function ProjectReviewClient({ initialPending, initialAudit }: Pr
               onChange={(e) => setOverrideReason(e.target.value)}
               rows={4}
               placeholder="Why is this project safe to publish despite the low AI score?"
-              className="mt-4 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="mt-4 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500"
             />
             <div className="mt-4 flex justify-end gap-3">
               <button
                 onClick={() => setOverrideTarget(null)}
-                className="px-4 py-2 text-sm font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                className="px-4 py-2 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
               >
                 Cancel
               </button>

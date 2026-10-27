@@ -14,9 +14,10 @@ import { useSession } from "next-auth/react";
  * rendered (ISR); only these buttons read the session.
  */
 
-const PRIMARY = "w-full sm:w-auto bg-trust-600 hover:bg-trust-500 text-white font-semibold px-8 py-4 rounded-lg text-base transition";
+const PRIMARY =
+  "group w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-trust-600 hover:bg-trust-700 text-white font-semibold px-6 py-3.5 rounded-xl text-sm shadow-sm shadow-trust-600/20 transition";
 const SECONDARY =
-  "w-full sm:w-auto border border-trust-400/60 text-trust-100 hover:bg-trust-600/20 font-semibold px-8 py-4 rounded-lg text-base transition";
+  "w-full sm:w-auto inline-flex items-center justify-center bg-white border border-gray-300 text-gray-800 hover:bg-gray-50 hover:border-gray-400 font-semibold px-6 py-3.5 rounded-xl text-sm transition";
 
 type Cta = { href: string; label: string; primary?: boolean };
 
@@ -54,10 +55,15 @@ export default function HeroCtas() {
   const role = status === "authenticated" ? session?.user?.role : null;
 
   return (
-    <div className="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-4">
+    <div className="flex flex-col sm:flex-row flex-wrap justify-center lg:justify-start items-center gap-3">
       {ctasFor(role).map((c) => (
         <Link key={c.href} href={c.href} className={c.primary ? PRIMARY : SECONDARY}>
           {c.label}
+          {c.primary && (
+            <span aria-hidden className="transition-transform motion-safe:group-hover:translate-x-0.5">
+              →
+            </span>
+          )}
         </Link>
       ))}
     </div>

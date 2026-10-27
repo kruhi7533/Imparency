@@ -17,7 +17,7 @@ function Fact({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <dt className="text-[11px] uppercase tracking-wider text-gray-500">{label}</dt>
-      <dd className="text-sm text-gray-100 mt-0.5">{value}</dd>
+      <dd className="text-sm text-gray-900 mt-0.5">{value}</dd>
     </div>
   );
 }
@@ -118,22 +118,22 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
     }
   }
 
-  const input = "w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-emerald-500";
+  const input = "w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20";
 
   return (
-    <div className="min-h-screen bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <Link href="/ngo/opportunities" className="text-xs font-bold text-emerald-500 hover:underline">
+        <Link href="/ngo/opportunities" className="text-xs font-bold text-trust-700 hover:underline">
           ← CSR Opportunities
         </Link>
 
-        <div className="border border-gray-800 bg-gray-900/40 rounded-2xl p-6 space-y-5">
+        <div className="border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] rounded-2xl p-6 space-y-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">CSR Opportunity</p>
-              <h1 className="text-2xl font-extrabold text-white mt-1">{brief.title}</h1>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">CSR Opportunity</p>
+              <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 mt-1">{brief.title}</h1>
             </div>
-            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${open ? "text-emerald-300 border-emerald-500/30" : "text-gray-400 border-gray-700"}`}>
+            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${open ? "text-emerald-700 border-emerald-200" : "text-gray-600 border-gray-300"}`}>
               {open ? "Accepting responses" : "Closed"}
             </span>
           </div>
@@ -151,7 +151,7 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
           {brief.keyOutcomes.length > 0 && (
             <div>
               <p className="text-[11px] uppercase tracking-wider text-gray-500">Key outcomes</p>
-              <ul className="mt-1 text-sm text-gray-100 list-disc list-inside">
+              <ul className="mt-1 text-sm text-gray-900 list-disc list-inside">
                 {brief.keyOutcomes.map((o) => (
                   <li key={o}>{o}</li>
                 ))}
@@ -159,23 +159,23 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
             </div>
           )}
           {brief.requiredDocuments.length > 0 && (
-            <p className="text-xs text-gray-400">Required documents: {brief.requiredDocuments.join(", ")}</p>
+            <p className="text-xs text-gray-600">Required documents: {brief.requiredDocuments.join(", ")}</p>
           )}
           <p className="text-[11px] text-gray-500">Your invited project(s): {invitedProjects.map((p) => p.title).join(", ")}</p>
         </div>
 
         {response && response.status === "SELECTED" && (
-          <div className="border border-emerald-500/40 bg-emerald-500/10 rounded-2xl px-5 py-4">
-            <p className="text-base font-extrabold text-emerald-300">Proposal Approved — Ready for Contracting</p>
-            <p className="text-sm text-emerald-100/80 mt-1">
+          <div className="border border-emerald-200 bg-emerald-50 rounded-2xl px-5 py-4">
+            <p className="text-base font-extrabold text-emerald-700">Proposal Approved — Ready for Contracting</p>
+            <p className="text-sm text-emerald-700 mt-1">
               The sponsor approved your proposal V{response.version}. The grant contract comes next — you will see it under Contracts.
             </p>
           </div>
         )}
         {response && response.status !== "SELECTED" && (
-          <p className="text-sm text-gray-300 border border-gray-800 rounded-2xl px-5 py-3">
+          <p className="text-sm text-gray-700 border border-gray-200 rounded-2xl px-5 py-3">
             Your response:{" "}
-            <span className="font-bold text-white">
+            <span className="font-bold text-gray-900">
               {NGO_RESPONSE_STATUS_LABELS[response.status as keyof typeof NGO_RESPONSE_STATUS_LABELS] ?? response.status}
             </span>
             {hasProposal && <span className="text-gray-500"> · V{response.version}</span>} · submitted{" "}
@@ -183,22 +183,22 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
           </p>
         )}
         {changesRequested && (
-          <div className="border border-amber-500/40 bg-amber-500/10 rounded-2xl px-5 py-4 space-y-2">
-            <p className="text-sm font-extrabold text-amber-200">
+          <div className="border border-amber-200 bg-amber-50 rounded-2xl px-5 py-4 space-y-2">
+            <p className="text-sm font-extrabold text-amber-700">
               The sponsor asked for changes{response!.revisionRounds > 1 ? ` (revision round ${response!.revisionRounds})` : ""}
             </p>
-            <p className="text-sm text-amber-50 whitespace-pre-wrap">{response!.changeRequestNote}</p>
-            <p className="text-xs text-amber-200/70">
+            <p className="text-sm text-amber-800 whitespace-pre-wrap">{response!.changeRequestNote}</p>
+            <p className="text-xs text-amber-700">
               Your previous answers are filled in below. Update them and submit the revision — V{response!.version} is kept for the record.
             </p>
           </div>
         )}
-        {notice && <p className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-4 py-2">{notice}</p>}
-        {error && <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-4 py-2">{error}</p>}
+        {notice && <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2">{notice}</p>}
+        {error && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2">{error}</p>}
 
         {editable && (
-          <form id="respond" onSubmit={submit} className="border border-gray-800 bg-gray-900/40 rounded-2xl p-6 space-y-4">
-            <h2 className="text-lg font-bold text-white">
+          <form id="respond" onSubmit={submit} className="border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] rounded-2xl p-6 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900">
               {changesRequested
                 ? `Revise your proposal (V${nextVersion})`
                 : response
@@ -213,7 +213,7 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
                 type="button"
                 disabled={drafting || !projectId}
                 onClick={generateDraft}
-                className="px-4 py-2 rounded-lg border border-emerald-500/40 text-emerald-300 text-xs font-bold hover:bg-emerald-500/10 disabled:opacity-50"
+                className="px-4 py-2 rounded-lg border border-emerald-200 text-emerald-700 text-xs font-bold hover:bg-emerald-50 disabled:opacity-50"
               >
                 {drafting ? "Drafting…" : "✎ Draft with proposal assistant"}
               </button>
@@ -223,15 +223,15 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
               <p
                 className={`text-xs rounded-lg px-3 py-2 border ${
                   draftNotice.generator === "TEMPLATE"
-                    ? "text-sky-200 bg-sky-500/10 border-sky-500/25"
-                    : "text-emerald-200 bg-emerald-500/10 border-emerald-500/25"
+                    ? "text-sky-700 bg-sky-50 border-sky-200"
+                    : "text-emerald-700 bg-emerald-50 border-emerald-200"
                 }`}
               >
                 <span className="font-bold">{draftNotice.generator === "TEMPLATE" ? "Template draft" : "AI-assisted draft"}:</span> {draftNotice.text}
               </p>
             )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <label className="md:col-span-3 text-xs text-gray-400">
+              <label className="md:col-span-3 text-xs text-gray-600">
                 Project
                 <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={`${input} mt-1`}>
                   {invitedProjects.map((p) => (
@@ -241,31 +241,31 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
                   ))}
                 </select>
               </label>
-              <label className="text-xs text-gray-400">
+              <label className="text-xs text-gray-600">
                 Proposed budget (₹)
                 <input type="number" min={1} value={budget} onChange={(e) => setBudget(e.target.value)} className={`${input} mt-1`} />
               </label>
-              <label className="text-xs text-gray-400">
+              <label className="text-xs text-gray-600">
                 Duration (months)
                 <input type="number" min={1} max={120} value={duration} onChange={(e) => setDuration(e.target.value)} className={`${input} mt-1`} />
               </label>
             </div>
-            <label className="block text-xs text-gray-400">
+            <label className="block text-xs text-gray-600">
               Implementation plan
               <textarea rows={5} value={plan} onChange={(e) => setPlan(e.target.value)} className={`${input} mt-1`} />
             </label>
-            <label className="block text-xs text-gray-400">
+            <label className="block text-xs text-gray-600">
               Expected outcomes
               <textarea rows={3} value={outcomes} onChange={(e) => setOutcomes(e.target.value)} className={`${input} mt-1`} />
             </label>
-            <label className="block text-xs text-gray-400">
+            <label className="block text-xs text-gray-600">
               Compliance information (FCRA, 80G, 12A, audits…)
               <textarea rows={2} value={compliance} onChange={(e) => setCompliance(e.target.value)} className={`${input} mt-1`} />
             </label>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-600">
                   Proposed milestones{" "}
                   {(() => {
                     const allocated = milestones.reduce((s, m) => s + (Number(m.amount) || 0), 0);
@@ -273,7 +273,7 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
                     if (!allocated && !total) return null;
                     const over = total > 0 && allocated > total;
                     return (
-                      <span className={over ? "text-red-400 font-semibold" : "text-gray-500"}>
+                      <span className={over ? "text-red-700 font-semibold" : "text-gray-500"}>
                         · ₹{allocated.toLocaleString("en-IN")} allocated of ₹{total.toLocaleString("en-IN")} budget
                         {over ? " — milestones exceed the budget" : total > allocated ? ` (₹${(total - allocated).toLocaleString("en-IN")} unallocated)` : ""}
                       </span>
@@ -283,7 +283,7 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
                 <button
                   type="button"
                   onClick={() => setMilestones((m) => [...m, { title: "", amount: "", durationMonths: "" }])}
-                  className="text-xs font-semibold text-emerald-400"
+                  className="text-xs font-semibold text-emerald-700"
                 >
                   + Add milestone
                 </button>
@@ -310,7 +310,7 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
                     onChange={(e) => setMilestones((all) => all.map((x, j) => (j === i ? { ...x, durationMonths: e.target.value } : x)))}
                     className={`${input} col-span-2`}
                   />
-                  <button type="button" onClick={() => setMilestones((all) => all.filter((_, j) => j !== i))} className="col-span-1 text-xs text-red-400">
+                  <button type="button" onClick={() => setMilestones((all) => all.filter((_, j) => j !== i))} className="col-span-1 text-xs text-red-700">
                     ✕
                   </button>
                 </div>
@@ -318,7 +318,7 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
             </div>
 
             <div className="flex justify-end">
-              <button type="submit" disabled={busy || !projectId} className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-sm font-bold disabled:opacity-50">
+              <button type="submit" disabled={busy || !projectId} className="px-5 py-2.5 rounded-xl bg-trust-600 hover:bg-trust-700 text-white text-sm font-bold disabled:opacity-50">
                 {busy ? "Submitting…" : changesRequested ? "Submit revision" : response ? "Update response" : "Submit"}
               </button>
             </div>
@@ -326,16 +326,16 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
         )}
 
         {response && response.revisions.length > 0 && (
-          <details className="border border-gray-800 bg-gray-900/40 rounded-2xl p-5 text-sm text-gray-300">
-            <summary className="cursor-pointer font-bold text-white">Previous versions ({response.revisions.length})</summary>
+          <details className="border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] rounded-2xl p-5 text-sm text-gray-700">
+            <summary className="cursor-pointer font-bold text-gray-900">Previous versions ({response.revisions.length})</summary>
             <ol className="mt-4 space-y-4">
               {response.revisions.map((v) => (
-                <li key={v.version} className="border-l-2 border-gray-700 pl-3 space-y-1">
-                  <p className="font-bold text-gray-100">
+                <li key={v.version} className="border-l-2 border-gray-300 pl-3 space-y-1">
+                  <p className="font-bold text-gray-900">
                     V{v.version} <span className="font-normal text-gray-500">· submitted {new Date(v.submittedAt).toLocaleDateString("en-IN")}</span>
                   </p>
                   {v.supersededBecause && (
-                    <p className="text-xs text-amber-300/90">
+                    <p className="text-xs text-amber-700">
                       Sponsor&apos;s change request: <span className="whitespace-pre-wrap">{v.supersededBecause}</span>
                     </p>
                   )}
@@ -343,9 +343,9 @@ export default function OpportunityClient({ opportunity }: { opportunity: NgoOpp
                     Budget {v.proposedBudget === null ? "—" : `₹${v.proposedBudget.toLocaleString("en-IN")}`} ·{" "}
                     {v.proposedDurationMonths ? `${v.proposedDurationMonths} months` : "duration not given"}
                   </p>
-                  {v.implementationPlan && <p className="text-xs text-gray-400 whitespace-pre-wrap">{v.implementationPlan}</p>}
+                  {v.implementationPlan && <p className="text-xs text-gray-600 whitespace-pre-wrap">{v.implementationPlan}</p>}
                   {Array.isArray(v.milestones) && v.milestones.length > 0 && (
-                    <ul className="text-xs text-gray-400">
+                    <ul className="text-xs text-gray-600">
                       {(v.milestones as any[]).map((m, i) => (
                         <li key={i}>
                           {i + 1}. {m.title} {m.amount ? `— ₹${Number(m.amount).toLocaleString("en-IN")}` : ""}

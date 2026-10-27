@@ -23,19 +23,19 @@ export function RequirementStepper({ status }: { status: string }) {
           <li key={step.label} className="flex items-center">
             <span
               className={`flex items-center gap-1.5 px-2 py-1 rounded-lg ${
-                active ? "bg-emerald-500/15 text-emerald-300" : done ? "text-emerald-500" : "text-gray-600"
+                active ? "bg-trust-50 text-trust-700" : done ? "text-emerald-700" : "text-gray-600"
               }`}
             >
               <span
                 className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${
-                  active ? "bg-emerald-400 text-gray-950" : done ? "bg-emerald-700 text-white" : "bg-gray-800 text-gray-500"
+                  active ? "bg-trust-600 text-white" : done ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-500"
                 }`}
               >
                 {done ? "✓" : i + 1}
               </span>
               {step.label}
             </span>
-            {i < STEPS.length - 1 && <span className="w-3 h-px bg-gray-800 mx-0.5" />}
+            {i < STEPS.length - 1 && <span className="w-3 h-px bg-gray-100 mx-0.5" />}
           </li>
         );
       })}

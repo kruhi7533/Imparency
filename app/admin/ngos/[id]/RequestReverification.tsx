@@ -29,7 +29,7 @@ export default function RequestReverification({
 
   if (dueAt) {
     return (
-      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-2xl p-4 text-sm text-amber-900 dark:text-amber-200">
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-900">
         <b>Re-verification due</b> by {new Date(dueAt).toLocaleDateString("en-IN")}. {reason}
         <span className="block text-xs mt-1">Re-decide it from the <a className="underline" href="/admin/verification">verification queue</a>.</span>
       </div>
@@ -58,7 +58,7 @@ export default function RequestReverification({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
+    <div className="bg-white border border-gray-200/80 rounded-2xl p-4">
       {!open ? (
         <button onClick={() => setOpen(true)} className="px-3 py-1.5 rounded-lg text-sm font-semibold border border-amber-600 text-amber-700">
           Request re-verification
@@ -67,7 +67,7 @@ export default function RequestReverification({
         <div className="space-y-2">
           <p className="text-sm font-semibold">Request re-verification</p>
           <p className="text-xs text-gray-500">The organisation stays VERIFIED and is not suspended. It sees your reason and the deadline; you re-decide in the verification queue.</p>
-          <textarea className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm" rows={2} placeholder="Reason shown to the NGO (e.g. annual review: upload your current 80G certificate)" value={text} onChange={(e) => setText(e.target.value)} />
+          <textarea className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm" rows={2} placeholder="Reason shown to the NGO (e.g. annual review: upload your current 80G certificate)" value={text} onChange={(e) => setText(e.target.value)} />
           <label className="text-xs">Due in <input className="w-16 border rounded px-1" value={days} onChange={(e) => setDays(e.target.value)} inputMode="numeric" /> days</label>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-2">

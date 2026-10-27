@@ -16,6 +16,7 @@ const db = vi.hoisted(() => ({
   gapReport: { findFirst: vi.fn(), update: vi.fn() },
   requirementMatch: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn(), count: vi.fn() },
   adminActionLog: { create: vi.fn() },
+  notification: { create: vi.fn() },
   $transaction: vi.fn(),
 }));
 vi.mock("@/lib/prisma", () => ({ default: db }));
@@ -191,7 +192,8 @@ describe("ADM-006 / E2E-002 — admin shortlist review before invitations", () =
     eligible: true,
     invitedAt: null,
     adminDecision: null,
-    ngo: { orgName: "Trust", verificationStatus: "VERIFIED", isSuspended: false },
+    ngo: { orgName: "Trust", verificationStatus: "VERIFIED", isSuspended: false, userId: "ngo-user-1" },
+    project: { title: "Reading corners" },
     ...over,
   });
 
@@ -211,6 +213,16 @@ describe("ADM-006 / E2E-002 — admin shortlist review before invitations", () =
     db.requirementMatch.update.mockResolvedValue(match({ invitedAt: new Date() }));
     await inviteMatch("req-1", OWNER, "m-1");
     expect(db.requirementMatch.update).toHaveBeenCalledWith({ where: { id: "m-1" }, data: expect.objectContaining({ invitedById: "donor-1" }) });
+    // DON-006: the NGO is notified, once, in the same transaction.
+    expect(db.notification.create).toHaveBeenCalledTimes(1);
+    expect(db.notification.create).toHaveBeenCalledWith({ data: expect.objectContaining({ userId: "ngo-user-1", type: "CSR_INVITATION" }) });
+  });
+
+  it("re-inviting an already-invited candidate does not notify the NGO again", async () => {
+    db.gapReport.findFirst.mockResolvedValue({ id: "gap-1", reviewStatus: "APPROVED" });
+    db.requirementMatch.findUnique.mockResolvedValue(match({ adminDecision: "APPROVED", adminRank: 1, invitedAt: new Date() }));
+    await inviteMatch("req-1", OWNER, "m-1");
+    expect(db.notification.create).not.toHaveBeenCalled();
   });
 
   it("another donor cannot invite on this requirement (403)", async () => {

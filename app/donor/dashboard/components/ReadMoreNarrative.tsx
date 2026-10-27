@@ -15,13 +15,13 @@ export default function ReadMoreNarrative({ narrative, limit = 150 }: ReadMoreNa
 
   return (
     <div className="space-y-2">
-      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-normal whitespace-pre-wrap">
+      <p className="text-xs sm:text-sm text-gray-600 leading-relaxed font-normal whitespace-pre-wrap">
         {displayText}
       </p>
       {shouldTruncate && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors inline-flex items-center gap-1 focus:outline-none"
+          className="text-xs font-bold text-trust-700 hover:text-trust-800 transition-colors inline-flex items-center gap-1 focus:outline-none"
         >
           {isExpanded ? (
             <>

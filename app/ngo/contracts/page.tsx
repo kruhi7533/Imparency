@@ -59,18 +59,18 @@ export default async function NgoContractsPage() {
   const pendingActionCount = (contracts as any[]).filter((c: any) => (c.status === "PROPOSED" || c.status === "DRAFT") && !c.ngoSignedAt).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <Link href="/ngo/dashboard" className="text-xs font-bold text-emerald-600 hover:underline">
+            <Link href="/ngo/dashboard" className="text-xs font-bold text-trust-700 hover:underline">
               ← Back to NGO Dashboard
             </Link>
-            <Link href="/ngo/bank-reconciliation" className="ml-4 text-xs font-bold text-emerald-600 hover:underline">
+            <Link href="/ngo/bank-reconciliation" className="ml-4 text-xs font-bold text-trust-700 hover:underline">
               Bank reconciliation →
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">Grant Contracts & Agreements</h1>
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 mt-1">Grant Contracts & Agreements</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Institutional grant agreements, counter-signing, and milestone tranche management.
             </p>
@@ -79,27 +79,27 @@ export default async function NgoContractsPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Institutional Grants</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200/80 rounded-2xl p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">Total Institutional Grants</p>
             <p className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">
               ₹{totalCommitted.toLocaleString("en-IN")}
             </p>
           </div>
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Active Agreements</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200/80 rounded-2xl p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">Active Agreements</p>
             <p className="text-2xl font-extrabold text-emerald-600 mt-1">{activeCount}</p>
           </div>
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Pending Execution</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200/80 rounded-2xl p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">Pending Execution</p>
             <p className="text-2xl font-extrabold text-amber-500 mt-1">{pendingActionCount}</p>
           </div>
         </div>
 
         {/* Contracts Table */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           {contracts.length === 0 ? (
             <div className="text-center py-12">
-              <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 flex items-center justify-center mx-auto mb-3">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -112,7 +112,7 @@ export default async function NgoContractsPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="bg-gray-50 dark:bg-gray-800/50 text-xs font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                <thead className="bg-gray-50 dark:bg-gray-800/50 text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-100 dark:border-gray-800">
                   <tr>
                     <th className="px-4 py-3">Agreement & Opportunity</th>
                     <th className="px-4 py-3">Grantor / Donor Organization</th>
@@ -130,11 +130,11 @@ export default async function NgoContractsPage() {
                     return (
                       <tr key={c.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition">
                         <td className="px-4 py-4">
-                          <Link href={`/ngo/contracts/${c.id}`} className="font-bold text-gray-900 dark:text-white hover:text-emerald-600 transition block">
+                          <Link href={`/ngo/contracts/${c.id}`} className="font-bold text-gray-900 dark:text-white hover:text-trust-700 transition block">
                             {c.title}
                           </Link>
-                          <span className="text-xs font-mono text-gray-400 block mt-0.5">{c.contractNumber}</span>
-                          <Link href={`/ngo/projects/${c.project.id}`} className="text-xs text-emerald-600 hover:underline block mt-0.5">
+                          <span className="text-xs font-mono text-gray-600 block mt-0.5">{c.contractNumber}</span>
+                          <Link href={`/ngo/projects/${c.project.id}`} className="text-xs text-trust-700 hover:underline block mt-0.5">
                             {c.project.title} · Project cockpit →
                           </Link>
                         </td>
@@ -142,7 +142,7 @@ export default async function NgoContractsPage() {
                           <p className="font-medium text-gray-900 dark:text-white">
                             {c.donor.companyName || c.donor.name}
                           </p>
-                          <p className="text-xs text-gray-400">{c.donor.email}</p>
+                          <p className="text-xs text-gray-600">{c.donor.email}</p>
                         </td>
                         <td className="px-4 py-4 font-bold text-gray-900 dark:text-white">
                           ₹{Number(c.totalGrantAmount).toLocaleString("en-IN")}
@@ -166,7 +166,7 @@ export default async function NgoContractsPage() {
                         <td className="px-4 py-4 text-right">
                           <Link
                             href={`/ngo/contracts/${c.id}`}
-                            className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                            className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-trust-700 hover:bg-trust-50 rounded-lg transition"
                           >
                             Review & Sign →
                           </Link>

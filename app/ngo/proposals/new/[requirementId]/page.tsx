@@ -43,9 +43,9 @@ export default function NewProposalPage({ params }: { params: { requirementId: s
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-zinc-900 py-12">
+    <main className="py-12">
       <div className="max-w-4xl mx-auto px-6">
-        <h1 className="text-3xl font-bold mb-8">Draft Proposal (V1)</h1>
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 mb-8">Draft Proposal (V1)</h1>
         <form onSubmit={handleSubmit}>
           <Card className="mb-6">
             <CardHeader>

@@ -2,8 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
-import AdminNav from "./components/AdminNav";
-import AdminTabs from "./components/AdminTabs";
+import AdminShell from "./components/AdminShell";
 
 export const runtime = "nodejs";
 
@@ -38,26 +37,23 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     console.error("[admin-layout] failed to load nav badge counts:", err);
   }
 
+  // Counts belong to a hub, not to a page inside it: the badge answers "which
+  // hub needs me", and the tab strip inside answers "which part of it".
+  const badges: Record<string, number> = {
+    verification: fieldsNeedingReview + pendingRequirementCount,
+    campaigns: pendingProjectCount,
+    risk: unresolvedAlertsTotal,
+    people: inquiriesNeedingResponse,
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
-      <AdminNav
-        pendingProjectCount={pendingProjectCount}
-        unresolvedAlertsTotal={unresolvedAlertsTotal}
-        inquiriesNeedingResponse={inquiriesNeedingResponse}
-        fieldsNeedingReview={fieldsNeedingReview}
-        pendingRequirementCount={pendingRequirementCount}
-        adminRole={session.user.adminRole ?? null}
-      />
-      {/* Second level. Renders itself only inside a hub — it works out which one
-          from the path, so pages do not each have to declare their own tabs. */}
-      <AdminTabs adminRole={session.user.adminRole ?? null} />
-      {session.user.adminRole === "AUDITOR" && (
-        <div role="status" className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 text-xs font-semibold px-6 py-2 text-center">
-          Read-only auditor access — you can view everything and export the audit trail; every change is refused by the server.
-        </div>
-      )}
-      {/* The one <main> landmark for every admin page; pages use <div>. */}
-      <main id="admin-main">{children}</main>
-    </div>
+    <AdminShell
+      adminRole={session.user.adminRole ?? null}
+      userName={session.user.name ?? null}
+      userEmail={session.user.email ?? null}
+      badges={badges}
+    >
+      {children}
+    </AdminShell>
   );
 }

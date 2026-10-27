@@ -16,18 +16,18 @@ export const dynamic = "force-dynamic";
  */
 
 const STATUS_BADGE: Record<string, string> = {
-  OPEN: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
-  SUBMITTED: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  DRAFT: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  REJECTED: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",
-  CLOSED: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500",
+  OPEN: "bg-emerald-100 text-emerald-700",
+  SUBMITTED: "bg-amber-100 text-amber-700",
+  DRAFT: "bg-gray-100 text-gray-700",
+  REJECTED: "bg-red-100 text-red-700",
+  CLOSED: "bg-gray-100 text-gray-500",
 };
 
 const JOB_BADGE: Record<string, string> = {
-  COMPLETED: "text-emerald-600 dark:text-emerald-400",
-  RUNNING: "text-amber-600 dark:text-amber-400",
-  QUEUED: "text-amber-600 dark:text-amber-400",
-  FAILED: "text-red-600 dark:text-red-400",
+  COMPLETED: "text-emerald-600",
+  RUNNING: "text-amber-600",
+  QUEUED: "text-amber-600",
+  FAILED: "text-red-600",
 };
 
 export default async function AdminOpportunitiesPage({
@@ -97,11 +97,11 @@ export default async function AdminOpportunitiesPage({
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <SupersededTrackNotice page="opportunities" />
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Opportunities</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Opportunities</h1>
+        <p className="mt-1 text-sm text-gray-500">
           {opportunities.length} opportunit{opportunities.length === 1 ? "y" : "ies"} shown (newest
           first, max 100). Matching is a gate, not a ranking — a run says who qualifies and why, and
           nothing is shortlisted until you say so.
@@ -113,12 +113,12 @@ export default async function AdminOpportunitiesPage({
             name="q"
             defaultValue={q}
             placeholder="Search title or funder…"
-            className="flex-1 min-w-[240px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="flex-1 min-w-[240px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500"
           />
           <AutoSubmitSelect
             name="status"
             defaultValue={status}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
           >
             <option value="">All statuses</option>
             <option value="SUBMITTED">Submitted — awaiting review</option>
@@ -129,48 +129,48 @@ export default async function AdminOpportunitiesPage({
           </AutoSubmitSelect>
           <button
             type="submit"
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+            className="rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white hover:bg-trust-700"
           >
             Search
           </button>
           {(q || status) && (
             <Link
               href="/admin/opportunities"
-              className="rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
             >
               Clear
             </Link>
           )}
         </form>
 
-        <div className="mt-6 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-            <thead className="bg-gray-50 dark:bg-gray-950/40">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-gray-200 bg-white">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Opportunity</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Criteria</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Last run</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Result</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Opportunity</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Criteria</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Last run</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Result</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-gray-100">
               {opportunities.map((o) => {
                 const job = o.jobs[0];
                 return (
-                  <tr key={o.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                  <tr key={o.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <Link
                         href={`/admin/opportunities/${o.id}`}
-                        className="text-sm font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                        className="text-sm font-semibold text-emerald-600 hover:text-emerald-700"
                       >
                         {o.title}
                       </Link>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                      <div className="text-xs text-gray-500">
                         {o.funderName}
                         {!o.funderUserId && (
-                          <span className="ml-1 text-amber-600 dark:text-amber-500">· unverified funder</span>
+                          <span className="ml-1 text-amber-600">· unverified funder</span>
                         )}
                       </div>
                     </td>
@@ -179,14 +179,14 @@ export default async function AdminOpportunitiesPage({
                         {o.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 tabular-nums">
+                    <td className="px-4 py-3 text-sm text-gray-700 tabular-nums">
                       {o.amount === null ? (
-                        <span className="text-gray-400 dark:text-gray-600">—</span>
+                        <span className="text-gray-500">—</span>
                       ) : (
                         `₹${Number(o.amount).toLocaleString("en-IN")}`
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 tabular-nums">
+                    <td className="px-4 py-3 text-sm text-gray-700 tabular-nums">
                       {o._count.criteria}
                     </td>
                     <td className="px-4 py-3 text-sm">
@@ -198,16 +198,16 @@ export default async function AdminOpportunitiesPage({
                           {job.status}
                         </Link>
                       ) : (
-                        <span className="text-gray-400 dark:text-gray-600">Never run</span>
+                        <span className="text-gray-500">Never run</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 tabular-nums">
+                    <td className="px-4 py-3 text-xs text-gray-600 tabular-nums">
                       {job && job.status === "COMPLETED" ? (
                         <>
                           {job.eligibleCount} eligible · {job.ineligibleCount} not · {job.unknownCount} unknown
                         </>
                       ) : (
-                        <span className="text-gray-400 dark:text-gray-600">—</span>
+                        <span className="text-gray-500">—</span>
                       )}
                     </td>
                   </tr>
@@ -215,7 +215,7 @@ export default async function AdminOpportunitiesPage({
               })}
               {opportunities.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">
                     No opportunities match this view.{" "}
                     <Link href="/admin/opportunities" className="text-emerald-600 hover:underline">
                       Clear filters

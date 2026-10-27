@@ -53,12 +53,12 @@ export default async function AdminInquiriesPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">
           Inquiries &amp; Appeals
         </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-sm text-gray-500">
           Threaded conversations with NGOs — clarification questions you&apos;ve sent and appeals they&apos;ve raised.
         </p>
         <div className="mt-8">

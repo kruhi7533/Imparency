@@ -54,7 +54,7 @@ export default function PanActions({ donorId }: { donorId: string }) {
           </button>
           <button
             onClick={() => setAction("REJECT")}
-            className="px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 dark:border-red-900 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+            className="px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition"
           >
             Reject PAN
           </button>
@@ -70,12 +70,12 @@ export default function PanActions({ donorId }: { donorId: string }) {
                 ? "Justification — what did you check to verify this PAN manually? (recorded in the audit log)"
                 : "Reason for rejecting — the donor will see this."
             }
-            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500"
           />
           <div className="flex gap-2">
             <button
               onClick={() => { setAction(null); setNote(""); }}
-              className="px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              className="px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
             >
               Cancel
             </button>

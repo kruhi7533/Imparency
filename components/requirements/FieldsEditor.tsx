@@ -61,12 +61,12 @@ function ProvenanceChip({ field }: { field: ProvenancedField }) {
   const pct = Math.round(field.confidence * 100);
   const tone =
     field.source === "ADMIN_VERIFIED"
-      ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/25"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
       : field.source === "DONOR_CORRECTED" || field.source === "DONOR_ENTERED"
-      ? "bg-blue-500/10 text-blue-300 border-blue-500/25"
+      ? "bg-blue-50 text-blue-700 border-blue-200"
       : isLow(field)
-      ? "bg-amber-500/10 text-amber-300 border-amber-500/30"
-      : "bg-gray-800 text-gray-300 border-gray-700";
+      ? "bg-amber-50 text-amber-700 border-amber-200"
+      : "bg-gray-100 text-gray-700 border-gray-300";
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${tone}`}>
       {SOURCE_LABEL[field.source] ?? field.source}
@@ -127,7 +127,7 @@ export function FieldsEditor({
   return (
     <div className="space-y-4">
       {lowCount > 0 && (
-        <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2">
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
           ⚠ {lowCount} field{lowCount > 1 ? "s were" : " was"} extracted with confidence below{" "}
           {Math.round(LOW_CONFIDENCE_THRESHOLD * 100)}% — please verify {lowCount > 1 ? "them" : "it"}.
         </p>
@@ -141,17 +141,17 @@ export function FieldsEditor({
           return (
             <div
               key={key}
-              className={`p-3.5 rounded-xl border bg-gray-950/40 ${WIDE.has(key) ? "md:col-span-2" : ""} ${
-                low ? "border-amber-600/40" : changed ? "border-blue-500/40" : "border-gray-800"
+              className={`p-3.5 rounded-xl border bg-gray-50 ${WIDE.has(key) ? "md:col-span-2" : ""} ${
+                low ? "border-amber-200" : changed ? "border-blue-200" : "border-gray-200"
               }`}
             >
               <div className="flex items-center justify-between gap-2 mb-2">
-                <label htmlFor={`field-${key}`} className="text-xs font-semibold text-gray-300">
+                <label htmlFor={`field-${key}`} className="text-xs font-semibold text-gray-700">
                   {spec.label}
                   {spec.kind === "string[]" && editable && <span className="text-gray-500 font-normal"> (comma separated)</span>}
                 </label>
                 <div className="flex items-center gap-1.5">
-                  {changed && <span className="text-[10px] font-bold text-blue-300">edited</span>}
+                  {changed && <span className="text-[10px] font-bold text-blue-700">edited</span>}
                   <ProvenanceChip field={field} />
                 </div>
               </div>
@@ -161,7 +161,7 @@ export function FieldsEditor({
                     id={`field-${key}`}
                     value={draft[key] ?? ""}
                     onChange={(e) => onChange(key, e.target.value)}
-                    className="w-full bg-gray-900/70 border border-gray-800 text-sm rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white border border-gray-300 text-sm rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
                   >
                     <option value="">Not stated</option>
                     <option value="true">Yes — only FCRA-registered NGOs</option>
@@ -173,7 +173,7 @@ export function FieldsEditor({
                     rows={3}
                     value={draft[key] ?? ""}
                     onChange={(e) => onChange(key, e.target.value)}
-                    className="w-full bg-gray-900/70 border border-gray-800 text-sm rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white border border-gray-300 text-sm rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
                   />
                 ) : (
                   <input
@@ -183,15 +183,15 @@ export function FieldsEditor({
                     value={draft[key] ?? ""}
                     placeholder="Not specified"
                     onChange={(e) => onChange(key, e.target.value)}
-                    className="w-full bg-gray-900/70 border border-gray-800 text-sm rounded-lg px-3 py-2 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white border border-gray-300 text-sm rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
                   />
                 )
               ) : (
-                <p className={`text-sm ${field.value === null ? "text-gray-600" : "text-gray-100"} whitespace-pre-wrap break-words`}>
+                <p className={`text-sm ${field.value === null ? "text-gray-600" : "text-gray-900"} whitespace-pre-wrap break-words`}>
                   {formatValue(key, field.value)}
                 </p>
               )}
-              {low && <p className="text-[11px] text-amber-400 mt-1.5">⚠ Please verify</p>}
+              {low && <p className="text-[11px] text-amber-700 mt-1.5">⚠ Please verify</p>}
             </div>
           );
         })}

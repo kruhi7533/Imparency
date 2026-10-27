@@ -39,11 +39,11 @@ export function RunReconciliationButton() {
       <button
         onClick={run}
         disabled={busy}
-        className="px-4 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold disabled:opacity-50"
+        className="px-4 py-2 rounded-lg bg-trust-600 hover:bg-trust-700 text-white text-sm font-bold disabled:opacity-50"
       >
         {busy ? "Checking…" : "Run reconciliation"}
       </button>
-      {error && <p className="text-xs font-medium text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-xs font-medium text-red-600">{error}</p>}
     </div>
   );
 }
@@ -83,7 +83,7 @@ export function ResolveExceptionForm({ exceptionId }: { exceptionId: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="text-xs font-bold text-gray-600 dark:text-gray-300 underline underline-offset-2"
+        className="text-xs font-bold text-gray-600 underline underline-offset-2"
       >
         Resolve
       </button>
@@ -97,7 +97,7 @@ export function ResolveExceptionForm({ exceptionId }: { exceptionId: string }) {
         onChange={(e) => setNote(e.target.value)}
         rows={2}
         placeholder="What was done about this? (required — and kept on the record)"
-        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
       />
       <div className="flex items-center gap-2">
         <button
@@ -112,12 +112,12 @@ export function ResolveExceptionForm({ exceptionId }: { exceptionId: string }) {
             setOpen(false);
             setError(null);
           }}
-          className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300"
+          className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-600"
         >
           Cancel
         </button>
       </div>
-      {error && <p className="text-xs font-medium text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-xs font-medium text-red-600">{error}</p>}
     </div>
   );
 }
@@ -174,7 +174,7 @@ export function BankLineMatchForm({
       <select
         value={paymentId}
         onChange={(e) => setPaymentId(e.target.value)}
-        className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-xs"
+        className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs"
       >
         {candidates.map((c) => (
           <option key={c.id} value={c.id}>
@@ -186,7 +186,7 @@ export function BankLineMatchForm({
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Why this payment? (required)"
-        className="flex-1 min-w-[180px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-xs"
+        className="flex-1 min-w-[180px] rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs"
       />
       <button
         onClick={match}
@@ -195,7 +195,7 @@ export function BankLineMatchForm({
       >
         {busy ? "Matching…" : "Match to payment"}
       </button>
-      {error && <p className="w-full text-xs font-medium text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="w-full text-xs font-medium text-red-600">{error}</p>}
     </div>
   );
 }

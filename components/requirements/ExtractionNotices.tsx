@@ -15,9 +15,9 @@ import { EXTRACTION_ERROR_LABELS } from "@/lib/requirements/extraction-errors";
 export function ExtractionMethodBanner({ requirement }: { requirement: RequirementDTO }) {
   if (requirement.extractionMethod !== "RULES") return null;
   return (
-    <div className="text-sm text-sky-200 bg-sky-500/10 border border-sky-500/25 rounded-xl px-4 py-3">
+    <div className="text-sm text-sky-700 bg-sky-50 border border-sky-200 rounded-xl px-4 py-3">
       <p className="font-bold">Rule-based extraction — please confirm</p>
-      <p className="text-xs text-sky-200/80 mt-1">
+      <p className="text-xs text-sky-700 mt-1">
         No AI model was used. These fields were read from the document by fixed text rules (labels such as “Budget:”,
         “State:”, amounts in ₹/lakh/crore). Anything the rules could not find is left empty for you to fill in — nothing
         was guessed. Check every value against the document before submitting.
@@ -48,7 +48,7 @@ export function ExtractionFlagsPanel({
           <div
             key={f.id}
             className={`rounded-xl border px-4 py-3 text-sm ${
-              confirmed ? "border-gray-700 bg-gray-900/40 text-gray-300" : "border-amber-500/40 bg-amber-500/10 text-amber-100"
+              confirmed ? "border-gray-300 bg-gray-50 text-gray-700" : "border-amber-200 bg-amber-50 text-amber-700"
             }`}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -67,12 +67,12 @@ export function ExtractionFlagsPanel({
             {f.evidence.length > 0 && (
               <ul className="mt-2 space-y-1">
                 {f.evidence.map((e, i) => (
-                  <li key={i} className="text-xs font-mono bg-black/30 rounded px-2 py-1 break-words">“{e}”</li>
+                  <li key={i} className="text-xs font-mono bg-white/70 rounded px-2 py-1 break-words">“{e}”</li>
                 ))}
               </ul>
             )}
             {confirmed && (
-              <p className="text-xs mt-2 text-gray-400">
+              <p className="text-xs mt-2 text-gray-600">
                 Confirmed by {f.confirmedByRole?.toLowerCase() ?? "reviewer"}
                 {f.confirmedAt ? ` on ${new Date(f.confirmedAt).toLocaleString("en-IN")}` : ""}: {f.confirmationNote}
               </p>
@@ -91,7 +91,7 @@ export function ExtractionFlagsPanel({
                   rows={2}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
                 />
                 <div className="flex gap-2">
                   <button
@@ -100,7 +100,7 @@ export function ExtractionFlagsPanel({
                     onClick={async () => {
                       if (await onConfirm(f.id, note)) setOpen(null);
                     }}
-                    className="px-4 py-1.5 rounded-lg bg-amber-400 text-gray-950 text-xs font-bold disabled:opacity-40"
+                    className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold disabled:opacity-40"
                   >
                     {busy === `flag:${f.id}` ? "Saving…" : "Confirm"}
                   </button>
@@ -119,14 +119,14 @@ export function ExtractionFlagsPanel({
 
 export function ExtractionErrorDetail({ requirement }: { requirement: RequirementDTO }) {
   const e = requirement.extractionError;
-  if (!e) return <p className="text-red-300">Document processing failed.</p>;
+  if (!e) return <p className="text-red-700">Document processing failed.</p>;
   return (
     <div className="space-y-1">
-      <p className="text-red-300 font-semibold">
+      <p className="text-red-700 font-semibold">
         {EXTRACTION_ERROR_LABELS[e.code] ?? "Document processing failed"}{" "}
-        <span className="font-mono text-[10px] text-red-200/70">({e.code})</span>
+        <span className="font-mono text-[10px] text-red-700">({e.code})</span>
       </p>
-      <p className="text-xs text-gray-300">{e.message}</p>
+      <p className="text-xs text-gray-700">{e.message}</p>
     </div>
   );
 }

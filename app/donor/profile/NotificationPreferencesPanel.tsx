@@ -25,10 +25,10 @@ interface Delivery {
 
 const CHANNEL_LABEL: Record<Delivery["channel"], string> = { IN_APP: "In-app", WHATSAPP: "WhatsApp", EMAIL: "Email" };
 const STATUS_STYLE: Record<Delivery["status"], string> = {
-  SENT: "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/40",
-  FAILED: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/40",
-  OPTED_OUT: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
-  PROVIDER_NOT_CONFIGURED: "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/40",
+  SENT: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  FAILED: "bg-red-50 text-red-700 border-red-100",
+  OPTED_OUT: "bg-gray-100 text-gray-600 border-gray-200",
+  PROVIDER_NOT_CONFIGURED: "bg-amber-50 text-amber-700 border-amber-100",
 };
 const STATUS_LABEL: Record<Delivery["status"], string> = {
   SENT: "Sent",
@@ -94,23 +94,23 @@ export default function NotificationPreferencesPanel() {
     <label className="flex items-start gap-3 py-2 cursor-pointer">
       <input
         type="checkbox"
-        className="mt-1 accent-emerald-600"
+        className="mt-1 accent-trust-600"
         checked={channels[key]}
         disabled={saving || loading}
         onChange={(e) => save({ channels: { [key]: e.target.checked } })}
       />
       <span>
-        <span className="block text-sm font-semibold text-gray-900 dark:text-white">{label}</span>
-        <span className="block text-xs text-gray-500 dark:text-gray-400">{hint}</span>
+        <span className="block text-sm font-semibold text-gray-900">{label}</span>
+        <span className="block text-xs text-gray-500">{hint}</span>
       </span>
     </label>
   );
 
   return (
-    <section id="notifications" className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-        <h2 className="text-base font-bold text-gray-900 dark:text-white">Notifications</h2>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+    <section id="notifications" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+      <div className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        <h2 className="text-base font-semibold text-gray-900">Notifications</h2>
+        <p className="mt-1 text-xs text-gray-500">
           Milestone and field updates for projects you fund. WhatsApp is tried first; if it is off or cannot be
           delivered, we fall back to email. In-app notifications appear in the bell.
         </p>
@@ -119,17 +119,17 @@ export default function NotificationPreferencesPanel() {
         ) : (
           <div className="mt-4 grid gap-6 md:grid-cols-2">
             <div>
-              <label className="flex items-start gap-3 py-2 cursor-pointer border-b border-gray-100 dark:border-gray-800">
+              <label className="flex items-start gap-3 py-2 cursor-pointer border-b border-gray-100">
                 <input
                   type="checkbox"
-                  className="mt-1 accent-emerald-600"
+                  className="mt-1 accent-trust-600"
                   checked={projectUpdates}
                   disabled={saving}
                   onChange={(e) => save({ projectUpdates: e.target.checked })}
                 />
                 <span>
-                  <span className="block text-sm font-semibold text-gray-900 dark:text-white">Project updates</span>
-                  <span className="block text-xs text-gray-500 dark:text-gray-400">Off silences all channels; funded-project pages still show everything.</span>
+                  <span className="block text-sm font-semibold text-gray-900">Project updates</span>
+                  <span className="block text-xs text-gray-500">Off silences all channels; funded-project pages still show everything.</span>
                 </span>
               </label>
               {toggle("whatsapp", "WhatsApp", "Preferred channel, to the phone number on your profile.")}
@@ -141,19 +141,19 @@ export default function NotificationPreferencesPanel() {
               </p>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white">Recent deliveries</h3>
+              <h3 className="text-sm font-bold text-gray-900">Recent deliveries</h3>
               {deliveries.length === 0 ? (
                 <p className="mt-2 text-xs text-gray-500">No notifications sent to you yet.</p>
               ) : (
-                <ul className="mt-2 divide-y divide-gray-100 dark:divide-gray-800">
+                <ul className="mt-2 divide-y divide-gray-100">
                   {deliveries.map((d) => (
                     <li key={d.id} className="py-2 text-xs">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold text-gray-800 dark:text-gray-200">{CHANNEL_LABEL[d.channel]}</span>
+                        <span className="font-semibold text-gray-800">{CHANNEL_LABEL[d.channel]}</span>
                         <span className={`rounded border px-1.5 py-0.5 font-semibold ${STATUS_STYLE[d.status]}`}>{STATUS_LABEL[d.status]}</span>
-                        <span className="text-gray-400">{new Date(d.createdAt).toLocaleString()}</span>
+                        <span className="text-gray-500">{new Date(d.createdAt).toLocaleString()}</span>
                       </div>
-                      <div className="mt-0.5 text-gray-600 dark:text-gray-400">{d.title}</div>
+                      <div className="mt-0.5 text-gray-600">{d.title}</div>
                       {d.reason && <div className="text-gray-500">{d.reason}</div>}
                     </li>
                   ))}

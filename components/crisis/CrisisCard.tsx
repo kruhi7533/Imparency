@@ -37,7 +37,7 @@ export default function CrisisCard({ event, index = 0, large = false }: { event:
     >
       <Link
         href={`/crisis/${event.slug}`}
-        className={`group block bg-gray-900/60 border border-gray-800 rounded-2xl overflow-hidden hover:border-red-600/60 hover:shadow-[0_8px_40px_-12px_rgba(220,38,38,0.35)] hover:-translate-y-[3px] transition-all duration-200 ${
+        className={`group block bg-white border border-gray-200/80 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:border-red-200 hover:shadow-md motion-safe:hover:-translate-y-0.5 transition-all duration-200 ${
           large ? "" : "h-full"
         }`}
       >
@@ -48,16 +48,16 @@ export default function CrisisCard({ event, index = 0, large = false }: { event:
             <span className="inline-flex items-center gap-1 bg-red-600 text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> Emergency
             </span>
-            <span className="bg-black/60 backdrop-blur-sm border border-white/10 text-[10px] font-bold uppercase px-2 py-1 rounded-full text-gray-200">
+            <span className="bg-black/60 backdrop-blur-sm border border-white/10 text-[10px] font-bold uppercase px-2 py-1 rounded-full text-white/90">
               {SEVERITY_LABEL[event.severity]}
             </span>
           </div>
           <div className="absolute bottom-3 left-4 right-4">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-gold-300 mb-0.5">{event.disasterType.replace("_", " ")}</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white/80 mb-0.5">{event.disasterType.replace("_", " ")}</p>
             <h3 className={`font-display font-semibold text-white leading-tight ${large ? "text-2xl" : "text-base"} line-clamp-2`}>
               {event.title}
             </h3>
-            <p className="text-[11px] text-gray-300 mt-0.5">{event.affectedLocation}</p>
+            <p className="text-[11px] text-white/80 mt-0.5">{event.affectedLocation}</p>
           </div>
         </div>
         <div className="p-4">

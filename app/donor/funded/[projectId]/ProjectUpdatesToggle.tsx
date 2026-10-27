@@ -28,12 +28,12 @@ export default function ProjectUpdatesToggle({ initialOn }: { initialOn: boolean
   };
 
   return (
-    <div className="text-xs text-gray-600 dark:text-gray-400">
+    <div className="text-xs text-gray-600">
       <label className="inline-flex items-center gap-2 cursor-pointer">
-        <input type="checkbox" checked={on} disabled={busy} onChange={(e) => change(e.target.checked)} className="accent-emerald-600" />
+        <input type="checkbox" checked={on} disabled={busy} onChange={(e) => change(e.target.checked)} className="accent-trust-600" />
         Notify me when milestones or field updates are verified (all funded projects)
       </label>
-      {!on && <p className="mt-1 text-gray-400">Updates are off. This page still shows everything.</p>}
+      {!on && <p className="mt-1 text-gray-500">Updates are off. This page still shows everything.</p>}
       {error && <p className="mt-1 text-red-600">{error}</p>}
     </div>
   );

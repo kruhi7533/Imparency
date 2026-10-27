@@ -101,8 +101,8 @@ export default function NGORegistrationPage() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-trust-600"></div>
       </div>
     );
   }
@@ -249,15 +249,14 @@ export default function NGORegistrationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-12 px-4 sm:px-6 lg:px-8 font-sans transition-colors duration-200">
-      <div className="max-w-3xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-8 sm:p-10 relative overflow-hidden">
+    <div className="min-h-screen bg-canvas py-12 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-3xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] border border-gray-200/80 dark:border-gray-800 p-5 sm:p-10 relative overflow-hidden">
         
         {/* Background decorative gradient */}
-        <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">NGO Profile Verification</h1>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">NGO Profile Verification</h1>
+          <p className="mt-2 text-sm text-gray-600">
             Please register your organization's legal credentials. These details are reviewed manually for compliance under Section 80G.
           </p>
         </div>
@@ -297,7 +296,7 @@ export default function NGORegistrationPage() {
                 type="text"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                 placeholder="e.g. Hope Foundation"
                 required
               />
@@ -311,7 +310,7 @@ export default function NGORegistrationPage() {
                 max={new Date().getFullYear().toString()}
                 value={foundedYear}
                 onChange={(e) => setFoundedYear(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                 placeholder="e.g. 2012"
                 required
               />
@@ -323,7 +322,7 @@ export default function NGORegistrationPage() {
                 type="text"
                 value={regNum}
                 onChange={(e) => setRegNum(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                 placeholder="e.g. U85100MH2021NPL12345"
                 required
               />
@@ -336,7 +335,7 @@ export default function NGORegistrationPage() {
                 maxLength={10}
                 value={panNum}
                 onChange={(e) => setPanNum(e.target.value.toUpperCase())}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                 placeholder="e.g. AAATH1234F"
                 required
               />
@@ -349,7 +348,7 @@ export default function NGORegistrationPage() {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
               placeholder="e.g. 101, Business Hub, Bandra West, Mumbai, Maharashtra 400050"
               required
             />
@@ -361,7 +360,7 @@ export default function NGORegistrationPage() {
               type="url"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
               placeholder="e.g. https://hopefoundation.org"
             />
           </div>
@@ -378,8 +377,8 @@ export default function NGORegistrationPage() {
                     onClick={() => handleCheckboxChange(cause)}
                     className={`flex items-center justify-center gap-2 px-4 py-2 border rounded-lg cursor-pointer text-sm font-medium transition select-none ${
                       isSelected
-                        ? "border-emerald-600 bg-emerald-600 text-white dark:border-emerald-600 dark:bg-emerald-600 dark:text-white font-bold"
-                        : "border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        ? "border-trust-600 bg-trust-600 text-white font-bold"
+                        : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                     }`}
                   >
                     {isSelected && <Check className="w-4 h-4 text-white shrink-0 font-black" />}
@@ -396,7 +395,7 @@ export default function NGORegistrationPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
               placeholder="Describe your organization's mission, goals, and focus areas..."
               required
             />
@@ -413,7 +412,7 @@ export default function NGORegistrationPage() {
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
                   Certificate of Registration *
                 </label>
-                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-955/10 transition group text-center min-h-[120px]">
+                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-trust-500 hover:bg-trust-50/50 transition group text-center min-h-[120px]">
                   <input
                     type="file"
                     accept=".pdf"
@@ -423,23 +422,23 @@ export default function NGORegistrationPage() {
                   />
                   {regFile ? (
                     <div className="flex flex-col items-center gap-2">
-                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                      <div className="flex items-center gap-1.5 text-emerald-700">
                         <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 20 20">
                           <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
                         </svg>
                         <span className="text-xs font-bold line-clamp-1 max-w-[150px]">{regFile.name}</span>
                       </div>
-                      <span className="text-[10px] text-gray-400">Click to change file</span>
+                      <span className="text-[10px] text-gray-500">Click to change file</span>
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Choose PDF Document</span>
-                      <span className="block text-[10px] text-gray-400">No file chosen</span>
+                      <span className="text-xs font-medium text-gray-600">Choose PDF Document</span>
+                      <span className="block text-[10px] text-gray-500">No file chosen</span>
                     </div>
                   )}
                 </label>
                 {regError && (
-                  <p className="text-xs text-red-500 mt-1 font-medium">{regError}</p>
+                  <p className="text-xs text-red-600 mt-1 font-medium">{regError}</p>
                 )}
               </div>
 
@@ -448,7 +447,7 @@ export default function NGORegistrationPage() {
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
                   NGO PAN Card Copy *
                 </label>
-                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-955/10 transition group text-center min-h-[120px]">
+                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-trust-500 hover:bg-trust-50/50 transition group text-center min-h-[120px]">
                   <input
                     type="file"
                     accept=".pdf"
@@ -458,23 +457,23 @@ export default function NGORegistrationPage() {
                   />
                   {panFile ? (
                     <div className="flex flex-col items-center gap-2">
-                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                      <div className="flex items-center gap-1.5 text-emerald-700">
                         <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 20 20">
                           <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
                         </svg>
                         <span className="text-xs font-bold line-clamp-1 max-w-[150px]">{panFile.name}</span>
                       </div>
-                      <span className="text-[10px] text-gray-400">Click to change file</span>
+                      <span className="text-[10px] text-gray-500">Click to change file</span>
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Choose PDF Document</span>
-                      <span className="block text-[10px] text-gray-400">No file chosen</span>
+                      <span className="text-xs font-medium text-gray-600">Choose PDF Document</span>
+                      <span className="block text-[10px] text-gray-500">No file chosen</span>
                     </div>
                   )}
                 </label>
                 {panError && (
-                  <p className="text-xs text-red-500 mt-1 font-medium">{panError}</p>
+                  <p className="text-xs text-red-600 mt-1 font-medium">{panError}</p>
                 )}
               </div>
 
@@ -483,7 +482,7 @@ export default function NGORegistrationPage() {
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
                   80G Registration Copy *
                 </label>
-                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-955/10 transition group text-center min-h-[120px]">
+                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-trust-500 hover:bg-trust-50/50 transition group text-center min-h-[120px]">
                   <input
                     type="file"
                     accept=".pdf"
@@ -493,23 +492,23 @@ export default function NGORegistrationPage() {
                   />
                   {taxFile ? (
                     <div className="flex flex-col items-center gap-2">
-                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                      <div className="flex items-center gap-1.5 text-emerald-700">
                         <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 20 20">
                           <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
                         </svg>
                         <span className="text-xs font-bold line-clamp-1 max-w-[150px]">{taxFile.name}</span>
                       </div>
-                      <span className="text-[10px] text-gray-400">Click to change file</span>
+                      <span className="text-[10px] text-gray-500">Click to change file</span>
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Choose PDF Document</span>
-                      <span className="block text-[10px] text-gray-400">No file chosen</span>
+                      <span className="text-xs font-medium text-gray-600">Choose PDF Document</span>
+                      <span className="block text-[10px] text-gray-500">No file chosen</span>
                     </div>
                   )}
                 </label>
                 {taxError && (
-                  <p className="text-xs text-red-500 mt-1 font-medium">{taxError}</p>
+                  <p className="text-xs text-red-600 mt-1 font-medium">{taxError}</p>
                 )}
               </div>
 
@@ -519,7 +518,7 @@ export default function NGORegistrationPage() {
           {/* Optional compliance documents */}
           <div className="border-t border-gray-200 dark:border-gray-800 pt-6">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-              Additional Compliance <span className="text-xs font-semibold text-gray-400">(Optional)</span>
+              Additional Compliance <span className="text-xs font-semibold text-gray-500">(Optional)</span>
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
               Add these if you have them — they strengthen your public Compliance Score and donor trust. You can also add them later.
@@ -532,7 +531,7 @@ export default function NGORegistrationPage() {
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
                   12A Registration Copy
                 </label>
-                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-955/10 transition group text-center min-h-[120px]">
+                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-trust-500 hover:bg-trust-50/50 transition group text-center min-h-[120px]">
                   <input
                     type="file"
                     accept=".pdf"
@@ -541,23 +540,23 @@ export default function NGORegistrationPage() {
                   />
                   {a12File ? (
                     <div className="flex flex-col items-center gap-2">
-                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                      <div className="flex items-center gap-1.5 text-emerald-700">
                         <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 20 20">
                           <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
                         </svg>
                         <span className="text-xs font-bold line-clamp-1 max-w-[150px]">{a12File.name}</span>
                       </div>
-                      <span className="text-[10px] text-gray-400">Click to change file</span>
+                      <span className="text-[10px] text-gray-500">Click to change file</span>
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Choose PDF Document</span>
-                      <span className="block text-[10px] text-gray-400">No file chosen</span>
+                      <span className="text-xs font-medium text-gray-600">Choose PDF Document</span>
+                      <span className="block text-[10px] text-gray-500">No file chosen</span>
                     </div>
                   )}
                 </label>
                 {a12Error && (
-                  <p className="text-xs text-red-500 mt-1 font-medium">{a12Error}</p>
+                  <p className="text-xs text-red-600 mt-1 font-medium">{a12Error}</p>
                 )}
               </div>
 
@@ -566,7 +565,7 @@ export default function NGORegistrationPage() {
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
                   FCRA Certificate
                 </label>
-                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-955/10 transition group text-center min-h-[120px]">
+                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 cursor-pointer hover:border-trust-500 hover:bg-trust-50/50 transition group text-center min-h-[120px]">
                   <input
                     type="file"
                     accept=".pdf"
@@ -575,23 +574,23 @@ export default function NGORegistrationPage() {
                   />
                   {fcraFile ? (
                     <div className="flex flex-col items-center gap-2">
-                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                      <div className="flex items-center gap-1.5 text-emerald-700">
                         <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 20 20">
                           <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
                         </svg>
                         <span className="text-xs font-bold line-clamp-1 max-w-[150px]">{fcraFile.name}</span>
                       </div>
-                      <span className="text-[10px] text-gray-400">Click to change file</span>
+                      <span className="text-[10px] text-gray-500">Click to change file</span>
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Choose PDF Document</span>
-                      <span className="block text-[10px] text-gray-400">Only if registered for foreign contributions</span>
+                      <span className="text-xs font-medium text-gray-600">Choose PDF Document</span>
+                      <span className="block text-[10px] text-gray-500">Only if registered for foreign contributions</span>
                     </div>
                   )}
                 </label>
                 {fcraError && (
-                  <p className="text-xs text-red-500 mt-1 font-medium">{fcraError}</p>
+                  <p className="text-xs text-red-600 mt-1 font-medium">{fcraError}</p>
                 )}
               </div>
             </div>
@@ -605,27 +604,27 @@ export default function NGORegistrationPage() {
                 type="text"
                 value={fcraNumber}
                 onChange={(e) => setFcraNumber(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                 placeholder="e.g. 094421234"
               />
             </div>
           </div>
 
           <div className="pt-2">
-            <label className="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50/50 dark:bg-gray-900/50 cursor-pointer group hover:border-emerald-500/50 transition-colors">
+            <label className="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50 cursor-pointer group hover:border-trust-500/50 transition-colors">
               <div className="flex items-center h-5 mt-0.5">
                 <input
                   type="checkbox"
                   checked={consent}
                   onChange={(e) => setConsent(e.target.checked)}
-                  className="w-4 h-4 text-emerald-600 bg-white border-gray-300 rounded focus:ring-emerald-500 dark:focus:ring-emerald-600 dark:ring-offset-gray-900 focus:ring-2 dark:bg-gray-800 dark:border-gray-700"
+                  className="w-4 h-4 text-trust-600 bg-white border-gray-300 rounded focus:ring-trust-500/20  dark:ring-offset-gray-900 focus:ring-2 dark:bg-gray-800 dark:border-gray-700"
                   required
                 />
               </div>
               <div className="text-sm">
                 <p className="font-medium text-gray-900 dark:text-white">Data Processing Consent *</p>
-                <p className="text-gray-500 dark:text-gray-400 mt-1">
-                  I agree to the collection and processing of organizational data as described in the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-700 hover:underline">Privacy Policy</a>.
+                <p className="text-gray-600 mt-1">
+                  I agree to the collection and processing of organizational data as described in the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-trust-700 hover:text-trust-800 hover:underline">Privacy Policy</a>.
                 </p>
               </div>
             </label>
@@ -636,14 +635,14 @@ export default function NGORegistrationPage() {
               type="button"
               onClick={saveDraft}
               disabled={savingDraft || loading || success}
-              className="w-full border border-emerald-600 text-emerald-700 dark:text-emerald-400 font-bold py-3 px-4 rounded-xl disabled:opacity-50"
+              className="w-full bg-white border border-gray-300 text-gray-800 hover:bg-gray-50 font-semibold py-3 px-4 rounded-lg disabled:opacity-50"
             >
               {savingDraft ? "Saving draft…" : "Save draft and finish later"}
             </button>
             <button
               type="submit"
               disabled={loading || success || !!regError || !!panError || !!taxError || !!a12Error || !!fcraError}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-emerald-600/10 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 flex items-center justify-center gap-2"
+              className="w-full bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3 px-4 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

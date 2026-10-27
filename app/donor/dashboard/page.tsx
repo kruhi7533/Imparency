@@ -7,6 +7,19 @@ import { computeDonorTier } from "@/lib/engagement-utils";
 import ReadMoreNarrative from "./components/ReadMoreNarrative";
 import ReEngagementCard from "./components/ReEngagementCard";
 import Link from "next/link";
+import {
+  ArrowRight,
+  BadgeCheck,
+  Building2,
+  FileSignature,
+  FileText,
+  HandCoins,
+  Newspaper,
+  PartyPopper,
+  Download,
+  FolderHeart,
+} from "lucide-react";
+import { KpiCard, FadeIn, WelcomeHeader, DatePill } from "@/components/ui/DashboardKit";
 
 export const dynamic = "force-dynamic";
 
@@ -35,9 +48,18 @@ export default async function DonorDashboardPage({
     include: {
       contracts: {
         select: {
+          id: true,
+          ngoId: true,
+          title: true,
+          contractNumber: true,
           totalGrantAmount: true,
           status: true,
+          updatedAt: true,
+          ngo: { select: { orgName: true } },
+          payments: { select: { amount: true, status: true } },
+          milestones: { select: { allocatedAmount: true, status: true } },
         },
+        orderBy: { updatedAt: "desc" },
       },
       donations: {
         where: { status: "SUCCESS" },
@@ -101,8 +123,16 @@ export default async function DonorDashboardPage({
     redirect("/login");
   }
 
+  // Funder reports on CSR contracts (published by the NGO after review).
+  const publishedContractReports = await prisma.contractImpactReport
+    .count({ where: { donorId: userId, status: "PUBLISHED" } })
+    .catch(() => 0);
+
   // Calculate stats based on real database records
-  const totalAmount = Number(donor.totalDonated);
+  // Summed from the donor's own SUCCESS donations rather than the cached
+  // User.totalDonated column, which is not updated on every payment path.
+  const donationsTotal = donor.donations.reduce((sum, d) => sum + Number(d.amount), 0);
+  const totalAmount = Math.max(donationsTotal, Number(donor.totalDonated));
   const donationsCount = donor.donations.length;
   const followedCount = donor.followers.length;
   const tier = computeDonorTier(donationsCount, totalAmount);
@@ -118,13 +148,6 @@ export default async function DonorDashboardPage({
     }
   };
 
-  const stats = [
-    { label: "Total Donated", value: `₹${totalAmount.toLocaleString("en-IN")}`, sub: "across all NGOs" },
-    { label: "Donations", value: String(donationsCount), sub: "successful payments" },
-    { label: "NGOs Followed", value: String(followedCount), sub: "organizations" },
-    { label: "Donor Tier", value: getTierLabel(tier), sub: "tier status" },
-  ];
-
   // CSR / Corporate Governance metrics
   const isCsrOrCorporate = donor.donorPersona === "CSR_OFFICER" || donor.isCorporate;
   const csrBudgetNumber = donor.csrBudget ? Number(donor.csrBudget) : 0;
@@ -132,6 +155,39 @@ export default async function DonorDashboardPage({
     .filter((c) => c.status === "ACTIVE" || c.status === "COMPLETED")
     .reduce((sum, c) => sum + Number(c.totalGrantAmount), 0);
   const totalUtilized = totalAmount + contractCommitments;
+
+  // Contract money flow, from the same sources as /donor/contracts and
+  // lib/contract-payments.ts: committed = signed grant value; reconciled = payments
+  // the NGO confirmed it received; disbursed = milestones released.
+  const liveContracts = donor.contracts.filter((c) => c.status === "ACTIVE" || c.status === "COMPLETED");
+  const reconciledAmount = liveContracts
+    .flatMap((c) => c.payments)
+    .filter((p) => p.status === "RECONCILED")
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+  const awaitingConfirmation = liveContracts
+    .flatMap((c) => c.payments)
+    .filter((p) => p.status === "PENDING_CONFIRMATION")
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+  const disbursedAmount = liveContracts
+    .flatMap((c) => c.milestones)
+    .filter((m) => m.status === "DISBURSED")
+    .reduce((sum, m) => sum + Number(m.allocatedAmount), 0);
+  const contractsInProgress = donor.contracts.filter((c) => ["DRAFT", "PROPOSED", "UNDER_REVIEW"].includes(c.status)).length;
+  const ngosSupported = new Set([
+    ...donor.donations.map((d) => d.project.ngoId),
+    ...liveContracts.map((c) => c.ngoId),
+  ]).size;
+  const latestReport = donor.impactReports[0];
+  const showGrants = isCsrOrCorporate || donor.contracts.length > 0;
+  const projectsBacked = new Set(donor.donations.map((d) => d.projectId)).size;
+  const firstName = (donor.name ?? session.user.name ?? "there").split(" ")[0];
+  const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+  const flowMax = Math.max(contractCommitments, reconciledAmount, disbursedAmount, 1);
+  const flow = [
+    { label: "Committed", value: contractCommitments, bar: "bg-trust-600", note: "signed grant value" },
+    { label: "Reconciled", value: reconciledAmount, bar: "bg-emerald-500", note: "confirmed received by NGOs" },
+    { label: "Disbursed", value: disbursedAmount, bar: "bg-violet-500", note: "milestones released" },
+  ];
   const csrUtilizationPct =
     csrBudgetNumber > 0 ? Math.min(100, Math.round((totalUtilized / csrBudgetNumber) * 100)) : 0;
 
@@ -186,32 +242,51 @@ export default async function DonorDashboardPage({
     }
   }
 
+  const STATUS_PILL: Record<string, string> = {
+    ACTIVE: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    COMPLETED: "bg-trust-50 text-trust-700 ring-trust-200",
+    PROPOSED: "bg-amber-50 text-amber-700 ring-amber-200",
+    UNDER_REVIEW: "bg-amber-50 text-amber-700 ring-amber-200",
+    DRAFT: "bg-gray-100 text-gray-700 ring-gray-200",
+    TERMINATED: "bg-red-50 text-red-700 ring-red-200",
+    REJECTED: "bg-red-50 text-red-700 ring-red-200",
+  };
+  const recentContracts = donor.contracts.slice(0, 4);
+  const recentReports = donor.impactReports.slice(0, 5);
+  const card = "rounded-2xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
+
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto text-left">
-      
-      {/* Page header */}
-      <div className="mb-8 flex justify-between items-start gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-white">Impact Portfolio</h1>
-          <p className="text-gray-400 text-sm mt-1">
-            Your complete giving history and verified impact
-          </p>
-        </div>
-        <Link
-          href="/donor/portfolio"
-          className="text-xs font-bold text-emerald-405 hover:text-emerald-300 border border-emerald-500/20 bg-emerald-950/30 px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 shadow-sm"
-        >
-          Detailed Portfolio <span>➔</span>
-        </Link>
-      </div>
+    <div className="mx-auto max-w-6xl px-4 py-8 text-left sm:px-6 lg:px-8">
+      <WelcomeHeader
+        name={firstName}
+        subtitle={
+          <>
+            Your giving and verified impact at a glance
+            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-trust-50 px-2 py-0.5 align-middle text-[11px] font-semibold text-trust-700 ring-1 ring-trust-200">
+              {getTierLabel(tier)} tier
+            </span>
+          </>
+        }
+        right={
+          <div className="flex flex-wrap items-center gap-2">
+            <DatePill />
+            <Link
+              href="/donor/portfolio"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50"
+            >
+              Detailed Portfolio <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
+          </div>
+        }
+      />
 
       {/* Celebrations/Banner Alerts */}
       {searchParams.payment === "success" && (
-        <div className="mb-6 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 flex items-start gap-3 text-left">
-          <span className="text-xl">🎉</span>
+        <div role="status" className="mb-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left">
+          <PartyPopper className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
           <div>
-            <h4 className="font-extrabold text-sm text-white">Donation Successful!</h4>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <h4 className="text-sm font-semibold text-emerald-900">Donation Successful!</h4>
+            <p className="mt-0.5 text-sm text-emerald-800">
               Thank you for your generous contribution. Your payment was processed successfully and your impact metrics have been updated.
             </p>
           </div>
@@ -230,25 +305,87 @@ export default async function DonorDashboardPage({
         />
       )}
 
-      {/* CSR Governance & Annual Budget Utilization Banner */}
+      {/* KPI row — all figures from this donor's own rows */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard
+          label="Total Donated"
+          value={totalAmount}
+          format="inr"
+          tone="emerald"
+          icon={<HandCoins className="h-5 w-5" />}
+          sub={`${donationsCount} successful ${donationsCount === 1 ? "payment" : "payments"}`}
+          href="/donor/donations"
+        />
+        {showGrants ? (
+          <KpiCard
+          label="Grants committed"
+          value={contractCommitments}
+          format="inr"
+          tone="trust"
+          icon={<FileSignature className="h-5 w-5" />}
+          sub={
+            liveContracts.length > 0 || contractsInProgress > 0
+              ? `${liveContracts.length} active${contractsInProgress ? ` · ${contractsInProgress} in progress` : ""}`
+              : "No signed contracts yet"
+          }
+          href="/donor/contracts"
+        />
+        ) : (
+          <KpiCard
+            label="Projects backed"
+            value={projectsBacked}
+            tone="trust"
+            icon={<FolderHeart className="h-5 w-5" />}
+            sub="with a successful donation"
+            href="/donor/portfolio"
+          />
+        )}
+        <KpiCard
+          label="Impact reports"
+          value={donor.impactReports.length + publishedContractReports}
+          tone="violet"
+          icon={<Newspaper className="h-5 w-5" />}
+          sub={
+            publishedContractReports > 0
+              ? `${publishedContractReports} contract report${publishedContractReports === 1 ? "" : "s"} published`
+              : latestReport
+                ? `Latest ${new Date(latestReport.sentAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+                : "Arrive after a milestone is verified"
+          }
+          href="/donor/impact"
+        />
+        <KpiCard
+          label="NGOs supported"
+          value={ngosSupported}
+          tone="amber"
+          icon={<Building2 className="h-5 w-5" />}
+          sub={`${followedCount} followed`}
+        />
+      </div>
+
+      {/* CSR Governance & Annual Budget Utilization */}
       {isCsrOrCorporate && (
-        <div className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-gray-900 via-gray-900 to-emerald-950/40 border border-emerald-500/30 shadow-sm relative overflow-hidden">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-800 pb-4 mb-4">
+        <FadeIn className={`${card} mb-6 p-5 sm:p-6`}>
+          <div className="mb-4 flex flex-col justify-between gap-4 border-b border-gray-100 pb-4 md:flex-row md:items-center">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-trust-50 px-2.5 py-0.5 text-[11px] font-semibold text-trust-700 ring-1 ring-trust-200">
                   CSR / Corporate Profile
                 </span>
-                {donor.companyName && (
-                  <span className="text-sm font-bold text-white">{donor.companyName}</span>
-                )}
+                {donor.companyName && <span className="text-sm font-semibold text-gray-900">{donor.companyName}</span>}
               </div>
-              <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-gray-400">
-                {donor.gstNumber && <span>GSTIN: <span className="font-mono text-gray-300 font-bold">{donor.gstNumber}</span></span>}
+              <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-gray-600">
+                {donor.gstNumber && (
+                  <span>
+                    GSTIN: <span className="font-mono font-semibold text-gray-800">{donor.gstNumber}</span>
+                  </span>
+                )}
                 {donor.csrRegistrationNumber && (
                   <>
-                    <span>·</span>
-                    <span>MCA Form CSR-1: <span className="font-mono text-gray-300 font-bold">{donor.csrRegistrationNumber}</span></span>
+                    {donor.gstNumber && <span aria-hidden="true">·</span>}
+                    <span>
+                      MCA Form CSR-1: <span className="font-mono font-semibold text-gray-800">{donor.csrRegistrationNumber}</span>
+                    </span>
                   </>
                 )}
               </div>
@@ -258,110 +395,184 @@ export default async function DonorDashboardPage({
               href="/api/donations/csr-certificate"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center px-4 py-2 bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-sm transition shrink-0"
+              className="inline-flex shrink-0 items-center rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-trust-700"
             >
-              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+              <Download className="mr-1.5 h-4 w-4" aria-hidden="true" />
               Download CSR Utilization Certificate
             </a>
           </div>
 
-          {csrBudgetNumber > 0 && (
+          {csrBudgetNumber > 0 ? (
             <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-400">
-                  Section 135 Budget Utilized: <span className="font-bold text-white">₹{totalUtilized.toLocaleString("en-IN")}</span> / ₹{csrBudgetNumber.toLocaleString("en-IN")}
+              <div className="flex flex-wrap justify-between gap-2 text-sm">
+                <span className="text-gray-600">
+                  Section 135 Budget Utilized: <span className="font-semibold text-gray-900">₹{totalUtilized.toLocaleString("en-IN")}</span> / ₹
+                  {csrBudgetNumber.toLocaleString("en-IN")}
                 </span>
-                <span className="font-bold text-emerald-400">{csrUtilizationPct}% Utilized</span>
+                <span className="font-semibold text-emerald-700">{csrUtilizationPct}% Utilized</span>
               </div>
-              <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${csrUtilizationPct}%` }}
-                />
+              <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                <div className="h-2 rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${csrUtilizationPct}%` }} />
               </div>
             </div>
+          ) : (
+            <p className="text-sm text-gray-600">
+              Add your annual CSR budget in <Link href="/donor/profile" className="font-semibold text-trust-700 hover:underline">your profile</Link> to track Section 135 utilisation here.
+            </p>
           )}
+        </FadeIn>
+      )}
+
+      {/* Contract money flow + recent contracts */}
+      {showGrants && (
+        <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
+          <FadeIn className={`${card} p-5 sm:p-6 lg:col-span-3`}>
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">Grant money flow</h2>
+                <p className="mt-0.5 text-xs text-gray-500">Committed vs reconciled vs disbursed, across active and completed contracts</p>
+              </div>
+            </div>
+            {contractCommitments === 0 && reconciledAmount === 0 && disbursedAmount === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center">
+                <p className="text-sm font-medium text-gray-800">No signed grants yet</p>
+                <p className="mt-1 text-xs text-gray-600">Once a contract is active, its committed, reconciled and disbursed amounts appear here.</p>
+                <Link href="/donor/contracts" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-trust-700 hover:underline">
+                  Go to Contracts & Grants <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              </div>
+            ) : (
+              <div
+                role="img"
+                aria-label={`Committed ${inr(contractCommitments)}, reconciled ${inr(reconciledAmount)}, disbursed ${inr(disbursedAmount)}.`}
+                className="space-y-4"
+              >
+                {flow.map((f) => (
+                  <div key={f.label}>
+                    <div className="mb-1.5 flex items-baseline justify-between gap-3 text-sm">
+                      <span className="font-medium text-gray-800">
+                        {f.label} <span className="text-xs font-normal text-gray-500">· {f.note}</span>
+                      </span>
+                      <span className="font-semibold tabular-nums text-gray-900">{inr(f.value)}</span>
+                    </div>
+                    <div className="h-3 w-full overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className={`h-3 rounded-full ${f.bar} transition-[width] duration-700 ease-out`}
+                        style={{ width: `${Math.max(f.value > 0 ? 2 : 0, (f.value / flowMax) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+                {awaitingConfirmation > 0 && (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
+                    {inr(awaitingConfirmation)} recorded as paid is awaiting the NGO&apos;s confirmation.
+                  </p>
+                )}
+              </div>
+            )}
+          </FadeIn>
+
+          <FadeIn className={`${card} p-5 sm:p-6 lg:col-span-2`} delay={0.05}>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-base font-semibold text-gray-900">Contracts</h2>
+              <Link href="/donor/contracts" className="inline-flex items-center gap-1 text-xs font-semibold text-trust-700 hover:underline">
+                View all <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+            </div>
+            {recentContracts.length === 0 ? (
+              <p className="text-sm text-gray-600">No contracts yet. Select an NGO from a CSR requirement to draft one.</p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {recentContracts.map((c) => (
+                  <li key={c.id}>
+                    <Link href={`/donor/contracts/${c.id}`} className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 hover:bg-gray-50">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-trust-50 text-trust-600" aria-hidden="true">
+                        <FileText className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-gray-900">{c.title}</span>
+                        <span className="block truncate text-xs text-gray-500">
+                          {c.ngo.orgName} · {inr(Number(c.totalGrantAmount))}
+                        </span>
+                      </span>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${STATUS_PILL[c.status] ?? STATUS_PILL.DRAFT}`}>
+                        {c.status.replace("_", " ").toLowerCase().replace(/^\w/, (x) => x.toUpperCase())}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </FadeIn>
         </div>
       )}
 
-      {/* Stats row — 4 cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-gray-900 border border-gray-800 rounded-2xl p-4 shadow-sm relative overflow-hidden"
-          >
-            <div className="text-xs text-gray-500 mb-1">{stat.label}</div>
-            <div className="text-xl font-black text-white">{stat.value}</div>
-            <div className="text-[10px] text-gray-600 mt-0.5">{stat.sub}</div>
-          </div>
-        ))}
-      </div>
-
       {/* Impact reports feed */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 relative overflow-hidden">
-        <h2 className="text-sm font-bold text-white mb-6">Recent Impact Reports</h2>
-        
-        {donor.impactReports.length === 0 ? (
-          <div className="text-center py-8 text-gray-605 text-sm">
+      <FadeIn className={`${card} p-5 sm:p-6`}>
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-gray-900">Recent Impact Reports</h2>
+          {donor.impactReports.length > 0 && (
+            <Link href="/donor/impact" className="inline-flex items-center gap-1 text-xs font-semibold text-trust-700 hover:underline">
+              View all <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
+          )}
+        </div>
+
+        {recentReports.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center text-sm text-gray-600">
             Impact reports will appear here after your first donation milestone is verified.
           </div>
         ) : (
-          <div className="space-y-6">
-            {donor.impactReports.map((report) => (
-              <div
-                key={report.id}
-                className="p-5 border border-gray-800/80 hover:border-gray-700 bg-gray-950/20 rounded-xl space-y-4 transition"
-              >
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-800/50 pb-3">
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-white hover:text-emerald-400 transition">
-                      <Link href={`/projects/${report.milestone.project.id}`}>
+          <ol className="relative space-y-5 border-l border-gray-200 pl-6">
+            {recentReports.map((report) => (
+              <li key={report.id} className="relative">
+                <span
+                  aria-hidden="true"
+                  className="absolute -left-[37px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-4 ring-white"
+                >
+                  <BadgeCheck className="h-3.5 w-3.5" />
+                </span>
+                <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-start sm:gap-4">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      <Link href={`/projects/${report.milestone.project.id}`} className="hover:text-trust-700">
                         {report.milestone.project.title}
                       </Link>
                     </h3>
-                    <div className="flex items-center gap-2 text-[10px] text-emerald-400 font-bold">
-                      <span>{report.milestone.project.ngo.orgName}</span>
-                      <span className="text-gray-700">•</span>
-                      <span className="text-gray-500 font-normal">Milestone: {report.milestone.title}</span>
-                    </div>
+                    <p className="text-xs text-gray-600">
+                      <span className="font-medium text-emerald-700">{report.milestone.project.ngo.orgName}</span>
+                      <span aria-hidden="true"> · </span>
+                      Milestone: {report.milestone.title}
+                    </p>
                   </div>
-                  <div className="text-[10px] text-gray-500 self-start sm:self-auto shrink-0 font-medium">
-                    Reported on {new Date(report.sentAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </div>
+                  <span className="shrink-0 text-xs text-gray-500">
+                    Reported on {new Date(report.sentAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
                 </div>
 
-                <ReadMoreNarrative narrative={report.aiGeneratedNarrative} limit={200} />
+                <div className="mt-2">
+                  <ReadMoreNarrative narrative={report.aiGeneratedNarrative} limit={200} />
+                </div>
 
-                {/* SDG and IRIS Tags */}
                 {(report.sdgTags.length > 0 || report.irisMetrics.length > 0) && (
-                  <div className="flex flex-wrap items-center gap-2 pt-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     {report.sdgTags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                      >
+                      <span key={tag} className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
                         {tag.startsWith("#") ? tag : `#${tag}`}
                       </span>
                     ))}
                     {report.irisMetrics.map((metric) => (
-                      <span
-                        key={metric}
-                        className="text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                      >
+                      <span key={metric} className="rounded-full bg-trust-50 px-2 py-0.5 text-[10px] font-semibold text-trust-700 ring-1 ring-trust-200">
                         IRIS: {metric}
                       </span>
                     ))}
                   </div>
                 )}
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
         )}
-      </div>
-
+      </FadeIn>
     </div>
   );
 }

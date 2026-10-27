@@ -33,22 +33,22 @@ export interface RadarRow {
  */
 const BAND_STYLE: Record<string, { chip: string; bar: string; label: string }> = {
   HIGH: {
-    chip: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/40",
+    chip: "bg-red-50 text-red-700 border-red-200",
     bar: "bg-red-500",
     label: "High risk",
   },
   UNKNOWN: {
-    chip: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/40",
+    chip: "bg-amber-50 text-amber-800 border-amber-200",
     bar: "bg-amber-500",
     label: "Not assessable",
   },
   MEDIUM: {
-    chip: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900/30",
+    chip: "bg-orange-50 text-orange-700 border-orange-200",
     bar: "bg-orange-400",
     label: "Medium risk",
   },
   LOW: {
-    chip: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/40",
+    chip: "bg-emerald-50 text-emerald-700 border-emerald-200",
     bar: "bg-emerald-500",
     label: "Low risk",
   },
@@ -74,28 +74,28 @@ export interface DecisionRow {
 
 const ACTION_STYLE: Record<string, { chip: string; icon: React.ElementType; label: string }> = {
   INVESTIGATE: {
-    chip: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/40",
+    chip: "bg-red-50 text-red-700 border-red-200",
     icon: Search,
     label: "Investigate",
   },
   EXTRACT: {
-    chip: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/40",
+    chip: "bg-amber-50 text-amber-800 border-amber-200",
     icon: FileSearch,
     label: "Read documents",
   },
   MONITOR: {
-    chip: "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800/60 dark:text-gray-400 dark:border-gray-800",
+    chip: "bg-gray-50 text-gray-600 border-gray-200",
     icon: Eye,
     label: "Monitor only",
   },
 };
 
 const STATUS_STYLE: Record<string, string> = {
-  QUEUED: "text-blue-600 dark:text-blue-400",
-  RUNNING: "text-blue-600 dark:text-blue-400",
-  DONE: "text-emerald-600 dark:text-emerald-400",
-  FAILED: "text-red-600 dark:text-red-400",
-  SKIPPED: "text-gray-400 dark:text-gray-600",
+  QUEUED: "text-blue-600",
+  RUNNING: "text-blue-600",
+  DONE: "text-emerald-600",
+  FAILED: "text-red-600",
+  SKIPPED: "text-gray-500",
 };
 
 /**
@@ -121,25 +121,25 @@ function RadarCard({ row, rank }: { row: RadarRow; rank: number }) {
   return (
     <Link
       href={row.href}
-      className="group block bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-4 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm transition-all"
+      className="group block bg-white border border-gray-200/80 rounded-xl p-4 hover:border-gray-300 hover:shadow-sm transition-all"
     >
       <div className="flex items-start gap-4">
-        <div className="w-8 shrink-0 pt-0.5 text-right text-sm font-black tabular-nums text-gray-300 dark:text-gray-700">
+        <div className="w-8 shrink-0 pt-0.5 text-right text-sm font-bold tabular-nums text-gray-300">
           {rank}
         </div>
 
         <div className="w-14 shrink-0">
-          <div className="text-2xl font-black tabular-nums text-gray-900 dark:text-white leading-none">
+          <div className="text-2xl font-bold tabular-nums text-gray-900 leading-none">
             {row.score}
           </div>
-          <div className="mt-1.5 h-1 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+          <div className="mt-1.5 h-1 w-full rounded-full bg-gray-100 overflow-hidden">
             <div className={`h-full rounded-full ${style.bar}`} style={{ width: `${row.score}%` }} />
           </div>
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-bold text-gray-900 dark:text-white truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
+            <span className="font-bold text-gray-900 truncate group-hover:text-emerald-700">
               {row.name}
             </span>
             <span className={`text-[10px] font-bold px-2 py-0.5 border rounded-full ${style.chip}`}>
@@ -147,7 +147,7 @@ function RadarCard({ row, rank }: { row: RadarRow; rank: number }) {
             </span>
             {row.unknownInputs > 0 && row.band !== "UNKNOWN" && (
               <span
-                className="text-[10px] font-bold px-2 py-0.5 border rounded-full bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/40"
+                className="text-[10px] font-bold px-2 py-0.5 border rounded-full bg-amber-50 text-amber-800 border-amber-200"
                 title="Scored high on what is known, but some evidence is still missing."
               >
                 evidence incomplete
@@ -155,26 +155,26 @@ function RadarCard({ row, rank }: { row: RadarRow; rank: number }) {
             )}
           </div>
 
-          <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-500 capitalize">{row.subtitle}</div>
+          <div className="mt-0.5 text-xs text-gray-500 capitalize">{row.subtitle}</div>
 
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {row.signals.slice(0, 3).map((s) => (
               <span
                 key={s.code}
                 title={s.detail}
-                className="text-[11px] px-2 py-0.5 rounded-md bg-gray-50 dark:bg-gray-800/60 text-gray-600 dark:text-gray-400 border border-gray-100 dark:border-gray-800"
+                className="text-[11px] px-2 py-0.5 rounded-md bg-gray-50 text-gray-600 border border-gray-100"
               >
                 {s.label}
-                <span className="ml-1 font-bold tabular-nums text-gray-400 dark:text-gray-600">+{s.points}</span>
+                <span className="ml-1 font-bold tabular-nums text-gray-500">+{s.points}</span>
               </span>
             ))}
             {row.signals.length > 3 && (
-              <span className="text-[11px] px-1.5 py-0.5 text-gray-400 dark:text-gray-600">
+              <span className="text-[11px] px-1.5 py-0.5 text-gray-500">
                 +{row.signals.length - 3} more
               </span>
             )}
             {row.signals.length === 0 && (
-              <span className="text-[11px] text-gray-400 dark:text-gray-600">No risk signals recorded.</span>
+              <span className="text-[11px] text-gray-500">No risk signals recorded.</span>
             )}
           </div>
         </div>
@@ -197,7 +197,7 @@ function DecisionCard({ row }: { row: DecisionRow }) {
   const duration = formatDuration(row.durationMs);
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-4">
+    <div className="bg-white border border-gray-200/80 rounded-xl p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 border rounded-full ${action.chip}`}>
           <Icon className="w-3 h-3" />
@@ -205,31 +205,31 @@ function DecisionCard({ row }: { row: DecisionRow }) {
         </span>
         <Link
           href={row.href}
-          className="font-bold text-gray-900 dark:text-white hover:text-emerald-700 dark:hover:text-emerald-400 truncate"
+          className="font-bold text-gray-900 hover:text-emerald-700 truncate"
         >
           {row.name}
         </Link>
-        <span className="text-[11px] text-gray-400 dark:text-gray-600 tabular-nums">
+        <span className="text-[11px] text-gray-500 tabular-nums">
           scored {row.scoreAtQueue} · {row.bandAtQueue.toLowerCase()} at the time
         </span>
         <span className={`ml-auto text-[11px] font-bold ${STATUS_STYLE[row.status] ?? ""}`}>
           {row.status.toLowerCase()}
-          {duration && <span className="ml-1 font-normal text-gray-400 dark:text-gray-600">({duration})</span>}
+          {duration && <span className="ml-1 font-normal text-gray-500">({duration})</span>}
         </span>
       </div>
 
-      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{row.reason}</p>
+      <p className="mt-2 text-sm text-gray-600">{row.reason}</p>
 
       {row.resultRef && (
-        <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
+        <p className="mt-1.5 text-xs text-gray-500">
           Result: <span className="font-mono">{row.resultRef}</span>
         </p>
       )}
       {row.error && (
-        <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 break-words">{row.error}</p>
+        <p className="mt-1.5 text-xs text-red-600 break-words">{row.error}</p>
       )}
 
-      <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-600">
+      <p className="mt-2 text-[11px] text-gray-500">
         Queued {relativeTime(row.queuedAt)}
         {row.finishedAt && ` · finished ${relativeTime(row.finishedAt)}`}
       </p>
@@ -289,18 +289,18 @@ export default function RiskRadarClient({
     <div className="max-w-5xl mx-auto px-6 py-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Risk Radar</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Risk Radar</h1>
+          <p className="mt-1 text-sm text-gray-600 max-w-2xl">
             One standing score per entity, worst first. Organisations and donors are ranked separately —
             they carry different kinds of risk and lead to different actions.
           </p>
         </div>
         {lastComputedAt && (
           <div className="text-right">
-            <div className="text-[11px] uppercase tracking-wide font-bold text-gray-400 dark:text-gray-600">
+            <div className="text-[11px] uppercase tracking-wide font-bold text-gray-500">
               Scores as of
             </div>
-            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <div className="text-sm font-semibold text-gray-700">
               {relativeTime(lastComputedAt)}
             </div>
           </div>
@@ -318,13 +318,13 @@ export default function RiskRadarClient({
               onClick={() => setView(option)}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold border transition-colors ${
                 active
-                  ? "bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-800"
+                  ? "bg-trust-600 text-white border-trust-600"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
               }`}
             >
               <Icon className="w-4 h-4" />
               {option === "NGO" ? "Organisations" : option === "DONOR" ? "Donors" : "Decisions"}
-              <span className={`tabular-nums ${active ? "opacity-70" : "text-gray-400 dark:text-gray-600"}`}>
+              <span className={`tabular-nums ${active ? "opacity-70" : "text-gray-500"}`}>
                 {counts[option]}
               </span>
             </button>
@@ -334,7 +334,7 @@ export default function RiskRadarClient({
 
       {view === "DECISIONS" && (
         <>
-          <p className="mt-4 text-xs text-gray-500 dark:text-gray-500">
+          <p className="mt-4 text-xs text-gray-500">
             What the Radar decided to do about each score, and what came of it. High risk goes to the fraud
             investigator; entities we cannot assess get their documents read first, because an investigation has
             nothing to read. Everything else is an explicit decision to spend nothing.
@@ -349,11 +349,11 @@ export default function RiskRadarClient({
           </div>
 
           {orderedDecisions.length === 0 && (
-            <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-8 text-center">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">Nothing routed yet</p>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            <div className="mt-4 bg-white border border-gray-200/80 rounded-xl p-8 text-center">
+              <p className="text-sm font-semibold text-gray-900">Nothing routed yet</p>
+              <p className="mt-2 text-sm text-gray-600">
                 Routing runs after scoring, at
-                <code className="mx-1 px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 font-mono text-xs">
+                <code className="mx-1 px-1.5 py-0.5 rounded bg-gray-100 font-mono text-xs">
                   /api/cron/risk-dispatch
                 </code>
                 . It decides what to do about every score, then spends a bounded budget doing it.
@@ -364,7 +364,7 @@ export default function RiskRadarClient({
       )}
 
       {view !== "DECISIONS" && laneRows.length > 0 && (
-        <p className="mt-4 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
+        <p className="mt-4 flex items-center gap-2 text-xs text-gray-500">
           {needsAttention > 0 ? (
             <>
               <ShieldAlert className="w-3.5 h-3.5 text-red-500" />
@@ -388,11 +388,11 @@ export default function RiskRadarClient({
       )}
 
       {view !== "DECISIONS" && laneRows.length === 0 && (
-        <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-8 text-center">
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">No scores yet</p>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <div className="mt-4 bg-white border border-gray-200/80 rounded-xl p-8 text-center">
+          <p className="text-sm font-semibold text-gray-900">No scores yet</p>
+          <p className="mt-2 text-sm text-gray-600">
             Scores are computed on a schedule rather than on page load. Trigger the sweep at
-            <code className="mx-1 px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 font-mono text-xs">
+            <code className="mx-1 px-1.5 py-0.5 rounded bg-gray-100 font-mono text-xs">
               /api/cron/risk-scores
             </code>
             with the cron secret, or wait for the next scheduled run.

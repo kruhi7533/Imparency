@@ -21,7 +21,11 @@ import {
   Pencil,
   MessageCircle,
   Wallet,
+  HeartPulse,
+  Flag,
+  BadgeCheck,
 } from "lucide-react";
+import { KpiCard, FadeIn } from "@/components/ui/DashboardKit";
 
 interface Milestone {
   id: string;
@@ -101,13 +105,13 @@ const getInitials = (name: string) => name.charAt(0).toUpperCase();
 
 const getAvatarColorClass = (name: string) => {
   const colors = [
-    "bg-teal-600/20 text-teal-400 border-teal-500/20",
-    "bg-blue-600/20 text-blue-400 border-blue-500/20",
-    "bg-amber-600/20 text-amber-400 border-amber-500/20",
-    "bg-purple-600/20 text-purple-400 border-purple-500/20",
-    "bg-indigo-600/20 text-indigo-400 border-indigo-500/20",
-    "bg-emerald-600/20 text-emerald-400 border-emerald-500/20",
-    "bg-rose-600/20 text-rose-400 border-rose-500/20",
+    "bg-teal-50 text-teal-700 border-teal-200",
+    "bg-blue-50 text-blue-700 border-blue-200",
+    "bg-amber-50 text-amber-700 border-amber-200",
+    "bg-purple-50 text-purple-700 border-purple-200",
+    "bg-indigo-50 text-indigo-700 border-indigo-200",
+    "bg-emerald-50 text-emerald-700 border-emerald-200",
+    "bg-rose-50 text-rose-700 border-rose-200",
   ];
   if (!name) return colors[0];
   const charCodeSum = name.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
@@ -313,6 +317,11 @@ export default function DashboardClient({
   const projects = ngoProfile.projects;
   const activeProjectsCount = projects.filter((p) => p.status === "ACTIVE").length;
   const totalFundsRaised = projects.reduce((sum, p) => sum + Number(p.raisedAmount), 0);
+  const totalTarget = projects.reduce((sum, p) => sum + Number(p.targetAmount), 0);
+  const allMilestones = projects.flatMap((p) => p.milestones);
+  const totalMilestones = allMilestones.length;
+  const verifiedMilestones = allMilestones.filter((m) => m.status === "VERIFIED" || m.status === "COMPLETED").length;
+  const proofSubmittedMilestones = allMilestones.filter((m) => m.status === "PROOF_SUBMITTED").length;
 
   // Health Score calculations
   const healthScore = ngoProfile.healthScore !== null && ngoProfile.healthScore !== undefined ? Number(ngoProfile.healthScore) : null;
@@ -337,68 +346,99 @@ export default function DashboardClient({
   }
 
   return (
-    <div className="space-y-8">
-      {/* 1. Organization Identity Header */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
-        {/* Background decorative gradient */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+    <div className="space-y-6">
+      {/* 1. KPI row — every figure is computed from this NGO's own projects. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard
+          label="NGO Health Score"
+          tone={isHealthPending ? "amber" : healthScore >= 80 ? "emerald" : healthScore >= 50 ? "amber" : "red"}
+          icon={<HeartPulse className="h-5 w-5" />}
+          {...(isHealthPending
+            ? { display: "Pending", sub: "Complete 1st milestone & 3+ donors to unlock" }
+            : { value: Math.round(healthScore), suffix: "/100", sub: healthScore >= 80 ? "Strong standing" : healthScore >= 50 ? "Room to improve" : "Needs attention" })}
+        />
+        <KpiCard
+          label="Active Projects"
+          value={activeProjectsCount}
+          tone="trust"
+          icon={<Briefcase className="h-5 w-5" />}
+          sub={`across ${projects.length} ${projects.length === 1 ? "campaign" : "campaigns"}`}
+        />
+        <KpiCard
+          label="Total Funds Raised"
+          value={totalFundsRaised}
+          format="inr"
+          tone="emerald"
+          icon={<IndianRupee className="h-5 w-5" />}
+          sub={totalTarget > 0 ? `${Math.round((totalFundsRaised / totalTarget) * 100)}% of ₹${totalTarget.toLocaleString("en-IN")} target` : "No targets set yet"}
+        />
+        <KpiCard
+          label="Milestones verified"
+          tone="violet"
+          icon={<Flag className="h-5 w-5" />}
+          {...(totalMilestones > 0
+            ? { value: verifiedMilestones, suffix: ` of ${totalMilestones}`, sub: proofSubmittedMilestones > 0 ? `${proofSubmittedMilestones} proof(s) awaiting review` : "Verified or completed" }
+            : { display: "—", sub: "No milestones yet" })}
+        />
+      </div>
 
-        <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center w-full min-w-0">
-          {/* Circular avatar logo */}
+      {/* 2. Organisation card */}
+      <FadeIn>
+      <div className="flex flex-col items-start justify-between gap-5 rounded-2xl border border-gray-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:p-6 md:flex-row md:items-center">
+        <div className="flex w-full min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-center">
           {ngoProfile.logo_url ? (
             <img
               src={ngoProfile.logo_url}
               alt={ngoProfile.orgName}
-              className="w-16 h-16 rounded-full object-cover shadow-sm border border-gray-100 dark:border-gray-850 shrink-0"
+              className="h-14 w-14 shrink-0 rounded-full border border-gray-200 object-cover"
             />
           ) : (
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center font-black text-2xl border shrink-0 ${getAvatarColorClass(ngoProfile.orgName)}`}>
+            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full border text-xl font-semibold ${getAvatarColorClass(ngoProfile.orgName)}`}>
               {getInitials(ngoProfile.orgName)}
             </div>
           )}
 
-          <div className="space-y-1.5 flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-black text-gray-900 dark:text-white truncate">{ngoProfile.orgName}</h1>
-              <div className="flex flex-wrap gap-1.5">
-                {ngoProfile.causeCategories.map((c) => (
-                  <span key={c} className="text-[10px] font-extrabold px-2.5 py-0.5 bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 rounded-full border border-emerald-500/25">
-                    {c}
-                  </span>
-                ))}
-              </div>
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="truncate text-lg font-semibold text-gray-900">{ngoProfile.orgName}</h2>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /> Verified
+              </span>
+              {ngoProfile.causeCategories.map((c) => (
+                <span key={c} className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700 ring-1 ring-gray-200">
+                  {c}
+                </span>
+              ))}
             </div>
-            
-            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-2xl leading-relaxed">
+            <p className="max-w-2xl text-sm leading-relaxed text-gray-600">
               {ngoProfile.description ? (
-                ngoProfile.description.length > 85 
-                  ? `${ngoProfile.description.substring(0, 85)}...` 
+                ngoProfile.description.length > 120
+                  ? `${ngoProfile.description.substring(0, 120)}...`
                   : ngoProfile.description
               ) : (
                 "Write a description to help donors understand your mission."
               )}
             </p>
-
             {ngoProfile.website && (
               <a
                 href={ngoProfile.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 mt-1 font-semibold"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-trust-700 hover:underline"
               >
-                <Globe className="w-3.5 h-3.5" />
+                <Globe className="h-3.5 w-3.5" aria-hidden="true" />
                 {ngoProfile.website}
               </a>
             )}
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto shrink-0 mt-4 md:mt-0">
+        <div className="flex w-full shrink-0 flex-col gap-2 sm:flex-row md:w-auto">
           <Link
             href={`/ngo/profile/${ngoProfile.id}`}
-            className="w-full md:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-500/20"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-trust-700"
           >
-            <Globe className="w-3.5 h-3.5" />
+            <Globe className="h-4 w-4" aria-hidden="true" />
             Public Profile
           </Link>
           <button
@@ -408,140 +448,32 @@ export default function DashboardClient({
               setEditLogoPreview(ngoProfile.logo_url);
               setIsSettingsOpen(true);
             }}
-            className="w-full md:w-auto px-5 py-2.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/60 dark:hover:bg-gray-850 border border-gray-200/50 dark:border-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
           >
-            <Settings className="w-3.5 h-3.5" />
+            <Settings className="h-4 w-4" aria-hidden="true" />
             Edit Settings
           </button>
         </div>
       </div>
-
-      {/* 2. Redesigned 3 Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Health Score Card */}
-        <div className={`bg-white dark:bg-gray-900 ${healthBorderColor} rounded-2xl p-6 shadow-sm flex items-center justify-between`}>
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400">NGO Health Score</h3>
-              {isHealthPending && (
-                <div className="relative group inline-block shrink-0">
-                  <Info className="w-4 h-4 text-amber-500 dark:text-amber-400 cursor-pointer" />
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-gray-950 text-white text-[11px] rounded-xl shadow-xl border border-gray-800 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-50 leading-relaxed">
-                    Complete your first milestone and gain 3+ donors to unlock your Health Score.
-                  </div>
-                </div>
-              )}
-            </div>
-            <p className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-              {isHealthPending ? "Pending" : `${healthScore.toFixed(0)}/100`}
-            </p>
-            {isHealthPending && (
-              <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                Complete 1st milestone & 3+ donors to unlock
-              </p>
-            )}
-          </div>
-          
-          {/* Circular Progress Ring */}
-          <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
-            <svg className="w-full h-full transform -rotate-90">
-              <circle
-                cx="28"
-                cy="28"
-                r={radius}
-                className="text-gray-100 dark:text-gray-800"
-                strokeWidth={strokeWidth}
-                fill="transparent"
-                stroke="currentColor"
-              />
-              {isHealthPending ? (
-                <circle
-                  cx="28"
-                  cy="28"
-                  r={radius}
-                  className="text-amber-500/60 dark:text-amber-400/40"
-                  strokeWidth={strokeWidth}
-                  fill="transparent"
-                  stroke="currentColor"
-                  strokeDasharray="4, 4"
-                />
-              ) : (
-                <circle
-                  cx="28"
-                  cy="28"
-                  r={radius}
-                  className={`${healthColor} transition-all duration-1000 ease-out`}
-                  strokeWidth={strokeWidth}
-                  fill="transparent"
-                  stroke="currentColor"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={strokeDashoffset}
-                  strokeLinecap="round"
-                />
-              )}
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              {isHealthPending ? (
-                <span className="text-xs font-bold text-amber-500">?</span>
-              ) : (
-                <span className={`text-xs font-black ${healthColor}`}>
-                  {healthScore.toFixed(0)}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Active Projects Card */}
-        <div className="bg-white dark:bg-gray-900 border-l-4 border-l-blue-500 rounded-2xl p-6 shadow-sm flex items-center justify-between">
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400">Active Projects</h3>
-            <p className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-              {activeProjectsCount}
-            </p>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-              across {projects.length} {projects.length === 1 ? "campaign" : "campaigns"}
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-blue-500/10 text-blue-500 dark:text-blue-400 rounded-full flex items-center justify-center shrink-0">
-            <Briefcase className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Total Funds Raised Card */}
-        <div className="bg-white dark:bg-gray-900 border-l-4 border-l-amber-500 rounded-2xl p-6 shadow-sm flex items-center justify-between">
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400">Total Funds Raised</h3>
-            <p className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-              ₹{totalFundsRaised.toLocaleString("en-IN")}
-            </p>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-              across active projects
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-amber-500/10 text-amber-500 dark:text-amber-400 rounded-full flex items-center justify-center shrink-0">
-            <IndianRupee className="w-6 h-6" />
-          </div>
-        </div>
-      </div>
+      </FadeIn>
 
       {/* AI Insight Card */}
       {aiInsightLoading ? (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-5 py-4 shadow-sm flex items-center gap-4 animate-pulse">
-          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 shrink-0" />
+        <div className="bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-sm flex items-center gap-4 animate-pulse">
+          <div className="w-8 h-8 rounded-full bg-gray-100 shrink-0" />
           <div className="flex-1 space-y-2">
-            <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full w-3/4" />
-            <div className="h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full w-1/2" />
+            <div className="h-3 bg-gray-100 rounded-full w-3/4" />
+            <div className="h-2.5 bg-gray-100 rounded-full w-1/2" />
           </div>
         </div>
       ) : aiInsight ? (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-5 py-4 shadow-sm flex items-start gap-4">
+        <div className="bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-sm flex items-start gap-4">
           <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-base shrink-0 mt-0.5">
             ✨
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-0.5">AI Insight</p>
-            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{aiInsight}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 mb-0.5">AI Insight</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{aiInsight}</p>
           </div>
         </div>
       ) : null}
@@ -551,7 +483,7 @@ export default function DashboardClient({
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-5 h-5 text-emerald-500" />
-              <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">WhatsApp Field Updates</h2>
+              <h2 className="text-lg font-semibold text-gray-900">WhatsApp Field Updates</h2>
               {/* Pending count badge */}
               {drafts.filter(d => d.status === 'PENDING_REVIEW').length > 0 && (
                 <span className="bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
@@ -565,46 +497,46 @@ export default function DashboardClient({
                 onClick={() => setShowAllDrafts(p => !p)}
                 className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition ${
                   showAllDrafts
-                    ? 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'
-                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
+                    ? 'bg-gray-200 border-gray-300 text-gray-700'
+                    : 'bg-white border-gray-200 text-gray-500'
                 }`}
               >
                 {showAllDrafts ? '📋 All updates' : '🔔 Pending only'}
               </button>
               {whatsappBotNumber && (
-                <div className="bg-white dark:bg-gray-800 px-4 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm inline-flex items-center gap-2 text-sm">
-                  <span className="text-gray-400">Bot:</span>
-                  <span className="font-mono font-bold text-gray-800 dark:text-white">{whatsappBotNumber}</span>
+                <div className="bg-white px-4 py-1.5 rounded-lg border border-gray-200 shadow-sm inline-flex items-center gap-2 text-sm">
+                  <span className="text-gray-500">Bot:</span>
+                  <span className="font-mono font-bold text-gray-800">{whatsappBotNumber}</span>
                 </div>
               )}
               {joinCode && (
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 px-4 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 shadow-sm inline-flex items-center gap-2 text-sm">
-                  <span className="text-gray-400">Join Code:</span>
+                <div className="bg-emerald-50 px-4 py-1.5 rounded-lg border border-emerald-300 shadow-sm inline-flex items-center gap-2 text-sm">
+                  <span className="text-gray-500">Join Code:</span>
                   <span className="font-mono font-bold text-emerald-600 tracking-widest">{joinCode}</span>
                 </div>
               )}
             </div>
           </div>
           {drafts.filter(d => d.status === 'PENDING_REVIEW').length === 0 && !showAllDrafts ? (
-            <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl p-8 text-center flex flex-col items-center">
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-8 text-center flex flex-col items-center">
               <MessageCircle className="w-12 h-12 text-emerald-400 mb-4" />
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Connect Your Field Team on WhatsApp</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Connect Your Field Team on WhatsApp</h3>
+              <p className="text-sm text-gray-600 max-w-md mx-auto mb-6">
                 Tell your field workers to message the bot number below and send their <strong>NGO Join Code</strong> to register. After that, they can send photos and updates directly from WhatsApp!
               </p>
               <div className="flex flex-col sm:flex-row gap-3 items-center">
-                <div className="bg-white dark:bg-gray-800 px-5 py-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm inline-flex items-center gap-3">
+                <div className="bg-white px-5 py-3 rounded-xl border border-gray-200 shadow-sm inline-flex items-center gap-3">
                   <span className="text-sm font-medium text-gray-500">Bot Number:</span>
                   <span className="font-mono font-bold text-emerald-600 text-lg">{whatsappBotNumber}</span>
                 </div>
                 {joinCode && (
-                  <div className="bg-white dark:bg-gray-800 px-5 py-3 rounded-xl border border-emerald-300 dark:border-emerald-700 shadow-sm inline-flex items-center gap-3">
+                  <div className="bg-white px-5 py-3 rounded-xl border border-emerald-300 shadow-sm inline-flex items-center gap-3">
                     <span className="text-sm font-medium text-gray-500">Join Code:</span>
                     <span className="font-mono font-bold text-emerald-600 text-lg tracking-widest">{joinCode}</span>
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mt-4">Workers save the bot number, message it, and send their join code once to register.</p>
+              <p className="text-xs text-gray-500 mt-4">Workers save the bot number, message it, and send their join code once to register.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -630,7 +562,7 @@ export default function DashboardClient({
               }
 
               return (
-                <div key={draft.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col">
+                <div key={draft.id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col">
                   
                   {/* HEADER ROW */}
                   <div className="flex items-center justify-between mb-4">
@@ -640,7 +572,7 @@ export default function DashboardClient({
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-900 dark:text-white">{workerName}</span>
+                          <span className="font-bold text-gray-900">{workerName}</span>
                           <span 
                             className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${trustColor}`}
                             title="Based on actioned submissions"
@@ -672,11 +604,11 @@ export default function DashboardClient({
                     </div>
                   )}
                   {isFailed && (
-                    <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg mb-4">
+                    <div className="flex items-center justify-between bg-amber-50 p-2 rounded-lg mb-4">
                       <span className="text-xs text-amber-600">⚠️ AI analysis unavailable</span>
                       <button 
                         onClick={() => retryEnrichment(draft.id)}
-                        className="text-xs font-bold text-amber-700 hover:text-amber-800 dark:text-amber-500 dark:hover:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-2.5 py-1 rounded-md transition"
+                        className="text-xs font-bold text-amber-700 hover:text-amber-800 bg-amber-100 px-2.5 py-1 rounded-md transition"
                       >
                         Retry AI analysis
                       </button>
@@ -685,7 +617,7 @@ export default function DashboardClient({
                   {isEnriched && draft.aiSummary && (
                     <div className="mb-4">
                       <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1">AI Summary</div>
-                      <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-3 rounded-xl text-sm italic text-gray-700 dark:text-gray-300 border-l-2 border-emerald-500">
+                      <div className="bg-emerald-50/50 p-3 rounded-xl text-sm italic text-gray-700 border-l-2 border-emerald-500">
                         {draft.aiSummary}
                       </div>
                     </div>
@@ -693,15 +625,15 @@ export default function DashboardClient({
 
                   {/* RAW MESSAGE */}
                   <div className="mb-4">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Field Report</div>
-                    <blockquote className="border-l-2 border-gray-200 dark:border-gray-700 pl-3 py-1 text-sm text-gray-800 dark:text-gray-200 line-clamp-3 hover:line-clamp-none transition-all cursor-pointer">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Field Report</div>
+                    <blockquote className="border-l-2 border-gray-200 pl-3 py-1 text-sm text-gray-800 line-clamp-3 hover:line-clamp-none transition-all cursor-pointer">
                       "{draft.rawMessage}"
                     </blockquote>
                   </div>
 
                   {/* RISK REASON */}
                   {isEnriched && draft.riskReason && (draft.riskLevel === 'HIGH' || draft.riskLevel === 'MEDIUM') && (
-                    <div className="mb-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-3 rounded-xl text-xs text-red-700 dark:text-red-400">
+                    <div className="mb-4 bg-red-50 border border-red-100 p-3 rounded-xl text-xs text-red-700">
                       <strong>Risk Note:</strong> {draft.riskReason}
                     </div>
                   )}
@@ -714,14 +646,14 @@ export default function DashboardClient({
                           key={i} 
                           src={`/api/media-proxy?url=${encodeURIComponent(url)}`}
                           alt={`Field evidence ${i+1}`} 
-                          className="h-24 w-auto rounded-lg object-cover border border-gray-200 dark:border-gray-700 snap-center shadow-sm" 
+                          className="h-24 w-auto rounded-lg object-cover border border-gray-200 snap-center shadow-sm" 
                         />
                       ))}
                     </div>
                   )}
 
                   {/* METADATA ROW */}
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl mb-5 mt-auto">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 bg-gray-50 p-3 rounded-xl mb-5 mt-auto">
                     <div className="flex items-center gap-1"><FileCheck className="w-3.5 h-3.5"/> {draft.photoCount} photos</div>
                     {draft.rawGpsLat !== null && draft.rawGpsLng !== null && (
                       <a href={`https://maps.google.com/?q=${draft.rawGpsLat},${draft.rawGpsLng}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-500 hover:underline">
@@ -739,7 +671,7 @@ export default function DashboardClient({
                   {/* ACTION BUTTONS */}
                   {draft.status === 'PENDING_REVIEW' ? (
                     <div className="flex gap-2">
-                      <button onClick={() => handleApprove(draft.id)} className="flex-1 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 font-bold py-2.5 rounded-xl text-sm transition">
+                      <button onClick={() => handleApprove(draft.id)} className="flex-1 bg-trust-600 text-white hover:bg-trust-700 font-semibold py-2.5 rounded-lg text-sm transition">
                         Approve
                       </button>
                       
@@ -750,27 +682,27 @@ export default function DashboardClient({
                             placeholder="Reason..." 
                             value={rejectReason}
                             onChange={e => setRejectReason(e.target.value)}
-                            className="flex-1 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 dark:bg-gray-800"
+                            className="flex-1 text-sm border border-gray-200 rounded-lg px-2"
                           />
                           <button onClick={() => handleReject(draft.id)} className="bg-red-500 hover:bg-red-600 text-white font-bold px-3 py-2.5 rounded-xl text-sm transition">
                             Confirm
                           </button>
                         </div>
                       ) : (
-                        <button onClick={() => setRejectingDraftId(draft.id)} className="flex-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 font-bold py-2.5 rounded-xl text-sm transition">
+                        <button onClick={() => setRejectingDraftId(draft.id)} className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 font-bold py-2.5 rounded-xl text-sm transition">
                           Reject
                         </button>
                       )}
                     </div>
                   ) : (
                     <div className="flex gap-2 items-center">
-                      <div className={`flex-1 text-center py-2.5 rounded-xl text-sm font-bold ${draft.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'}`}>
+                      <div className={`flex-1 text-center py-2.5 rounded-xl text-sm font-bold ${draft.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
                         {draft.status}
                       </div>
                       <button
                         onClick={() => handleDelete(draft.id)}
                         title="Delete this update"
-                        className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 transition"
+                        className="p-2.5 rounded-xl bg-gray-100 hover:bg-red-100 text-gray-500 hover:text-red-500 transition"
                       >
                         🗑️
                       </button>
@@ -786,14 +718,14 @@ export default function DashboardClient({
       )}
 
       {/* Projects Section Header */}
-      <div className="flex justify-between items-center border-b border-gray-150 dark:border-gray-800 pb-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-end border-b border-gray-200 pb-4">
         <div>
-          <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">Fundraising Campaigns</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your active projects and submit milestone verification proofs.</p>
+          <h2 className="font-display text-xl sm:text-2xl font-semibold text-gray-900">Fundraising Campaigns</h2>
+          <p className="text-sm text-gray-500 mt-1">Manage your active projects and submit milestone verification proofs.</p>
         </div>
         <Link
           href="/ngo/projects/new"
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition text-sm flex items-center gap-1"
+          className="bg-trust-600 hover:bg-trust-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition text-sm inline-flex w-fit shrink-0 whitespace-nowrap items-center gap-1"
         >
           <span>+</span> Launch New Project
         </Link>
@@ -801,19 +733,19 @@ export default function DashboardClient({
 
       {/* 3. Empty State or Projects List */}
       {projects.length === 0 ? (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-sm space-y-6">
+        <div className="bg-white border border-gray-100 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-sm space-y-6">
           <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
             <Briefcase className="w-10 h-10" />
           </div>
           <div>
-            <h3 className="text-xl font-extrabold text-gray-900 dark:text-white mb-2">Launch your first project</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+            <h3 className="text-xl font-extrabold text-gray-900 mb-2">Launch your first project</h3>
+            <p className="text-sm text-gray-500 max-w-sm mx-auto">
               Define transparent milestones, track donations in real-time, and build credibility with donors worldwide.
             </p>
           </div>
           <Link
             href="/ngo/projects/new"
-            className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-emerald-600/10 transition text-sm"
+            className="inline-flex items-center gap-1.5 bg-trust-600 hover:bg-trust-700 text-white font-bold py-3 px-6 rounded-lg shadow-sm transition text-sm"
           >
             <span>+</span> Launch New Project
           </Link>
@@ -829,7 +761,7 @@ export default function DashboardClient({
               <div
                 key={project.id}
                 onClick={() => toggleExpandProject(project.id)}
-                className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:border-emerald-500/30 hover:translate-y-[-2px] transition-all duration-200 flex flex-col cursor-pointer"
+                className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:border-emerald-500/30 hover:translate-y-[-2px] transition-all duration-200 flex flex-col cursor-pointer"
               >
                 <div className="flex flex-col md:flex-row w-full">
                   {/* Responsive cover image */}
@@ -854,10 +786,10 @@ export default function DashboardClient({
                 {/* Card Content body */}
                 <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
                   <div className="space-y-1.5">
-                    <h4 className="text-lg font-black text-gray-900 dark:text-white line-clamp-1">
+                    <h4 className="text-lg font-black text-gray-900 line-clamp-1">
                       {project.title}
                     </h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                    <p className="text-xs text-gray-500 line-clamp-2">
                       {project.description}
                     </p>
                   </div>
@@ -865,27 +797,27 @@ export default function DashboardClient({
                   {/* Funding progress bar */}
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center text-xs font-bold">
-                      <span className="text-gray-500 dark:text-gray-400">
-                        Raised: <strong className="text-gray-900 dark:text-white font-extrabold">₹{raised.toLocaleString("en-IN")}</strong> of ₹{target.toLocaleString("en-IN")}
+                      <span className="text-gray-500">
+                        Raised: <strong className="text-gray-900 font-extrabold">₹{raised.toLocaleString("en-IN")}</strong> of ₹{target.toLocaleString("en-IN")}
                       </span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{percent}% funded</span>
+                      <span className="text-emerald-600 font-extrabold">{percent}% funded</span>
                     </div>
-                    <div className="w-full bg-gray-100 dark:bg-gray-800 h-2.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
                       <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-500" style={{ width: `${percent}%` }}></div>
                     </div>
                   </div>
 
                   {/* Reorganized row below progress bar */}
                   <div className="flex justify-between items-center pt-1">
-                    <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
                       <span className="flex items-center gap-1 font-medium">
-                        <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                        <MapPin className="w-3.5 h-3.5 text-gray-500" />
                         {project.location}
                       </span>
                       <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
                         project.status === "ACTIVE" 
                           ? "bg-blue-500/10 text-blue-400 border-blue-500/25" 
-                          : "bg-gray-500/10 text-gray-400 border-gray-500/25"
+                          : "bg-gray-500/10 text-gray-500 border-gray-500/25"
                       }`}>
                         {project.status}
                       </span>
@@ -899,7 +831,7 @@ export default function DashboardClient({
                             e.stopPropagation();
                             setOpenMenuId(openMenuId === project.id ? null : project.id);
                           }}
-                          className="p-2 text-gray-400 hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition flex items-center justify-center"
+                          className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition flex items-center justify-center"
                           title="More Options"
                         >
                           <ChevronDown className="w-4 h-4" />
@@ -908,14 +840,14 @@ export default function DashboardClient({
                         {openMenuId === project.id && (
                           <div 
                             onClick={(e) => e.stopPropagation()}
-                            className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl shadow-lg z-20 py-1 text-left"
+                            className="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-xl shadow-lg z-20 py-1 text-left"
                           >
                             <button
                               onClick={() => {
                                 setOpenMenuId(null);
                                 toggleExpandProject(project.id);
                               }}
-                              className="w-full px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
+                              className="w-full px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                             >
                               <FileCheck className="w-3.5 h-3.5" />
                               {isExpanded ? "Collapse Milestones" : "View Milestones"}
@@ -925,21 +857,21 @@ export default function DashboardClient({
                                 setOpenMenuId(null);
                                 setSharingProject(project);
                               }}
-                              className="w-full px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
+                              className="w-full px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                             >
                               <Share2 className="w-3.5 h-3.5" />
                               Share Campaign
                             </button>
                             <Link
                               href={`/ngo/projects/${project.id}`}
-                              className="w-full px-4 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
+                              className="w-full px-4 py-2 text-xs font-semibold text-emerald-600 hover:bg-gray-50 flex items-center gap-2"
                             >
                               <Wallet className="w-3.5 h-3.5" />
                               Project Cockpit
                             </Link>
                             <Link
                               href={`/ngo/projects/${project.id}/edit`}
-                              className="w-full px-4 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
+                              className="w-full px-4 py-2 text-xs font-semibold text-blue-600 hover:bg-gray-50 flex items-center gap-2"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                               Edit Project
@@ -956,9 +888,9 @@ export default function DashboardClient({
                 {isExpanded && (
                   <div 
                     onClick={(e) => e.stopPropagation()}
-                    className="p-6 pt-5 border-t border-gray-150 dark:border-gray-850 bg-gray-50/50 dark:bg-gray-800/20 space-y-4 cursor-default"
+                    className="p-6 pt-5 border-t border-gray-150 bg-gray-50/50 space-y-4 cursor-default"
                   >
-                      <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                         <FileCheck className="w-4 h-4" />
                         Milestones Roadmap
                       </h5>
@@ -966,7 +898,7 @@ export default function DashboardClient({
                       {project.milestones.length === 0 ? (
                         <p className="text-xs text-gray-500">No milestones defined for this campaign.</p>
                       ) : (
-                        <div className="relative border-l border-gray-200 dark:border-gray-800 ml-4 space-y-6 pb-2">
+                        <div className="relative border-l border-gray-200 ml-4 space-y-6 pb-2">
                           {project.milestones.map((milestone, idx) => {
                             const isCompleted = milestone.status === "COMPLETED" || milestone.status === "VERIFIED";
                             const isPendingReview = milestone.status === "PROOF_SUBMITTED";
@@ -978,26 +910,26 @@ export default function DashboardClient({
                                     ? "bg-emerald-600 border-emerald-600 text-white"
                                     : isPendingReview
                                     ? "bg-amber-500 border-amber-500 text-white animate-pulse"
-                                    : "bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-400"
+                                    : "bg-white border-gray-300 text-gray-500"
                                 }`}>
                                   {idx + 1}
                                 </span>
                                 
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <h6 className="text-xs font-extrabold text-gray-900 dark:text-white">{milestone.title}</h6>
+                                    <h6 className="text-xs font-extrabold text-gray-900">{milestone.title}</h6>
                                     <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full uppercase ${
                                       isCompleted
                                         ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/25"
                                         : isPendingReview
                                         ? "bg-amber-500/10 text-amber-500 border border-amber-500/25"
-                                        : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-750"
+                                        : "bg-gray-100 text-gray-500 border border-gray-200"
                                     }`}>
                                       {milestone.status}
                                     </span>
                                   </div>
-                                  <p className="text-[11px] text-gray-500 dark:text-gray-400 max-w-xl">{milestone.description}</p>
-                                  <div className="text-[9px] text-gray-400 font-bold">
+                                  <p className="text-[11px] text-gray-500 max-w-xl">{milestone.description}</p>
+                                  <div className="text-[9px] text-gray-500 font-bold">
                                     Allocation: ₹{Number(milestone.targetAmount).toLocaleString("en-IN")} • Deadline: {new Date(milestone.deadline).toLocaleDateString("en-IN")}
                                   </div>
                                 </div>
@@ -1029,16 +961,16 @@ export default function DashboardClient({
       {/* 4. Edit Settings Modal */}
       {isSettingsOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-lg font-black text-gray-900 dark:text-white">Organization Settings</h3>
+          <div className="bg-white border border-gray-100 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-6 border-b border-gray-100">
+              <h3 className="text-lg font-black text-gray-900">Organization Settings</h3>
               <button 
                 onClick={() => {
                   setIsSettingsOpen(false);
                   setSettingsError("");
                   setEditLogoFile(null);
                 }}
-                className="p-1 text-gray-450 hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                className="p-1 text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1046,21 +978,21 @@ export default function DashboardClient({
             
             <form onSubmit={handleSettingsSubmit} className="p-6 space-y-6">
               {settingsError && (
-                <div className="p-3 bg-red-50 dark:bg-red-950/30 border-l-4 border-red-500 rounded text-xs text-red-700 dark:text-red-300">
+                <div className="p-3 bg-red-50 border-l-4 border-red-500 rounded text-xs text-red-700">
                   {settingsError}
                 </div>
               )}
               
               {/* Logo upload field */}
               <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Organization Logo</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">Organization Logo</label>
                 <div className="flex items-center gap-4">
                   <div className="shrink-0">
                     {editLogoPreview ? (
                       <img
                         src={editLogoPreview}
                         alt="Logo Preview"
-                        className="w-16 h-16 rounded-full object-cover border border-gray-200 dark:border-gray-850"
+                        className="w-16 h-16 rounded-full object-cover border border-gray-200"
                       />
                     ) : (
                       <div className={`w-16 h-16 rounded-full flex items-center justify-center font-black text-2xl border ${getAvatarColorClass(ngoProfile.orgName)}`}>
@@ -1069,7 +1001,7 @@ export default function DashboardClient({
                     )}
                   </div>
                   
-                  <label className="flex items-center gap-1.5 px-4 py-2 border border-dashed border-gray-300 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-xl cursor-pointer text-xs font-bold text-gray-500 hover:text-emerald-500 transition">
+                  <label className="flex items-center gap-1.5 px-4 py-2 border border-dashed border-gray-300 hover:border-emerald-500 rounded-xl cursor-pointer text-xs font-bold text-gray-500 hover:text-emerald-500 transition">
                     <Upload className="w-4 h-4" />
                     Upload Logo
                     <input
@@ -1084,12 +1016,12 @@ export default function DashboardClient({
               
               {/* Description field */}
               <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">About / Tagline</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">About / Tagline</label>
                 <textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none text-sm"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-transparent focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none text-sm"
                   placeholder="Describe your organization's mission..."
                   required
                 />
@@ -1097,17 +1029,17 @@ export default function DashboardClient({
               
               {/* Website field */}
               <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Website URL</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">Website URL</label>
                 <input
                   type="url"
                   value={editWebsite}
                   onChange={(e) => setEditWebsite(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition text-sm"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-transparent focus:outline-none focus:ring-2 focus:ring-emerald-500 transition text-sm"
                   placeholder="e.g. https://yourorg.org"
                 />
               </div>
               
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => {
@@ -1115,14 +1047,14 @@ export default function DashboardClient({
                     setSettingsError("");
                     setEditLogoFile(null);
                   }}
-                  className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 dark:hover:text-white transition"
+                  className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingSettings}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-5 rounded-xl text-xs shadow-md transition disabled:opacity-50 flex items-center gap-1.5"
+                  className="bg-trust-600 hover:bg-trust-700 text-white font-bold py-2 px-5 rounded-lg text-xs shadow-sm transition disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {isSavingSettings ? (
                     <>

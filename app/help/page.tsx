@@ -26,17 +26,14 @@ export default function HelpPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 font-sans pb-16 relative">
-      {/* Decorative glows */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl -z-10 pointer-events-none" />
-      <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl -z-10 pointer-events-none" />
+    <div className="min-h-screen bg-canvas text-gray-800 font-sans pb-16 relative">
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 text-left">
         
         {/* Navigation Link */}
         <Link
           href="/discover"
-          className="inline-flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-emerald-400 transition mb-8"
+          className="inline-flex items-center gap-1 text-xs font-bold text-gray-600 hover:text-trust-700 transition mb-8"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -45,9 +42,9 @@ export default function HelpPage() {
         </Link>
 
         {/* Page Header */}
-        <header className="mb-10 space-y-1.5 border-b border-gray-900 pb-6">
-          <h1 className="text-2xl font-black text-white">Help & Support</h1>
-          <p className="text-gray-400 text-sm">Answers to common questions about milestone donations, 80G tax claims, and payment tracking.</p>
+        <header className="mb-10 space-y-1.5 border-b border-gray-200 pb-6">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-gray-900">Help & Support</h1>
+          <p className="text-gray-600 text-sm">Answers to common questions about milestone donations, 80G tax claims, and payment tracking.</p>
         </header>
 
         {/* Accordion List */}
@@ -57,18 +54,18 @@ export default function HelpPage() {
             return (
               <div
                 key={idx}
-                className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden transition hover:border-gray-750"
+                className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition hover:border-gray-300"
               >
                 <button
                   onClick={() => toggleAccordion(idx)}
                   className="w-full py-4 px-5 text-left flex justify-between items-center gap-4 focus:outline-none"
                 >
-                  <span className="font-extrabold text-xs sm:text-sm text-white select-none leading-snug">
+                  <span className="font-semibold text-sm text-gray-900 select-none leading-snug">
                     {faq.question}
                   </span>
-                  <span className="text-gray-400 shrink-0">
+                  <span className="text-gray-600 shrink-0">
                     <svg
-                      className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-emerald-450" : ""}`}
+                      className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${isOpen ? "rotate-180 text-trust-600" : ""}`}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -81,10 +78,10 @@ export default function HelpPage() {
                 
                 <div
                   className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                    isOpen ? "max-h-40 border-t border-gray-850" : "max-h-0"
+                    isOpen ? "max-h-96 border-t border-gray-200" : "max-h-0"
                   }`}
                 >
-                  <p className="p-5 text-xs text-gray-400 leading-relaxed font-medium bg-gray-900/50">
+                  <p className="p-5 text-sm text-gray-600 leading-relaxed bg-white">
                     {faq.answer}
                   </p>
                 </div>
@@ -94,11 +91,11 @@ export default function HelpPage() {
         </section>
 
         {/* Contact support section */}
-        <section className="bg-gray-900 border border-gray-800 rounded-2xl p-5 text-left space-y-1">
-          <h3 className="font-bold text-white text-sm">Still need help?</h3>
+        <section className="bg-white border border-gray-200 rounded-2xl p-5 text-left space-y-1 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <h3 className="font-bold text-gray-900 text-sm">Still need help?</h3>
           <p className="text-xs text-gray-500">
             Email us at{" "}
-            <a href="mailto:support@impactbridge.in" className="text-emerald-400 hover:text-emerald-300 font-bold underline">
+            <a href="mailto:support@impactbridge.in" className="text-trust-700 hover:text-trust-800 font-semibold underline">
               support@impactbridge.in
             </a>
           </p>

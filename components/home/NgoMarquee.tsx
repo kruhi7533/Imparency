@@ -16,20 +16,20 @@ export default function NgoMarquee({ names }: { names: string[] }) {
   const half = Array.from({ length: repeats }, () => names).flat();
 
   return (
-    <div className="relative overflow-hidden py-8 border-y border-gray-800 group" aria-label="Verified NGOs on ImpactBridge">
+    <div className="relative overflow-hidden py-6 group" aria-label="Verified NGOs on ImpactBridge">
       {/* Edge fades */}
-      <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-gray-950 to-transparent z-10 pointer-events-none" />
-      <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-gray-950 to-transparent z-10 pointer-events-none" />
+      <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-canvas to-transparent z-10 pointer-events-none" />
+      <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-canvas to-transparent z-10 pointer-events-none" />
 
       <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused]">
         {[0, 1].map((halfIdx) => (
           <div key={halfIdx} className="flex shrink-0 items-center" aria-hidden={halfIdx === 1}>
             {half.map((name, i) => (
               <span key={`${halfIdx}-${i}`} className="flex items-center shrink-0">
-                <span className="font-display text-xl sm:text-2xl font-medium text-gray-400 whitespace-nowrap px-8">
+                <span className="font-display text-lg sm:text-xl font-medium text-gray-500 whitespace-nowrap px-8">
                   {name}
                 </span>
-                <span className="text-gold-400 text-lg select-none" aria-hidden>
+                <span className="text-trust-400 text-lg select-none" aria-hidden>
                   ·
                 </span>
               </span>

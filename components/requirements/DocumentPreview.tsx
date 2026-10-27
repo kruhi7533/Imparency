@@ -35,7 +35,7 @@ export function DocumentPreview({
           <button
             type="button"
             onClick={() => setShow((s) => !s)}
-            className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 text-xs font-semibold transition"
+            className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-xs font-semibold transition"
           >
             {show ? "Hide preview" : "Preview"}
           </button>
@@ -45,14 +45,14 @@ export function DocumentPreview({
             href={src}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 text-xs font-semibold transition"
+            className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-xs font-semibold transition"
           >
             Open in new tab
           </a>
         )}
         <a
           href={`${src}?download=1`}
-          className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 text-xs font-semibold transition"
+          className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-xs font-semibold transition"
         >
           Download
         </a>
@@ -61,7 +61,7 @@ export function DocumentPreview({
         <p className="text-[11px] text-gray-500">In-browser preview isn&apos;t available for this file type ({fileName}); download it instead.</p>
       )}
       {show && canPreview && (
-        <div className="rounded-xl overflow-hidden border border-gray-800 bg-gray-950">
+        <div className="rounded-xl overflow-hidden border border-gray-200 bg-white">
           {mimeType === "application/pdf" ? (
             <iframe src={src} title={`Preview of ${fileName}`} className="w-full h-[70vh]" />
           ) : (

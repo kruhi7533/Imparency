@@ -62,52 +62,52 @@ export default function AdminInitiativeDetailPage({ params }: { params: { id: st
     }
   }
 
-  if (loading) return <div className="min-h-screen bg-gray-50 dark:bg-gray-950" />;
-  if (!initiative) return <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-10 text-center text-gray-400">Initiative not found.</div>;
+  if (loading) return <div />;
+  if (!initiative) return <div className="p-10 text-center text-gray-500">Initiative not found.</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
+    <div>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <a href="/admin/initiatives" className="text-xs text-gray-400 hover:text-emerald-600 font-semibold">← Back to Initiatives</a>
+        <a href="/admin/initiatives" className="text-xs text-gray-500 hover:text-emerald-600 font-semibold">← Back to Initiatives</a>
 
         {error && (
-          <div className="mt-4 p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 rounded-xl text-xs text-red-600 dark:text-red-400">
+          <div className="mt-4 p-3.5 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600">
             {error}
           </div>
         )}
 
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 mt-4">
-          <p className="text-xs text-gray-400 mb-1">For crisis: <span className="font-semibold text-gray-600 dark:text-gray-300">{initiative.crisisEvent.title}</span></p>
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">{initiative.organizerName}</h1>
+        <div className="bg-white rounded-2xl border border-gray-200/80 p-6 mt-4">
+          <p className="text-xs text-gray-500 mb-1">For crisis: <span className="font-semibold text-gray-600">{initiative.crisisEvent.title}</span></p>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">{initiative.organizerName}</h1>
           <p className="text-sm text-gray-500 mt-1">{initiative.organizerType} · {initiative.location}</p>
-          <p className="text-sm text-gray-700 dark:text-gray-300 mt-4 leading-relaxed">{initiative.description}</p>
+          <p className="text-sm text-gray-700 mt-4 leading-relaxed">{initiative.description}</p>
 
-          <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 text-sm">
+          <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100 text-sm">
             <div>
-              <div className="text-xs text-gray-400 uppercase font-bold">Funds required</div>
-              <div className="font-bold text-gray-900 dark:text-white">₹{initiative.requiredFunds.toLocaleString("en-IN")}</div>
+              <div className="text-xs text-gray-500 uppercase font-bold">Funds required</div>
+              <div className="font-bold text-gray-900">₹{initiative.requiredFunds.toLocaleString("en-IN")}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-400 uppercase font-bold">Submitted by</div>
-              <div className="font-bold text-gray-900 dark:text-white">{initiative.submittedBy.name}</div>
-              <div className="text-xs text-gray-400">{initiative.submittedBy.email}</div>
+              <div className="text-xs text-gray-500 uppercase font-bold">Submitted by</div>
+              <div className="font-bold text-gray-900">{initiative.submittedBy.name}</div>
+              <div className="text-xs text-gray-500">{initiative.submittedBy.email}</div>
             </div>
           </div>
 
-          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
-            <h3 className="font-bold text-gray-900 dark:text-white mb-3">Bank details (cross-check against proof below)</h3>
-            <div className="grid grid-cols-3 gap-4 text-sm bg-gray-50 dark:bg-gray-950 rounded-xl p-4">
+          <div className="mt-6 pt-6 border-t border-gray-100">
+            <h3 className="font-bold text-gray-900 mb-3">Bank details (cross-check against proof below)</h3>
+            <div className="grid grid-cols-3 gap-4 text-sm bg-gray-50 rounded-xl p-4">
               <div>
-                <div className="text-[10px] text-gray-400 uppercase font-bold">Account holder</div>
-                <div className="font-semibold text-gray-900 dark:text-white">{initiative.bankAccountName}</div>
+                <div className="text-[10px] text-gray-500 uppercase font-bold">Account holder</div>
+                <div className="font-semibold text-gray-900">{initiative.bankAccountName}</div>
               </div>
               <div>
-                <div className="text-[10px] text-gray-400 uppercase font-bold">Account number</div>
-                <div className="font-mono font-semibold text-gray-900 dark:text-white">{initiative.bankAccountNumber}</div>
+                <div className="text-[10px] text-gray-500 uppercase font-bold">Account number</div>
+                <div className="font-mono font-semibold text-gray-900">{initiative.bankAccountNumber}</div>
               </div>
               <div>
-                <div className="text-[10px] text-gray-400 uppercase font-bold">IFSC</div>
-                <div className="font-mono font-semibold text-gray-900 dark:text-white">{initiative.bankIfsc}</div>
+                <div className="text-[10px] text-gray-500 uppercase font-bold">IFSC</div>
+                <div className="font-mono font-semibold text-gray-900">{initiative.bankIfsc}</div>
               </div>
             </div>
             <a href={initiative.bankProofUrl} target="_blank" rel="noreferrer" className="inline-block mt-3 text-xs font-bold text-emerald-600 hover:text-emerald-700">
@@ -116,8 +116,8 @@ export default function AdminInitiativeDetailPage({ params }: { params: { id: st
           </div>
 
           {initiative.images.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
-              <h3 className="font-bold text-gray-900 dark:text-white mb-3">Photos</h3>
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <h3 className="font-bold text-gray-900 mb-3">Photos</h3>
               <div className="grid grid-cols-4 gap-2">
                 {initiative.images.map((url, i) => (
                   <a key={i} href={url} target="_blank" rel="noreferrer">
@@ -129,11 +129,11 @@ export default function AdminInitiativeDetailPage({ params }: { params: { id: st
           )}
 
           {initiative.documents.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
-              <h3 className="font-bold text-gray-900 dark:text-white mb-3">Supporting documents</h3>
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <h3 className="font-bold text-gray-900 mb-3">Supporting documents</h3>
               <div className="flex flex-wrap gap-2">
                 {initiative.documents.map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noreferrer" className="text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-lg">
+                  <a key={i} href={url} target="_blank" rel="noreferrer" className="text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg">
                     Document {i + 1}
                   </a>
                 ))}
@@ -142,7 +142,7 @@ export default function AdminInitiativeDetailPage({ params }: { params: { id: st
           )}
 
           {["SUBMITTED", "UNDER_REVIEW"].includes(initiative.status) ? (
-            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+            <div className="mt-6 pt-6 border-t border-gray-100">
               <div className="flex gap-3">
                 <button
                   onClick={() => decide("VERIFIED")}
@@ -153,7 +153,7 @@ export default function AdminInitiativeDetailPage({ params }: { params: { id: st
                 </button>
                 <button
                   onClick={() => setShowReject(!showReject)}
-                  className="bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 font-bold py-2 px-5 rounded-xl text-sm transition"
+                  className="bg-red-50 text-red-600 font-bold py-2 px-5 rounded-xl text-sm transition"
                 >
                   Reject
                 </button>
@@ -161,7 +161,7 @@ export default function AdminInitiativeDetailPage({ params }: { params: { id: st
               {showReject && (
                 <div className="mt-4">
                   <textarea
-                    className="w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-2.5 text-sm"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm"
                     rows={3}
                     placeholder="Reason for rejection (required)"
                     value={rejectNote}
@@ -178,7 +178,7 @@ export default function AdminInitiativeDetailPage({ params }: { params: { id: st
               )}
             </div>
           ) : (
-            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 text-sm text-gray-500">
+            <div className="mt-6 pt-6 border-t border-gray-100 text-sm text-gray-500">
               Status: <span className="font-bold">{initiative.status}</span>
               {initiative.reviewNote && <p className="mt-1 text-xs">{initiative.reviewNote}</p>}
             </div>

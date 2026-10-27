@@ -35,14 +35,14 @@ export default async function PlatformTrailPage({
   }
   const day = (d: Date) => d.toISOString().slice(0, 10);
   const input =
-    "rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white";
+    "rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900";
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Platform trail</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-3xl">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Platform trail</h1>
+          <p className="mt-1 text-sm text-gray-500 max-w-3xl">
             What donors, NGOs and the platform recorded: contract and payment events, CSR requirement changes, NGO
             compliance and donor account events. Admin decisions are in the{" "}
             <Link href="/admin/audit" className="text-emerald-600 underline">
@@ -76,7 +76,7 @@ export default async function PlatformTrailPage({
             To
             <input type="date" name="to" defaultValue={day(q.to)} className={`${input} mt-1 block`} />
           </label>
-          <button type="submit" className="min-h-[40px] rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700">
+          <button type="submit" className="min-h-[40px] rounded-lg bg-trust-600 px-4 text-sm font-semibold text-white hover:bg-trust-700">
             Filter
           </button>
         </form>
@@ -86,8 +86,8 @@ export default async function PlatformTrailPage({
           {items.length >= 300 ? " (showing the newest 300 — narrow the dates to see more)" : ""}
         </p>
 
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800 text-sm">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead>
               <tr>
                 {["When", "Source", "Action", "By", "Detail"].map((h) => (
@@ -97,14 +97,14 @@ export default async function PlatformTrailPage({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-gray-100">
               {items.map((i, idx) => (
                 <tr key={idx} className="align-top">
-                  <td className="px-4 py-2 whitespace-nowrap text-gray-600 dark:text-gray-300">
+                  <td className="px-4 py-2 whitespace-nowrap text-gray-600">
                     <time dateTime={i.at.toISOString()}>{i.at.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
                   </td>
-                  <td className="px-4 py-2 text-gray-600 dark:text-gray-300">{LABEL[i.source]}</td>
-                  <td className="px-4 py-2 font-mono text-xs text-gray-900 dark:text-white">
+                  <td className="px-4 py-2 text-gray-600">{LABEL[i.source]}</td>
+                  <td className="px-4 py-2 font-mono text-xs text-gray-900">
                     {i.href ? (
                       <Link href={i.href} className="hover:underline">
                         {i.action}
@@ -113,11 +113,11 @@ export default async function PlatformTrailPage({
                       i.action
                     )}
                   </td>
-                  <td className="px-4 py-2 text-xs text-gray-600 dark:text-gray-300">
+                  <td className="px-4 py-2 text-xs text-gray-600">
                     {i.actorRole}
-                    {i.actorId ? <span className="block font-mono text-[10px] text-gray-400">{i.actorId}</span> : null}
+                    {i.actorId ? <span className="block font-mono text-[10px] text-gray-500">{i.actorId}</span> : null}
                   </td>
-                  <td className="px-4 py-2 text-gray-700 dark:text-gray-300 break-words max-w-md">{i.detail ?? "—"}</td>
+                  <td className="px-4 py-2 text-gray-700 break-words max-w-md">{i.detail ?? "—"}</td>
                 </tr>
               ))}
               {items.length === 0 && (

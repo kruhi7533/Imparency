@@ -26,15 +26,15 @@ export const dynamic = "force-dynamic";
 const QUEUE_LIMIT = 50;
 
 const TONE: Record<"good" | "warn" | "bad", string> = {
-  good: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:ring-emerald-900/40",
-  warn: "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:ring-amber-900/40",
-  bad: "bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/30 dark:text-red-400 dark:ring-red-900/40",
+  good: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  warn: "bg-amber-50 text-amber-700 ring-amber-200",
+  bad: "bg-red-50 text-red-700 ring-red-200",
 };
 
 const SEVERITY_TONE: Record<string, string> = {
-  BLOCK: "text-red-700 dark:text-red-400",
-  HIGH: "text-amber-700 dark:text-amber-400",
-  MEDIUM: "text-gray-600 dark:text-gray-400",
+  BLOCK: "text-red-700",
+  HIGH: "text-amber-700",
+  MEDIUM: "text-gray-600",
 };
 
 const fmtDate = (d: Date) =>
@@ -94,19 +94,19 @@ export default async function ImpactReviewPage() {
   const clean = triaged.filter((t) => t.triage.verdict === "CLEAN").length;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
       <header className="space-y-2">
         <div className="flex items-center gap-2">
-          <ScanSearch className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Impact review</h1>
+          <ScanSearch className="h-5 w-5 text-indigo-600" />
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Impact review</h1>
         </div>
-        <p className="max-w-3xl text-sm text-gray-600 dark:text-gray-400">
+        <p className="max-w-3xl text-sm text-gray-600">
           Numbers organisations have reported against governed metrics, each checked against the
           evidence cited for it. Only an approved claim becomes a figure in a donor report — and a
           claim the checks block cannot be approved here at all.
         </p>
         {claims.length > 0 && (
-          <p className="text-xs text-gray-500 dark:text-gray-500">
+          <p className="text-xs text-gray-500">
             {clean} passed every check · {needsReview} need your judgement · {blocked} cannot be
             approved
             {totalSubmitted > QUEUE_LIMIT && ` · showing the oldest ${QUEUE_LIMIT} of ${totalSubmitted}`}
@@ -115,10 +115,10 @@ export default async function ImpactReviewPage() {
       </header>
 
       {claims.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-900">
-          <Inbox className="mx-auto h-6 w-6 text-gray-400" />
-          <p className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nothing waiting.</p>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
+          <Inbox className="mx-auto h-6 w-6 text-gray-500" />
+          <p className="mt-2 text-sm font-medium text-gray-900">Nothing waiting.</p>
+          <p className="mt-1 text-sm text-gray-600">
             Outcome claims appear here once an organisation submits one for review.
           </p>
         </div>
@@ -129,7 +129,7 @@ export default async function ImpactReviewPage() {
             return (
               <article
                 key={claim.id}
-                className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
+                className="rounded-xl border border-gray-200 bg-white p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -139,21 +139,21 @@ export default async function ImpactReviewPage() {
                       >
                         {label.text}
                       </span>
-                      <code className="rounded bg-gray-100 px-2 py-0.5 font-mono text-[10px] font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                      <code className="rounded bg-gray-100 px-2 py-0.5 font-mono text-[10px] font-semibold text-gray-700">
                         {claim.metric.code}
                       </code>
                     </div>
-                    <h2 className="mt-2 text-xl font-bold text-gray-900 dark:text-white">
+                    <h2 className="mt-2 text-xl font-bold text-gray-900">
                       {claim.value.toString()}{" "}
-                      <span className="text-base font-normal text-gray-500 dark:text-gray-400">
+                      <span className="text-base font-normal text-gray-500">
                         {UNIT_LABELS[claim.unit]} · {claim.metric.name}
                       </span>
                     </h2>
-                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                    <p className="mt-1 text-xs text-gray-600">
                       {claim.project.ngo.orgName} · {claim.project.title}
                       {claim.milestone ? ` · ${claim.milestone.title}` : ""}
                     </p>
-                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-500">
+                    <p className="mt-0.5 text-xs text-gray-500">
                       Reporting period {fmtDate(claim.periodStart)} – {fmtDate(claim.periodEnd)} ·{" "}
                       {claim.citations.length} citation{claim.citations.length === 1 ? "" : "s"}
                     </p>
@@ -165,19 +165,19 @@ export default async function ImpactReviewPage() {
                   />
                 </div>
 
-                <div className="mt-3 rounded-lg bg-gray-50 p-3 dark:bg-gray-800/40">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-500">
+                <div className="mt-3 rounded-lg bg-gray-50 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
                     How the organisation says it counted
                   </p>
-                  <p className="mt-1 text-sm text-gray-800 dark:text-gray-200">{claim.method}</p>
+                  <p className="mt-1 text-sm text-gray-800">{claim.method}</p>
                 </div>
 
                 <div className="mt-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-500">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
                     Evidence checks
                   </p>
                   {triage.findings.length === 0 ? (
-                    <p className="mt-1 flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-400">
+                    <p className="mt-1 flex items-center gap-1.5 text-sm text-emerald-700">
                       <BadgeCheck className="h-4 w-4" />
                       Every cited item is approved, none is counted elsewhere, and the metric&apos;s
                       evidence requirement is met.

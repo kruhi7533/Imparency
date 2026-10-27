@@ -13,9 +13,9 @@ export const dynamic = "force-dynamic";
  * outcome. Metadata only: no prompt or response text is stored.
  */
 const OUTCOME_STYLE: Record<string, string> = {
-  OK: "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/40",
-  ERROR: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/40",
-  TIMEOUT: "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/40",
+  OK: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  ERROR: "bg-red-50 text-red-700 border-red-100",
+  TIMEOUT: "bg-amber-50 text-amber-700 border-amber-100",
 };
 
 function percentile(values: number[], p: number): number | null {
@@ -72,10 +72,10 @@ export default async function AiTelemetryPage({ searchParams }: { searchParams: 
     .sort((a, b) => b.calls - a.calls);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">AI telemetry</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-3xl">
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">AI telemetry</h1>
+        <p className="mt-1 text-sm text-gray-500 max-w-3xl">
           Every model call and every rule-based stand-in: provider, model, prompt version, latency, tokens (when the
           provider reports them), an estimated cost and the outcome. A failed call leaves its caller in an explicit
           &ldquo;AI unavailable — human review required&rdquo; state. No prompt or response text is stored.
@@ -83,13 +83,13 @@ export default async function AiTelemetryPage({ searchParams }: { searchParams: 
 
         <FaultInjectionToggle initial={fault} />
 
-        <h2 className="mt-8 text-lg font-bold text-gray-900 dark:text-white">Last 7 days by call site</h2>
+        <h2 className="mt-8 text-lg font-bold text-gray-900">Last 7 days by call site</h2>
         {summary.length === 0 ? (
           <p className="mt-2 text-sm text-gray-500">No AI calls recorded in the last 7 days.</p>
         ) : (
-          <div className="mt-3 overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-gray-200 bg-white">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800">
+              <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
                 <tr>
                   <th className="px-3 py-2">Site</th>
                   <th className="px-3 py-2">Provider</th>
@@ -103,9 +103,9 @@ export default async function AiTelemetryPage({ searchParams }: { searchParams: 
               </thead>
               <tbody>
                 {summary.map((r) => (
-                  <tr key={`${r.site}-${r.provider}`} className="border-t border-gray-100 dark:border-gray-800">
-                    <td className="px-3 py-2 font-mono text-xs text-gray-900 dark:text-white">{r.site}</td>
-                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{r.provider}</td>
+                  <tr key={`${r.site}-${r.provider}`} className="border-t border-gray-100">
+                    <td className="px-3 py-2 font-mono text-xs text-gray-900">{r.site}</td>
+                    <td className="px-3 py-2 text-gray-600">{r.provider}</td>
                     <td className="px-3 py-2 text-right">{r.calls}</td>
                     <td className={`px-3 py-2 text-right ${r.failures ? "text-red-600 font-semibold" : ""}`}>{r.failures}</td>
                     <td className="px-3 py-2 text-right">{r.injected}</td>
@@ -120,24 +120,24 @@ export default async function AiTelemetryPage({ searchParams }: { searchParams: 
         )}
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-3">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Recent runs</h2>
+          <h2 className="text-lg font-bold text-gray-900">Recent runs</h2>
           <form method="GET" className="flex flex-wrap gap-2">
-            <input name="site" defaultValue={site} placeholder="Site (e.g. screen-project)" className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
-            <select name="outcome" defaultValue={outcome ?? ""} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+            <input name="site" defaultValue={site} placeholder="Site (e.g. screen-project)" className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm" />
+            <select name="outcome" defaultValue={outcome ?? ""} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
               <option value="">All outcomes</option>
               <option value="OK">OK</option>
               <option value="ERROR">ERROR</option>
               <option value="TIMEOUT">TIMEOUT</option>
             </select>
-            <button type="submit" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Filter</button>
+            <button type="submit" className="rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white hover:bg-trust-700">Filter</button>
           </form>
         </div>
         {runs.length === 0 ? (
           <p className="mt-2 text-sm text-gray-500">No runs match.</p>
         ) : (
-          <div className="mt-3 overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-gray-200 bg-white">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800">
+              <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
                 <tr>
                   <th className="px-3 py-2">When (UTC)</th>
                   <th className="px-3 py-2">Site</th>
@@ -152,10 +152,10 @@ export default async function AiTelemetryPage({ searchParams }: { searchParams: 
               </thead>
               <tbody>
                 {runs.map((r) => (
-                  <tr key={r.id} className="border-t border-gray-100 dark:border-gray-800">
-                    <td className="px-3 py-2 whitespace-nowrap text-gray-600 dark:text-gray-300">{r.createdAt.toISOString().replace("T", " ").slice(0, 19)}</td>
-                    <td className="px-3 py-2 font-mono text-xs text-gray-900 dark:text-white">{r.site}</td>
-                    <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{r.provider} / {r.model}</td>
+                  <tr key={r.id} className="border-t border-gray-100">
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">{r.createdAt.toISOString().replace("T", " ").slice(0, 19)}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-gray-900">{r.site}</td>
+                    <td className="px-3 py-2 text-xs text-gray-600">{r.provider} / {r.model}</td>
                     <td className="px-3 py-2 text-xs text-gray-500">{r.promptVersion}</td>
                     <td className="px-3 py-2">
                       <span className={`inline-block rounded border px-2 py-0.5 text-xs font-semibold ${OUTCOME_STYLE[r.outcome] ?? ""}`}>{r.outcome}</span>

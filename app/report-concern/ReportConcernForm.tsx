@@ -77,7 +77,7 @@ export default function ReportConcernForm({
           required
           value={ngoId}
           onChange={(e) => setNgoId(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+          className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
         >
           <option value="">Choose an organisation…</option>
           {organisations.map((o) => (
@@ -95,7 +95,7 @@ export default function ReportConcernForm({
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+          className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
         >
           {CATEGORIES.map((c) => (
             <option key={c.value} value={c.value}>
@@ -116,7 +116,7 @@ export default function ReportConcernForm({
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           placeholder="e.g. Milestone reported complete but no work was done"
-          className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+          className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
         />
       </div>
 
@@ -131,7 +131,7 @@ export default function ReportConcernForm({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Dates, places and what you saw are the most useful things you can include."
-          className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+          className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
         />
       </div>
 
@@ -140,7 +140,7 @@ export default function ReportConcernForm({
       <button
         type="submit"
         disabled={busy || !ngoId || !subject.trim() || !body.trim()}
-        className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+        className="rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white hover:bg-trust-700 disabled:opacity-50"
       >
         {busy ? "Filing…" : "File this report"}
       </button>

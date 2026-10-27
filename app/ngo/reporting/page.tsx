@@ -29,10 +29,10 @@ export default async function NgoReportingPage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto space-y-6">
         <header>
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Reporting</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">Reporting</h1>
           <p className="text-sm text-gray-500">Funder requests, impact stories, and per-contract reports and fund utilisation.</p>
         </header>
         <ReportingClient projects={projects} contracts={contracts} />

@@ -36,9 +36,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body
-        className={`${displayFont.variable} ${sansFont.variable} ${monoFont.variable} antialiased bg-gray-950 text-white font-sans`}
+        className={`${displayFont.variable} ${sansFont.variable} ${monoFont.variable} antialiased bg-canvas text-gray-900 font-sans`}
       >
         <Providers>
           <Navbar />

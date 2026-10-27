@@ -17,11 +17,11 @@ export const dynamic = "force-dynamic";
  */
 
 const STATUS_STYLE: Record<string, string> = {
-  OPEN: "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30",
-  TRIAGED: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30",
-  INVESTIGATING: "bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/30",
-  RESOLVED: "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30",
-  DISMISSED: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
+  OPEN: "bg-amber-50 text-amber-700 border-amber-100",
+  TRIAGED: "bg-blue-50 text-blue-700 border-blue-100",
+  INVESTIGATING: "bg-indigo-50 text-indigo-700 border-indigo-100",
+  RESOLVED: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  DISMISSED: "bg-gray-100 text-gray-600 border-gray-200",
 };
 
 export default async function AdminGrievanceDetailPage({ params }: { params: { id: string } }) {
@@ -56,11 +56,11 @@ export default async function AdminGrievanceDetailPage({ params }: { params: { i
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <Link
           href="/admin/grievances"
-          className="text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          className="text-xs font-semibold text-gray-500 hover:text-gray-900"
         >
           ← Grievances
         </Link>
@@ -72,28 +72,28 @@ export default async function AdminGrievanceDetailPage({ params }: { params: { i
             {grievance.status.replace(/_/g, " ")}
           </span>
           {grievance.severity ? (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">
               {grievance.severity}
             </span>
           ) : (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500">
               not triaged
             </span>
           )}
-          <span className="text-[10px] font-extrabold uppercase tracking-wide text-gray-400">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
             {grievance.category.replace(/_/g, " ")}
           </span>
         </div>
 
-        <h1 className="mt-2 text-2xl font-extrabold text-gray-900 dark:text-white">
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight mt-2 text-gray-900">
           {grievance.subject}
         </h1>
 
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-sm text-gray-500">
           About{" "}
           <Link
             href={`/admin/ngos/${grievance.ngo.id}`}
-            className="font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
+            className="font-semibold text-emerald-700 hover:underline"
           >
             {grievance.ngo.orgName}
           </Link>{" "}
@@ -102,8 +102,8 @@ export default async function AdminGrievanceDetailPage({ params }: { params: { i
         </p>
 
         {siblings > 0 && (
-          <div className="mt-4 rounded-xl border border-amber-100 dark:border-amber-900/30 bg-amber-50/60 dark:bg-amber-950/20 px-4 py-3">
-            <p className="text-xs text-amber-800 dark:text-amber-300">
+          <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/60 px-4 py-3">
+            <p className="text-xs text-amber-800">
               <span className="font-bold">
                 {siblings} other complaint{siblings > 1 ? "s" : ""}
               </span>{" "}
@@ -118,21 +118,21 @@ export default async function AdminGrievanceDetailPage({ params }: { params: { i
           </div>
         )}
 
-        <div className="mt-6 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        <div className="mt-6 rounded-2xl border border-gray-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500">
             What was reported
           </h2>
-          <p className="mt-2 text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+          <p className="mt-2 text-sm text-gray-800 whitespace-pre-wrap">
             {grievance.body}
           </p>
-          <p className="mt-4 text-[11px] text-gray-400 dark:text-gray-600">
+          <p className="mt-4 text-[11px] text-gray-500">
             Filed by {grievance.reporter.name || "an account holder"} ({grievance.reporter.role.toLowerCase()}) on{" "}
             {grievance.createdAt.toLocaleString("en-IN")}
           </p>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        <div className="mt-4 rounded-2xl border border-gray-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500">
             What happens next
           </h2>
           <div className="mt-3">
@@ -141,11 +141,11 @@ export default async function AdminGrievanceDetailPage({ params }: { params: { i
         </div>
 
         {(grievance.triagedAt || grievance.resolvedAt) && (
-          <div className="mt-4 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <div className="mt-4 rounded-2xl border border-gray-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500">
               Handling record
             </h2>
-            <ul className="mt-2 space-y-2 text-sm text-gray-700 dark:text-gray-300">
+            <ul className="mt-2 space-y-2 text-sm text-gray-700">
               {grievance.triagedAt && (
                 <li>
                   Triaged as <span className="font-semibold">{grievance.severity}</span> by{" "}
@@ -162,7 +162,7 @@ export default async function AdminGrievanceDetailPage({ params }: { params: { i
               )}
             </ul>
             {grievance.resolutionNote && (
-              <p className="mt-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+              <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 whitespace-pre-wrap">
                 {grievance.resolutionNote}
               </p>
             )}

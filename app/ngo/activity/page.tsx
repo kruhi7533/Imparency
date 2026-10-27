@@ -40,10 +40,10 @@ export default async function NgoActivityPage({ searchParams }: { searchParams: 
   if (!VIEWERS.includes(actor.teamRole)) {
     return (
       <main className="max-w-3xl mx-auto px-4 py-12">
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Activity</h1>
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">Activity</h1>
         <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
           The organisation&apos;s activity history is available to owners, admins and finance members. Your field tasks are in the{" "}
-          <Link href="/ngo/field" className="text-emerald-700 underline">
+          <Link href="/ngo/field" className="text-trust-700 underline">
             Field App
           </Link>
           .
@@ -58,7 +58,7 @@ export default async function NgoActivityPage({ searchParams }: { searchParams: 
 
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
-      <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Activity</h1>
+      <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">Activity</h1>
       <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
         Every decision taken on or by your organisation — verification, approvals, contracts and payments, evidence reviews,
         outcome decisions and funding — newest first.
@@ -68,7 +68,7 @@ export default async function NgoActivityPage({ searchParams }: { searchParams: 
         <Link
           href="/ngo/activity"
           aria-current={kind === null ? "page" : undefined}
-          className={`px-3 py-2 rounded-full text-xs font-bold ${kind === null ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900" : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"}`}
+          className={`px-3 py-2 rounded-full text-xs font-bold ${kind === null ? "bg-trust-600 text-white" : "bg-white text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50"}`}
         >
           All ({all.length})
         </Link>
@@ -80,7 +80,7 @@ export default async function NgoActivityPage({ searchParams }: { searchParams: 
               key={k}
               href={`/ngo/activity?kind=${k}`}
               aria-current={kind === k ? "page" : undefined}
-              className={`px-3 py-2 rounded-full text-xs font-bold ${kind === k ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900" : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"}`}
+              className={`px-3 py-2 rounded-full text-xs font-bold ${kind === k ? "bg-trust-600 text-white" : "bg-white text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50"}`}
             >
               {KIND_LABEL[k].label} ({n})
             </Link>
@@ -93,7 +93,7 @@ export default async function NgoActivityPage({ searchParams }: { searchParams: 
       ) : (
         <ol className="mt-6 space-y-3">
           {items.map((i, idx) => (
-            <li key={idx} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+            <li key={idx} className="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${KIND_LABEL[i.kind].cls}`}>{KIND_LABEL[i.kind].label}</span>
                 <time dateTime={i.at.toISOString()} className="text-xs text-gray-500">

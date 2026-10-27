@@ -184,13 +184,13 @@ export default function RequirementDetailClient({
   return (
     <div className="px-6 lg:px-10 py-10 max-w-6xl space-y-6">
       <div>
-        <Link href="/donor/requirements" className="text-xs font-bold text-emerald-400 hover:underline">
+        <Link href="/donor/requirements" className="text-xs font-bold text-emerald-700 hover:underline">
           ← My CSR Documents
         </Link>
         <div className="flex flex-wrap items-center gap-3 mt-2">
-          <h1 className="text-2xl font-extrabold text-white break-all">{requirement.fileName}</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 break-all">{requirement.fileName}</h1>
           <StatusBadge status={status} />
-          <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-300">v{requirement.version}</span>
+          <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">v{requirement.version}</span>
         </div>
         <p className="text-xs text-gray-500 mt-1">
           {requirement.isFormEntry
@@ -208,11 +208,11 @@ export default function RequirementDetailClient({
         </div>
       </div>
 
-      {notice && <p className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-4 py-2">{notice}</p>}
-      {error && <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-4 py-2">{error}</p>}
+      {notice && <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2">{notice}</p>}
+      {error && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2">{error}</p>}
 
       {/* Status-specific guidance and the one primary action for this stage */}
-      <div className="border border-gray-800 bg-gray-900/40 rounded-2xl p-5 text-sm text-gray-300">
+      <div className="border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] rounded-2xl p-5 text-sm text-gray-700">
         {status === "UPLOADED" || status === "PROCESSING" ? (
           <p>Processing the document and extracting requirements…</p>
         ) : status === "FAILED" ? (
@@ -220,11 +220,11 @@ export default function RequirementDetailClient({
             <ExtractionErrorDetail requirement={requirement} />
             <div className="flex flex-wrap gap-2">
               {requirement.hasDocument && (
-                <button type="button" disabled={!!busy} onClick={retry} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-950 text-xs font-bold disabled:opacity-50">
+                <button type="button" disabled={!!busy} onClick={retry} className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-800 hover:bg-gray-50 text-xs font-bold disabled:opacity-50">
                   {busy === "retry" ? "Retrying…" : "Retry extraction"}
                 </button>
               )}
-              <button type="button" disabled={!!busy} onClick={manualEntry} className="px-4 py-2 rounded-lg border border-gray-600 text-gray-100 text-xs font-bold disabled:opacity-50">
+              <button type="button" disabled={!!busy} onClick={manualEntry} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-900 text-xs font-bold disabled:opacity-50">
                 {busy === "manual" ? "Opening…" : "Enter details manually"}
               </button>
             </div>
@@ -235,7 +235,7 @@ export default function RequirementDetailClient({
           <p>Review the extracted requirements below. Correct anything that is wrong — especially fields marked ⚠ — then submit them for admin verification.</p>
         ) : status === "NEEDS_CORRECTION" ? (
           <div className="space-y-1">
-            <p className="text-orange-300 font-semibold">An admin asked for corrections:</p>
+            <p className="text-orange-700 font-semibold">An admin asked for corrections:</p>
             <p className="whitespace-pre-wrap">{requirement.reviewNote}</p>
             <p className="text-xs text-gray-500">Update the fields below and resubmit.</p>
           </div>
@@ -243,7 +243,7 @@ export default function RequirementDetailClient({
           <p>Awaiting admin verification. The requirement is read-only while it is reviewed.</p>
         ) : status === "REJECTED" ? (
           <div className="space-y-1">
-            <p className="text-red-300 font-semibold">This requirement was rejected by an admin:</p>
+            <p className="text-red-700 font-semibold">This requirement was rejected by an admin:</p>
             <p className="whitespace-pre-wrap">{requirement.reviewNote}</p>
           </div>
         ) : status === "VALIDATED" ? (
@@ -252,7 +252,7 @@ export default function RequirementDetailClient({
               Validated by an admin{requirement.validatedAt ? ` on ${new Date(requirement.validatedAt).toLocaleDateString("en-IN")}` : ""}.
               Find compatible NGO projects next.
             </p>
-            <button type="button" disabled={!!busy} onClick={findMatches} className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-bold disabled:opacity-50">
+            <button type="button" disabled={!!busy} onClick={findMatches} className="px-4 py-2 rounded-lg bg-trust-600 hover:bg-trust-700 text-white text-xs font-bold disabled:opacity-50">
               {busy === "match" ? "Finding compatible NGOs…" : "Find Matches"}
             </button>
           </div>
@@ -267,13 +267,13 @@ export default function RequirementDetailClient({
         ) : status === "NGO_RESPONSE" ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p>
-              Review each proposal: <span className="font-semibold text-white">request changes</span> with a note, or{" "}
-              <span className="font-semibold text-white">approve</span> the one you want to fund.
+              Review each proposal: <span className="font-semibold text-gray-900">request changes</span> with a note, or{" "}
+              <span className="font-semibold text-gray-900">approve</span> the one you want to fund.
               {readyToDecide > 0 && ` ${readyToDecide} ready for your decision.`}
               {waitingOnRevision > 0 && ` ${waitingOnRevision} back with the organisation for changes.`}
             </p>
             {tab !== "responses" && (
-              <button type="button" onClick={() => setTab("responses")} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-950 text-xs font-bold">
+              <button type="button" onClick={() => setTab("responses")} className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-800 hover:bg-gray-50 text-xs font-bold">
                 Review proposals
               </button>
             )}
@@ -281,7 +281,7 @@ export default function RequirementDetailClient({
         ) : status === "SELECTED" ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-base font-extrabold text-emerald-300">Proposal Approved — Ready for Contracting</p>
+              <p className="text-base font-extrabold text-emerald-700">Proposal Approved — Ready for Contracting</p>
               <p className="mt-1">
                 {(() => {
                   const approved = responses.find((r) => r.status === "SELECTED");
@@ -293,16 +293,16 @@ export default function RequirementDetailClient({
                 Initiate the grant contract — it is prefilled from this requirement and the approved proposal.
               </p>
             </div>
-            <Link href={`/donor/contracts/new?requirementId=${id}`} className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-bold">
+            <Link href={`/donor/contracts/new?requirementId=${id}`} className="px-4 py-2 rounded-lg bg-trust-600 hover:bg-trust-700 text-white text-xs font-bold">
               Initiate Contract
             </Link>
           </div>
         ) : status === "WITHDRAWN" ? (
-          <p className="text-gray-400">You withdrew this requirement. It is closed and no longer visible to NGOs.</p>
+          <p className="text-gray-600">You withdrew this requirement. It is closed and no longer visible to NGOs.</p>
         ) : status === "CONTRACTED" && contract ? (
           <p>
             Contracted —{" "}
-            <Link href={`/donor/contracts/${contract.id}`} className="text-emerald-400 font-semibold hover:underline">
+            <Link href={`/donor/contracts/${contract.id}`} className="text-emerald-700 font-semibold hover:underline">
               {contract.contractNumber}
             </Link>{" "}
             ({contract.status.toLowerCase()}).
@@ -313,12 +313,12 @@ export default function RequirementDetailClient({
       {canWithdraw && (
         <div className="text-sm">
           {!withdrawing ? (
-            <button type="button" onClick={() => setWithdrawing(true)} className="min-h-[40px] text-xs font-bold text-red-300 hover:underline">
+            <button type="button" onClick={() => setWithdrawing(true)} className="min-h-[40px] text-xs font-bold text-red-700 hover:underline">
               Withdraw this requirement…
             </button>
           ) : (
-            <div className="border border-red-500/30 bg-red-500/5 rounded-2xl p-4 space-y-2">
-              <label htmlFor="withdraw-reason" className="block text-xs font-bold text-red-200">
+            <div className="border border-red-200 bg-red-50 rounded-2xl p-4 space-y-2">
+              <label htmlFor="withdraw-reason" className="block text-xs font-bold text-red-700">
                 Why are you withdrawing it? (at least 10 characters)
               </label>
               <textarea
@@ -326,9 +326,9 @@ export default function RequirementDetailClient({
                 rows={2}
                 value={withdrawReason}
                 onChange={(e) => setWithdrawReason(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
               />
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-600">
                 This closes the requirement for good.
                 {responses.length > 0 ? ` ${responses.length} NGO response${responses.length === 1 ? "" : "s"} will be closed and the NGOs notified.` : ""}
               </p>
@@ -341,7 +341,7 @@ export default function RequirementDetailClient({
                 >
                   {busy === "withdraw" ? "Withdrawing…" : "Withdraw requirement"}
                 </button>
-                <button type="button" onClick={() => setWithdrawing(false)} className="min-h-[40px] px-3 text-xs text-gray-300">
+                <button type="button" onClick={() => setWithdrawing(false)} className="min-h-[40px] px-3 text-xs text-gray-700">
                   Cancel
                 </button>
               </div>
@@ -350,14 +350,14 @@ export default function RequirementDetailClient({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 border-b border-gray-800">
+      <div className="flex flex-wrap gap-2 border-b border-gray-200">
         {tabs.map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-xs font-bold capitalize border-b-2 -mb-px transition ${
-              tab === t ? "border-emerald-400 text-emerald-300" : "border-transparent text-gray-500 hover:text-gray-200"
+              tab === t ? "border-emerald-300 text-emerald-700" : "border-transparent text-gray-500 hover:text-gray-900"
             }`}
           >
             {t === "history" ? "Version history" : t === "responses" ? `NGO responses (${responses.length})` : t}
@@ -376,7 +376,7 @@ export default function RequirementDetailClient({
                 type="button"
                 disabled={!dirty || !!busy}
                 onClick={save}
-                className="px-5 py-2.5 rounded-xl border border-gray-700 text-gray-200 text-sm font-semibold hover:bg-gray-800 disabled:opacity-40"
+                className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-800 text-sm font-semibold hover:bg-gray-50 disabled:opacity-40"
               >
                 {busy === "save" ? "Saving…" : "Save changes"}
               </button>
@@ -385,19 +385,19 @@ export default function RequirementDetailClient({
                 disabled={!!busy || openFlags > 0}
                 title={openFlags > 0 ? "Confirm the extraction warnings above first" : undefined}
                 onClick={submit}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 text-gray-950 text-sm font-bold disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-trust-600 hover:bg-trust-700 text-white text-sm font-bold disabled:opacity-50"
               >
                 {busy === "submit" ? "Submitting…" : "Submit for Admin Verification"}
               </button>
             </div>
           )}
           {requirement.rawText !== undefined && !requirement.isFormEntry && (
-            <div className="border border-gray-800 rounded-2xl p-4">
-              <button type="button" onClick={() => setShowRaw((s) => !s)} className="text-xs font-semibold text-emerald-400">
+            <div className="border border-gray-200 rounded-2xl p-4">
+              <button type="button" onClick={() => setShowRaw((s) => !s)} className="text-xs font-semibold text-emerald-700">
                 {showRaw ? "Hide" : "Show"} text read from the document
               </button>
               {showRaw && (
-                <pre className="mt-3 max-h-96 overflow-y-auto text-xs font-mono text-gray-400 whitespace-pre-wrap">
+                <pre className="mt-3 max-h-96 overflow-y-auto text-xs font-mono text-gray-600 whitespace-pre-wrap">
                   {requirement.rawText || "No text extracted."}
                 </pre>
               )}
@@ -407,7 +407,7 @@ export default function RequirementDetailClient({
       )}
 
       {tab === "document" && (
-        <div className="border border-gray-800 bg-gray-900/40 rounded-2xl p-5 space-y-2">
+        <div className="border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] rounded-2xl p-5 space-y-2">
           <p className="text-xs text-gray-500">
             {requirement.fileName} · {(requirement.fileSize / 1024).toFixed(0)} KB · SHA-256 {requirement.fileHash.slice(0, 16)}…
           </p>
@@ -432,7 +432,7 @@ export default function RequirementDetailClient({
         <div className="space-y-4">
           {status === "SHORTLISTED" && !invitedAny && (
             <div className="flex justify-end">
-              <button type="button" disabled={!!busy} onClick={findMatches} className="text-xs font-semibold text-gray-400 hover:text-white disabled:opacity-50">
+              <button type="button" disabled={!!busy} onClick={findMatches} className="text-xs font-semibold text-gray-600 hover:text-gray-900 disabled:opacity-50">
                 {busy === "match" ? "Re-running…" : "↻ Re-run matching"}
               </button>
             </div>
@@ -445,7 +445,7 @@ export default function RequirementDetailClient({
               invitingId={busy?.startsWith("invite:") ? busy.slice(7) : null}
             />
           ) : (
-            <p className="text-sm text-gray-400">No matching run yet. Use “Find Matches” above.</p>
+            <p className="text-sm text-gray-600">No matching run yet. Use “Find Matches” above.</p>
           )}
         </div>
       )}

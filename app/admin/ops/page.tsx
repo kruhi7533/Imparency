@@ -34,14 +34,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const TONE: Record<"good" | "warn" | "bad", string> = {
-  good: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:ring-emerald-900/40",
-  warn: "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:ring-amber-900/40",
-  bad: "bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/30 dark:text-red-400 dark:ring-red-900/40",
+  good: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  warn: "bg-amber-50 text-amber-700 ring-amber-200",
+  bad: "bg-red-50 text-red-700 ring-red-200",
 };
 
 const TH =
-  "px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-500";
-const TD = "px-3 py-2 text-sm text-gray-800 dark:text-gray-200";
+  "px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-gray-500";
+const TD = "px-3 py-2 text-sm text-gray-800";
 
 function ago(from: Date, now: number): string {
   const mins = Math.floor((now - from.getTime()) / 60_000);
@@ -127,31 +127,31 @@ export default async function OpsPage() {
   const neverRun = rows.filter((r) => r.health === "never_run");
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
       <header className="space-y-2">
         <div className="flex items-center gap-2">
-          <Activity className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Scheduled jobs</h1>
+          <Activity className="h-5 w-5 text-indigo-600" />
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Scheduled jobs</h1>
         </div>
-        <p className="max-w-3xl text-sm text-gray-600 dark:text-gray-400">
+        <p className="max-w-3xl text-sm text-gray-600">
           Every job the platform is supposed to run, and whether it actually did. A job that has
           never run is shown as a failure, not as healthy — silence is not success.
         </p>
-        <p className="text-xs text-gray-500 dark:text-gray-500">
+        <p className="text-xs text-gray-500">
           {rows.length} registered · {unhealthy.length} needing attention · {failuresToday} failed
           run{failuresToday === 1 ? "" : "s"} in the last 24h
         </p>
       </header>
 
       {neverRun.length > 0 && (
-        <section className="rounded-xl border border-red-300 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+        <section className="rounded-xl border border-red-300 bg-red-50 p-4">
           <div className="flex items-center gap-2">
-            <CircleSlash className="h-4 w-4 text-red-600 dark:text-red-400" />
-            <h2 className="text-sm font-bold text-red-900 dark:text-red-300">
+            <CircleSlash className="h-4 w-4 text-red-600" />
+            <h2 className="text-sm font-bold text-red-900">
               {neverRun.length} job{neverRun.length === 1 ? " has" : "s have"} never run
             </h2>
           </div>
-          <p className="mt-1 max-w-3xl text-xs text-red-800 dark:text-red-300/80">
+          <p className="mt-1 max-w-3xl text-xs text-red-800">
             No ledger row exists for {neverRun.length === 1 ? "this job" : "these jobs"}. Either the
             schedule was never installed on the server, or it has never reached the route. Until one
             runs, nothing it is responsible for is happening — and nothing else on this page can
@@ -161,7 +161,7 @@ export default async function OpsPage() {
             {neverRun.map((r) => (
               <li
                 key={r.def.name}
-                className="rounded bg-red-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-red-900 dark:bg-red-900/40 dark:text-red-200"
+                className="rounded bg-red-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-red-900"
               >
                 {r.def.name}
               </li>
@@ -170,10 +170,10 @@ export default async function OpsPage() {
         </section>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
         <table className="min-w-full">
           <thead>
-            <tr className="border-b border-gray-200 dark:border-gray-800">
+            <tr className="border-b border-gray-200">
               <th className={TH}>Job</th>
               <th className={TH}>Health</th>
               <th className={TH}>Last run</th>
@@ -188,18 +188,18 @@ export default async function OpsPage() {
               return (
                 <tr
                   key={def.name}
-                  className="border-b border-gray-100 align-top last:border-0 dark:border-gray-800/60"
+                  className="border-b border-gray-100 align-top last:border-0"
                 >
                   <td className={TD}>
                     <code className="font-mono text-[11px] font-semibold">{def.name}</code>
-                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-500">{def.purpose}</p>
+                    <p className="mt-0.5 text-xs text-gray-500">{def.purpose}</p>
                     {last?.errorName && (
-                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      <p className="mt-1 text-xs text-red-600">
                         {last.errorName}: {last.errorMessage}
                       </p>
                     )}
                     {last?.correlationId && (
-                      <p className="mt-0.5 font-mono text-[10px] text-gray-400 dark:text-gray-600">
+                      <p className="mt-0.5 font-mono text-[10px] text-gray-500">
                         {last.correlationId}
                       </p>
                     )}
@@ -216,23 +216,23 @@ export default async function OpsPage() {
                     {last ? (
                       <>
                         {ago(last.startedAt, now)}
-                        <span className="ml-1 text-xs text-gray-500 dark:text-gray-500">
+                        <span className="ml-1 text-xs text-gray-500">
                           ({last.status.toLowerCase()}, {last.trigger.toLowerCase()})
                         </span>
                       </>
                     ) : (
-                      <span className="font-semibold text-red-600 dark:text-red-400">never</span>
+                      <span className="font-semibold text-red-600">never</span>
                     )}
                   </td>
                   <td className={TD}>{duration(last?.durationMs ?? null)}</td>
                   <td className={TD}>
                     {/* null is "the job did not say", which is not the same as
                         zero. A nightly drainer reporting 0 is healthy. */}
-                    {last?.itemsProcessed ?? <span className="text-gray-400">—</span>}
+                    {last?.itemsProcessed ?? <span className="text-gray-500">—</span>}
                   </td>
                   <td className={TD}>
                     {humanHours(def.everyHours)}
-                    <span className="ml-1 text-xs text-gray-500 dark:text-gray-500">
+                    <span className="ml-1 text-xs text-gray-500">
                       +{humanHours(def.graceHours)} grace
                     </span>
                   </td>
@@ -243,18 +243,18 @@ export default async function OpsPage() {
         </table>
       </div>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+      <section className="rounded-xl border border-gray-200 bg-white p-4">
         <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white">How these are scheduled</h2>
+          <Clock className="h-4 w-4 text-indigo-600" />
+          <h2 className="text-sm font-bold text-gray-900">How these are scheduled</h2>
         </div>
-        <p className="mt-1 max-w-3xl text-xs text-gray-600 dark:text-gray-400">
+        <p className="mt-1 max-w-3xl text-xs text-gray-600">
           The cadences above are declared in <code>lib/job-registry.ts</code>, which also generates
           the server&apos;s crontab — so what is expected here and what actually runs come from one
           source. <code>vercel.json</code> still lists these nine schedules and fires none of them:
           the platform does not deploy to Vercel.
         </p>
-        <p className="mt-2 text-xs text-gray-500 dark:text-gray-500">
+        <p className="mt-2 text-xs text-gray-500">
           Detection and visibility only. Nothing here escalates, retries or pages anyone — a red row
           is surfaced to a human who is already looking, not pushed to one who is not. Same honesty
           note as <code>/admin/sla</code>.

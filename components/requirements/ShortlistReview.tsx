@@ -57,10 +57,10 @@ export function ShortlistReview({
   const valid = order.length > 0 && rejectedIds.every((id) => rejected[id].trim().length >= 3);
 
   return (
-    <div className="border border-emerald-500/30 bg-emerald-500/5 rounded-2xl p-4 space-y-3">
+    <div className="border border-emerald-200 bg-emerald-50 rounded-2xl p-4 space-y-3">
       <div>
-        <p className="text-sm font-bold text-white">Approve the shortlist before NGOs are invited</p>
-        <p className="text-xs text-gray-400">
+        <p className="text-sm font-bold text-gray-900">Approve the shortlist before NGOs are invited</p>
+        <p className="text-xs text-gray-600">
           Put the approved candidates in the order the donor should see them, and exclude any that should not be invited (a reason is
           required). The donor can invite only approved candidates. This is recorded in the audit trail.
         </p>
@@ -69,35 +69,35 @@ export function ShortlistReview({
         {order.map((id, i) => {
           const m = byId.get(id)!;
           return (
-            <li key={id} className="flex flex-wrap items-center gap-2 bg-gray-950/60 border border-gray-800 rounded-xl px-3 py-2 text-xs">
-              <span className="font-mono font-bold text-emerald-300 w-6">{i + 1}.</span>
+            <li key={id} className="flex flex-wrap items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs">
+              <span className="font-mono font-bold text-emerald-700 w-6">{i + 1}.</span>
               <span className="flex-1 min-w-0">
-                <span className="font-semibold text-gray-100">{m.ngoName}</span> <span className="text-gray-400">— {m.projectTitle}</span>
+                <span className="font-semibold text-gray-900">{m.ngoName}</span> <span className="text-gray-600">— {m.projectTitle}</span>
                 <span className="ml-2 text-gray-500">engine #{m.rank} · {m.score === null ? "unscored" : `${m.score}%`}</span>
               </span>
-              <button type="button" aria-label={`Move ${m.ngoName} up`} disabled={i === 0} onClick={() => move(i, -1)} className="px-2 py-1 rounded bg-gray-800 disabled:opacity-30">↑</button>
-              <button type="button" aria-label={`Move ${m.ngoName} down`} disabled={i === order.length - 1} onClick={() => move(i, 1)} className="px-2 py-1 rounded bg-gray-800 disabled:opacity-30">↓</button>
-              <button type="button" onClick={() => reject(id)} className="px-2 py-1 rounded bg-red-500/20 text-red-200 font-bold">Exclude</button>
+              <button type="button" aria-label={`Move ${m.ngoName} up`} disabled={i === 0} onClick={() => move(i, -1)} className="px-2 py-1 rounded bg-gray-100 disabled:opacity-30">↑</button>
+              <button type="button" aria-label={`Move ${m.ngoName} down`} disabled={i === order.length - 1} onClick={() => move(i, 1)} className="px-2 py-1 rounded bg-gray-100 disabled:opacity-30">↓</button>
+              <button type="button" onClick={() => reject(id)} className="px-2 py-1 rounded bg-red-50 text-red-700 font-bold">Exclude</button>
             </li>
           );
         })}
       </ol>
       {rejectedIds.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-bold text-red-200">Excluded</p>
+          <p className="text-xs font-bold text-red-700">Excluded</p>
           {rejectedIds.map((id) => {
             const m = byId.get(id)!;
             return (
               <div key={id} className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="text-gray-300 min-w-[10rem]">{m.ngoName}</span>
+                <span className="text-gray-700 min-w-[10rem]">{m.ngoName}</span>
                 <input
                   aria-label={`Reason for excluding ${m.ngoName}`}
                   value={rejected[id]}
                   onChange={(e) => setRejected((r) => ({ ...r, [id]: e.target.value }))}
                   placeholder="Reason (required)"
-                  className="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-gray-100"
+                  className="flex-1 bg-white border border-gray-300 rounded-lg px-2 py-1 text-gray-900"
                 />
-                <button type="button" onClick={() => restore(id)} className="text-emerald-300 font-semibold">Restore</button>
+                <button type="button" onClick={() => restore(id)} className="text-emerald-700 font-semibold">Restore</button>
               </div>
             );
           })}
@@ -108,7 +108,7 @@ export function ShortlistReview({
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Optional note for the record"
-        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-100"
+        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900"
       />
       <button
         type="button"
@@ -121,7 +121,7 @@ export function ShortlistReview({
             note,
           })
         }
-        className="px-4 py-2 rounded-lg bg-emerald-500 text-gray-950 text-xs font-bold disabled:opacity-40"
+        className="px-4 py-2 rounded-lg bg-trust-600 hover:bg-trust-700 text-white text-xs font-bold disabled:opacity-40"
       >
         {busy ? "Saving…" : `Approve shortlist (${order.length} in this order)`}
       </button>

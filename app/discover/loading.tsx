@@ -2,7 +2,7 @@ import React from "react";
 
 export default function DiscoverLoading() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-canvas dark:bg-gray-950 font-sans transition-colors duration-200">
       {/* Hero Section Skeleton */}
       <section className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 py-16 px-4 text-center animate-pulse">
         <div className="max-w-3xl mx-auto space-y-6">

@@ -42,8 +42,8 @@ export default async function AdminVerificationPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Approvals</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Approvals</h1>
+          <p className="mt-1 text-sm text-gray-600 max-w-2xl">
             Every organisation awaiting a decision. Approval requires evidence — an application with no documents, or
             documents nobody has read, cannot be approved until that is fixed.
           </p>
@@ -51,26 +51,26 @@ export default async function AdminVerificationPage() {
 
         <div className="flex items-center gap-6 flex-wrap">
           <div>
-            <div className="text-2xl font-black tabular-nums text-gray-900 dark:text-white">{queue.length}</div>
-            <div className="text-[11px] uppercase tracking-wide font-bold text-gray-400 dark:text-gray-600">
+            <div className="text-2xl font-bold tabular-nums text-gray-900">{queue.length}</div>
+            <div className="text-[11px] uppercase tracking-wide font-bold text-gray-500">
               In queue
             </div>
           </div>
           {reDecisions > 0 && (
-            <div className="border-l border-gray-200 dark:border-gray-700 pl-6">
-              <div className="text-2xl font-black tabular-nums text-red-600 dark:text-red-400">{reDecisions}</div>
+            <div className="border-l border-gray-200 pl-6">
+              <div className="text-2xl font-bold tabular-nums text-red-600">{reDecisions}</div>
               <div className="text-[11px] uppercase tracking-wide font-bold text-red-500/70">Re-decisions</div>
             </div>
           )}
           {blocked > 0 && (
-            <div className="border-l border-gray-200 dark:border-gray-700 pl-6">
-              <div className="text-2xl font-black tabular-nums text-amber-600 dark:text-amber-400">{blocked}</div>
+            <div className="border-l border-gray-200 pl-6">
+              <div className="text-2xl font-bold tabular-nums text-amber-600">{blocked}</div>
               <div className="text-[11px] uppercase tracking-wide font-bold text-amber-500/70">Missing evidence</div>
             </div>
           )}
           {analyzed > 0 && (
-            <div className="border-l border-gray-200 dark:border-gray-700 pl-6">
-              <div className="text-2xl font-black tabular-nums text-emerald-600 dark:text-emerald-400">{analyzed}</div>
+            <div className="border-l border-gray-200 pl-6">
+              <div className="text-2xl font-bold tabular-nums text-emerald-600">{analyzed}</div>
               <div className="text-[11px] uppercase tracking-wide font-bold text-emerald-500/70">Ready to approve</div>
             </div>
           )}

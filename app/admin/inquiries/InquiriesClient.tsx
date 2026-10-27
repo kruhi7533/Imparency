@@ -40,9 +40,9 @@ const fmtDateTime = (iso: string) =>
   });
 
 const STATUS_BADGE: Record<string, string> = {
-  OPEN: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30",
-  NGO_RESPONDED: "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30",
-  RESOLVED: "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30",
+  OPEN: "bg-blue-50 text-blue-700 border-blue-100",
+  NGO_RESPONDED: "bg-amber-50 text-amber-700 border-amber-100",
+  RESOLVED: "bg-emerald-50 text-emerald-700 border-emerald-100",
 };
 
 export default function InquiriesClient({ initialThreads, initialEmailToggle }: Props) {
@@ -136,18 +136,18 @@ export default function InquiriesClient({ initialThreads, initialEmailToggle }: 
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm font-medium text-red-700 dark:text-red-300">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {error}
         </div>
       )}
 
       {/* Email notification toggle */}
-      <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-3.5 shadow-sm">
+      <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200/80 bg-white px-5 py-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <div className="min-w-0">
-          <p className="text-sm font-bold text-gray-900 dark:text-white">
+          <p className="text-sm font-bold text-gray-900">
             Email the admin inbox when an NGO replies
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-500">
             {emailToggle
               ? "On top of the in-app badge, the shared admin inbox gets an email the moment an NGO responds or opens an appeal. This setting applies to all admins."
               : "Email alerts are off. New NGO replies still show up here and as a count badge on “Inquiries” in the top nav. This setting applies to all admins."}
@@ -161,7 +161,7 @@ export default function InquiriesClient({ initialThreads, initialEmailToggle }: 
           disabled={togglingEmail}
           onClick={toggleEmail}
           className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-            emailToggle ? "bg-emerald-600" : "bg-gray-300 dark:bg-gray-700"
+            emailToggle ? "bg-emerald-600" : "bg-gray-300"
           }`}
         >
           <span
@@ -187,7 +187,7 @@ export default function InquiriesClient({ initialThreads, initialEmailToggle }: 
             className={`px-4 py-2 rounded-xl text-sm font-bold transition ${
               tab === key
                 ? "bg-emerald-600 text-white"
-                : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"
+                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
             }`}
           >
             {label} ({counts[key]})
@@ -196,8 +196,8 @@ export default function InquiriesClient({ initialThreads, initialEmailToggle }: 
       </div>
 
       {visible.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-16 text-center">
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+        <div className="rounded-xl border border-dashed border-gray-200 bg-white py-16 text-center">
+          <p className="text-sm font-medium text-gray-500">
             No threads here right now.
           </p>
         </div>
@@ -209,7 +209,7 @@ export default function InquiriesClient({ initialThreads, initialEmailToggle }: 
             return (
               <div
                 key={t.id}
-                className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden"
+                className="rounded-xl border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] overflow-hidden"
               >
                 <button
                   onClick={() => {
@@ -221,10 +221,10 @@ export default function InquiriesClient({ initialThreads, initialEmailToggle }: 
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                           t.kind === "APPEAL"
-                            ? "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400"
-                            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                            ? "bg-purple-100 text-purple-700"
+                            : "bg-gray-100 text-gray-600"
                         }`}
                       >
                         {t.kind}
@@ -233,16 +233,16 @@ export default function InquiriesClient({ initialThreads, initialEmailToggle }: 
                         {t.status.replace("_", " ")}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm font-bold text-gray-900 dark:text-white truncate">{t.subject}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="mt-1 text-sm font-bold text-gray-900 truncate">{t.subject}</p>
+                    <p className="text-xs text-gray-500">
                       {t.subjectName} ({t.subjectType}) · {t.messages.length} message{t.messages.length === 1 ? "" : "s"} · updated {fmtDateTime(t.updatedAt)}
                     </p>
                   </div>
-                  <span className="text-gray-400 text-sm shrink-0">{expanded ? "▲" : "▼"}</span>
+                  <span className="text-gray-500 text-sm shrink-0">{expanded ? "▲" : "▼"}</span>
                 </button>
 
                 {expanded && (
-                  <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 space-y-4">
+                  <div className="border-t border-gray-100 px-5 py-4 space-y-4">
                     {/* Messages */}
                     <div className="space-y-3">
                       {t.messages.map((m) => (
@@ -250,11 +250,11 @@ export default function InquiriesClient({ initialThreads, initialEmailToggle }: 
                           key={m.id}
                           className={`max-w-[85%] rounded-xl px-4 py-2.5 text-sm ${
                             m.authorRole === "ADMIN"
-                              ? "ml-auto bg-emerald-50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200"
-                              : "bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+                              ? "ml-auto bg-emerald-50 text-emerald-900"
+                              : "bg-gray-50 text-gray-800"
                           }`}
                         >
-                          <p className="text-[10px] font-extrabold uppercase tracking-wider opacity-60 mb-0.5">
+                          <p className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-0.5">
                             {m.authorRole === "ADMIN" ? "Admin" : t.subjectName} · {fmtDateTime(m.createdAt)}
                           </p>
                           <p className="whitespace-pre-wrap">{m.body}</p>
@@ -270,20 +270,20 @@ export default function InquiriesClient({ initialThreads, initialEmailToggle }: 
                           onChange={(e) => setReply(e.target.value)}
                           rows={3}
                           placeholder="Write a reply…"
-                          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500"
                         />
                         <div className="flex justify-end gap-3">
                           <button
                             disabled={busy}
                             onClick={() => act(t.id, reply.trim() || null, true)}
-                            className="px-4 py-2 text-sm font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-50"
+                            className="px-4 py-2 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
                           >
                             {reply.trim() ? "Reply & Resolve" : "Mark Resolved"}
                           </button>
                           <button
                             disabled={busy || !reply.trim()}
                             onClick={() => act(t.id, reply.trim(), false)}
-                            className="px-4 py-2 text-sm font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
+                            className="px-4 py-2 text-sm font-semibold rounded-lg bg-trust-600 text-white hover:bg-trust-700 transition disabled:opacity-50"
                           >
                             {busy ? "Working…" : "Send Reply"}
                           </button>

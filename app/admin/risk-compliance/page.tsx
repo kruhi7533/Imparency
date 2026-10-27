@@ -67,11 +67,11 @@ export default async function RiskCompliancePage({
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
+    <div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Risk & Compliance</h1>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Risk & Compliance</h1>
+          <p className="mt-2 text-sm text-gray-500">
             Risk monitors behavioral and fraud signals. Compliance tracks KYC, FCRA, and regulatory status. Each has its own write path.
           </p>
         </div>

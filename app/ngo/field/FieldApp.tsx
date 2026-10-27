@@ -215,36 +215,37 @@ export default function FieldApp({ userName }: { userName: string }) {
 
   const pending = queued.filter((q) => !q.error);
   const failed = queued.filter((q) => q.error);
-  const input = "mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base";
+  const input =
+    "mt-1 w-full min-h-12 rounded-xl border-2 border-gray-300 bg-white px-3 py-2.5 text-base font-normal text-gray-900 placeholder:text-gray-500 focus:border-trust-600 focus:outline-none focus:ring-2 focus:ring-trust-600/30";
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen pb-24 text-gray-900">
       {/* top-16: sits below the global sticky navbar instead of sliding under it. */}
-      <header className="sticky top-16 z-10 bg-emerald-700 text-white px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-16 z-10 bg-white border-b-2 border-gray-300 px-4 py-3 flex items-center justify-between">
         <div>
-          <p className="text-xs opacity-80">Field app</p>
-          <p className="font-bold">{userName}</p>
+          <p className="text-sm font-semibold text-gray-700">Field app</p>
+          <p className="text-lg font-bold text-gray-900">{userName}</p>
         </div>
-        <span role="status" aria-live="polite" className={`text-xs font-bold px-2.5 py-1 rounded-full ${online ? "bg-emerald-500" : "bg-amber-500 text-gray-900"}`}>
+        <span role="status" aria-live="polite" className={`text-sm font-bold px-3 py-1.5 rounded-full ring-2 ${online ? "bg-emerald-100 text-emerald-900 ring-emerald-600" : "bg-amber-100 text-amber-900 ring-amber-600"}`}>
           {online ? "Online" : "Offline"}
         </span>
       </header>
 
       <main className="max-w-lg mx-auto p-4 space-y-4">
         <div role="status" aria-live="polite">
-          {message && <div className="p-3 rounded-xl bg-white border border-emerald-200 text-sm text-emerald-800">{message}</div>}
+          {message && <div className="p-4 rounded-xl bg-emerald-50 border-2 border-emerald-600 text-base font-semibold text-emerald-900">{message}</div>}
         </div>
 
         {/* Sync queue */}
-        <section className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
+        <section className="bg-white rounded-2xl p-4 border border-gray-300 shadow-sm flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-bold">{pending.length} waiting to sync</p>
-            <p className="text-xs text-gray-600">Captures are saved on this phone first.</p>
+            <p className="text-base font-bold text-gray-900">{pending.length} waiting to sync</p>
+            <p className="text-sm text-gray-700">Captures are saved on this phone first.</p>
           </div>
           <button
             onClick={sync}
             disabled={syncing || pending.length === 0 || !online}
-            className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-40"
+            className="min-h-12 shrink-0 px-5 py-3 rounded-xl bg-trust-600 hover:bg-trust-700 text-white text-base font-bold disabled:bg-gray-300 disabled:text-gray-700"
           >
             {syncing ? "Syncing…" : "Sync now"}
           </button>
@@ -254,22 +255,22 @@ export default function FieldApp({ userName }: { userName: string }) {
             {pending.map((p) => {
               const sending = progress?.clientId === p.clientId;
               return (
-                <li key={p.clientId} className="bg-white rounded-2xl p-3 shadow-sm text-sm">
+                <li key={p.clientId} className="bg-white rounded-2xl p-4 border border-gray-300 shadow-sm text-base">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-bold truncate">{p.taskTitle}</p>
-                    <span className="text-xs text-gray-600 shrink-0">
+                    <p className="font-bold text-gray-900 truncate">{p.taskTitle}</p>
+                    <span className="text-sm font-semibold text-gray-700 shrink-0">
                       {sending ? `Uploading ${Math.round((progress?.fraction ?? 0) * 100)}%` : p.photo ? "Photo queued" : "Feedback queued"}
                     </span>
                   </div>
                   {sending && (
-                    <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((progress?.fraction ?? 0) * 100)}>
-                      <div className="h-full bg-emerald-600 transition-all" style={{ width: `${Math.round((progress?.fraction ?? 0) * 100)}%` }} />
+                    <div className="mt-2 h-3 rounded-full bg-gray-200 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((progress?.fraction ?? 0) * 100)}>
+                      <div className="h-full bg-trust-600 transition-all" style={{ width: `${Math.round((progress?.fraction ?? 0) * 100)}%` }} />
                     </div>
                   )}
                   {!sending && p.lastAttemptError && (
                     <div className="mt-1 flex items-center justify-between gap-2">
-                      <p className="text-xs text-amber-800">Last attempt failed: {p.lastAttemptError}</p>
-                      <button onClick={() => retry(p)} disabled={syncing || !online} className="min-h-[44px] px-3 text-sm font-bold text-emerald-800 underline disabled:opacity-40">
+                      <p className="text-sm font-medium text-amber-900">Last attempt failed: {p.lastAttemptError}</p>
+                      <button onClick={() => retry(p)} disabled={syncing || !online} className="min-h-12 px-3 text-base font-bold text-trust-700 underline disabled:opacity-40">
                         Retry
                       </button>
                     </div>
@@ -280,14 +281,14 @@ export default function FieldApp({ userName }: { userName: string }) {
           </ul>
         )}
         {failed.map((f) => (
-          <section key={f.clientId} role="alert" className="bg-red-50 border border-red-200 rounded-2xl p-3 text-sm">
-            <p className="font-bold text-red-800">{f.taskTitle}: not accepted</p>
-            <p className="text-red-700 text-xs">{f.error}</p>
+          <section key={f.clientId} role="alert" className="bg-red-50 border-2 border-red-600 rounded-2xl p-4 text-base">
+            <p className="font-bold text-red-900">{f.taskTitle}: not accepted</p>
+            <p className="text-red-800 text-sm">{f.error}</p>
             <div className="flex gap-4">
-              <button onClick={() => retry(f)} disabled={syncing || !online} className="mt-1 min-h-[44px] px-2 -ml-2 text-sm font-bold text-emerald-800 underline disabled:opacity-40">
+              <button onClick={() => retry(f)} disabled={syncing || !online} className="mt-1 min-h-12 px-2 -ml-2 text-base font-bold text-trust-700 underline disabled:opacity-40">
                 Retry
               </button>
-              <button onClick={() => discard(f.clientId)} className="mt-1 min-h-[44px] px-2 text-sm font-bold text-red-700 underline">
+              <button onClick={() => discard(f.clientId)} className="mt-1 min-h-12 px-2 text-base font-bold text-red-800 underline">
                 Discard
               </button>
             </div>
@@ -296,29 +297,29 @@ export default function FieldApp({ userName }: { userName: string }) {
 
         {/* Capture form */}
         {active ? (
-          <form onSubmit={save} className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
+          <form onSubmit={save} className="bg-white rounded-2xl p-4 border border-gray-300 shadow-sm space-y-5">
             <div>
-              <p className="text-xs text-gray-500">{active.project.title}</p>
-              <h2 className="text-lg font-bold">{active.title}</h2>
-              {active.instructions && <p className="text-sm text-gray-600 mt-1">{active.instructions}</p>}
+              <p className="text-sm font-semibold text-gray-700">{active.project.title}</p>
+              <h2 className="text-xl font-bold text-gray-900">{active.title}</h2>
+              {active.instructions && <p className="text-base text-gray-800 mt-1">{active.instructions}</p>}
             </div>
 
-            <label className="block text-sm font-bold">
-              Photo <span className="font-normal text-gray-500">(JPEG, PNG, WebP or HEIC, up to 8 MB)</span>
+            <label className="block text-base font-bold text-gray-900">
+              Photo <span className="text-sm font-normal text-gray-700">(JPEG, PNG, WebP or HEIC, up to 8 MB)</span>
               <input
                 type="file"
                 accept="image/*"
                 capture="environment"
                 onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-                className="mt-1 block w-full text-sm"
+                className="mt-2 block w-full text-base text-gray-900 file:mr-3 file:min-h-12 file:rounded-xl file:border-0 file:bg-trust-600 file:px-4 file:py-3 file:text-base file:font-bold file:text-white"
               />
             </label>
             {photo && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={photoUrl ?? undefined} alt="Preview of the photo you just took" className="rounded-xl max-h-60 w-full object-cover" />
+              <img src={photoUrl ?? undefined} alt="Preview of the photo you just took" className="rounded-xl border border-gray-300 max-h-60 w-full object-cover" />
             )}
 
-            <div className="text-sm flex items-center justify-between gap-2 p-3 rounded-xl bg-gray-50">
+            <div className="text-base text-gray-900 flex items-center justify-between gap-2 p-3 rounded-xl bg-gray-50 border border-gray-300">
               <span aria-live="polite">
                 {gps
                   ? `📍 ${gps.latitude.toFixed(5)}, ${gps.longitude.toFixed(5)} (±${gps.accuracyM} m)`
@@ -330,13 +331,13 @@ export default function FieldApp({ userName }: { userName: string }) {
                 type="button"
                 onClick={locate}
                 aria-label={gps ? "Refresh location" : "Retry getting location"}
-                className="min-h-[44px] px-3 rounded-lg text-sm font-bold text-emerald-800 hover:bg-emerald-50"
+                className="min-h-12 shrink-0 px-4 rounded-xl border-2 border-trust-600 bg-white text-base font-bold text-trust-700 hover:bg-trust-50"
               >
                 {gps ? "Refresh" : "Retry"}
               </button>
             </div>
 
-            <label className="block text-sm font-bold">
+            <label className="block text-base font-bold text-gray-900">
               Note
               <textarea
                 rows={3}
@@ -347,29 +348,29 @@ export default function FieldApp({ userName }: { userName: string }) {
               />
             </label>
 
-            <label className="flex items-center gap-3 min-h-[44px] text-sm">
+            <label className="flex items-center gap-3 min-h-12 text-base text-gray-900">
               <input
                 type="checkbox"
                 checked={form.containsPeople}
                 onChange={(e) => setForm({ ...form, containsPeople: e.target.checked })}
-                className="w-5 h-5"
+                className="w-6 h-6 shrink-0 accent-trust-600"
               />
               The photo shows people
             </label>
 
-            <label className="flex items-center gap-3 min-h-[44px] text-sm font-bold">
+            <label className="flex items-center gap-3 min-h-12 text-base font-bold text-gray-900">
               <input
                 type="checkbox"
                 checked={form.withFeedback}
                 onChange={(e) => setForm({ ...form, withFeedback: e.target.checked })}
-                className="w-5 h-5"
+                className="w-6 h-6 shrink-0 accent-trust-600"
               />
               Record beneficiary feedback & consent
             </label>
 
             {form.withFeedback && (
-              <div className="space-y-3 p-3 rounded-xl border border-gray-200">
-                <label className="block text-sm">
+              <div className="space-y-4 p-4 rounded-xl border-2 border-gray-300 bg-gray-50">
+                <label className="block text-base font-semibold text-gray-900">
                   Beneficiary reference (no names)
                   <input
                     value={form.beneficiaryRef}
@@ -379,7 +380,7 @@ export default function FieldApp({ userName }: { userName: string }) {
                     className={input}
                   />
                 </label>
-                <label className="block text-sm">
+                <label className="block text-base font-semibold text-gray-900">
                   How was consent given?
                   <select
                     value={form.consentMethod}
@@ -391,28 +392,28 @@ export default function FieldApp({ userName }: { userName: string }) {
                     <option value="THUMBPRINT">Thumbprint</option>
                   </select>
                 </label>
-                <label className="flex items-start gap-2 text-sm">
+                <label className="flex items-start gap-3 min-h-12 text-base text-gray-900">
                   <input
                     type="checkbox"
                     checked={form.consentToRecord}
                     onChange={(e) => setForm({ ...form, consentToRecord: e.target.checked, consentToSharePhoto: e.target.checked && form.consentToSharePhoto })}
-                    className="w-5 h-5 mt-0.5"
+                    className="w-6 h-6 mt-0.5 shrink-0 accent-trust-600"
                   />
                   Agrees to their feedback being recorded
                 </label>
-                <label className={`flex items-start gap-2 text-sm ${form.consentToRecord ? "" : "opacity-40"}`}>
+                <label className={`flex items-start gap-3 min-h-12 text-base text-gray-900 ${form.consentToRecord ? "" : "opacity-40"}`}>
                   <input
                     type="checkbox"
                     disabled={!form.consentToRecord}
                     checked={form.consentToSharePhoto}
                     onChange={(e) => setForm({ ...form, consentToSharePhoto: e.target.checked })}
-                    className="w-5 h-5 mt-0.5"
+                    className="w-6 h-6 mt-0.5 shrink-0 accent-trust-600"
                   />
                   Agrees to the photo being shown to the funder
                 </label>
                 {form.consentToRecord ? (
                   <>
-                    <label className="block text-sm">
+                    <label className="block text-base font-semibold text-gray-900">
                       Rating (1–5)
                       <select value={form.rating} onChange={(e) => setForm({ ...form, rating: e.target.value })} className={input}>
                         <option value="">No rating</option>
@@ -423,7 +424,7 @@ export default function FieldApp({ userName }: { userName: string }) {
                         ))}
                       </select>
                     </label>
-                    <label className="block text-sm">
+                    <label className="block text-base font-semibold text-gray-900">
                       Feedback
                       <textarea
                         rows={3}
@@ -434,7 +435,7 @@ export default function FieldApp({ userName }: { userName: string }) {
                     </label>
                   </>
                 ) : (
-                  <p className="text-xs text-gray-600">
+                  <p className="text-sm text-gray-800">
                     Without consent to record, only the fact that consent was asked is saved — no feedback.
                   </p>
                 )}
@@ -442,10 +443,10 @@ export default function FieldApp({ userName }: { userName: string }) {
             )}
 
             <div className="flex gap-2">
-              <button type="button" onClick={() => setActive(null)} className="flex-1 py-3 rounded-xl border text-sm font-bold">
+              <button type="button" onClick={() => setActive(null)} className="flex-1 min-h-12 py-3 rounded-xl border-2 border-gray-300 bg-white text-gray-900 text-base font-bold hover:bg-gray-50">
                 Cancel
               </button>
-              <button type="submit" className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold">
+              <button type="submit" className="flex-1 min-h-12 py-3 rounded-xl bg-trust-600 hover:bg-trust-700 text-white text-base font-bold">
                 Save capture
               </button>
             </div>
@@ -453,10 +454,10 @@ export default function FieldApp({ userName }: { userName: string }) {
         ) : (
           <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold">My tasks</h2>
-              {tasksFromCache && <span className="text-xs text-amber-800">Showing saved list (offline)</span>}
+              <h2 className="text-xl font-bold text-gray-900">My tasks</h2>
+              {tasksFromCache && <span className="text-sm font-semibold text-amber-900">Showing saved list (offline)</span>}
             </div>
-            {tasks.length === 0 && <p className="text-sm text-gray-500">No tasks assigned to you.</p>}
+            {tasks.length === 0 && <p className="text-base text-gray-700 bg-white border border-gray-300 rounded-2xl p-4">No tasks assigned to you.</p>}
             {tasks.map((t) => {
               const last = t.evidence[0];
               return (
@@ -465,19 +466,19 @@ export default function FieldApp({ userName }: { userName: string }) {
                   onClick={() => openTask(t)}
                   disabled={t.status === "COMPLETED"}
                   aria-label={`${t.title}, ${t.status.toLowerCase().replace(/_/g, " ")}${t.status === "COMPLETED" ? "" : ", open to capture evidence"}`}
-                  className="w-full text-left bg-white rounded-2xl p-4 shadow-sm disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+                  className="w-full min-h-12 text-left bg-white rounded-2xl p-4 border border-gray-300 shadow-sm hover:border-trust-600 active:bg-gray-50 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-trust-600"
                 >
                   <div className="flex justify-between gap-2">
-                    <p className="font-bold">{t.title}</p>
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 h-fit">{t.status}</span>
+                    <p className="text-base font-bold text-gray-900">{t.title}</p>
+                    <span className="text-xs font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-900 ring-1 ring-gray-400 h-fit shrink-0">{t.status}</span>
                   </div>
-                  <p className="text-xs text-gray-600">
+                  <p className="mt-1 text-sm text-gray-700">
                     {t.project.title}
                     {t.milestone ? ` · ${t.milestone.title}` : ""}
                     {t.dueDate ? ` · due ${new Date(t.dueDate).toLocaleDateString("en-IN")}` : ""}
                   </p>
                   {last?.status === "RESUBMIT_REQUESTED" && (
-                    <p className="text-xs text-red-700 mt-1">Resubmit requested: {last.reviewNote}</p>
+                    <p className="text-sm font-medium text-red-800 mt-1">Resubmit requested: {last.reviewNote}</p>
                   )}
                 </button>
               );
@@ -485,7 +486,7 @@ export default function FieldApp({ userName }: { userName: string }) {
           </section>
         )}
 
-        <Link href="/ngo/dashboard" className="block text-center py-3 text-sm text-gray-600 underline">
+        <Link href="/ngo/dashboard" className="flex min-h-12 items-center justify-center text-base font-semibold text-trust-700 underline">
           Back to dashboard
         </Link>
       </main>

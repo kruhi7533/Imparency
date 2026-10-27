@@ -555,7 +555,10 @@ export async function inviteMatch(id: string, actor: Actor, matchId: string) {
   });
   const match = await prisma.requirementMatch.findUnique({
     where: { id: matchId },
-    include: { ngo: { select: { orgName: true, verificationStatus: true, isSuspended: true } } },
+    include: {
+      ngo: { select: { orgName: true, verificationStatus: true, isSuspended: true, userId: true } },
+      project: { select: { title: true } },
+    },
   });
   if (!match || match.requirementId !== id || match.gapReportId !== latest?.id) {
     throw new RequirementWorkflowError("Match not found in the current shortlist.", 404);
@@ -590,6 +593,17 @@ export async function inviteMatch(id: string, actor: Actor, matchId: string) {
       toStatus: req.status,
       detail: `Opportunity brief shared with ${match.ngo.orgName}.`,
       metadata: { matchId, projectId: match.projectId, ngoId: match.ngoId },
+    });
+    // DON-006: the NGO learns of the invitation in its notification bell, not
+    // only if it happens to open the match inbox. Same transaction, so a retry
+    // of an already-invited match (returned above) never notifies twice.
+    await tx.notification.create({
+      data: {
+        userId: match.ngo.userId,
+        type: "CSR_INVITATION",
+        title: "A CSR funder invited you to submit a proposal",
+        body: `Your project "${match.project?.title ?? "project"}" was shortlisted for a CSR requirement. Open your match inbox to respond.`,
+      },
     });
     return updated;
   });

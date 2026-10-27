@@ -2,15 +2,14 @@ import React from "react";
 
 export default function NGOProfileLoading() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
+    <div className="font-sans">
       {/* Banner / Header */}
-      <div className="h-64 w-full bg-gradient-to-r from-emerald-600 to-teal-500 relative">
-        <div className="absolute inset-0 bg-black/10"></div>
+      <div className="h-48 sm:h-56 w-full bg-trust-50 border-b border-trust-100 relative">
       </div>
 
       {/* Profile Info Details Card */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 pb-16 relative z-10">
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-6 animate-pulse">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-[0_1px_2px_rgba(16,24,40,0.04)] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 animate-pulse">
           <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center">
             <div className="w-24 h-24 bg-gray-200 dark:bg-gray-800 rounded-2xl border-4 border-white dark:border-gray-900 shadow-md"></div>
             <div className="space-y-3">
@@ -30,7 +29,7 @@ export default function NGOProfileLoading() {
           {/* Main Info Columns */}
           <div className="lg:col-span-2 space-y-8">
             {/* Tabs List */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 shadow-sm flex gap-2 animate-pulse">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] flex gap-2 animate-pulse">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="h-8 w-24 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
               ))}
@@ -39,7 +38,7 @@ export default function NGOProfileLoading() {
             {/* Tab Contents Skeleton */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-pulse">
               {[1, 2].map((i) => (
-                <div key={i} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
+                <div key={i} className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                   <div className="h-40 bg-gray-200 dark:bg-gray-800"></div>
                   <div className="p-5 space-y-3">
                     <div className="h-3 w-16 bg-gray-200 dark:bg-gray-800 rounded"></div>
@@ -53,7 +52,7 @@ export default function NGOProfileLoading() {
 
           {/* Right Metrics Sidebar Skeleton */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm animate-pulse space-y-6">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] animate-pulse space-y-6">
               <div className="h-4 w-32 bg-gray-200 dark:bg-gray-800 rounded"></div>
               <div className="text-center py-6 border-b border-gray-100 dark:border-gray-800 flex flex-col items-center">
                 <div className="h-12 w-20 bg-gray-200 dark:bg-gray-800 rounded mb-2"></div>

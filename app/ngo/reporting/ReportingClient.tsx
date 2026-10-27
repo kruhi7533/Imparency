@@ -4,9 +4,9 @@ import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { TEMPLATE_LABEL } from "@/lib/impact-stories";
 
-const card = "bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm";
+const card = "bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
 const btn = "px-3 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50";
-const input = "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm";
+const input = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20";
 const KIND_LABEL: Record<string, string> = { RENEWAL: "Renewal", NEXT_OPPORTUNITY: "Next opportunity" };
 const BADGE: Record<string, string> = {
   OPEN: "bg-blue-100 text-blue-700",
@@ -30,7 +30,7 @@ export default function ReportingClient({
   return (
     <>
       <section className={card}>
-        <h2 className="text-lg font-bold mb-1">Contracts</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">Contracts</h2>
         <p className="text-xs text-gray-500 mb-3">Write impact reports and record expenses on each contract&apos;s page.</p>
         {contracts.length === 0 ? (
           <p className="text-sm text-gray-500 italic">No active or completed contracts.</p>
@@ -38,7 +38,7 @@ export default function ReportingClient({
           <ul className="text-sm space-y-1">
             {contracts.map((c) => (
               <li key={c.id}>
-                <Link className="text-emerald-700 underline" href={`/ngo/contracts/${c.id}`}>{c.contractNumber} — {c.title}</Link> <span className="text-xs text-gray-500">({c.status.toLowerCase()})</span>
+                <Link className="text-trust-700 underline" href={`/ngo/contracts/${c.id}`}>{c.contractNumber} — {c.title}</Link> <span className="text-xs text-gray-500">({c.status.toLowerCase()})</span>
               </li>
             ))}
           </ul>
@@ -89,14 +89,14 @@ function RenewalInbox() {
 
   return (
     <section className={card} aria-labelledby="renewal-h">
-      <h2 id="renewal-h" className="text-lg font-bold mb-1">Funder requests</h2>
+      <h2 id="renewal-h" className="text-lg font-semibold text-gray-900 mb-1">Funder requests</h2>
       <p className="text-xs text-gray-500 mb-3">Renewal and next-opportunity requests funders sent from your published impact reports.</p>
       {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
       {!rows && !error && <p className="text-sm text-gray-500">Loading…</p>}
       {rows && rows.length === 0 && <p className="text-sm text-gray-500 italic">No requests yet.</p>}
       <ul className="space-y-3">
         {rows?.map((r) => (
-          <li key={r.id} className="rounded-xl border border-gray-100 dark:border-gray-800 p-3 space-y-2">
+          <li key={r.id} className="rounded-xl border border-gray-200 p-3 space-y-2">
             <div className="flex flex-wrap justify-between gap-2 text-sm">
               <span><b>{KIND_LABEL[r.kind]}</b> on <Link className="underline" href={`/ngo/contracts/${r.contract.id}`}>{r.contract.contractNumber || r.contract.title}</Link> · report “{r.report.title}”</span>
               <Badge s={r.status} />
@@ -190,7 +190,7 @@ function StoriesPanel({ projects, contracts }: { projects: { id: string; title: 
 
   return (
     <section className={card} aria-labelledby="stories-h">
-      <h2 id="stories-h" className="text-lg font-bold mb-1">Impact stories</h2>
+      <h2 id="stories-h" className="text-lg font-semibold text-gray-900 mb-1">Impact stories</h2>
       <p className="text-xs text-gray-500 mb-4">
         Beneficiary quotes and photos are included only with the right consent — filtered before anything is generated. No names are ever used. An admin reviews every story before it is published.
       </p>
@@ -217,7 +217,7 @@ function StoriesPanel({ projects, contracts }: { projects: { id: string; title: 
                       <span className="max-w-md">{it.withdrawn ? <i className="text-gray-500">Consent withdrawn — content erased</i> : it.preview ? `“${it.preview}”` : <i className="text-gray-500">No text</i>} <span className="text-xs text-gray-500">({it.evidenceStatus?.toLowerCase().replace(/_/g, " ")})</span></span>
                       {!it.withdrawn && it.consentToRecord ? (
                         <label className="text-xs">Story consent{" "}
-                          <select className="border rounded px-1 py-0.5" value={it.storyConsent} onChange={(e) => setConsent(it.feedbackId, e.target.value)} disabled={!canGenerate}>
+                          <select className="border border-gray-300 bg-white rounded px-1 py-0.5" value={it.storyConsent} onChange={(e) => setConsent(it.feedbackId, e.target.value)} disabled={!canGenerate}>
                             <option value="NONE">None</option>
                             <option value="DONOR_ONLY">Funder only</option>
                             <option value="PUBLIC">Public</option>
@@ -232,8 +232,8 @@ function StoriesPanel({ projects, contracts }: { projects: { id: string; title: 
           )}
           {canGenerate && (
             <div className="flex flex-wrap gap-2">
-              <button disabled={busy} onClick={() => generate("DONOR")} className={`${btn} bg-emerald-600 text-white`}>{busy ? "Generating…" : "Generate funder story"}</button>
-              <button disabled={busy} onClick={() => generate("PUBLIC")} className={`${btn} border border-emerald-600 text-emerald-700`}>Generate public story</button>
+              <button disabled={busy} onClick={() => generate("DONOR")} className={`${btn} bg-trust-600 hover:bg-trust-700 text-white`}>{busy ? "Generating…" : "Generate funder story"}</button>
+              <button disabled={busy} onClick={() => generate("PUBLIC")} className={`${btn} border border-gray-300 bg-white text-gray-800 hover:bg-gray-50`}>Generate public story</button>
             </div>
           )}
         </div>
@@ -243,7 +243,7 @@ function StoriesPanel({ projects, contracts }: { projects: { id: string; title: 
       {!stories ? <p className="text-sm text-gray-500">Loading…</p> : stories.length === 0 ? <p className="text-sm text-gray-500 italic">No stories yet.</p> : (
         <ul className="space-y-3">
           {stories.map((s) => (
-            <li key={s.id} className="rounded-xl border border-gray-100 dark:border-gray-800 p-3 space-y-2">
+            <li key={s.id} className="rounded-xl border border-gray-200 p-3 space-y-2">
               <div className="flex flex-wrap justify-between gap-2">
                 <span className="font-semibold">{s.title}</span>
                 <span className="flex gap-2 items-center text-xs">
@@ -256,7 +256,7 @@ function StoriesPanel({ projects, contracts }: { projects: { id: string; title: 
               {s.excludedCount > 0 && <p className="text-xs text-gray-500">{s.excludedCount} beneficiary item(s) excluded for lack of consent.</p>}
               {s.regenerationReason && <p className="text-xs text-amber-800">{s.regenerationReason}</p>}
               {s.reviewNote && <p className="text-xs text-gray-600">Reviewer: {s.reviewNote}</p>}
-              {s.status === "DRAFT" && canGenerate && <button onClick={() => submit(s.id)} className={`${btn} bg-blue-600 text-white`}>Submit for review</button>}
+              {s.status === "DRAFT" && canGenerate && <button onClick={() => submit(s.id)} className={`${btn} bg-trust-600 hover:bg-trust-700 text-white`}>Submit for review</button>}
             </li>
           ))}
         </ul>

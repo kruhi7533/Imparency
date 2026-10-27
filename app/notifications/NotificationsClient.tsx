@@ -58,20 +58,20 @@ export default function NotificationsClient() {
   };
 
   const tab = (active: boolean) =>
-    `min-h-[40px] px-4 rounded-full text-xs font-bold ${active ? "bg-white text-gray-900" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`;
+    `min-h-[40px] px-4 rounded-full text-xs font-bold ${active ? "bg-trust-600 text-white" : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"}`;
 
   return (
-    <main className="min-h-screen bg-gray-950">
+    <main className="min-h-screen bg-canvas">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold text-white">Notifications</h1>
-            <p className="text-sm text-gray-400" aria-live="polite">
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-gray-900">Notifications</h1>
+            <p className="text-sm text-gray-600" aria-live="polite">
               {unread} unread
             </p>
           </div>
           {unread > 0 && (
-            <button type="button" onClick={() => markRead()} className="min-h-[44px] px-4 rounded-lg border border-gray-700 text-sm font-bold text-gray-200 hover:bg-gray-900">
+            <button type="button" onClick={() => markRead()} className="min-h-[44px] px-4 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-800 hover:bg-gray-50">
               Mark all as read
             </button>
           )}
@@ -87,26 +87,26 @@ export default function NotificationsClient() {
         </div>
 
         {error && (
-          <p role="alert" className="mt-4 text-sm text-red-300">
+          <p role="alert" className="mt-4 text-sm text-red-700">
             {error}
           </p>
         )}
 
         {!loading && items.length === 0 && !error ? (
-          <p className="mt-10 text-sm text-gray-400">{unreadOnly ? "Nothing unread." : "No notifications yet."}</p>
+          <p className="mt-10 text-sm text-gray-600">{unreadOnly ? "Nothing unread." : "No notifications yet."}</p>
         ) : (
           <ul className="mt-6 space-y-2">
             {items.map((n) => (
-              <li key={n.id} className={`rounded-xl border p-4 ${n.read ? "border-gray-800 bg-gray-900/40" : "border-emerald-500/30 bg-emerald-500/5"}`}>
+              <li key={n.id} className={`rounded-2xl border p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] ${n.read ? "border-gray-200/80 bg-white" : "border-trust-200 bg-trust-50/60"}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-600">
                       {!n.read && <span className="sr-only">Unread. </span>}
                       {humanise(n.type)}
                     </p>
-                    <p className="mt-0.5 text-sm font-bold text-white">{n.title}</p>
-                    <p className="mt-1 text-sm text-gray-300 break-words">{n.body}</p>
-                    <time dateTime={n.createdAt} className="mt-1 block text-xs text-gray-400">
+                    <p className="mt-0.5 text-sm font-bold text-gray-900">{n.title}</p>
+                    <p className="mt-1 text-sm text-gray-700 break-words">{n.body}</p>
+                    <time dateTime={n.createdAt} className="mt-1 block text-xs text-gray-600">
                       {new Date(n.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
                     </time>
                   </div>
@@ -115,7 +115,7 @@ export default function NotificationsClient() {
                       type="button"
                       onClick={() => markRead([n.id])}
                       aria-label={`Mark "${n.title}" as read`}
-                      className="shrink-0 min-h-[40px] px-3 rounded-lg text-xs font-bold text-emerald-300 hover:bg-gray-900"
+                      className="shrink-0 min-h-[40px] px-3 rounded-lg text-xs font-semibold text-trust-700 hover:bg-white"
                     >
                       Mark read
                     </button>
@@ -126,9 +126,9 @@ export default function NotificationsClient() {
           </ul>
         )}
 
-        {loading && <p className="mt-4 text-sm text-gray-400">Loading…</p>}
+        {loading && <p className="mt-4 text-sm text-gray-600">Loading…</p>}
         {cursor && !loading && (
-          <button type="button" onClick={() => load(cursor)} className="mt-6 w-full min-h-[44px] rounded-lg border border-gray-700 text-sm font-bold text-gray-200 hover:bg-gray-900">
+          <button type="button" onClick={() => load(cursor)} className="mt-6 w-full min-h-[44px] rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-800 hover:bg-gray-50">
             Load older
           </button>
         )}

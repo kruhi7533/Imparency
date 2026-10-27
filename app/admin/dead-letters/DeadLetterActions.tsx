@@ -50,7 +50,7 @@ export default function DeadLetterActions({ id, status }: { id: string; status: 
   return (
     <div className="flex flex-col items-end gap-2">
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={inspect} disabled={busy !== null} className={`${btn} border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800`}>
+        <button type="button" onClick={inspect} disabled={busy !== null} className={`${btn} border-gray-300 text-gray-700 hover:bg-gray-50`}>
           {detail ? "Hide" : busy === "inspect" ? "Loading…" : "Inspect"}
         </button>
         {status === "OPEN" && (
@@ -59,7 +59,7 @@ export default function DeadLetterActions({ id, status }: { id: string; status: 
           </button>
         )}
         {(status === "OPEN" || status === "REPLAY_FAILED") && (
-          <button type="button" onClick={() => call("dismiss")} disabled={busy !== null} className={`${btn} border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800`}>
+          <button type="button" onClick={() => call("dismiss")} disabled={busy !== null} className={`${btn} border-gray-300 text-gray-700 hover:bg-gray-50`}>
             {busy === "dismiss" ? "Dismissing…" : "Dismiss"}
           </button>
         )}
@@ -70,7 +70,7 @@ export default function DeadLetterActions({ id, status }: { id: string; status: 
         </span>
       )}
       {detail !== null && (
-        <pre className="max-w-md overflow-x-auto rounded bg-gray-50 p-2 text-left text-[11px] text-gray-700 dark:bg-gray-950 dark:text-gray-300">{JSON.stringify(detail, null, 2)}</pre>
+        <pre className="max-w-md overflow-x-auto rounded bg-gray-50 p-2 text-left text-[11px] text-gray-700">{JSON.stringify(detail, null, 2)}</pre>
       )}
     </div>
   );

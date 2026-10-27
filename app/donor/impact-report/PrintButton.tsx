@@ -6,7 +6,7 @@ export default function PrintButton() {
     <button
       type="button"
       onClick={() => window.print()}
-      className="min-h-[44px] px-4 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-sm font-bold"
+      className="min-h-[44px] px-4 rounded-lg bg-trust-600 hover:bg-trust-700 text-white text-sm font-semibold"
     >
       Print / save as PDF
     </button>

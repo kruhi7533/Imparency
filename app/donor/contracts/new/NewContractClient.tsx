@@ -333,29 +333,29 @@ export default function NewContractClient({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <Link href="/donor/contracts" className="text-xs font-bold text-emerald-600 hover:underline">
+          <Link href="/donor/contracts" className="text-xs font-bold text-emerald-700 hover:underline">
             ← Back to Contracts
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">Draft Grant Agreement</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 mt-1">Draft Grant Agreement</h1>
+          <p className="text-sm text-gray-500">
             Link your institutional grant to an NGO Opportunity with milestone disbursement gates.
           </p>
         </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
           {error}
         </div>
       )}
 
       {/* Step 1: Select Opportunity / Project */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
-        <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-400">1. Select Target Opportunity</h2>
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">
+        <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-600">1. Select Target Opportunity</h2>
         
         <div className="grid grid-cols-1 gap-4">
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-xs font-bold text-gray-700 mb-1">
               Opportunity / NGO Project
             </label>
             <select
@@ -363,7 +363,7 @@ export default function NewContractClient({
               onChange={(e) => handleProjectSelect(e.target.value)}
               disabled={!!selectedRequirementId}
               title={selectedRequirementId ? "Locked to the NGO project selected for the linked CSR requirement" : undefined}
-              className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-70"
+              className="w-full text-sm bg-white border border-gray-300 rounded-xl px-3.5 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 disabled:opacity-70"
             >
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -374,14 +374,14 @@ export default function NewContractClient({
           </div>
 
           {selectedProject && (
-            <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900 flex items-start gap-4">
+            <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-100 flex items-start gap-4">
               <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base flex-shrink-0">
                 {selectedProject.ngo.orgName.charAt(0)}
               </div>
               <div className="space-y-1 text-xs">
-                <p className="font-bold text-gray-900 dark:text-white text-sm">{selectedProject.title}</p>
-                <p className="text-gray-600 dark:text-gray-300">{selectedProject.description}</p>
-                <p className="text-emerald-700 dark:text-emerald-400 font-medium">
+                <p className="font-bold text-gray-900 text-sm">{selectedProject.title}</p>
+                <p className="text-gray-600">{selectedProject.description}</p>
+                <p className="text-emerald-700 font-medium">
                   Partner NGO: <span className="font-bold">{selectedProject.ngo.orgName}</span> · Location: {selectedProject.location}
                 </p>
               </div>
@@ -390,13 +390,13 @@ export default function NewContractClient({
 
           {requirements.length > 0 && (
             <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-bold text-gray-700 mb-1">
                 Link to Awarded CSR Requirement (Optional)
               </label>
               <select
                 value={selectedRequirementId}
                 onChange={(e) => (e.target.value ? applyRequirement(e.target.value) : setSelectedRequirementId(""))}
-                className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full text-sm bg-white border border-gray-300 rounded-xl px-3.5 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
               >
                 <option value="">None (Independent Agreement)</option>
                 {requirements.map((r) => (
@@ -418,37 +418,37 @@ export default function NewContractClient({
       </div>
 
       {/* Step 2: Grant Parameters & Compliance */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
-        <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-400">2. Grant Parameters & CSR Classification</h2>
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">
+        <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-600">2. Grant Parameters & CSR Classification</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Agreement Title</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Agreement Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full text-sm bg-white border border-gray-300 rounded-xl px-3.5 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
               placeholder="e.g. FY2026 CSR Grant Agreement for Rural Literacy Campaign"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Total Grant Amount (₹ INR)</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Total Grant Amount (₹ INR)</label>
             <input
               type="number"
               value={totalGrantAmount || ""}
               onChange={(e) => setTotalGrantAmount(parseFloat(e.target.value) || 0)}
-              className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full text-sm bg-white border border-gray-300 rounded-xl px-3.5 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Reporting Cadence</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Reporting Cadence</label>
             <select
               value={reportingCadence}
               onChange={(e) => setReportingCadence(e.target.value)}
-              className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full text-sm bg-white border border-gray-300 rounded-xl px-3.5 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
             >
               <option value="MILESTONE_BASED">Milestone Based</option>
               <option value="MONTHLY">Monthly Progress</option>
@@ -457,13 +457,13 @@ export default function NewContractClient({
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-xs font-bold text-gray-700 mb-1">
               CSR Schedule VII Classification (Companies Act 2013)
             </label>
             <select
               value={csrCategory}
               onChange={(e) => setCsrCategory(e.target.value)}
-              className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full text-sm bg-white border border-gray-300 rounded-xl px-3.5 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
             >
               {CSR_SCHEDULE_VII_ITEMS.map((item) => (
                 <option key={item} value={item}>
@@ -474,38 +474,38 @@ export default function NewContractClient({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Grant Start Date</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Grant Start Date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full text-sm bg-white border border-gray-300 rounded-xl px-3.5 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Grant End Date</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Grant End Date</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full text-sm bg-white border border-gray-300 rounded-xl px-3.5 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
             />
           </div>
         </div>
       </div>
 
       {/* Step 3: Milestone Disbursement Gates */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-400">3. Milestone Disbursement Schedule</h2>
+            <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-600">3. Milestone Disbursement Schedule</h2>
             <p className="text-xs text-gray-500 mt-0.5">Funds are released progressively as each milestone proof is verified.</p>
           </div>
           <button
             type="button"
             onClick={addMilestone}
-            className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 text-xs font-bold rounded-lg transition"
+            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold rounded-lg transition"
           >
             + Add Milestone
           </button>
@@ -513,14 +513,14 @@ export default function NewContractClient({
 
         <div className="space-y-4">
           {milestones.map((m, idx) => (
-            <div key={idx} className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 space-y-3">
+            <div key={idx} className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold uppercase text-emerald-600">Milestone {idx + 1}</span>
+                <span className="text-xs font-extrabold uppercase text-emerald-700">Milestone {idx + 1}</span>
                 {milestones.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeMilestone(idx)}
-                    className="text-xs text-red-500 hover:text-red-700"
+                    className="text-xs text-red-600 hover:text-red-700"
                   >
                     Remove
                   </button>
@@ -534,7 +534,7 @@ export default function NewContractClient({
                     type="text"
                     value={m.title}
                     onChange={(e) => updateMilestone(idx, "title", e.target.value)}
-                    className="w-full text-xs bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white"
+                    className="w-full text-xs bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-gray-900"
                   />
                 </div>
 
@@ -544,7 +544,7 @@ export default function NewContractClient({
                     type="number"
                     value={m.allocatedAmount || ""}
                     onChange={(e) => updateMilestone(idx, "allocatedAmount", parseFloat(e.target.value) || 0)}
-                    className="w-full text-xs bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white font-semibold"
+                    className="w-full text-xs bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-gray-900 font-semibold"
                   />
                 </div>
 
@@ -554,7 +554,7 @@ export default function NewContractClient({
                     type="text"
                     value={m.deliverables}
                     onChange={(e) => updateMilestone(idx, "deliverables", e.target.value)}
-                    className="w-full text-xs bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white"
+                    className="w-full text-xs bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-gray-900"
                     placeholder="e.g. Geo-tagged photos, beneficiary list, CA invoice"
                   />
                 </div>
@@ -565,7 +565,7 @@ export default function NewContractClient({
                     type="date"
                     value={m.dueDate}
                     onChange={(e) => updateMilestone(idx, "dueDate", e.target.value)}
-                    className="w-full text-xs bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white"
+                    className="w-full text-xs bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-gray-900"
                   />
                 </div>
               </div>
@@ -583,13 +583,13 @@ export default function NewContractClient({
       </div>
 
       {/* Step 4: Terms & Conditions */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-3">
-        <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-400">4. Legal & Operational Terms</h2>
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-3">
+        <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-600">4. Legal & Operational Terms</h2>
         <textarea
           rows={8}
           value={terms}
           onChange={(e) => setTerms(e.target.value)}
-          className="w-full text-xs font-mono bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="w-full text-xs font-mono bg-white border border-gray-300 rounded-xl p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
         />
       </div>
 
@@ -597,7 +597,7 @@ export default function NewContractClient({
       <div className="flex items-center justify-end gap-3 pt-4">
         <Link
           href="/donor/contracts"
-          className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+          className="px-5 py-2.5 rounded-lg bg-white border border-gray-300 text-gray-800 text-sm font-semibold hover:bg-gray-50 transition"
         >
           Cancel
         </Link>
@@ -605,7 +605,7 @@ export default function NewContractClient({
           type="button"
           disabled={loading || sumMismatch}
           onClick={(e) => handleSubmit(e, false)}
-          className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-gray-800 dark:text-gray-200 text-sm font-semibold transition disabled:opacity-50"
+          className="px-5 py-2.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm font-semibold transition disabled:opacity-50"
         >
           Save Draft
         </button>
@@ -613,7 +613,7 @@ export default function NewContractClient({
           type="button"
           disabled={loading || sumMismatch}
           onClick={(e) => handleSubmit(e, true)}
-          className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold shadow-sm transition disabled:opacity-50"
+          className="px-6 py-2.5 rounded-lg bg-trust-600 hover:bg-trust-700 text-white text-sm font-semibold shadow-sm transition disabled:opacity-50"
         >
           {loading ? "Processing…" : "Propose Agreement to NGO →"}
         </button>

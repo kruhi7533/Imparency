@@ -51,30 +51,30 @@ export default async function AdminProposalPage({ params }: { params: { id: stri
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <Link
           href="/admin/proposals"
-          className="text-xs text-gray-500 dark:text-gray-400 hover:underline"
+          className="text-xs text-gray-500 hover:underline"
         >
           ← All proposals
         </Link>
 
         <div>
-          <span className="text-[10px] font-extrabold uppercase tracking-wide text-gray-400">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
             {proposal.status.replace(/_/g, " ")}
           </span>
-          <h1 className="mt-1 text-2xl font-extrabold text-gray-900 dark:text-white">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight mt-1 text-gray-900">
             {proposal.title}
           </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            <Link href={`/admin/ngos/${proposal.ngo.id}`} className="text-emerald-600 hover:underline dark:text-emerald-400">
+          <p className="mt-1 text-sm text-gray-500">
+            <Link href={`/admin/ngos/${proposal.ngo.id}`} className="text-emerald-600 hover:underline">
               {proposal.ngo.orgName}
             </Link>{" "}
             · for{" "}
             <Link
               href={`/admin/opportunities/${proposal.opportunity.id}`}
-              className="text-emerald-600 hover:underline dark:text-emerald-400"
+              className="text-emerald-600 hover:underline"
             >
               {proposal.opportunity.title}
             </Link>{" "}
@@ -84,8 +84,8 @@ export default async function AdminProposalPage({ params }: { params: { id: stri
 
         {/* Entitlement — why this organisation may propose at all. */}
         {shortlisting ? (
-          <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/30 bg-emerald-50 dark:bg-emerald-950/20 px-4 py-3">
-            <p className="text-sm text-emerald-800 dark:text-emerald-300">
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+            <p className="text-sm text-emerald-800">
               Shortlisted for this opportunity
               {shortlisting.decidedAt ? ` on ${shortlisting.decidedAt.toLocaleDateString("en-IN")}` : ""} — the
               engine judged this organisation {shortlisting.verdict.toLowerCase()} and an admin agreed.{" "}
@@ -99,8 +99,8 @@ export default async function AdminProposalPage({ params }: { params: { id: stri
             </p>
           </div>
         ) : (
-          <div className="rounded-xl border border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-950/20 px-4 py-3">
-            <p className="text-sm text-red-800 dark:text-red-300">
+          <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+            <p className="text-sm text-red-800">
               No shortlisting found for this organisation on this opportunity. A proposal should not
               exist without one — treat this as a data problem before deciding anything.
             </p>
@@ -108,29 +108,29 @@ export default async function AdminProposalPage({ params }: { params: { id: stri
         )}
 
         <dl className="grid sm:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
-            <dt className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Requested</dt>
-            <dd className="mt-0.5 text-lg font-extrabold text-gray-900 dark:text-white">
+          <div className="rounded-xl border border-gray-200/80 bg-white px-4 py-3">
+            <dt className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Requested</dt>
+            <dd className="mt-0.5 text-lg font-bold text-gray-900">
               {formatCompactINR(Number(proposal.requestedAmount))}
             </dd>
           </div>
-          <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
-            <dt className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Submitted</dt>
-            <dd className="mt-0.5 text-sm text-gray-700 dark:text-gray-300">
+          <div className="rounded-xl border border-gray-200/80 bg-white px-4 py-3">
+            <dt className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Submitted</dt>
+            <dd className="mt-0.5 text-sm text-gray-700">
               {proposal.submittedAt ? proposal.submittedAt.toLocaleString("en-IN") : "Not yet submitted"}
             </dd>
           </div>
         </dl>
 
-        <section className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-4">
-          <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400">Summary</h2>
-          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+        <section className="rounded-xl border border-gray-200/80 bg-white px-4 py-4">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500">Summary</h2>
+          <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">
             {proposal.summary}
           </p>
           {proposal.plan && (
             <>
-              <h2 className="mt-4 text-xs font-extrabold uppercase tracking-wide text-gray-400">Plan</h2>
-              <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+              <h2 className="mt-4 text-xs font-bold uppercase tracking-wide text-gray-500">Plan</h2>
+              <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">
                 {proposal.plan}
               </p>
             </>
@@ -138,9 +138,9 @@ export default async function AdminProposalPage({ params }: { params: { id: stri
         </section>
 
         {proposal.decidedAt && (
-          <section className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-4">
-            <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400">Decision</h2>
-            <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+          <section className="rounded-xl border border-gray-200/80 bg-white px-4 py-4">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500">Decision</h2>
+            <p className="mt-2 text-sm text-gray-700">
               {proposal.status.replace(/_/g, " ").toLowerCase()} on{" "}
               {proposal.decidedAt.toLocaleString("en-IN")}
               {proposal.decisionNote ? ` — ${proposal.decisionNote}` : ""}
@@ -148,12 +148,12 @@ export default async function AdminProposalPage({ params }: { params: { id: stri
           </section>
         )}
 
-        <section className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-4">
-          <h2 className="text-xs font-extrabold uppercase tracking-wide text-gray-400 mb-3">
+        <section className="rounded-xl border border-gray-200/80 bg-white px-4 py-4">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-3">
             Decision
           </h2>
           {proposal.reviewer && proposal.status === "UNDER_REVIEW" && (
-            <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mb-3 text-xs text-gray-500">
               Taken up by {proposal.reviewer.name || proposal.reviewer.email}.
             </p>
           )}

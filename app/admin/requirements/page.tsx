@@ -40,10 +40,10 @@ export default async function AdminRequirementsPage({ searchParams }: { searchPa
   if (tab === "PENDING_ADMIN_REVIEW") rows.sort((a, b) => (a.submittedAt ?? "").localeCompare(b.submittedAt ?? ""));
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">CSR Requirements</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">CSR Requirements</h1>
           <p className="text-sm text-gray-500 mt-1">
             Verify AI-extracted donor requirements. Only requirements you approve can enter NGO matching.
           </p>
@@ -54,10 +54,10 @@ export default async function AdminRequirementsPage({ searchParams }: { searchPa
             <Link
               key={t.key}
               href={`/admin/requirements?status=${t.key}`}
-              className={`rounded-2xl border p-4 transition ${tab === t.key ? "border-emerald-500/50 bg-emerald-500/5" : "border-gray-800 bg-gray-900/40 hover:border-gray-700"}`}
+              className={`rounded-2xl border p-4 transition ${tab === t.key ? "border-emerald-200 bg-emerald-50" : "border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:border-gray-300"}`}
             >
               <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{t.label}</p>
-              <p className="text-2xl font-black text-white mt-1">{counts[t.key]}</p>
+              <p className="text-2xl font-semibold text-gray-900 mt-1">{counts[t.key]}</p>
             </Link>
           ))}
         </div>
@@ -67,16 +67,16 @@ export default async function AdminRequirementsPage({ searchParams }: { searchPa
             <Link
               key={t.key}
               href={`/admin/requirements?status=${t.key}`}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${tab === t.key ? "border-emerald-500/40 text-emerald-300 bg-emerald-500/10" : "border-gray-800 text-gray-400"}`}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${tab === t.key ? "border-emerald-200 text-emerald-700 bg-emerald-50" : "border-gray-200 text-gray-500"}`}
             >
               {t.label} ({counts[t.key]})
             </Link>
           ))}
         </div>
 
-        <div className="border border-gray-800 bg-gray-900/40 rounded-2xl overflow-x-auto">
+        <div className="border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] rounded-2xl overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="text-[11px] uppercase tracking-wider text-gray-500 border-b border-gray-800">
+            <thead className="text-[11px] uppercase tracking-wider text-gray-500 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3">Donor</th>
                 <th className="px-4 py-3">Document</th>
@@ -87,7 +87,7 @@ export default async function AdminRequirementsPage({ searchParams }: { searchPa
                 <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-gray-100">
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
@@ -96,23 +96,23 @@ export default async function AdminRequirementsPage({ searchParams }: { searchPa
                 </tr>
               ) : (
                 rows.map((r) => (
-                  <tr key={r.id} className="hover:bg-gray-800/30">
+                  <tr key={r.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
-                      <p className="font-semibold text-gray-100">{r.sponsor?.companyName || r.sponsor?.name}</p>
+                      <p className="font-semibold text-gray-900">{r.sponsor?.companyName || r.sponsor?.name}</p>
                       <p className="text-xs text-gray-500">{r.sponsor?.email}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="text-gray-100 break-all">{r.fileName}</p>
+                      <p className="text-gray-900 break-all">{r.fileName}</p>
                       <p className="text-xs text-gray-500">{[r.sector, r.state].filter(Boolean).join(" · ")}</p>
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={r.status} />
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-blue-300">v{r.version}</td>
-                    <td className="px-4 py-3 text-xs text-gray-400">{new Date(r.createdAt).toLocaleDateString("en-IN")}</td>
-                    <td className="px-4 py-3 text-xs text-gray-300">{r.averageConfidence ? `${Math.round(r.averageConfidence * 100)}%` : "—"}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-blue-700">v{r.version}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{new Date(r.createdAt).toLocaleDateString("en-IN")}</td>
+                    <td className="px-4 py-3 text-xs text-gray-700">{r.averageConfidence ? `${Math.round(r.averageConfidence * 100)}%` : "—"}</td>
                     <td className="px-4 py-3 text-right">
-                      <Link href={`/admin/requirements/${r.id}`} className="px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 text-xs font-bold hover:bg-emerald-500/25">
+                      <Link href={`/admin/requirements/${r.id}`} className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100">
                         {r.status === "PENDING_ADMIN_REVIEW" ? "Review" : "View"}
                       </Link>
                     </td>

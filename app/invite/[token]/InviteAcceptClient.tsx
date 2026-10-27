@@ -82,9 +82,9 @@ export default function InviteAcceptClient({ token }: { token: string }) {
     const d = DEAD[lookup.state];
     return (
       <div className={card}>
-        <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">{d.title}</h1>
-        <p className="mt-2 text-sm text-gray-500">{d.body}</p>
-        <a href="/login" className="inline-block mt-6 text-sm font-bold text-emerald-700 hover:underline">Go to sign in</a>
+        <h1 className="font-display text-2xl font-semibold text-gray-900">{d.title}</h1>
+        <p className="mt-2 text-sm text-gray-600">{d.body}</p>
+        <a href="/login" className="inline-block mt-6 text-sm font-bold text-trust-700 hover:underline">Go to sign in</a>
       </div>
     );
   }
@@ -93,8 +93,8 @@ export default function InviteAcceptClient({ token }: { token: string }) {
 
   return (
     <div className={card}>
-      <p className="text-xs font-bold uppercase tracking-wide text-emerald-600">Team invitation</p>
-      <h1 className="mt-1 text-xl font-extrabold text-gray-900 dark:text-white">Join {lookup.ngoName}</h1>
+      <p className="text-xs font-bold uppercase tracking-wide text-trust-700">Team invitation</p>
+      <h1 className="mt-1 font-display text-2xl font-semibold text-gray-900">Join {lookup.ngoName}</h1>
       <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
         You&apos;ve been invited as <strong>{lookup.roleLabel}</strong> for <strong>{lookup.email}</strong>. This link works once and
         expires on {new Date(lookup.expiresAt).toLocaleDateString("en-IN")}.
@@ -106,30 +106,30 @@ export default function InviteAcceptClient({ token }: { token: string }) {
           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
             Your name
             <input required minLength={2} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name"
-              className="mt-1 w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm font-normal bg-white dark:bg-gray-950" />
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-normal bg-white text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none" />
           </label>
           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
             Choose a password (at least 8 characters)
             <input required minLength={8} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password"
-              className="mt-1 w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm font-normal bg-white dark:bg-gray-950" />
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-normal bg-white text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none" />
           </label>
-          <button disabled={busy} className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl">
+          <button disabled={busy} className="w-full bg-trust-600 hover:bg-trust-700 disabled:opacity-50 text-white font-semibold py-3 rounded-lg">
             {busy ? "Joining…" : "Create account and join"}
           </button>
         </form>
       ) : signedInAsInvitee ? (
-        <button onClick={() => accept()} disabled={busy} className="mt-6 w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl">
+        <button onClick={() => accept()} disabled={busy} className="mt-6 w-full bg-trust-600 hover:bg-trust-700 disabled:opacity-50 text-white font-semibold py-3 rounded-lg">
           {busy ? "Joining…" : `Join ${lookup.ngoName}`}
         </button>
       ) : status === "authenticated" ? (
         <div className="mt-6 text-sm text-gray-600 dark:text-gray-400">
           You are signed in as a different account. Sign out, then sign in as {lookup.email}.
-          <button onClick={() => signOut({ callbackUrl: `/login?callbackUrl=${encodeURIComponent(`/invite/${token}`)}` })} className="mt-3 block w-full border border-gray-200 dark:border-gray-700 font-bold py-2.5 rounded-xl">
+          <button onClick={() => signOut({ callbackUrl: `/login?callbackUrl=${encodeURIComponent(`/invite/${token}`)}` })} className="mt-3 block w-full bg-white border border-gray-300 text-gray-800 hover:bg-gray-50 font-semibold py-2.5 rounded-lg">
             Sign out
           </button>
         </div>
       ) : (
-        <a href={`/login?callbackUrl=${encodeURIComponent(`/invite/${token}`)}`} className="mt-6 block text-center w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl">
+        <a href={`/login?callbackUrl=${encodeURIComponent(`/invite/${token}`)}`} className="mt-6 block text-center w-full bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3 rounded-lg">
           Sign in as {lookup.email} to accept
         </a>
       )}

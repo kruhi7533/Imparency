@@ -80,12 +80,12 @@ export default async function AdminProjectReviewPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
+    <div>
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Project Approval</h1>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Project Approval</h1>
+          <p className="mt-2 text-sm text-gray-500">
             Review projects submitted by verified NGOs. Approve to publish them to the donor discovery feed, or reject to return them to the NGO as a draft with a note.
           </p>
         </div>

@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import prisma from "@/lib/prisma";
 import { DonorSidebarShell } from "@/components/donor/DonorSidebarShell";
 
 export default async function DonorLayout({
@@ -13,16 +14,20 @@ export default async function DonorLayout({
     redirect("/login");
   }
 
+  // Badge on "Payment Tracking": the donor's own failed payments. A count
+  // failure must never take the portal down, so it degrades to no badge.
+  const failedPayments = await prisma.donation
+    .count({ where: { donorId: session.user.id, status: "FAILED" } })
+    .catch(() => 0);
+
   return (
-    <div className="min-h-screen bg-gray-950 flex">
-      <DonorSidebarShell
-        userName={session.user.name ?? "Donor"}
-        userEmail={session.user.email ?? ""}
-        userId={session.user.id}
-      />
-      <main className="flex-1 min-w-0 overflow-auto">
-        {children}
-      </main>
-    </div>
+    <DonorSidebarShell
+      userName={session.user.name ?? "Donor"}
+      userEmail={session.user.email ?? ""}
+      userId={session.user.id}
+      failedPayments={failedPayments}
+    >
+      {children}
+    </DonorSidebarShell>
   );
 }

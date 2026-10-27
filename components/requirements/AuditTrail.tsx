@@ -6,9 +6,9 @@ export function AuditTrail({ events }: { events: AuditItem[] }) {
   return (
     <ol className="space-y-2">
       {events.map((e) => (
-        <li key={e.id} className="text-xs border-l-2 border-gray-800 pl-3">
-          <p className="text-gray-200">
-            <span className="font-mono font-bold text-gray-300">{e.action}</span>
+        <li key={e.id} className="text-xs border-l-2 border-gray-200 pl-3">
+          <p className="text-gray-800">
+            <span className="font-mono font-bold text-gray-700">{e.action}</span>
             <span className="text-gray-500"> · {e.actorRole}</span>
             {e.fromStatus && e.toStatus && e.fromStatus !== e.toStatus && (
               <span className="text-gray-500">
@@ -17,7 +17,7 @@ export function AuditTrail({ events }: { events: AuditItem[] }) {
               </span>
             )}
           </p>
-          {e.detail && <p className="text-gray-400">{e.detail}</p>}
+          {e.detail && <p className="text-gray-600">{e.detail}</p>}
           {Array.isArray(e.metadata?.changedFields) && (
             <ul className="text-gray-500 mt-0.5">
               {e.metadata.changedFields.map((c: any) => (

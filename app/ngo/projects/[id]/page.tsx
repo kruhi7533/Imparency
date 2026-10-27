@@ -24,11 +24,11 @@ export const dynamic = "force-dynamic";
  * the id exists.
  */
 const MILESTONE_BADGE: Record<string, string> = {
-  PENDING: "bg-gray-100 text-gray-600",
-  IN_PROGRESS: "bg-blue-100 text-blue-700",
-  PROOF_SUBMITTED: "bg-amber-100 text-amber-700",
-  VERIFIED: "bg-emerald-100 text-emerald-700",
-  COMPLETED: "bg-emerald-100 text-emerald-700",
+  PENDING: "bg-gray-50 ring-1 ring-gray-200 text-gray-600",
+  IN_PROGRESS: "bg-blue-50 ring-1 ring-blue-200 text-blue-700",
+  PROOF_SUBMITTED: "bg-amber-50 ring-1 ring-amber-200 text-amber-700",
+  VERIFIED: "bg-emerald-50 ring-1 ring-emerald-200 text-emerald-700",
+  COMPLETED: "bg-emerald-50 ring-1 ring-emerald-200 text-emerald-700",
 };
 
 const inr = (v: { toString(): string } | number) => `₹${Number(v.toString()).toLocaleString("en-IN")}`;
@@ -119,25 +119,25 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
   const approvedBudget = funded.reduce((sum, c) => sum + Number(c.totalGrantAmount.toString()), 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-6">
         <div>
-          <Link href="/ngo/dashboard" className="text-xs font-bold text-emerald-600 hover:underline">
+          <Link href="/ngo/dashboard" className="text-xs font-bold text-trust-700 hover:underline">
             ← Back to NGO Dashboard
           </Link>
           <div className="flex flex-wrap items-center gap-3 mt-1">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{project.title}</h1>
-            <span className="px-3 py-0.5 rounded-full text-xs font-extrabold bg-gray-100 text-gray-700">{project.status}</span>
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">{project.title}</h1>
+            <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-gray-50 ring-1 ring-gray-200 text-gray-700">{project.status}</span>
             <ProjectFundingBadge funding={funding.get(project.id)} fundedAt={project.fundedAt} />
           </div>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-600 mt-1">
             {project.location} · {project.causeCategory}
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card label="Project target" value={inr(project.targetAmount)} />
-          <Card label="Approved grant budget" value={inr(approvedBudget)} tone="text-emerald-600" />
+          <Card label="Approved grant budget" value={inr(approvedBudget)} tone="text-emerald-700" />
           <Card label="Funded contracts" value={String(funded.length)} />
         </div>
 
@@ -156,7 +156,7 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
         />
 
         {/* Donor feedback on updates (no donor identity — lib/donor-feedback.ts) */}
-        <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-3">
+        <section className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-3">
           <div>
             <h2 className="text-base font-bold text-gray-900 dark:text-white">What donors say about your updates</h2>
             <p className="text-xs text-gray-500">Anonymous. Use it to decide what to report next.</p>
@@ -184,10 +184,10 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
         </section>
 
         {/* Project milestones */}
-        <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-3">
+        <section className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-3">
           <h2 className="text-base font-bold text-gray-900 dark:text-white">Project milestones</h2>
           {project.milestones.length === 0 ? (
-            <p className="text-xs text-gray-400 italic">No milestones on this project yet.</p>
+            <p className="text-xs text-gray-500 italic">No milestones on this project yet.</p>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-800">
               {project.milestones.map((m) => (
@@ -217,7 +217,7 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
 
         {/* Funded contracts */}
         {funded.length === 0 ? (
-          <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+          <section className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <h2 className="text-base font-bold text-gray-900 dark:text-white">Funding</h2>
             <p className="text-xs text-gray-500 mt-1">
               No signed grant contract funds this project yet.
@@ -234,15 +234,15 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
                     {c.contractNumber} · funded by {c.donor.companyName || c.donor.name} · {c.status}
                   </p>
                 </div>
-                <Link href={`/ngo/contracts/${c.id}`} className="text-xs font-bold text-emerald-600 hover:underline">
+                <Link href={`/ngo/contracts/${c.id}`} className="text-xs font-bold text-trust-700 hover:underline">
                   Full contract →
                 </Link>
               </div>
 
-              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+              <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Approved budget & milestones</h3>
-                <table className="w-full text-left text-xs">
-                  <thead className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                <div className="overflow-x-auto"><table className="w-full min-w-[480px] text-left text-xs">
+                  <thead className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
                     <tr>
                       <th className="py-2">Milestone</th>
                       <th className="py-2">Due</th>
@@ -258,12 +258,12 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
                         <td className="py-2 font-bold">{inr(m.allocatedAmount)}</td>
                         <td className="py-2 text-gray-600">
                           {m.status}
-                          <span className="block text-[10px] font-bold text-gray-400">Funding: {m.fundingStatus.replace("_", " ").toLowerCase()}</span>
+                          <span className="block text-[10px] font-bold text-gray-500">Funding: {m.fundingStatus.replace("_", " ").toLowerCase()}</span>
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </div>
 
               <ContractPaymentsPanel {...fundingPanelProps(c, party)} />
@@ -272,10 +272,10 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
         )}
 
         {awaitingSignature.length > 0 && (
-          <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-2">
+          <section className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-2">
             <h2 className="text-sm font-bold text-gray-900 dark:text-white">Contracts awaiting signature</h2>
             {awaitingSignature.map((c) => (
-              <Link key={c.id} href={`/ngo/contracts/${c.id}`} className="block text-xs text-emerald-600 hover:underline">
+              <Link key={c.id} href={`/ngo/contracts/${c.id}`} className="block text-xs text-trust-700 hover:underline">
                 {c.title} ({c.status}) — {inr(c.totalGrantAmount)} →
               </Link>
             ))}
@@ -288,8 +288,8 @@ export default async function NgoProjectCockpitPage({ params }: { params: { id: 
 
 function Card({ label, value, tone = "text-gray-900 dark:text-white" }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{label}</p>
+    <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{label}</p>
       <p className={`text-2xl font-extrabold mt-1 ${tone}`}>{value}</p>
     </div>
   );

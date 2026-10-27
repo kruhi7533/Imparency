@@ -30,14 +30,14 @@ export const dynamic = "force-dynamic";
  */
 
 const OUTCOME_STYLE: Record<string, { mark: string; className: string }> = {
-  PASS: { mark: "✓", className: "text-emerald-600 dark:text-emerald-400" },
-  FAIL: { mark: "✗", className: "text-red-600 dark:text-red-400" },
-  UNKNOWN: { mark: "?", className: "text-amber-600 dark:text-amber-400" },
+  PASS: { mark: "✓", className: "text-emerald-600" },
+  FAIL: { mark: "✗", className: "text-red-600" },
+  UNKNOWN: { mark: "?", className: "text-amber-600" },
 };
 
 const DECISION_BADGE: Record<string, string> = {
-  SHORTLISTED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
-  DISMISSED: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  SHORTLISTED: "bg-emerald-100 text-emerald-700",
+  DISMISSED: "bg-gray-100 text-gray-600",
 };
 
 function minutesSince(d: Date): number {
@@ -122,24 +122,24 @@ export default async function MatchingJobPage({
       title: `Eligible (${eligible.length})`,
       note: "Meets every required criterion this opportunity declares.",
       rows: eligible,
-      tone: "border-emerald-200 dark:border-emerald-900",
+      tone: "border-emerald-200",
     },
     {
       title: `Could not be evaluated (${unknown.length})`,
       note: "Something the criteria depend on is missing or has never been checked. This is not a rejection.",
       rows: unknown,
-      tone: "border-amber-200 dark:border-amber-900",
+      tone: "border-amber-200",
     },
     {
       title: `Not eligible (${ineligible.length})`,
       note: "Fails at least one required criterion. Not a judgement about the organisation, only about this opportunity.",
       rows: ineligible,
-      tone: "border-gray-200 dark:border-gray-800",
+      tone: "border-gray-200",
     },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <Link
           href={`/admin/opportunities/${params.id}`}
@@ -150,12 +150,12 @@ export default async function MatchingJobPage({
 
         <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Matching run</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 tabular-nums">
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Matching run</h1>
+            <p className="mt-1 text-sm text-gray-500 tabular-nums">
               {job.evaluatedCount} evaluated · {job.eligibleCount} eligible · {job.ineligibleCount} not
               eligible · {job.unknownCount} could not be evaluated
             </p>
-            <p className="mt-1 text-xs text-gray-400 dark:text-gray-600">
+            <p className="mt-1 text-xs text-gray-500">
               Started {job.startedAt ? job.startedAt.toISOString().replace("T", " ").slice(0, 19) : "—"}
               {job.finishedAt && job.startedAt
                 ? ` · took ${Math.max(1, Math.round((job.finishedAt.getTime() - job.startedAt.getTime()) / 1000))}s`
@@ -165,10 +165,10 @@ export default async function MatchingJobPage({
           <span
             className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
               job.status === "COMPLETED"
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                ? "bg-emerald-100 text-emerald-700"
                 : job.status === "FAILED"
-                  ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
-                  : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                  ? "bg-red-100 text-red-700"
+                  : "bg-amber-100 text-amber-700"
             }`}
           >
             {job.status}
@@ -176,9 +176,9 @@ export default async function MatchingJobPage({
         </div>
 
         {job.status === "FAILED" && job.errorMessage && (
-          <div className="mt-5 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20 p-4">
-            <p className="text-sm font-semibold text-red-700 dark:text-red-400">This run did not finish.</p>
-            <p className="mt-1 text-sm text-red-600 dark:text-red-300">{job.errorMessage}</p>
+          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
+            <p className="text-sm font-semibold text-red-700">This run did not finish.</p>
+            <p className="mt-1 text-sm text-red-600">{job.errorMessage}</p>
             <div className="mt-3">
               <RequeueButton jobId={job.id} label="Run again" />
             </div>
@@ -186,11 +186,11 @@ export default async function MatchingJobPage({
         )}
 
         {stranded && (
-          <div className="mt-5 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 p-4">
-            <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
+          <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-800">
               Running for {minutesSince(job.startedAt!)} minutes.
             </p>
-            <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
+            <p className="mt-1 text-sm text-amber-700">
               A run this long has almost certainly been interrupted. Requeueing is safe — results
               upsert, and any shortlisting you have already done is preserved.
             </p>
@@ -203,7 +203,7 @@ export default async function MatchingJobPage({
         {job.status === "COMPLETED" && (
           <div className="mt-5">
             <RequeueButton jobId={job.id} label="Re-run this job" />
-            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
+            <p className="mt-1.5 text-xs text-gray-500">
               Re-running reads the opportunity&apos;s criteria as they stand right now, not what is
               shown below — if you revised them after this run, this picks up the change.
               Decisions already made (shortlisted / dismissed) are kept.
@@ -212,14 +212,14 @@ export default async function MatchingJobPage({
         )}
 
         <section className="mt-8">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">
             Criteria this run evaluated
           </h2>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
+          <p className="mt-1 text-xs text-gray-500">
             Frozen when the run started, so these always match the reasons below — even if the
             opportunity has been edited since.
           </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
+          <p className="mt-1 text-xs text-gray-500">
             Only verified, unsuspended organisations are considered at all. One that is still
             pending will not appear here — it belongs in{" "}
             <Link href="/admin/verification" className="text-emerald-600 hover:underline">
@@ -231,7 +231,7 @@ export default async function MatchingJobPage({
             {snapshot.map((c, i) => (
               <span
                 key={`${c.kind}-${i}`}
-                className="rounded-full border border-gray-200 dark:border-gray-700 px-3 py-1 text-xs font-semibold text-gray-600 dark:text-gray-300"
+                className="rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600"
               >
                 {isRuleKind(c.kind) ? RULES[c.kind].label : c.kind}
                 {c.value ? `: ${c.value}` : ""}
@@ -240,17 +240,17 @@ export default async function MatchingJobPage({
               </span>
             ))}
             {snapshot.length === 0 && (
-              <span className="text-sm text-gray-500 dark:text-gray-400">No criteria were recorded for this run.</span>
+              <span className="text-sm text-gray-500">No criteria were recorded for this run.</span>
             )}
           </div>
         </section>
 
         {sections.map((section) => (
           <section key={section.title} className="mt-10">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">
               {section.title}
             </h2>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">{section.note}</p>
+            <p className="mt-1 text-xs text-gray-500">{section.note}</p>
 
             <div className="mt-3 space-y-3">
               {section.rows.map((c) => {
@@ -258,12 +258,12 @@ export default async function MatchingJobPage({
                 return (
                   <div
                     key={c.id}
-                    className={`rounded-xl border ${section.tone} bg-white dark:bg-gray-900 p-4`}
+                    className={`rounded-xl border ${section.tone} bg-white p-4`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <Link
                         href={`/admin/ngos/${c.ngoId}`}
-                        className="text-sm font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                        className="text-sm font-bold text-emerald-600 hover:text-emerald-700"
                       >
                         {c.ngo.orgName}
                       </Link>
@@ -280,7 +280,7 @@ export default async function MatchingJobPage({
                       // since changed — or one decided before that rule existed.
                       // Its decision is kept (a person made it) but it must not
                       // sit on a funder's shortlist unremarked.
-                      <p className="mt-2 rounded-lg bg-red-50 dark:bg-red-950/20 px-3 py-2 text-xs font-semibold text-red-700 dark:text-red-400">
+                      <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
                         This organisation is{" "}
                         {c.ngo.isSuspended ? "suspended" : c.ngo.verificationStatus.toLowerCase()} and
                         would not be matched today. It cannot receive funding in this state — review
@@ -294,10 +294,10 @@ export default async function MatchingJobPage({
                         return (
                           <li key={`${r.code}-${i}`} className="flex gap-2 text-sm">
                             <span className={`font-bold ${style.className}`}>{style.mark}</span>
-                            <span className="text-gray-700 dark:text-gray-300">
+                            <span className="text-gray-700">
                               <span className="font-semibold">{r.label}</span>
                               {!r.required && (
-                                <span className="text-gray-400 dark:text-gray-600"> (preferred)</span>
+                                <span className="text-gray-500"> (preferred)</span>
                               )}
                               {" — "}
                               {r.detail}
@@ -306,7 +306,7 @@ export default async function MatchingJobPage({
                         );
                       })}
                       {reasons.length === 0 && (
-                        <li className="text-sm text-gray-500 dark:text-gray-400">
+                        <li className="text-sm text-gray-500">
                           No criteria were evaluated for this organisation.
                         </li>
                       )}
@@ -316,13 +316,13 @@ export default async function MatchingJobPage({
                       <CandidateDecision candidateId={c.id} verdict={c.verdict} />
                     ) : (
                       <div className="mt-3">
-                        <p className="text-xs text-gray-500 dark:text-gray-500">
+                        <p className="text-xs text-gray-500">
                           Decided {c.decidedAt ? c.decidedAt.toISOString().slice(0, 10) : ""}
                           {c.decisionNote ? ` — ${c.decisionNote}` : ""}
                         </p>
                         {c.decision === "SHORTLISTED" &&
                           (notifiedNgoIds.has(c.ngoId) ? (
-                            <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
+                            <p className="mt-1 text-xs text-emerald-600">
                               Organisation notified — it can reply on the inquiry thread.
                             </p>
                           ) : (
@@ -335,7 +335,7 @@ export default async function MatchingJobPage({
               })}
 
               {section.rows.length === 0 && (
-                <p className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-600">
+                <p className="rounded-xl border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-500">
                   None.
                 </p>
               )}

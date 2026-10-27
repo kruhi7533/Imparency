@@ -62,10 +62,10 @@ const DOC_TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  VALIDATED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400",
-  EXTRACTED: "bg-sky-100 text-sky-800 dark:bg-sky-950/30 dark:text-sky-400",
-  NEEDS_REVIEW: "bg-amber-100 text-amber-800 dark:bg-amber-950/25 dark:text-amber-400",
-  REJECTED: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400",
+  VALIDATED: "bg-emerald-100 text-emerald-800",
+  EXTRACTED: "bg-sky-100 text-sky-800",
+  NEEDS_REVIEW: "bg-amber-100 text-amber-800",
+  REJECTED: "bg-red-100 text-red-800",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -76,9 +76,9 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const SEVERITY_COLOR: Record<string, string> = {
-  HIGH: "text-red-600 dark:text-red-400",
-  MEDIUM: "text-amber-600 dark:text-amber-400",
-  LOW: "text-gray-500 dark:text-gray-400",
+  HIGH: "text-red-600",
+  MEDIUM: "text-amber-600",
+  LOW: "text-gray-500",
 };
 
 function ConfidenceBar({ value }: { value: number }) {
@@ -91,10 +91,10 @@ function ConfidenceBar({ value }: { value: number }) {
       : "bg-red-500";
   return (
     <div className="flex items-center gap-2 min-w-[92px]">
-      <div className="h-1.5 w-14 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+      <div className="h-1.5 w-14 rounded-full bg-gray-200 overflow-hidden">
         <div className={`h-full ${tone}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 tabular-nums">
+      <span className="text-xs font-semibold text-gray-500 tabular-nums">
         {pct}%
       </span>
     </div>
@@ -188,11 +188,11 @@ export default function DocumentReviewClient({ initialNgos }: { initialNgos: Ngo
 
   if (ngos.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-12 text-center">
-        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+      <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center">
+        <p className="text-sm font-semibold text-gray-700">
           No NGO documents to review yet.
         </p>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-sm text-gray-500">
           NGOs appear here as soon as they upload registration documents, whether or not
           extraction has run.
         </p>
@@ -203,7 +203,7 @@ export default function DocumentReviewClient({ initialNgos }: { initialNgos: Ngo
   return (
     <div className="space-y-4">
       {error && (
-        <div className="rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
@@ -215,53 +215,53 @@ export default function DocumentReviewClient({ initialNgos }: { initialNgos: Ngo
         return (
           <section
             key={ngo.id}
-            className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
+            className="rounded-xl border border-gray-200 bg-white overflow-hidden"
           >
             <button
               type="button"
               onClick={() => setExpanded(isOpen ? null : ngo.id)}
-              className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"
+              className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-gray-50 transition"
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-gray-900 dark:text-white truncate">
+                  <span className="font-bold text-gray-900 truncate">
                     {ngo.orgName}
                   </span>
-                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
                     {ngo.verificationStatus}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                <p className="text-xs text-gray-500 mt-0.5 truncate">
                   {ngo.email}
                 </p>
               </div>
 
               <div className="flex items-center gap-3 shrink-0">
                 {!ngo.hasExtraction ? (
-                  <span className="text-xs font-bold text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-950/30 px-2 py-1 rounded-full">
+                  <span className="text-xs font-bold text-red-700 bg-red-100 px-2 py-1 rounded-full">
                     Not analysed
                   </span>
                 ) : outstanding > 0 ? (
-                  <span className="text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/25 px-2 py-1 rounded-full">
+                  <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded-full">
                     {outstanding} to review
                   </span>
                 ) : (
-                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/30 px-2 py-1 rounded-full">
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full">
                     All reviewed
                   </span>
                 )}
-                <span className="text-gray-400 text-sm">{isOpen ? "▲" : "▼"}</span>
+                <span className="text-gray-500 text-sm">{isOpen ? "▲" : "▼"}</span>
               </div>
             </button>
 
             {/* Extraction never produced anything — offer to start it. Without
                 this the NGO had no rows, so it rendered no actions at all. */}
             {isOpen && !ngo.hasExtraction && (
-              <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-6">
-                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              <div className="border-t border-gray-100 px-5 py-6">
+                <p className="text-sm font-semibold text-gray-800">
                   Extraction has never run for this NGO.
                 </p>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+                <p className="mt-1 text-sm text-gray-500 max-w-2xl">
                   {ngo.documents.length} document
                   {ngo.documents.length === 1 ? " was" : "s were"} uploaded, but no fields
                   were read from them — the automatic run never completed. Nothing has been
@@ -273,7 +273,7 @@ export default function DocumentReviewClient({ initialNgos }: { initialNgos: Ngo
                     type="button"
                     onClick={() => rerun(ngo.id)}
                     disabled={rerunning === ngo.id}
-                    className="rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-4 py-2 text-sm font-semibold text-white transition"
+                    className="rounded-lg bg-trust-600 hover:bg-trust-700 disabled:opacity-50 px-4 py-2 text-sm font-semibold text-white transition"
                   >
                     {rerunning === ngo.id ? "Running…" : "Run extraction"}
                   </button>
@@ -293,11 +293,11 @@ export default function DocumentReviewClient({ initialNgos }: { initialNgos: Ngo
             )}
 
             {isOpen && ngo.hasExtraction && (
-              <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-5 space-y-6">
+              <div className="border-t border-gray-100 px-5 py-5 space-y-6">
                 {/* Documents the agent classified */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
                       Uploaded documents
                     </h3>
                     <button
@@ -311,21 +311,21 @@ export default function DocumentReviewClient({ initialNgos }: { initialNgos: Ngo
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {ngo.analyses.length === 0 && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <p className="text-sm text-gray-500">
                         No documents were analysed.
                       </p>
                     )}
                     {ngo.analyses.map((a) => (
                       <div
                         key={a.id}
-                        className="rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2.5"
+                        className="rounded-lg border border-gray-200 px-3 py-2.5"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                          <span className="text-sm font-semibold text-gray-800">
                             {DOC_TYPE_LABELS[a.docType] || a.docType}
                           </span>
                           {!a.readable && (
-                            <span className="text-[10px] font-black text-red-600 dark:text-red-400">
+                            <span className="text-[10px] font-bold text-red-600">
                               UNREADABLE
                             </span>
                           )}
@@ -334,7 +334,7 @@ export default function DocumentReviewClient({ initialNgos }: { initialNgos: Ngo
                           <ConfidenceBar value={a.docTypeConfidence} />
                         </div>
                         {a.note && (
-                          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{a.note}</p>
+                          <p className="mt-1.5 text-xs text-gray-500">{a.note}</p>
                         )}
                         {a.documentUrl && (
                           <a
@@ -353,7 +353,7 @@ export default function DocumentReviewClient({ initialNgos }: { initialNgos: Ngo
 
                 {/* Field-by-field human gate */}
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
                     Extracted fields
                   </h3>
                   <div className="space-y-3">
@@ -364,15 +364,15 @@ export default function DocumentReviewClient({ initialNgos }: { initialNgos: Ngo
                       return (
                         <div
                           key={f.id}
-                          className="rounded-lg border border-gray-200 dark:border-gray-800 p-4"
+                          className="rounded-lg border border-gray-200 p-4"
                         >
                           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-bold text-gray-900 dark:text-white">
+                              <span className="text-sm font-bold text-gray-900">
                                 {FIELD_LABELS[f.fieldKey] || f.fieldKey}
                               </span>
                               <span
-                                className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                                   STATUS_BADGE[f.status] || STATUS_BADGE.NEEDS_REVIEW
                                 }`}
                               >
@@ -384,24 +384,24 @@ export default function DocumentReviewClient({ initialNgos }: { initialNgos: Ngo
 
                           <div className="grid gap-3 sm:grid-cols-2 mb-3">
                             <div>
-                              <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                                 Read from document
                               </p>
                               <p
                                 className={`text-sm font-mono ${
                                   f.extractedValue
-                                    ? "text-gray-900 dark:text-gray-100"
-                                    : "text-gray-400 dark:text-gray-500 italic"
+                                    ? "text-gray-900"
+                                    : "text-gray-500 italic"
                                 }`}
                               >
                                 {f.extractedValue ?? "not found"}
                               </p>
                             </div>
                             <div>
-                              <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                                 Typed on registration form
                               </p>
-                              <p className="text-sm font-mono text-gray-600 dark:text-gray-300">
+                              <p className="text-sm font-mono text-gray-600">
                                 {f.submittedValue ?? "—"}
                                 {f.matchesSubmitted === true && (
                                   <span className="ml-2 text-xs font-sans font-bold text-emerald-600">
@@ -424,14 +424,14 @@ export default function DocumentReviewClient({ initialNgos }: { initialNgos: Ngo
                                   key={i}
                                   className={`text-xs ${SEVERITY_COLOR[flag.severity] || ""}`}
                                 >
-                                  <span className="font-black">{flag.severity}</span> — {flag.issue}
+                                  <span className="font-bold">{flag.severity}</span> — {flag.issue}
                                 </li>
                               ))}
                             </ul>
                           )}
 
                           {decided ? (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                            <p className="text-xs text-gray-500">
                               {f.status === "VALIDATED" ? "Validated" : "Rejected"} as{" "}
                               <span className="font-mono font-semibold">
                                 {displayValue ?? "—"}
@@ -449,7 +449,7 @@ export default function DocumentReviewClient({ initialNgos }: { initialNgos: Ngo
                                   setEdits((prev) => ({ ...prev, [f.id]: e.target.value }))
                                 }
                                 placeholder="Enter the correct value"
-                                className="flex-1 min-w-[200px] rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-1.5 text-sm font-mono text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                className="flex-1 min-w-[200px] rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-mono text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500"
                               />
                               <button
                                 type="button"
@@ -463,7 +463,7 @@ export default function DocumentReviewClient({ initialNgos }: { initialNgos: Ngo
                                 type="button"
                                 onClick={() => decide(ngo.id, f, "REJECT")}
                                 disabled={busyFieldId === f.id}
-                                className="rounded-lg border border-red-300 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 px-3 py-1.5 text-sm font-semibold transition"
+                                className="rounded-lg border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 px-3 py-1.5 text-sm font-semibold transition"
                               >
                                 Reject
                               </button>

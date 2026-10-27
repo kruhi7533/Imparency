@@ -79,34 +79,34 @@ export default function PendingDonationPage() {
   }, [donationId]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
+    <div className="font-sans">
 
       <div className="max-w-md mx-auto px-4 py-20">
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl p-6 sm:p-8 shadow-xl text-center space-y-6">
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-6 sm:p-8 shadow-[0_1px_2px_rgba(16,24,40,0.04)] text-center space-y-6">
           
           {status === "PENDING" && (
             <div className="space-y-6 py-6">
               {/* Spinning Loader */}
               <div className="flex justify-center">
-                <div className="w-16 h-16 border-4 border-emerald-100 dark:border-emerald-950 border-t-emerald-600 rounded-full animate-spin"></div>
+                <div className="w-16 h-16 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin"></div>
               </div>
               
               <div className="space-y-2">
-                <h2 className="text-xl font-black text-gray-900 dark:text-white">Verifying Payment...</h2>
-                <p className="text-xs text-gray-400">
+                <h2 className="text-xl font-black text-gray-900">Verifying Payment...</h2>
+                <p className="text-xs text-gray-600">
                   Please do not close this window or navigate away. We are securing your transaction confirmation.
                 </p>
               </div>
 
               {details && (
-                <div className="bg-gray-50 dark:bg-gray-950 rounded-2xl p-4 text-xs font-semibold text-gray-600 dark:text-gray-400 text-left space-y-1">
+                <div className="bg-gray-50 rounded-2xl p-4 text-xs font-semibold text-gray-600 text-left space-y-1">
                   <div><strong>Campaign:</strong> {details.projectTitle}</div>
                   <div><strong>Amount:</strong> ₹{details.amount.toLocaleString()}</div>
                   {paymentId && <div><strong>Razorpay Ref:</strong> {paymentId}</div>}
                 </div>
               )}
               
-              <div className="text-[10px] text-gray-400 font-bold">
+              <div className="text-[10px] text-gray-600 font-bold">
                 Attempt {attempts + 1} of 10
               </div>
             </div>
@@ -116,23 +116,23 @@ export default function PendingDonationPage() {
             <div className="space-y-6 py-4">
               {/* Success Badge Icon */}
               <div className="flex justify-center">
-                <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center text-4xl shadow-inner border border-emerald-100 dark:border-emerald-900/50 animate-bounce">
+                <div className="w-20 h-20 bg-emerald-50 text-emerald-700 rounded-full flex items-center justify-center text-4xl shadow-inner border border-emerald-100 animate-bounce">
                   ✓
                 </div>
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-2xl font-black text-gray-900 dark:text-white">Donation Successful!</h2>
-                <p className="text-xs text-gray-400">
+                <h2 className="text-2xl font-black text-gray-900">Donation Successful!</h2>
+                <p className="text-xs text-gray-600">
                   Thank you for your generosity. Your contribution is now secured and locked against milestones.
                 </p>
               </div>
 
               {details && (
-                <div className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100/50 dark:border-emerald-900/30 rounded-2xl p-5 text-xs text-emerald-800 dark:text-emerald-300 text-left space-y-2">
+                <div className="bg-emerald-50/50 border border-emerald-100/50 rounded-2xl p-5 text-xs text-emerald-800 text-left space-y-2">
                   <div><strong>Project:</strong> {details.projectTitle}</div>
-                  <div className="text-sm font-black text-emerald-600 dark:text-emerald-400"><strong>Contributed:</strong> ₹{details.amount.toLocaleString()}</div>
-                  <div className="text-[10px] text-gray-400">
+                  <div className="text-sm font-black text-emerald-700"><strong>Contributed:</strong> ₹{details.amount.toLocaleString()}</div>
+                  <div className="text-[10px] text-gray-600">
                     {details.receiptUrl
                       ? "An 80G tax receipt has been generated and dispatched to your email."
                       : "Your 80G tax receipt is on hold until your PAN is verified — verify it from your profile to receive it by email."}
@@ -143,13 +143,13 @@ export default function PendingDonationPage() {
               <div className="flex flex-col gap-2 pt-4">
                 <Link
                   href="/donor/portfolio"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-2xl shadow-lg transition text-xs"
+                  className="bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3 rounded-lg shadow-sm transition text-xs"
                 >
                   View Impact Portfolio
                 </Link>
                 <Link
                   href="/discover"
-                  className="border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-850 text-gray-700 dark:text-gray-300 font-bold py-3 rounded-2xl transition text-xs"
+                  className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-semibold py-3 rounded-lg transition text-xs"
                 >
                   Discover More Campaigns
                 </Link>
@@ -160,14 +160,14 @@ export default function PendingDonationPage() {
           {status === "FAILED" && (
             <div className="space-y-6 py-4">
               <div className="flex justify-center">
-                <div className="w-20 h-20 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center text-4xl border border-red-100 dark:border-red-900/50">
+                <div className="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center text-4xl border border-red-100">
                   ✕
                 </div>
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-xl font-black text-gray-900 dark:text-white">Transaction Failed</h2>
-                <p className="text-xs text-gray-400">
+                <h2 className="text-xl font-black text-gray-900">Transaction Failed</h2>
+                <p className="text-xs text-gray-600">
                   The payment gateway reported a transaction failure. No funds were debited.
                 </p>
               </div>
@@ -175,13 +175,13 @@ export default function PendingDonationPage() {
               <div className="flex flex-col gap-2 pt-4">
                 <button
                   onClick={() => router.back()}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-2xl shadow-lg transition text-xs"
+                  className="bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3 rounded-lg shadow-sm transition text-xs"
                 >
                   Try Again
                 </button>
                 <Link
                   href="/discover"
-                  className="border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-850 text-gray-700 dark:text-gray-300 font-bold py-3 rounded-2xl transition text-xs"
+                  className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-semibold py-3 rounded-lg transition text-xs"
                 >
                   Return to Discovery
                 </Link>
@@ -192,17 +192,17 @@ export default function PendingDonationPage() {
           {status === "UNKNOWN" && (
             <div className="space-y-6 py-4">
               <div className="flex justify-center">
-                <div className="w-20 h-20 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center text-4xl border border-amber-100 dark:border-amber-900/50">
+                <div className="w-20 h-20 bg-amber-50 text-amber-700 rounded-full flex items-center justify-center text-4xl border border-amber-100">
                   ⚠️
                 </div>
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-xl font-black text-gray-900 dark:text-white">Verification Pending</h2>
-                <p className="text-xs text-gray-400 leading-relaxed">
+                <h2 className="text-xl font-black text-gray-900">Verification Pending</h2>
+                <p className="text-xs text-gray-600 leading-relaxed">
                   We are still waiting for confirmation from Razorpay. Do not worry—if your account was debited, the donation will be processed shortly.
                 </p>
-                <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-lg p-2.5">
+                <p className="text-[10px] text-amber-700 font-semibold bg-amber-50 border border-amber-100 rounded-lg p-2.5">
                   If this continues, please contact support with Order ID: <span className="font-mono">{donationId}</span>
                 </p>
               </div>
@@ -210,7 +210,7 @@ export default function PendingDonationPage() {
               <div className="flex flex-col gap-2 pt-4">
                 <Link
                   href="/donor/portfolio"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-2xl shadow-lg transition text-xs"
+                  className="bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3 rounded-lg shadow-sm transition text-xs"
                 >
                   Go to Portfolio
                 </Link>

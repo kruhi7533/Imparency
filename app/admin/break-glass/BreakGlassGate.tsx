@@ -17,10 +17,10 @@ export async function breakGlassPageGate(org: OrgRef): Promise<JSX.Element | nul
   const grantId = await recordGrantUse(session.user.id, org, { method: "GET", path });
   if (grantId) return null;
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-16">
+    <div className="py-16">
       <div className="max-w-xl mx-auto px-4 text-center space-y-4">
-        <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">Break-glass access required</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Break-glass access required</h1>
+        <p className="text-sm text-gray-500">
           Support admins can open this organisation&apos;s admin record only under a time-boxed grant with a written reason.
           Every view and change under the grant is audited.
         </p>

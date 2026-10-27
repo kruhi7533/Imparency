@@ -18,8 +18,8 @@ const fmt = (d: Date) =>
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-      <h2 className="text-sm font-extrabold uppercase tracking-wider text-gray-400 mb-4">{title}</h2>
+    <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4">{title}</h2>
       {children}
     </div>
   );
@@ -28,8 +28,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs font-bold text-gray-400">{label}</p>
-      <p className="text-sm text-gray-900 dark:text-white mt-0.5">{value ?? "—"}</p>
+      <p className="text-xs font-bold text-gray-500">{label}</p>
+      <p className="text-sm text-gray-900 mt-0.5">{value ?? "—"}</p>
     </div>
   );
 }
@@ -181,18 +181,18 @@ export default async function DonorDetailPage({ params }: { params: { id: string
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <Link href="/admin/donors" className="text-xs font-bold text-emerald-600 hover:underline">
               ← All donors
             </Link>
-            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{donor.name}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{donor.email}</p>
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mt-1">{donor.name}</h1>
+            <p className="text-sm text-gray-500">{donor.email}</p>
           </div>
           {openAlerts.length > 0 && (
-            <span className="px-3 py-1.5 rounded-full text-sm font-bold bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400">
+            <span className="px-3 py-1.5 rounded-full text-sm font-bold bg-red-100 text-red-700">
               {openAlerts.length} open alert{openAlerts.length === 1 ? "" : "s"}
             </span>
           )}
@@ -225,10 +225,10 @@ export default async function DonorDetailPage({ params }: { params: { id: string
                     <span className="font-bold">{donor.panStatus}</span>
                     {donor.panVerifiedVia && (
                       <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold ${
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                           donor.panVerifiedVia === "MOCK"
-                            ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
-                            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-gray-100 text-gray-600"
                         }`}
                       >
                         via {donor.panVerifiedVia}
@@ -250,8 +250,8 @@ export default async function DonorDetailPage({ params }: { params: { id: string
             </div>
 
             {panNeedsReview && (
-              <div className="mt-4 rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/30 p-4">
-                <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-xs font-bold text-amber-700">
                   This PAN needs manual review
                   {donor.panVerifiedVia === "MOCK" && " (verified in MOCK mode — no real provider check ran)"}
                   {donor.panNameMatch === false && " (provider name does not match profile name)"}
@@ -307,14 +307,14 @@ export default async function DonorDetailPage({ params }: { params: { id: string
                 label="Status"
                 value={
                   <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold ${
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                       donor.orgVerificationStatus === "VERIFIED"
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                        ? "bg-emerald-100 text-emerald-700"
                         : donor.orgVerificationStatus === "REJECTED"
-                          ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                          ? "bg-red-100 text-red-700"
                           : donor.orgVerificationStatus === "PENDING"
-                            ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
-                            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-gray-100 text-gray-600"
                     }`}
                   >
                     {donor.orgVerificationStatus}
@@ -326,8 +326,8 @@ export default async function DonorDetailPage({ params }: { params: { id: string
             </div>
 
             {donor.orgVerificationNote && (
-              <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-                <span className="font-bold text-gray-400">Reviewer note:</span> {donor.orgVerificationNote}
+              <p className="mt-4 text-xs text-gray-500">
+                <span className="font-bold text-gray-500">Reviewer note:</span> {donor.orgVerificationNote}
               </p>
             )}
 
@@ -339,21 +339,21 @@ export default async function DonorDetailPage({ params }: { params: { id: string
               <p
                 className={`mt-4 text-xs ${
                   utilisation.band === "OVER"
-                    ? "text-red-600 dark:text-red-400 font-semibold"
+                    ? "text-red-600 font-semibold"
                     : utilisation.band === "NEAR"
-                      ? "text-amber-700 dark:text-amber-400"
+                      ? "text-amber-700"
                       : utilisation.band === "UNDECLARED"
-                        ? "text-gray-500 dark:text-gray-400"
-                        : "text-gray-600 dark:text-gray-300"
+                        ? "text-gray-500"
+                        : "text-gray-600"
                 }`}
               >
-                <span className="font-bold text-gray-400">Budget this FY:</span>{" "}
+                <span className="font-bold text-gray-500">Budget this FY:</span>{" "}
                 {describeUtilisation(utilisation)}
               </p>
             )}
 
             {orgAssessment.missing.length > 0 && donor.orgVerificationStatus !== "VERIFIED" && (
-              <p className="mt-4 text-xs text-amber-700 dark:text-amber-400">
+              <p className="mt-4 text-xs text-amber-700">
                 <span className="font-bold">Cannot be approved yet — missing:</span>{" "}
                 {orgAssessment.missing.join(", ")}
               </p>
@@ -366,14 +366,14 @@ export default async function DonorDetailPage({ params }: { params: { id: string
         {/* Activity */}
         <Section title={`Donations (${donor.donations.length} shown)`}>
           <div className="flex gap-6 mb-4 text-sm">
-            <span className="text-gray-500">Lifetime: <b className="text-gray-900 dark:text-white">₹{Number(donor.totalDonated).toLocaleString("en-IN")}</b></span>
+            <span className="text-gray-500">Lifetime: <b className="text-gray-900">₹{Number(donor.totalDonated).toLocaleString("en-IN")}</b></span>
             <span className="text-gray-500">Successful: <b className="text-emerald-600">{successDonations.length}</b></span>
             <span className="text-gray-500">Failed: <b className="text-red-600">{failedDonations.length}</b></span>
-            <span className="text-gray-500">Receipts withheld: <b className={withheldReceipts.length ? "text-amber-600" : "text-gray-900 dark:text-white"}>{withheldReceipts.length}</b></span>
+            <span className="text-gray-500">Receipts withheld: <b className={withheldReceipts.length ? "text-amber-600" : "text-gray-900"}>{withheldReceipts.length}</b></span>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="text-left text-xs font-bold uppercase tracking-wide text-gray-400">
+              <thead className="text-left text-xs font-bold uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="py-2 pr-4">When</th>
                   <th className="py-2 pr-4">Project</th>
@@ -383,20 +383,20 @@ export default async function DonorDetailPage({ params }: { params: { id: string
                   <th className="py-2">Receipt</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              <tbody className="divide-y divide-gray-100">
                 {donor.donations.map((d) => (
                   <tr key={d.id}>
-                    <td className="py-2 pr-4 text-gray-400 whitespace-nowrap">{fmt(d.createdAt)}</td>
-                    <td className="py-2 pr-4 text-gray-900 dark:text-white">{d.project.title}</td>
+                    <td className="py-2 pr-4 text-gray-500 whitespace-nowrap">{fmt(d.createdAt)}</td>
+                    <td className="py-2 pr-4 text-gray-900">{d.project.title}</td>
                     <td className="py-2 pr-4 text-gray-500">{d.project.ngo.orgName}</td>
-                    <td className="py-2 pr-4 font-semibold text-gray-900 dark:text-white">₹{Number(d.amount).toLocaleString("en-IN")}</td>
+                    <td className="py-2 pr-4 font-semibold text-gray-900">₹{Number(d.amount).toLocaleString("en-IN")}</td>
                     <td className="py-2 pr-4">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                         d.status === "SUCCESS"
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                          ? "bg-emerald-100 text-emerald-700"
                           : d.status === "FAILED"
-                            ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
-                            : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-gray-100 text-gray-500"
                       }`}>
                         {d.status}
                       </span>
@@ -412,13 +412,13 @@ export default async function DonorDetailPage({ params }: { params: { id: string
                       ) : d.status === "SUCCESS" ? (
                         <span className="text-xs text-amber-600 font-semibold">withheld (PAN)</span>
                       ) : (
-                        <span className="text-gray-300 dark:text-gray-600">—</span>
+                        <span className="text-gray-300">—</span>
                       )}
                     </td>
                   </tr>
                 ))}
                 {donor.donations.length === 0 && (
-                  <tr><td colSpan={6} className="py-8 text-center text-gray-400">No donations yet.</td></tr>
+                  <tr><td colSpan={6} className="py-8 text-center text-gray-500">No donations yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -429,22 +429,22 @@ export default async function DonorDetailPage({ params }: { params: { id: string
           {/* Risk */}
           <Section title={`Risk (${openAlerts.length} open / ${alerts.length} total)`}>
             {alerts.length === 0 ? (
-              <p className="text-sm text-gray-400">No fraud alerts for this donor.</p>
+              <p className="text-sm text-gray-500">No fraud alerts for this donor.</p>
             ) : (
               <ul className="space-y-3">
                 {alerts.map((a) => (
                   <li key={a.id} className="text-sm">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-bold mr-2 ${
                       a.resolved
-                        ? "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                        ? "bg-gray-100 text-gray-500"
                         : a.severity === "HIGH"
-                          ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
-                          : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-amber-100 text-amber-700"
                     }`}>
                       {a.resolved ? "RESOLVED" : a.severity}
                     </span>
-                    <span className="text-gray-700 dark:text-gray-300">{a.description}</span>
-                    <span className="text-xs text-gray-400 ml-2">{fmt(a.createdAt)}</span>
+                    <span className="text-gray-700">{a.description}</span>
+                    <span className="text-xs text-gray-500 ml-2">{fmt(a.createdAt)}</span>
                   </li>
                 ))}
               </ul>
@@ -468,7 +468,7 @@ export default async function DonorDetailPage({ params }: { params: { id: string
 
         <Section title="CSR organisation">
           {membership && parentAccount ? (
-            <p className="text-sm text-gray-700 dark:text-gray-300">
+            <p className="text-sm text-gray-700">
               Member of{" "}
               <a href={`/admin/donors/${parentAccount.id}`} className="font-bold text-emerald-600 hover:underline">
                 {parentAccount.companyName || parentAccount.name}
@@ -478,7 +478,7 @@ export default async function DonorDetailPage({ params }: { params: { id: string
           ) : (
             <div className="space-y-4 text-sm">
               <div>
-                <p className="text-xs font-bold text-gray-400">Team ({teamMembers.length})</p>
+                <p className="text-xs font-bold text-gray-500">Team ({teamMembers.length})</p>
                 {teamMembers.length === 0 ? (
                   <p className="text-gray-500">No team members — a single-user account.</p>
                 ) : (
@@ -486,7 +486,7 @@ export default async function DonorDetailPage({ params }: { params: { id: string
                     {teamMembers.map((m) => {
                       const u = memberUsers.find((x) => x.id === m.userId);
                       return (
-                        <li key={m.userId} className="text-gray-700 dark:text-gray-300">
+                        <li key={m.userId} className="text-gray-700">
                           <a href={`/admin/donors/${m.userId}`} className="hover:underline">{u?.name || u?.email || m.userId}</a> · {m.role.toLowerCase()} · since {fmt(m.createdAt)}
                         </li>
                       );
@@ -495,14 +495,14 @@ export default async function DonorDetailPage({ params }: { params: { id: string
                 )}
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400">CSR requirements ({requirements.length})</p>
+                <p className="text-xs font-bold text-gray-500">CSR requirements ({requirements.length})</p>
                 {requirements.length === 0 ? (
                   <p className="text-gray-500">None.</p>
                 ) : (
                   <ul className="mt-1 space-y-1">
                     {requirements.map((r) => (
                       <li key={r.id}>
-                        <a href={`/admin/requirements/${r.id}`} className="hover:underline text-gray-700 dark:text-gray-300">{r.fileName || "Requirement"}</a>{" "}
+                        <a href={`/admin/requirements/${r.id}`} className="hover:underline text-gray-700">{r.fileName || "Requirement"}</a>{" "}
                         <span className="text-xs text-gray-500">· {r.status.replace(/_/g, " ").toLowerCase()} · {fmt(r.createdAt)}</span>
                       </li>
                     ))}
@@ -510,14 +510,14 @@ export default async function DonorDetailPage({ params }: { params: { id: string
                 )}
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400">Contracts ({contracts.length})</p>
+                <p className="text-xs font-bold text-gray-500">Contracts ({contracts.length})</p>
                 {contracts.length === 0 ? (
                   <p className="text-gray-500">None.</p>
                 ) : (
                   <ul className="mt-1 space-y-1">
                     {contracts.map((c) => (
                       <li key={c.id}>
-                        <a href={`/admin/contracts/${c.id}`} className="hover:underline text-gray-700 dark:text-gray-300">{c.contractNumber} — {c.title}</a>{" "}
+                        <a href={`/admin/contracts/${c.id}`} className="hover:underline text-gray-700">{c.contractNumber} — {c.title}</a>{" "}
                         <span className="text-xs text-gray-500">· {c.ngo.orgName} · {c.status.toLowerCase()}</span>
                       </li>
                     ))}
@@ -535,9 +535,9 @@ export default async function DonorDetailPage({ params }: { params: { id: string
               <li key={i} className="flex gap-3 text-sm">
                 <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${KIND_DOT[item.kind]}`} />
                 <div>
-                  <span className="font-bold text-gray-900 dark:text-white">{item.label}</span>
-                  <span className="text-gray-500 dark:text-gray-400 ml-2">{item.detail}</span>
-                  <span className="text-xs text-gray-400 ml-2 whitespace-nowrap">{fmt(item.at)}</span>
+                  <span className="font-bold text-gray-900">{item.label}</span>
+                  <span className="text-gray-500 ml-2">{item.detail}</span>
+                  <span className="text-xs text-gray-500 ml-2 whitespace-nowrap">{fmt(item.at)}</span>
                 </div>
               </li>
             ))}

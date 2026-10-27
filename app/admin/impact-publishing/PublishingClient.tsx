@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TEMPLATE_LABEL } from "@/lib/impact-stories";
 
-const card = "bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm";
+const card = "bg-white rounded-2xl border border-gray-200/80 p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
 const btn = "px-3 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50";
 const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-IN") : "—");
 
@@ -35,7 +35,7 @@ export default function PublishingClient({ reports, stories }: { reports: any[];
 
   const noteBox = (id: string, placeholder: string) => (
     <textarea
-      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm"
+      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
       rows={2}
       placeholder={placeholder}
       value={notes[id] ?? ""}
@@ -51,7 +51,7 @@ export default function PublishingClient({ reports, stories }: { reports: any[];
         {reports.length === 0 && <p className="text-sm text-gray-500 italic">Nothing to review.</p>}
         <ul className="space-y-4">
           {reports.map((r) => (
-            <li key={r.id} className="rounded-xl border border-gray-100 dark:border-gray-800 p-4 space-y-2">
+            <li key={r.id} className="rounded-xl border border-gray-100 p-4 space-y-2">
               <div className="flex flex-wrap justify-between gap-2">
                 <span className="font-semibold">{r.title}</span>
                 <span className="text-xs text-gray-500">{r.orgName} · {day(r.periodStart)} – {day(r.periodEnd)} · submitted {day(r.submittedAt)}</span>
@@ -81,7 +81,7 @@ export default function PublishingClient({ reports, stories }: { reports: any[];
         {stories.length === 0 && <p className="text-sm text-gray-500 italic">Nothing to review.</p>}
         <ul className="space-y-4">
           {stories.map((s) => (
-            <li key={s.id} className="rounded-xl border border-gray-100 dark:border-gray-800 p-4 space-y-2">
+            <li key={s.id} className="rounded-xl border border-gray-100 p-4 space-y-2">
               <div className="flex flex-wrap justify-between gap-2">
                 <span className="font-semibold">{s.title}</span>
                 <span className="flex gap-2 items-center text-xs text-gray-500">

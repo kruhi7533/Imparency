@@ -39,13 +39,13 @@ const EMPTY: Draft = {
 const REQUIRED = new Set<string>(["title", "summary", "sector", "state"]);
 
 const inputCls =
-  "w-full bg-gray-900/70 border border-gray-800 text-sm rounded-lg px-3 py-2 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500";
+  "w-full bg-white border border-gray-300 text-sm rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20";
 
 function Label({ htmlFor, children, hint }: { htmlFor: string; children: React.ReactNode; hint?: string }) {
   return (
-    <label htmlFor={htmlFor} className="block text-xs font-semibold text-gray-300 mb-1.5">
+    <label htmlFor={htmlFor} className="block text-xs font-semibold text-gray-700 mb-1.5">
       {children}
-      {REQUIRED.has(htmlFor.replace("rf-", "")) && <span className="text-emerald-400"> *</span>}
+      {REQUIRED.has(htmlFor.replace("rf-", "")) && <span className="text-emerald-700"> *</span>}
       {hint && <span className="text-gray-500 font-normal"> — {hint}</span>}
     </label>
   );
@@ -53,9 +53,9 @@ function Label({ htmlFor, children, hint }: { htmlFor: string; children: React.R
 
 function Section({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
-    <fieldset className="border border-gray-800 rounded-2xl p-5 bg-gray-950/40">
-      <legend className="px-2 text-sm font-bold text-white">
-        <span className="text-emerald-400">{n}.</span> {title}
+    <fieldset className="border border-gray-200 rounded-2xl p-5 bg-gray-50">
+      <legend className="px-2 text-sm font-bold text-gray-900">
+        <span className="text-emerald-700">{n}.</span> {title}
       </legend>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">{children}</div>
     </fieldset>
@@ -210,7 +210,7 @@ export function RequirementForm() {
 
       <Section n={5} title="NGO eligibility & constraints">
         <div className="md:col-span-2">
-          <p className="text-xs font-semibold text-gray-300 mb-2">Required documents from the NGO</p>
+          <p className="text-xs font-semibold text-gray-700 mb-2">Required documents from the NGO</p>
           <div className="flex flex-wrap gap-2">
             {COMMON_DOCUMENTS.map((doc) => {
               const on = docs.has(doc);
@@ -221,7 +221,7 @@ export function RequirementForm() {
                   aria-pressed={on}
                   onClick={() => toggleDoc(doc)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-                    on ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" : "border-gray-700 text-gray-400 hover:text-white"
+                    on ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "border-gray-300 text-gray-600 hover:text-gray-900"
                   }`}
                 >
                   {on ? "✓ " : "+ "}
@@ -264,16 +264,16 @@ export function RequirementForm() {
         </div>
       </Section>
 
-      {error && <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-4 py-2">{error}</p>}
+      {error && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2">{error}</p>}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-gray-500">
-          <span className="text-emerald-400">*</span> required. You can review and edit everything before submitting it for admin verification.
+          <span className="text-emerald-700">*</span> required. You can review and edit everything before submitting it for admin verification.
         </p>
         <button
           type="submit"
           disabled={saving}
-          className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 text-gray-950 text-sm font-bold disabled:opacity-50"
+          className="px-6 py-2.5 rounded-xl bg-trust-600 hover:bg-trust-700 text-white text-sm font-bold disabled:opacity-50"
         >
           {saving ? "Creating…" : "Create requirement"}
         </button>

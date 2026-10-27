@@ -42,23 +42,23 @@ export default async function DonorOrgQueuePage() {
 
   const now = Date.now();
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Donor organisations awaiting verification</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Donor organisations awaiting verification</h1>
+          <p className="mt-1 text-sm text-gray-500 max-w-2xl">
             Companies and foundations cannot put a CSR requirement in front of NGOs until they are verified. Oldest first;
             open one to check its CIN and decide.
           </p>
         </div>
 
         {pending.length === 0 ? (
-          <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 dark:border-emerald-900/30 dark:bg-emerald-950/30 dark:text-emerald-400">
+          <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
             No organisation is waiting.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+            <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr>
                   <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Organisation</th>
@@ -67,22 +67,22 @@ export default async function DonorOrgQueuePage() {
                   <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Waiting</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              <tbody className="divide-y divide-gray-100">
                 {pending.map((d) => {
                   const since = d.orgSubmittedAt ?? d.createdAt;
                   const days = Math.floor((now - since.getTime()) / DAY);
                   return (
                     <tr key={d.id}>
                       <td className="px-4 py-3">
-                        <Link href={`/admin/donors/${d.id}`} className="text-sm font-bold text-gray-900 hover:underline dark:text-white">
+                        <Link href={`/admin/donors/${d.id}`} className="text-sm font-bold text-gray-900 hover:underline">
                           {d.companyName || d.name || "Unnamed organisation"}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-4 py-3 text-sm text-gray-600">
                         {(d.donorPersona ?? "").replace(/_/g, " ").toLowerCase() || "—"}
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-300">{d.cin ?? "Not provided"}</td>
-                      <td className={`px-4 py-3 text-sm font-semibold ${days >= 3 ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-gray-300"}`}>
+                      <td className="px-4 py-3 font-mono text-xs text-gray-600">{d.cin ?? "Not provided"}</td>
+                      <td className={`px-4 py-3 text-sm font-semibold ${days >= 3 ? "text-red-600" : "text-gray-600"}`}>
                         {days === 0 ? "today" : `${days} day${days === 1 ? "" : "s"}`}
                       </td>
                     </tr>

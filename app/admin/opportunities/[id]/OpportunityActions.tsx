@@ -72,7 +72,7 @@ export default function OpportunityActions({
               type="button"
               disabled={busy !== null}
               onClick={() => setShowReject((v) => !v)}
-              className="rounded-lg border border-red-200 dark:border-red-900 px-4 py-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-50"
+              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
             >
               Reject
             </button>
@@ -86,7 +86,7 @@ export default function OpportunityActions({
             onClick={() =>
               call(`/api/admin/matching/opportunities/${opportunityId}`, { action: "CLOSE" }, "close")
             }
-            className="rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-50"
           >
             {busy === "close" ? "Closing…" : "Close"}
           </button>
@@ -103,7 +103,7 @@ export default function OpportunityActions({
                 ? "A run is already in progress"
                 : undefined
           }
-          className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-sm font-semibold text-white dark:text-gray-900 hover:opacity-90 disabled:opacity-40"
+          className="rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white hover:bg-trust-700 disabled:opacity-40"
         >
           {busy === "run" ? "Running…" : "Run matching"}
         </button>
@@ -116,7 +116,7 @@ export default function OpportunityActions({
             onChange={(e) => setRejectNote(e.target.value)}
             rows={2}
             placeholder="Why is this being rejected? The donor will be told."
-            className="w-full rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white"
+            className="w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-gray-900"
           />
           <button
             type="button"
@@ -135,7 +135,7 @@ export default function OpportunityActions({
         </div>
       )}
 
-      {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </div>
   );
 }

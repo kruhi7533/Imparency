@@ -62,7 +62,7 @@ export function AllocationLineDecision({ allocationId, canApprove }: { allocatio
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Why? (required)"
-            className="w-40 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs"
+            className="w-40 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs"
           />
           <button
             onClick={() => decide("REJECT")}
@@ -105,13 +105,13 @@ export function ManualAllocationForm({
     router.refresh();
   }
 
-  if (milestones.length === 0) return <p className="text-[11px] text-gray-400">No milestone has room left.</p>;
+  if (milestones.length === 0) return <p className="text-[11px] text-gray-500">No milestone has room left.</p>;
   return (
     <div className="flex flex-wrap items-center gap-1">
       <select
         value={milestoneId}
         onChange={(e) => setMilestoneId(e.target.value)}
-        className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs"
+        className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs"
       >
         {milestones.map((m) => (
           <option key={m.id} value={m.id}>
@@ -123,12 +123,12 @@ export function ManualAllocationForm({
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
         inputMode="decimal"
-        className="w-28 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs"
+        className="w-28 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs"
       />
       <button
         onClick={allocate}
         disabled={busy || !milestoneId || !amount.trim()}
-        className="px-2.5 py-1 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[11px] font-bold disabled:opacity-40"
+        className="px-2.5 py-1 rounded-lg bg-trust-600 hover:bg-trust-700 text-white text-[11px] font-bold disabled:opacity-40"
       >
         {busy ? "Saving…" : "Allocate"}
       </button>

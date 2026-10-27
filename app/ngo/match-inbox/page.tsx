@@ -74,9 +74,9 @@ export default async function MatchInboxPage() {
   }));
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-zinc-900 py-12">
+    <main className="py-12">
       <div className="max-w-6xl mx-auto px-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Match Inbox</h1>
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-2">Match Inbox</h1>
         <p className="text-gray-600 dark:text-gray-400 mb-8">
           Review funding opportunities from CSRs matched to your projects by our Eligibility Engine.
         </p>
@@ -86,7 +86,7 @@ export default async function MatchInboxPage() {
             <h2 id="csr-invitations" className="text-xl font-bold text-gray-900 dark:text-white">
               CSR invitations to propose
               {actionNeeded > 0 && (
-                <span className="ml-2 align-middle text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-gray-950">{actionNeeded} need action</span>
+                <span className="ml-2 align-middle text-xs font-bold px-2 py-0.5 rounded-full bg-trust-600 text-white">{actionNeeded} need action</span>
               )}
             </h2>
             <Link href="/ngo/opportunities" className="text-xs font-semibold text-emerald-600 hover:underline">
@@ -114,7 +114,7 @@ export default async function MatchInboxPage() {
                       <span className={`text-xs font-semibold ${step.urgent ? "text-emerald-600" : "text-gray-500"}`}>{step.label}</span>
                       <Link
                         href={`/ngo/opportunities/${o.brief.id}${step.urgent ? "#respond" : ""}`}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold ${step.urgent ? "bg-emerald-500 text-gray-950" : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100"}`}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold ${step.urgent ? "bg-trust-600 hover:bg-trust-700 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100"}`}
                       >
                         {step.urgent ? "Respond" : "View"}
                       </Link>

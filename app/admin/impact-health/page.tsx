@@ -27,10 +27,10 @@ const fmt = (d: Date) =>
 type Tone = "good" | "warn" | "bad" | "neutral";
 
 const TONE_STYLES: Record<Tone, { text: string; bg: string; ring: string }> = {
-  good: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/30", ring: "ring-emerald-200 dark:ring-emerald-900/40" },
-  warn: { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/30", ring: "ring-amber-200 dark:ring-amber-900/40" },
-  bad: { text: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/30", ring: "ring-red-200 dark:ring-red-900/40" },
-  neutral: { text: "text-gray-900 dark:text-white", bg: "bg-gray-50 dark:bg-gray-800/50", ring: "ring-gray-200 dark:ring-gray-800" },
+  good: { text: "text-emerald-600", bg: "bg-emerald-50", ring: "ring-emerald-200" },
+  warn: { text: "text-amber-600", bg: "bg-amber-50", ring: "ring-amber-200" },
+  bad: { text: "text-red-600", bg: "bg-red-50", ring: "ring-red-200" },
+  neutral: { text: "text-gray-900", bg: "bg-gray-50", ring: "ring-gray-200" },
 };
 
 function StatCard({
@@ -48,17 +48,17 @@ function StatCard({
 }) {
   const style = TONE_STYLES[tone];
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
+    <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <div className="flex items-center gap-3">
         <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${style.bg} ${style.text}`}>
           <Icon size={20} strokeWidth={2.2} />
         </div>
         <div className="min-w-0">
-          <p className="text-xs font-bold text-gray-500 dark:text-gray-400 leading-tight">{label}</p>
-          <p className={`text-2xl font-extrabold leading-tight ${style.text}`}>{value}</p>
+          <p className="text-xs font-bold text-gray-500 leading-tight">{label}</p>
+          <p className={`text-2xl font-bold leading-tight ${style.text}`}>{value}</p>
         </div>
       </div>
-      <p className="mt-3 text-xs text-gray-400 dark:text-gray-500 leading-relaxed">{helper}</p>
+      <p className="mt-3 text-xs text-gray-500 leading-relaxed">{helper}</p>
     </div>
   );
 }
@@ -75,14 +75,14 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+    <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <div className="flex items-start gap-3">
-        <div className="h-9 w-9 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0">
+        <div className="h-9 w-9 rounded-xl bg-gray-50 text-gray-500 flex items-center justify-center shrink-0">
           <Icon size={18} strokeWidth={2.2} />
         </div>
         <div>
-          <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">{title}</h2>
-          <p className="mt-0.5 text-xs text-gray-400 leading-relaxed max-w-2xl">{subtitle}</p>
+          <h2 className="text-sm font-bold text-gray-900">{title}</h2>
+          <p className="mt-0.5 text-xs text-gray-500 leading-relaxed max-w-2xl">{subtitle}</p>
         </div>
       </div>
       <div className="mt-5">{children}</div>
@@ -92,7 +92,7 @@ function SectionCard({
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/30 rounded-xl px-4 py-3">
+    <div className="flex items-center gap-2 text-sm text-emerald-600 font-semibold bg-emerald-50 rounded-xl px-4 py-3">
       <PartyPopper size={16} />
       {text}
     </div>
@@ -203,16 +203,16 @@ export default async function ImpactHealthPage() {
   const headlineStyle = TONE_STYLES[headline.tone];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
             <HeartPulse size={24} strokeWidth={2.2} />
           </div>
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Impact Delivery Health</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Impact Delivery Health</h1>
+            <p className="mt-1 text-sm text-gray-500 max-w-2xl">
               Are donors hearing about the good work their money is doing? This page follows every
               project update from the moment it happens to the moment a donor actually sees it.
             </p>
@@ -227,7 +227,7 @@ export default async function ImpactHealthPage() {
 
         {/* Reach */}
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-wider text-gray-400 mb-3">Reach</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Reach</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <StatCard
               icon={Megaphone}
@@ -246,7 +246,7 @@ export default async function ImpactHealthPage() {
 
         {/* Donor feedback on updates */}
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-wider text-gray-400 mb-3">Donor feedback (30 days)</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Donor feedback (30 days)</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <StatCard icon={ThumbsUp} label="Rated helpful" helper="Donors who marked a project's updates as helpful." value={fbCount("HELPFUL")} />
             <StatCard
@@ -258,7 +258,7 @@ export default async function ImpactHealthPage() {
             />
           </div>
           {wantMore.length > 0 && (
-            <ul className="mt-3 text-sm text-gray-700 dark:text-gray-300 space-y-1">
+            <ul className="mt-3 text-sm text-gray-700 space-y-1">
               {wantMore.map((w) => {
                 const proj = wantMoreProjects.find((x) => x.id === w.projectId);
                 return (
@@ -276,7 +276,7 @@ export default async function ImpactHealthPage() {
 
         {/* Delivery health */}
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-wider text-gray-400 mb-3">Delivery Health</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Delivery Health</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               icon={Send}
@@ -322,17 +322,17 @@ export default async function ImpactHealthPage() {
               {failedRows.map((f) => (
                 <li
                   key={f.id}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-red-100 dark:border-red-900/30 bg-red-50/50 dark:bg-red-950/10 px-4 py-3"
+                  className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-red-100 bg-red-50/50 px-4 py-3"
                 >
-                  <span className="text-sm font-bold text-gray-900 dark:text-white">{f.event.title}</span>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                  <span className="text-sm font-bold text-gray-900">{f.event.title}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
                     {f.channel === "IN_APP" ? "In-app" : "Email"}
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">
                     Tried {f.attempts}×
                   </span>
-                  <span className="text-xs text-gray-400 ml-auto whitespace-nowrap">{fmt(f.createdAt)}</span>
-                  <span className="w-full text-xs text-red-500 dark:text-red-400 truncate">{f.lastError ?? "No error details recorded"}</span>
+                  <span className="text-xs text-gray-500 ml-auto whitespace-nowrap">{fmt(f.createdAt)}</span>
+                  <span className="w-full text-xs text-red-500 truncate">{f.lastError ?? "No error details recorded"}</span>
                 </li>
               ))}
             </ul>
@@ -352,11 +352,11 @@ export default async function ImpactHealthPage() {
               {overdueNgoList.map((n) => (
                 <li
                   key={n.ngoId}
-                  className="flex flex-wrap items-start gap-3 rounded-xl border border-red-100 dark:border-red-900/30 bg-red-50/50 dark:bg-red-950/10 px-4 py-3"
+                  className="flex flex-wrap items-start gap-3 rounded-xl border border-red-100 bg-red-50/50 px-4 py-3"
                 >
                   <div className="w-full flex flex-wrap items-center gap-3">
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">{n.orgName}</span>
-                    <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                    <span className="text-sm font-bold text-gray-900">{n.orgName}</span>
+                    <span className="text-xs font-semibold text-red-600">
                       {n.items.length} milestone{n.items.length === 1 ? "" : "s"} overdue
                       {" — "}
                       {n.items.map((i) => `"${i.title}" (${i.daysOverdue}d)`).join(", ")}
@@ -387,11 +387,11 @@ export default async function ImpactHealthPage() {
               {silentNgos.map((n) => (
                 <li
                   key={n.id}
-                  className="flex flex-wrap items-start gap-3 rounded-xl border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/10 px-4 py-3"
+                  className="flex flex-wrap items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/50 px-4 py-3"
                 >
                   <div className="w-full flex flex-wrap items-center gap-3">
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">{n.orgName}</span>
-                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                    <span className="text-sm font-bold text-gray-900">{n.orgName}</span>
+                    <span className="text-xs font-semibold text-amber-600">
                       No update in 30+ days — worth a reminder
                     </span>
                   </div>

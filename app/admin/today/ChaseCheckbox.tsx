@@ -58,9 +58,9 @@ export default function ChaseCheckbox({
           disabled={busy}
           onChange={toggle}
           onClick={(e) => e.stopPropagation()}
-          className="h-3.5 w-3.5 rounded border-gray-300 dark:border-gray-600 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50"
+          className="h-3.5 w-3.5 rounded border-gray-300 text-emerald-600 focus:ring-trust-500 disabled:opacity-50"
         />
-        <span className="text-[11px] text-gray-500 dark:text-gray-400">
+        <span className="text-[11px] text-gray-500">
           {busy
             ? "Saving…"
             : chased
@@ -68,7 +68,7 @@ export default function ChaseCheckbox({
               : "I've chased this"}
         </span>
       </label>
-      {error && <p className="mt-1 text-[11px] text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-[11px] text-red-600">{error}</p>}
     </div>
   );
 }

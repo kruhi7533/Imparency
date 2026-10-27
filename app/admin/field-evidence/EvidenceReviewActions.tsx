@@ -67,7 +67,7 @@ export default function EvidenceReviewActions({
   return (
     <div className="space-y-2 pt-1">
       {pending && (
-        <label className="block text-xs text-gray-700 dark:text-gray-300">
+        <label className="block text-xs text-gray-700">
           {pending === "APPROVE"
             ? "This photo is flagged. Why are you approving it anyway?"
             : pending === "REJECT"
@@ -78,7 +78,7 @@ export default function EvidenceReviewActions({
             onChange={(e) => setNote(e.target.value)}
             rows={2}
             maxLength={1000}
-            className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-1.5 text-sm"
+            className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm"
           />
         </label>
       )}

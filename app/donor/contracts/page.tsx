@@ -88,19 +88,19 @@ export default async function DonorContractsPage({
   }));
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header with CTA */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Contracts & Grant Agreements</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">Contracts & Grant Agreements</h1>
+            <p className="text-sm text-gray-500 mt-1">
               Structure, review, and execute milestone-based grants for funded social opportunities.
             </p>
           </div>
           <Link
             href="/donor/contracts/new"
-            className="inline-flex items-center justify-center px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-sm transition"
+            className="inline-flex items-center justify-center px-4 py-2.5 bg-trust-600 hover:bg-trust-700 text-white text-sm font-semibold rounded-lg shadow-sm transition"
           >
             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -111,27 +111,27 @@ export default async function DonorContractsPage({
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Committed</p>
-            <p className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">Total Committed</p>
+            <p className="text-2xl font-extrabold text-gray-900 mt-1">
               ₹{totalCommitted.toLocaleString("en-IN")}
             </p>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Active & completed grants</p>
+            <p className="text-xs text-emerald-700 mt-1">Active & completed grants</p>
           </div>
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Active Agreements</p>
-            <p className="text-2xl font-extrabold text-emerald-600 mt-1">{activeCount}</p>
-            <p className="text-xs text-gray-400 mt-1">Dual-signed & operational</p>
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">Active Agreements</p>
+            <p className="text-2xl font-extrabold text-emerald-700 mt-1">{activeCount}</p>
+            <p className="text-xs text-gray-600 mt-1">Dual-signed & operational</p>
           </div>
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">In Review / Proposed</p>
-            <p className="text-2xl font-extrabold text-amber-500 mt-1">{proposedCount}</p>
-            <p className="text-xs text-gray-400 mt-1">Awaiting signature or terms</p>
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">In Review / Proposed</p>
+            <p className="text-2xl font-extrabold text-amber-700 mt-1">{proposedCount}</p>
+            <p className="text-xs text-gray-600 mt-1">Awaiting signature or terms</p>
           </div>
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Completed</p>
-            <p className="text-2xl font-extrabold text-blue-600 mt-1">{completedCount}</p>
-            <p className="text-xs text-gray-400 mt-1">All milestones fulfilled</p>
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">Completed</p>
+            <p className="text-2xl font-extrabold text-blue-700 mt-1">{completedCount}</p>
+            <p className="text-xs text-gray-600 mt-1">All milestones fulfilled</p>
           </div>
         </div>
 

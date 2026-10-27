@@ -62,6 +62,13 @@ export default function DonationsPage() {
   const [fetchError, setFetchError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
 
+  // Deep links such as the sidebar's "Payment Tracking" (?status=FAILED) open
+  // on that tab. Read once on mount — the tab is local state after that.
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("status")?.toUpperCase();
+    if (wanted === "SUCCESS" || wanted === "PENDING" || wanted === "FAILED") setStatusFilter(wanted);
+  }, []);
+
   // Fetch summary once on mount
   useEffect(() => {
     async function fetchSummary() {
@@ -151,21 +158,21 @@ export default function DonationsPage() {
 
   // Skeleton Loader card component
   const DonationSkeleton = () => (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4 animate-pulse">
+    <div className="bg-white border border-gray-200/80 rounded-2xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-5 space-y-4 animate-pulse">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gray-800"></div>
-          <div className="h-4 w-32 bg-gray-800 rounded"></div>
+          <div className="w-10 h-10 rounded-full bg-gray-200"></div>
+          <div className="h-4 w-32 bg-gray-200 rounded"></div>
         </div>
-        <div className="h-6 w-20 bg-gray-800 rounded"></div>
+        <div className="h-6 w-20 bg-gray-200 rounded"></div>
       </div>
       <div className="flex justify-between items-center">
-        <div className="h-4 w-48 bg-gray-800 rounded"></div>
-        <div className="h-5 w-24 bg-gray-800 rounded-full"></div>
+        <div className="h-4 w-48 bg-gray-200 rounded"></div>
+        <div className="h-5 w-24 bg-gray-200 rounded-full"></div>
       </div>
       <div className="flex justify-between items-end">
-        <div className="h-4 w-20 bg-gray-800 rounded"></div>
-        <div className="h-8 w-32 bg-gray-800 rounded-xl"></div>
+        <div className="h-4 w-20 bg-gray-200 rounded"></div>
+        <div className="h-8 w-32 bg-gray-200 rounded-xl"></div>
       </div>
     </div>
   );
@@ -175,8 +182,8 @@ export default function DonationsPage() {
       
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-black text-white">Donation History</h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">Donation History</h1>
+        <p className="text-gray-600 text-sm mt-1">
           All your donations and payment records
         </p>
       </div>
@@ -188,40 +195,40 @@ export default function DonationsPage() {
             label: "Total Donated",
             value: summaryLoading ? "Loading..." : `Rs.${summary.totalDonated.toLocaleString("en-IN")}`,
             sub: "across all NGOs",
-            color: "text-emerald-400",
+            color: "text-emerald-700",
           },
           {
             label: "Total Donations",
             value: summaryLoading ? "Loading..." : summary.successCount.toString(),
             sub: "successful payments",
-            color: "text-white",
+            color: "text-gray-900",
           },
           {
             label: "Pending",
             value: summaryLoading ? "Loading..." : summary.pendingCount.toString(),
             sub: "currently pending",
-            color: "text-amber-400",
+            color: "text-amber-700",
           },
           {
             label: "Failed",
             value: summaryLoading ? "Loading..." : summary.failedCount.toString(),
             sub: "unsuccessful payments",
-            color: "text-red-400",
+            color: "text-red-700",
           },
         ].map((stat) => (
           <div
             key={stat.label}
-            className="bg-gray-900 border border-gray-800 rounded-2xl p-4 shadow-sm relative overflow-hidden"
+            className="bg-white border border-gray-200/80 rounded-2xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-5 relative overflow-hidden"
           >
-            <div className="text-xs text-gray-500 mb-1">{stat.label}</div>
-            <div className={`text-xl font-black ${stat.color}`}>{stat.value}</div>
-            <div className="text-[10px] text-gray-600 mt-0.5">{stat.sub}</div>
+            <div className="text-xs font-medium text-gray-600 mb-1">{stat.label}</div>
+            <div className={`text-2xl font-semibold tabular-nums ${stat.color}`}>{stat.value}</div>
+            <div className="text-xs text-gray-500 mt-0.5">{stat.sub}</div>
           </div>
         ))}
       </div>
 
       {/* Status Filter Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-gray-800 pb-5">
+      <div className="flex gap-2 mb-6 flex-wrap border-b border-gray-200 pb-5">
         {[
           { id: "ALL", label: "All" },
           { id: "SUCCESS", label: "Successful" },
@@ -235,8 +242,8 @@ export default function DonationsPage() {
               onClick={() => handleTabChange(tab.id as any)}
               className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
                 isActive
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/10"
-                  : "bg-gray-900 text-gray-400 hover:text-white border border-gray-800"
+                  ? "bg-trust-600 text-white shadow-sm"
+                  : "bg-white text-gray-700 hover:text-gray-900 hover:bg-gray-50 border border-gray-300"
               }`}
             >
               {tab.label}
@@ -254,16 +261,16 @@ export default function DonationsPage() {
             <DonationSkeleton />
           </>
         ) : fetchError ? (
-          <div className="bg-red-950/30 border border-red-900 rounded-2xl p-12 text-center flex flex-col items-center justify-center">
-            <h3 className="font-extrabold text-red-300 text-sm mb-1.5">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-12 text-center flex flex-col items-center justify-center">
+            <h3 className="font-extrabold text-red-800 text-sm mb-1.5">
               Couldn't load your donations right now.
             </h3>
-            <p className="text-xs text-red-400/80 mb-4">
+            <p className="text-xs text-red-700 mb-4">
               This is on our end, not yours — your donation history hasn't gone anywhere. Please try again.
             </p>
             <button
               onClick={() => setRetryKey((k) => k + 1)}
-              className="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-xl text-xs transition shadow-sm"
+              className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-xl text-xs transition shadow-sm"
             >
               Try Again
             </button>
@@ -274,45 +281,45 @@ export default function DonationsPage() {
             const formattedDate = formatDate(donation.createdAt);
 
             // Status Badge Classes
-            let badgeClass = "bg-gray-800 text-gray-400 border-gray-700";
+            let badgeClass = "bg-gray-100 text-gray-700 border-gray-200";
             let statusText: string = donation.status;
             if (donation.status === "SUCCESS") {
-              badgeClass = "bg-emerald-950/30 text-emerald-400 border-emerald-800";
+              badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
               statusText = "✓ Successful";
             } else if (donation.status === "PENDING") {
-              badgeClass = "bg-amber-950/30 text-amber-400 border-amber-800";
+              badgeClass = "bg-amber-50 text-amber-700 border-amber-200";
               statusText = "⏳ Pending";
             } else if (donation.status === "FAILED") {
-              badgeClass = "bg-red-950/30 text-red-400 border-red-800";
+              badgeClass = "bg-red-50 text-red-700 border-red-200";
               statusText = "✗ Failed";
             } else if (donation.status === "REFUNDED") {
-              badgeClass = "bg-gray-800 text-gray-400 border-gray-700";
+              badgeClass = "bg-gray-100 text-gray-700 border-gray-200";
               statusText = "↩ Refunded";
             }
 
             return (
               <div
                 key={donation.id}
-                className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4 hover:border-gray-750 transition-colors"
+                className="bg-white border border-gray-200/80 rounded-2xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-5 space-y-4 hover:border-gray-300 hover:shadow-md transition"
               >
                 {/* Row 1: Logo Initial, NGO Name & Amount */}
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 font-black flex items-center justify-center text-sm select-none">
+                    <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-black flex items-center justify-center text-sm select-none">
                       {donation.project.ngo.orgName.charAt(0).toUpperCase()}
                     </div>
-                    <span className="font-extrabold text-sm text-white tracking-tight leading-none">
+                    <span className="font-semibold text-sm text-gray-900 tracking-tight leading-none">
                       {donation.project.ngo.orgName}
                     </span>
                   </div>
-                  <span className="text-base font-black text-white">
+                  <span className="text-base font-semibold tabular-nums text-gray-900">
                     Rs.{amountValue.toLocaleString("en-IN")}
                   </span>
                 </div>
 
                 {/* Row 2: Project Title & Status Badge */}
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-400 truncate max-w-[65%]">
+                  <span className="text-xs text-gray-600 truncate max-w-[65%]">
                     {donation.project.title}
                   </span>
                   <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${badgeClass}`}>
@@ -323,14 +330,14 @@ export default function DonationsPage() {
                 {/* Row 3: Date & Actions */}
                 <div className="flex justify-between items-end">
                   <div className="space-y-1.5 text-left">
-                    <span className="block text-[11px] text-gray-500 font-bold">
+                    <span className="block text-[11px] text-gray-600 font-semibold">
                       {formattedDate}
                     </span>
                     {donation.status === "PENDING" &&
                       new Date().getTime() - new Date(donation.createdAt).getTime() > 30 * 60 * 1000 && (
                         <Link
                           href="/help"
-                          className="block text-[10px] text-gray-500 hover:text-gray-400 underline font-medium"
+                          className="block text-[10px] text-gray-600 hover:text-gray-900 underline font-medium"
                         >
                           Contact Support
                         </Link>
@@ -347,16 +354,16 @@ export default function DonationsPage() {
                               href={donation.taxReceipt.pdfUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-400 border border-emerald-800/80 font-bold py-1.5 px-4 rounded-xl text-xs transition"
+                              className="inline-flex items-center bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold py-1.5 px-4 rounded-xl text-xs transition"
                             >
                               Download Receipt
                             </a>
-                            <span className="block text-[9px] text-gray-600 font-mono">
+                            <span className="block text-[10px] text-gray-500 font-mono">
                               #{donation.taxReceipt.receiptNumber}
                             </span>
                           </>
                         ) : (
-                          <span className="block text-xs text-gray-500 italic font-semibold">
+                          <span className="block text-xs text-gray-600 italic font-semibold">
                             Receipt Pending
                           </span>
                         )}
@@ -367,12 +374,12 @@ export default function DonationsPage() {
                       <div className="text-right">
                         {expiredDonationIds[donation.id] ? (
                           <div className="space-y-1">
-                            <span className="block text-[10px] text-gray-500 font-semibold">
+                            <span className="block text-[10px] text-gray-600 font-semibold">
                               Retry expired
                             </span>
                             <Link
                               href={`/ngo/${expiredDonationIds[donation.id]}`}
-                              className="inline-flex items-center text-xs text-emerald-400 hover:text-emerald-300 font-bold underline"
+                              className="inline-flex items-center text-xs text-trust-700 hover:text-trust-800 font-bold underline"
                             >
                               Donate again &rarr;
                             </Link>
@@ -387,7 +394,7 @@ export default function DonationsPage() {
                                 donation.project.ngo.id
                               )
                             }
-                            className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-1.5 px-4 rounded-xl text-xs transition-all shadow-sm"
+                            className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1.5 px-4 rounded-xl text-xs transition-all shadow-sm"
                           >
                             Retry Payment
                           </button>
@@ -401,8 +408,8 @@ export default function DonationsPage() {
           })
         ) : (
           // Empty State
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center flex flex-col items-center justify-center">
-            <h3 className="font-extrabold text-white text-sm mb-1.5">
+          <div className="bg-white border border-gray-200/80 rounded-2xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-12 text-center flex flex-col items-center justify-center">
+            <h3 className="font-semibold text-gray-900 text-sm mb-1.5">
               {statusFilter === "ALL" && "No donations yet. Discover NGOs →"}
               {statusFilter === "SUCCESS" && "No successful donations yet."}
               {statusFilter === "PENDING" && "No pending payments."}
@@ -411,7 +418,7 @@ export default function DonationsPage() {
             {statusFilter === "ALL" && (
               <Link
                 href="/discover"
-                className="mt-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl text-xs transition shadow-sm"
+                className="mt-4 bg-trust-600 hover:bg-trust-700 text-white font-semibold py-2 px-4 rounded-lg text-xs transition shadow-sm"
               >
                 Discover NGOs &rarr;
               </Link>
@@ -422,13 +429,13 @@ export default function DonationsPage() {
         {/* Load More Button */}
         {hasMore && (
           <div className="pt-6 text-center space-y-2">
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+            <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wider">
               Showing {donations.length} of {totalCount} donations
             </p>
             <button
               onClick={handleLoadMore}
               disabled={loadingMore}
-              className="bg-gray-900 hover:bg-gray-850 text-white font-bold px-6 py-2.5 rounded-xl text-xs border border-gray-800 hover:border-gray-700 transition disabled:opacity-50 inline-flex items-center gap-2"
+              className="bg-white hover:bg-gray-50 text-gray-800 font-semibold px-6 py-2.5 rounded-lg text-xs border border-gray-300 transition disabled:opacity-50 inline-flex items-center gap-2"
             >
               {loadingMore ? "Loading..." : "Load More"}
             </button>

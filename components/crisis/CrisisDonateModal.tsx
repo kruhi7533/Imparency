@@ -43,15 +43,15 @@ export default function CrisisDonateModal({ crisisEventId, crisisTitle, target, 
   if (!isSignedIn) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-        <div className="bg-gray-900 border border-gray-800 w-full max-w-sm rounded-3xl p-6 text-center">
-          <p className="text-white font-semibold mb-4">Sign in to donate to this crisis.</p>
+        <div className="bg-white border border-gray-200 w-full max-w-sm rounded-3xl p-6 text-center">
+          <p className="text-gray-900 font-semibold mb-4">Sign in to donate to this crisis.</p>
           <button
             onClick={() => router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`)}
             className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-sm mb-2"
           >
             Sign in
           </button>
-          <button onClick={onClose} className="text-xs text-gray-400 hover:text-white">Cancel</button>
+          <button onClick={onClose} className="text-xs text-gray-600 hover:text-gray-900">Cancel</button>
         </div>
       </div>
     );
@@ -117,17 +117,17 @@ export default function CrisisDonateModal({ crisisEventId, crisisTitle, target, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 sm:p-8 relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white">✕</button>
+      <div className="bg-white border border-gray-200 w-full max-w-md rounded-3xl p-6 sm:p-8 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-900">✕</button>
 
         <span className="inline-flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full mb-4">
           Emergency Relief
         </span>
-        <h3 className="text-xl font-display font-semibold text-white">Support {crisisTitle}</h3>
-        <p className="text-xs text-gray-400 mt-1">Donating to: {target.label}</p>
+        <h3 className="text-xl font-display font-semibold text-gray-900">Support {crisisTitle}</h3>
+        <p className="text-xs text-gray-600 mt-1">Donating to: {target.label}</p>
 
         {error && (
-          <div className="mt-4 p-3 bg-red-950/30 border border-red-900 rounded-xl text-xs text-red-300">{error}</div>
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">{error}</div>
         )}
 
         <div className="grid grid-cols-2 gap-3 mt-6">
@@ -139,7 +139,7 @@ export default function CrisisDonateModal({ crisisEventId, crisisTitle, target, 
               className={`py-3 rounded-2xl text-sm font-bold border transition ${
                 amount === amt && !customAmount
                   ? "bg-red-600 border-red-600 text-white"
-                  : "bg-gray-950 border-gray-800 text-gray-300 hover:border-gray-700"
+                  : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
               }`}
             >
               ₹{amt.toLocaleString("en-IN")}
@@ -154,7 +154,7 @@ export default function CrisisDonateModal({ crisisEventId, crisisTitle, target, 
             placeholder="Or enter a custom amount"
             value={customAmount}
             onChange={(e) => setCustomAmount(e.target.value)}
-            className="w-full rounded-xl border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
 

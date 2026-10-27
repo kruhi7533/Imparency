@@ -9,20 +9,20 @@ export function ProfileActions() {
       <div className="text-left">
         <button
           onClick={() => alert("Profile editing coming soon")}
-          className="border border-gray-700 text-gray-400 hover:text-white font-bold py-2.5 px-5 rounded-xl text-xs transition active:scale-95"
+          className="border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 font-semibold py-2 px-4 rounded-lg text-sm transition active:scale-95"
         >
           Edit Profile
         </button>
       </div>
       
       {/* Danger Zone */}
-      <div className="border-t border-gray-900 pt-6 text-left">
-        <span className="block text-[10px] font-bold text-red-505 uppercase tracking-wider mb-2">
+      <div className="border-t border-gray-200 pt-6 text-left">
+        <span className="block text-[10px] font-semibold text-red-700 uppercase tracking-wider mb-2">
           Danger Zone
         </span>
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="bg-red-950/30 text-red-400 border border-red-900 font-bold py-2 px-4 rounded-xl text-xs transition active:scale-95"
+          className="bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 font-semibold py-2 px-4 rounded-lg text-sm transition active:scale-95"
         >
           Sign Out
         </button>

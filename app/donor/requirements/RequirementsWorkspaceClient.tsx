@@ -34,14 +34,14 @@ const TEMPLATE_SECTIONS = [
 
 function TemplateLink({ className = "" }: { className?: string }) {
   return (
-    <a href={TEMPLATE_URL} download className={`inline-flex items-center gap-1.5 font-semibold text-emerald-300 hover:text-emerald-200 underline-offset-2 hover:underline ${className}`}>
+    <a href={TEMPLATE_URL} download className={`inline-flex items-center gap-1.5 font-semibold text-trust-700 hover:text-trust-800 underline-offset-2 hover:underline ${className}`}>
       ↓ Download template (.docx)
     </a>
   );
 }
 
 function ActionLink({ href, children, external = false }: { href: string; children: React.ReactNode; external?: boolean }) {
-  const cls = "px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 text-[11px] font-semibold transition";
+  const cls = "px-2.5 py-1 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-[11px] font-semibold transition";
   return external ? (
     <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>
       {children}
@@ -62,16 +62,16 @@ function FunderGateNotice({ gate }: { gate: { reason: string; message: string } 
       ? "Your organisation is waiting for verification"
       : "Verify your organisation to post a CSR requirement";
   return (
-    <div className="mt-6 border border-amber-500/40 bg-amber-500/10 rounded-2xl p-5">
-      <p className="text-sm font-bold text-amber-200">{title}</p>
-      <p className="text-xs text-amber-100/80 mt-1 max-w-3xl">{gate.message}</p>
-      <p className="text-xs text-amber-100/80 mt-2 max-w-3xl">
+    <div className="mt-6 border border-amber-200 bg-amber-50 rounded-2xl p-5">
+      <p className="text-sm font-bold text-amber-700">{title}</p>
+      <p className="text-xs text-amber-700 mt-1 max-w-3xl">{gate.message}</p>
+      <p className="text-xs text-amber-700 mt-2 max-w-3xl">
         NGOs are only ever approached on behalf of a verified funder, so creating a requirement and running matching unlock once
         your organisation is verified. Requirements you already have can still be edited and submitted.
       </p>
       <a
         href="/donor/profile"
-        className="inline-block mt-3 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold"
+        className="inline-block mt-3 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold"
       >
         Go to organisation profile
       </a>
@@ -123,23 +123,23 @@ export default function RequirementsWorkspaceClient({
   return (
     <div className="px-6 lg:px-10 py-10 max-w-6xl">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-3xl font-extrabold text-white">My CSR Documents</h1>
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">My CSR Documents</h1>
         {items.length > 0 && (
-          <a href="#my-requirements" className="text-xs font-semibold text-gray-400 hover:text-white">
+          <a href="#my-requirements" className="text-xs font-semibold text-gray-600 hover:text-gray-900">
             View your requirements ({items.length}) ↓
           </a>
         )}
       </div>
-      <p className="text-sm text-gray-400 mt-2 max-w-2xl">
+      <p className="text-sm text-gray-600 mt-2 max-w-2xl">
         Tell us what you want to fund. Fill in the form below — or, if you already have a CSR requirement / RFP document,
         upload it at the bottom of this section.
       </p>
 
-      <div className="mt-6 border border-emerald-500/25 bg-emerald-500/5 rounded-2xl p-5">
+      <div className="mt-6 border border-emerald-200 bg-emerald-50 rounded-2xl p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="max-w-2xl">
-            <p className="text-sm font-bold text-emerald-200">Uploading a document? Use our template.</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-sm font-bold text-emerald-700">Uploading a document? Use our template.</p>
+            <p className="text-xs text-gray-600 mt-1">
               Documents written in their own format often miss details we need to match NGOs (sector, location, budget, KPIs).
               Follow this format so every field is captured automatically.
             </p>
@@ -147,11 +147,11 @@ export default function RequirementsWorkspaceClient({
           <TemplateLink className="text-sm" />
         </div>
         <details className="mt-3 group">
-          <summary className="cursor-pointer text-xs font-semibold text-gray-300 hover:text-white">View the template format</summary>
+          <summary className="cursor-pointer text-xs font-semibold text-gray-700 hover:text-gray-900">View the template format</summary>
           <ol className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
             {TEMPLATE_SECTIONS.map((s, i) => (
-              <li key={s.title} className="text-xs border border-gray-800 bg-gray-950/40 rounded-lg px-3 py-2">
-                <span className="font-bold text-gray-200">
+              <li key={s.title} className="text-xs border border-gray-200 bg-gray-50 rounded-lg px-3 py-2">
+                <span className="font-bold text-gray-800">
                   {i + 1}. {s.title}
                 </span>
                 <span className="block text-gray-500 mt-0.5">{s.fields}</span>
@@ -167,14 +167,14 @@ export default function RequirementsWorkspaceClient({
       ) : (
         <>
         <section className="mt-6">
-          <h2 className="text-lg font-bold text-white mb-3">Fill in the requirement form</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-3">Fill in the requirement form</h2>
           <RequirementForm />
         </section>
 
         <div className="flex items-center gap-4 my-8" role="separator">
-          <div className="flex-1 h-px bg-gray-800" />
+          <div className="flex-1 h-px bg-gray-100" />
           <span className="text-xs font-bold uppercase tracking-wider text-gray-500">or upload a document</span>
-          <div className="flex-1 h-px bg-gray-800" />
+          <div className="flex-1 h-px bg-gray-100" />
         </div>
 
         <div
@@ -187,27 +187,27 @@ export default function RequirementsWorkspaceClient({
             if (e.dataTransfer.files?.[0]) upload(e.dataTransfer.files[0]);
           }}
           className={`border-2 border-dashed rounded-2xl p-8 text-center transition ${
-            dragActive ? "border-emerald-500 bg-emerald-500/5" : "border-gray-800 bg-gray-900/30"
+            dragActive ? "border-emerald-500 bg-emerald-50" : "border-gray-200 bg-gray-50"
           }`}
         >
           {uploading ? (
             <div className="space-y-2">
-              <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-emerald-400 mx-auto" />
-              <p className="text-sm text-gray-200">Processing “{uploading}”…</p>
+              <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-emerald-300 mx-auto" />
+              <p className="text-sm text-gray-800">Processing “{uploading}”…</p>
               <p className="text-xs text-gray-500">Reading the document and extracting requirements. This can take up to a minute.</p>
             </div>
           ) : (
             <>
-              <p className="text-sm text-gray-200">Drag & drop a CSR document here, or</p>
+              <p className="text-sm text-gray-800">Drag & drop a CSR document here, or</p>
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
-                className="mt-3 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-sm font-bold transition"
+                className="mt-3 px-5 py-2.5 rounded-xl bg-trust-600 hover:bg-trust-700 text-white text-sm font-bold transition"
               >
                 Choose file
               </button>
               <p className="text-[11px] text-gray-500 mt-3">PDF, DOCX, PNG, JPG, WEBP · max 10MB · stored privately, never shared with NGOs</p>
-              <p className="text-xs text-gray-400 mt-2">
+              <p className="text-xs text-gray-600 mt-2">
                 Please follow the standard format — <TemplateLink />
               </p>
               <input
@@ -220,11 +220,11 @@ export default function RequirementsWorkspaceClient({
             </>
           )}
         </div>
-        {error && <p className="mt-3 text-sm text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-4 py-2">{error}</p>}
+        {error && <p className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2">{error}</p>}
         </>
       )}
 
-      <h2 id="my-requirements" className="text-lg font-bold text-white mt-12 scroll-mt-6">Your requirements</h2>
+      <h2 id="my-requirements" className="text-lg font-bold text-gray-900 mt-12 scroll-mt-6">Your requirements</h2>
       <div className="mt-3 flex flex-wrap gap-2">
         {FILTERS.map((f) => (
           <button
@@ -232,7 +232,7 @@ export default function RequirementsWorkspaceClient({
             type="button"
             onClick={() => setFilter(f.key)}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-              filter === f.key ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" : "border-gray-800 text-gray-400 hover:text-white"
+              filter === f.key ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "border-gray-200 text-gray-600 hover:text-gray-900"
             }`}
           >
             {f.label} <span className="opacity-60">{count(f)}</span>
@@ -242,22 +242,22 @@ export default function RequirementsWorkspaceClient({
 
       <div className="mt-4 space-y-3">
         {visible.length === 0 ? (
-          <p className="text-sm text-gray-500 py-10 text-center border border-gray-800 rounded-2xl">
+          <p className="text-sm text-gray-500 py-10 text-center border border-gray-200 rounded-2xl">
             {items.length === 0 ? "No CSR requirements yet. Fill in the form or upload a document to get started." : "No requirements in this view."}
           </p>
         ) : (
           visible.map((item) => (
-            <div key={item.id} className="border border-gray-800 bg-gray-900/40 rounded-2xl p-5 flex flex-col md:flex-row md:items-center gap-4">
+            <div key={item.id} className="border border-gray-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] rounded-2xl p-5 flex flex-col md:flex-row md:items-center gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Link href={`/donor/requirements/${item.id}`} className="text-sm font-bold text-white hover:text-emerald-300 break-all">
+                  <Link href={`/donor/requirements/${item.id}`} className="text-sm font-bold text-gray-900 hover:text-trust-700 break-all">
                     {item.fileName}
                   </Link>
                   <StatusBadge status={item.status} />
                   {item.isFormEntry && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-800 text-gray-300">Form entry</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-700">Form entry</span>
                   )}
-                  <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300">v{item.version}</span>
+                  <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">v{item.version}</span>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {[item.sector, item.state].filter(Boolean).join(" · ") || "Requirements not extracted yet"} · {item.isFormEntry ? "Created" : "Uploaded"}{" "}

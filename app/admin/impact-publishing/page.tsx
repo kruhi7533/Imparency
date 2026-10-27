@@ -28,7 +28,7 @@ export default async function ImpactPublishingPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <header>
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Impact publishing</h1>
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Impact publishing</h1>
         <p className="text-sm text-gray-500">Review funder reports and impact stories before they are published.</p>
       </header>
       <PublishingClient reports={JSON.parse(JSON.stringify(reportRows))} stories={storyRows} />

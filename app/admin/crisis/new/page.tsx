@@ -7,8 +7,8 @@ const DISASTER_TYPES = ["FLOOD", "EARTHQUAKE", "CYCLONE", "WILDFIRE", "LANDSLIDE
 const SEVERITIES = ["LOW", "MODERATE", "HIGH", "CRITICAL"];
 
 const inputClass =
-  "w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500";
-const labelClass = "block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wide";
+  "w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500";
+const labelClass = "block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide";
 
 export default function NewCrisisEventPage() {
   const router = useRouter();
@@ -68,19 +68,19 @@ export default function NewCrisisEventPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-200">
+    <div>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="mb-8">
-          <a href="/admin/crisis" className="text-xs text-gray-400 hover:text-emerald-600 font-semibold">← Back to Crisis Events</a>
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight mt-2">New Crisis Event</h1>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <a href="/admin/crisis" className="text-xs text-gray-500 hover:text-emerald-600 font-semibold">← Back to Crisis Events</a>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 mt-2">New Crisis Event</h1>
+          <p className="mt-2 text-sm text-gray-500">
             Created as <span className="font-semibold">Upcoming</span> / <span className="font-semibold">Pending verification</span>.
             It won&apos;t appear anywhere publicly until you verify and activate it.
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 rounded-xl text-xs text-red-600 dark:text-red-400">
+          <div className="mb-6 p-3.5 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600">
             {error}
           </div>
         )}

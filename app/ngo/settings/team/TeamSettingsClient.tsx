@@ -27,10 +27,10 @@ const ROLE_HINT: Record<Role, string> = {
   FIELD_STAFF: "Only the field tasks assigned to them",
 };
 const STATE_BADGE: Record<InviteState, string> = {
-  PENDING: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  ACCEPTED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-  EXPIRED: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-  REVOKED: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  PENDING: "bg-amber-50 ring-1 ring-amber-200 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  ACCEPTED: "bg-emerald-50 ring-1 ring-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  EXPIRED: "bg-gray-50 ring-1 ring-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  REVOKED: "bg-red-50 ring-1 ring-red-200 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
 interface Member { userId: string; name: string | null; email: string; role: Role; since: string }
@@ -147,8 +147,8 @@ export default function TeamSettingsClient() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">Team</h2>
-        <p className="text-gray-500 mt-1">
+        <h2 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900">Team</h2>
+        <p className="text-sm text-gray-600 mt-1">
           Who works on {data.orgName} and what each person can do. You are <strong>{ROLE_LABEL[me.role]}</strong>.
         </p>
       </div>
@@ -189,24 +189,24 @@ export default function TeamSettingsClient() {
       )}
 
       {me.canManage && (
-        <form onSubmit={invite} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 mb-8 shadow-sm">
+        <form onSubmit={invite} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 mb-8 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-emerald-500" /> Invite a team member
+            <UserPlus className="w-5 h-5 text-trust-600" /> Invite a team member
           </h3>
           <div className="flex flex-col sm:flex-row gap-4 items-end">
             <label className="flex-1 w-full text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
               Email
               <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required placeholder="colleague@example.org"
-                className="mt-1.5 w-full normal-case font-normal bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl px-4 py-3 text-sm" />
+                className="mt-1.5 w-full normal-case font-normal bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none rounded-lg px-4 py-3 text-sm" />
             </label>
             <label className="w-full sm:w-56 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
               Role
               <select value={role} onChange={(e) => setRole(e.target.value as Role)}
-                className="mt-1.5 w-full normal-case font-normal bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl px-4 py-3 text-sm">
+                className="mt-1.5 w-full normal-case font-normal bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none rounded-lg px-4 py-3 text-sm">
                 {me.grantableRoles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
               </select>
             </label>
-            <button type="submit" disabled={busy} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3 px-6 rounded-xl">
+            <button type="submit" disabled={busy} className="w-full sm:w-auto bg-trust-600 hover:bg-trust-700 disabled:opacity-50 text-white font-semibold py-3 px-6 rounded-lg">
               {busy ? "Sending…" : "Send invite"}
             </button>
           </div>
@@ -214,11 +214,11 @@ export default function TeamSettingsClient() {
         </form>
       )}
 
-      <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm mb-8">
-        <h3 className="px-6 pt-5 text-base font-bold text-gray-900 dark:text-white">Members ({data.members.length})</h3>
+      <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)] mb-8">
+        <h3 className="px-6 pt-5 pb-4 text-base font-bold text-gray-900 dark:text-white">Members ({data.members.length})</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600 border-y border-gray-200">
               <tr>
                 <th className="px-6 py-3 font-semibold">Member</th>
                 <th className="px-6 py-3 font-semibold">Role</th>
@@ -231,13 +231,13 @@ export default function TeamSettingsClient() {
                 return (
                   <tr key={m.userId}>
                     <td className="px-6 py-3">
-                      <div className="font-bold text-gray-900 dark:text-white">{m.name || "Unnamed"}{m.userId === me.userId && <span className="text-xs text-gray-400 font-normal"> (you)</span>}</div>
+                      <div className="font-bold text-gray-900 dark:text-white">{m.name || "Unnamed"}{m.userId === me.userId && <span className="text-xs text-gray-500 font-normal"> (you)</span>}</div>
                       <div className="text-xs text-gray-500">{m.email}</div>
                     </td>
                     <td className="px-6 py-3">
                       {editable ? (
                         <select aria-label={`Role for ${m.name || m.email}`} value={m.role} disabled={busy} onChange={(e) => changeRole(m, e.target.value)}
-                          className="text-xs font-bold bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1">
+                          className="text-xs font-bold bg-white text-gray-800 border border-gray-300 rounded-lg px-2.5 py-1">
                           {me.grantableRoles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                         </select>
                       ) : (
@@ -247,7 +247,7 @@ export default function TeamSettingsClient() {
                     {me.canManage && (
                       <td className="px-6 py-3 text-right">
                         {editable && (
-                          <button onClick={() => remove(m)} disabled={busy} title="Remove member" aria-label={`Remove ${m.name || m.email}`} className="text-gray-400 hover:text-red-500 p-2">
+                          <button onClick={() => remove(m)} disabled={busy} title="Remove member" aria-label={`Remove ${m.name || m.email}`} className="text-gray-500 hover:text-red-500 p-2">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
@@ -262,8 +262,8 @@ export default function TeamSettingsClient() {
       </section>
 
       {me.canManage && (
-        <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
-          <h3 className="px-6 pt-5 text-base font-bold text-gray-900 dark:text-white flex items-center gap-2"><Mail className="w-4 h-4" /> Invitations</h3>
+        <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <h3 className="px-6 pt-5 pb-4 text-base font-bold text-gray-900 dark:text-white flex items-center gap-2"><Mail className="w-4 h-4" /> Invitations</h3>
           {data.invites.length === 0 ? (
             <p className="px-6 py-5 text-sm text-gray-500">No invitations yet.</p>
           ) : (
@@ -279,7 +279,7 @@ export default function TeamSettingsClient() {
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${STATE_BADGE[inv.state]}`}>{inv.state}</span>
                   {(inv.state === "PENDING" || inv.state === "EXPIRED") && rank[inv.role] <= rank[me.role] && (
-                    <button onClick={() => resend(inv)} disabled={busy} className="text-xs font-bold text-emerald-700 hover:underline flex items-center gap-1">
+                    <button onClick={() => resend(inv)} disabled={busy} className="text-xs font-bold text-trust-700 hover:underline flex items-center gap-1">
                       <RefreshCw className="w-3.5 h-3.5" /> Resend
                     </button>
                   )}

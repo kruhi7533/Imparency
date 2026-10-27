@@ -1,42 +1,36 @@
 import React from "react";
 import Link from "next/link";
+import { ShieldAlert } from "lucide-react";
 
 export default function UnauthorizedPage() {
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-6 font-sans relative overflow-hidden">
-      
-      {/* Background radial glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
-
-      <div className="max-w-md w-full bg-gray-900/40 border border-red-950/40 rounded-2xl p-8 sm:p-10 shadow-2xl text-center space-y-6">
-        
-        {/* Warning Icon Shield */}
-        <div className="w-16 h-16 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full flex items-center justify-center text-3xl mx-auto">
-          ⚠️
+    <div className="min-h-screen bg-canvas text-gray-900 flex items-center justify-center p-6 font-sans">
+      <div className="max-w-md w-full bg-white border border-gray-200/80 rounded-2xl p-8 sm:p-10 shadow-[0_8px_30px_rgba(16,24,40,0.06)] text-center space-y-6">
+        <div className="w-14 h-14 bg-red-50 text-red-600 ring-1 ring-red-100 rounded-full flex items-center justify-center mx-auto">
+          <ShieldAlert className="w-6 h-6" strokeWidth={1.75} aria-hidden />
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-black text-white tracking-tight">Access Denied</h1>
-          <p className="text-gray-400 text-xs leading-relaxed max-w-sm mx-auto">
+          <h1 className="font-display text-3xl font-semibold text-gray-900 tracking-tight">Access Denied</h1>
+          <p className="text-gray-600 text-sm leading-relaxed max-w-sm mx-auto">
             You do not have the required role permissions to view this dashboard page. If you registered as a Donor, you cannot access NGO panels (and vice-versa).
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
           <Link
             href="/login"
-            className="bg-gray-800 hover:bg-gray-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition-all"
+            className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-semibold px-4 py-2 rounded-lg text-sm transition"
           >
             Switch Account
           </Link>
           <Link
             href="/"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md shadow-emerald-500/10 transition-all"
+            className="bg-trust-600 hover:bg-trust-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition"
           >
             Return Home
           </Link>
         </div>
-
       </div>
     </div>
   );

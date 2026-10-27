@@ -17,11 +17,11 @@ export default async function BreakGlassPage({ searchParams }: { searchParams: {
   const grants = await listGrants(session.user);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Break-glass access</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Break-glass access</h1>
+          <p className="mt-1 text-sm text-gray-500 max-w-2xl">
             Support admins can open time-boxed access (at most {MAX_MINUTES} minutes) to one organisation&apos;s admin data,
             with a written reason. The grant ends on its own; the holder or a super admin can end it early. Every page view and
             change made under a grant is written to the audit trail as <code>BREAK_GLASS_ACTION</code>.

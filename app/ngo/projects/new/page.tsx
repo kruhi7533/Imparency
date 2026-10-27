@@ -90,8 +90,8 @@ export default function NewProjectPage() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-trust-600"></div>
       </div>
     );
   }
@@ -265,12 +265,12 @@ export default function NewProjectPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-12 px-4 sm:px-6 lg:px-8 font-sans transition-colors duration-200">
-      <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-8 sm:p-10 relative overflow-hidden">
+    <div className="py-8 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] border border-gray-200/80 dark:border-gray-800 p-5 sm:p-10 relative overflow-hidden">
         
         <div className="mb-8 border-b border-gray-100 dark:border-gray-800 pb-5">
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Launch New Project</h1>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">Launch New Project</h1>
+          <p className="mt-2 text-sm text-gray-600">
             Define your campaign parameters and sequence milestones. Milestone targets must allocate the total project budget exactly.
           </p>
         </div>
@@ -300,7 +300,7 @@ export default function NewProjectPage() {
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                   placeholder="e.g. Clean Water for Dharavi"
                   required
                 />
@@ -311,7 +311,7 @@ export default function NewProjectPage() {
                 <select
                   value={causeCategory}
                   onChange={(e) => setCauseCategory(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                 >
                   {CAUSE_CATEGORIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
@@ -328,7 +328,7 @@ export default function NewProjectPage() {
                     min="1"
                     value={targetAmount}
                     onChange={(e) => setTargetAmount(e.target.value)}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                     placeholder="e.g. 50000"
                     required
                   />
@@ -341,7 +341,7 @@ export default function NewProjectPage() {
                   type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                   placeholder="e.g. Dharavi, Mumbai"
                   required
                 />
@@ -365,7 +365,7 @@ export default function NewProjectPage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
                 placeholder="Describe the scope, objectives, and impact goals of this project..."
                 required
               />
@@ -388,7 +388,7 @@ export default function NewProjectPage() {
                 value={problemStatement}
                 onChange={(e) => setProblemStatement(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
                 placeholder="What issue or gap does this campaign address? e.g., '200 children in Dharavi lack access to basic learning materials...'"
               />
               <p className="text-[11px] text-gray-500 mt-1">Adding this helps donors understand your campaign's purpose and builds trust.</p>
@@ -411,7 +411,7 @@ export default function NewProjectPage() {
                 value={expectedOutcome}
                 onChange={(e) => setExpectedOutcome(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
                 placeholder="What does success look like once this campaign is complete? e.g., 'Improved school attendance and literacy among 200 children...'"
               />
               <p className="text-[11px] text-gray-500 mt-1">Adding this helps donors understand your campaign's purpose and builds trust.</p>
@@ -423,7 +423,7 @@ export default function NewProjectPage() {
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
-                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 dark:file:bg-emerald-950/30 dark:file:text-emerald-400 hover:file:bg-emerald-100 cursor-pointer"
+                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-trust-50 file:text-trust-700 dark:file:bg-emerald-950/30 dark:file:text-emerald-400 hover:file:bg-trust-100 cursor-pointer"
                 required
               />
             </div>
@@ -432,7 +432,7 @@ export default function NewProjectPage() {
             {/* AI Matching Fields (Week 5) */}
             <div className="bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl p-5 border border-emerald-100 dark:border-emerald-900/50 mt-6">
               <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-400 mb-1">Project Matching Data (Optional)</h3>
-              <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 mb-4">Projects that fill this in match much more accurately with CSR Donors.</p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-400/80 mb-4">Projects that fill this in match much more accurately with CSR Donors.</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -442,7 +442,7 @@ export default function NewProjectPage() {
                     min="1"
                     value={durationMonths}
                     onChange={(e) => setDurationMonths(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                     placeholder="e.g. 12"
                   />
                 </div>
@@ -453,7 +453,7 @@ export default function NewProjectPage() {
                     min="1"
                     value={expectedBeneficiaries}
                     onChange={(e) => setExpectedBeneficiaries(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                     placeholder="e.g. 500"
                   />
                 </div>
@@ -464,7 +464,7 @@ export default function NewProjectPage() {
                     maxLength={200}
                     value={beneficiaryGroup}
                     onChange={(e) => setBeneficiaryGroup(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                     placeholder="e.g. Girls aged 14–18 in government schools"
                   />
                 </div>
@@ -473,7 +473,7 @@ export default function NewProjectPage() {
                   <select
                     value={reportingCadence}
                     onChange={(e) => setReportingCadence(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                   >
                     <option value="MONTHLY">Monthly</option>
                     <option value="QUARTERLY">Quarterly</option>
@@ -488,7 +488,7 @@ export default function NewProjectPage() {
                     type="text"
                     value={primaryKPIs.join(", ")}
                     onChange={(e) => setPrimaryKPIs(e.target.value.split(",").map(k => k.trim()))}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                     placeholder="e.g. Attendance Rate, Literacy Score"
                   />
                 </div>
@@ -497,7 +497,7 @@ export default function NewProjectPage() {
 
           {/* Section 2: Sequential Milestone Builder */}
           <div className="border-t border-gray-200 dark:border-gray-800 pt-8 space-y-6">
-            <div className="flex justify-between items-start">
+            <div className="flex flex-col sm:flex-row gap-3 justify-between items-start">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">2. Sequential Milestone Builder</h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Milestones run in chronological order. Add goals sequentially.</p>
@@ -508,11 +508,11 @@ export default function NewProjectPage() {
                     type="button"
                     onClick={handleSuggestMilestones}
                     disabled={!isSuggestEnabled || suggesting}
-                    className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 font-bold py-2 px-4 rounded-lg text-xs transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1 bg-trust-50 hover:bg-trust-100 text-trust-700 border border-trust-200 font-semibold py-2 px-4 rounded-lg text-xs transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {suggesting ? (
                       <>
-                        <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-emerald-700 dark:text-emerald-400" fill="none" viewBox="0 0 24 24">
+                        <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-trust-700" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
@@ -526,7 +526,7 @@ export default function NewProjectPage() {
                 <button
                   type="button"
                   onClick={handleAddMilestone}
-                  className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold py-2 px-4 rounded-lg text-xs transition"
+                  className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-semibold py-2 px-4 rounded-lg text-xs transition"
                 >
                   + Add Milestone
                 </button>
@@ -538,7 +538,7 @@ export default function NewProjectPage() {
               <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-5 border border-gray-100 dark:border-gray-800/80">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Target Budget Allocation:</span>
-                  <span className={`text-xs font-bold ${isAllocationValid ? "text-emerald-600" : totalAllocated > projectTarget ? "text-red-500" : "text-amber-500"}`}>
+                  <span className={`text-xs font-bold ${isAllocationValid ? "text-emerald-600" : totalAllocated > projectTarget ? "text-red-600" : "text-amber-700"}`}>
                     ₹{totalAllocated.toLocaleString()} of ₹{projectTarget.toLocaleString()} allocated ({allocationPct.toFixed(1)}%)
                   </span>
                 </div>
@@ -574,7 +574,7 @@ export default function NewProjectPage() {
                     <button
                       type="button"
                       onClick={() => handleRemoveMilestone(idx)}
-                      className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                      className="absolute top-4 right-4 p-2 text-gray-500 hover:text-red-500 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
                       title="Remove Milestone"
                     >
                       <svg className="w-5 h-5 fill-none stroke-current" strokeWidth="2" viewBox="0 0 24 24">
@@ -598,7 +598,7 @@ export default function NewProjectPage() {
                         type="text"
                         value={milestone.title}
                         onChange={(e) => handleMilestoneChange(idx, "title", e.target.value)}
-                        className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
                         placeholder="e.g. Purchase 500 textbooks"
                         required
                       />
@@ -613,7 +613,7 @@ export default function NewProjectPage() {
                           min="1"
                           value={milestone.targetAmount}
                           onChange={(e) => handleMilestoneChange(idx, "targetAmount", e.target.value)}
-                          className="w-full pl-7 pr-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="w-full pl-7 pr-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
                           placeholder="e.g. 15000"
                           required
                         />
@@ -635,7 +635,7 @@ export default function NewProjectPage() {
                       <select
                         value={milestone.proofType}
                         onChange={(e) => handleMilestoneChange(idx, "proofType", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
                       >
                         {PROOF_TYPES.map((p) => (
                           <option key={p} value={p}>{p}</option>
@@ -663,7 +663,7 @@ export default function NewProjectPage() {
                       value={milestone.description}
                       onChange={(e) => handleMilestoneChange(idx, "description", e.target.value)}
                       rows={2}
-                      className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-transparent dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                      className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 resize-none"
                       placeholder="e.g. Buy and distribute physical textbooks to primary students..."
                       required
                     />
@@ -678,14 +678,14 @@ export default function NewProjectPage() {
           <div className="pt-6 border-t border-gray-200 dark:border-gray-800 space-y-4">
             
             {/* Sticky/visible Allocation Tracker */}
-            <div className="sticky bottom-4 z-20 bg-white/95 dark:bg-gray-900/95 backdrop-blur border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-lg flex flex-col gap-2">
+            <div className="sticky bottom-4 z-20 bg-white/95 dark:bg-gray-900/95 border border-gray-200 rounded-xl p-4 shadow-[0_4px_16px_rgba(16,24,40,0.08)] flex flex-col gap-2">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">Milestone Allocation Tracker</span>
                 <span className={`text-xs font-black ${
                   isAllocationValid 
                     ? "text-emerald-600 dark:text-emerald-400" 
                     : totalAllocated > projectTarget 
-                    ? "text-red-500" 
+                    ? "text-red-600" 
                     : "text-teal-600 dark:text-teal-400"
                 }`}>
                   ₹{totalAllocated.toLocaleString()} of ₹{projectTarget.toLocaleString()} allocated ({projectTarget > 0 ? allocationPct.toFixed(1) : "0.0"}%)
@@ -709,7 +709,7 @@ export default function NewProjectPage() {
             <button
               type="submit"
               disabled={loading || success || !isAllocationValid}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+              className="w-full bg-trust-600 hover:bg-trust-700 text-white font-semibold py-3.5 px-4 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -723,7 +723,7 @@ export default function NewProjectPage() {
 
             {/* Helper Validation text below the button */}
             {!isAllocationValid && (
-              <p className={`text-xs text-center font-bold ${totalAllocated > projectTarget ? "text-red-500" : "text-amber-500"}`}>
+              <p className={`text-xs text-center font-bold ${totalAllocated > projectTarget ? "text-red-600" : "text-amber-700"}`}>
                 {projectTarget === 0 ? (
                   "Please enter a valid Project Target Amount above to start allocating milestones."
                 ) : totalAllocated < projectTarget ? (

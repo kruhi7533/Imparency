@@ -1,341 +1,126 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
+import {
+  Activity,
+  Bell,
+  BarChart3,
+  CreditCard,
+  FileSignature,
+  FileText,
+  HelpCircle,
+  LayoutDashboard,
+  LifeBuoy,
+  LogOut,
+  Newspaper,
+  PieChart,
+  Receipt,
+  UserRound,
+  Users,
+} from "lucide-react";
+import PortalShell, { type PortalNavGroup } from "@/components/ui/PortalShell";
 
 interface DonorSidebarShellProps {
   userName: string;
   userEmail: string;
   userId: string;
+  /** Real count of this donor's FAILED donations (badge on Payment Tracking). */
+  failedPayments?: number;
+  children: React.ReactNode;
 }
 
-export function DonorSidebarShell({
-  userName,
-  userEmail,
-  userId,
-}: DonorSidebarShellProps) {
-  const pathname = usePathname();
+export function DonorSidebarShell({ userName, userEmail, failedPayments = 0, children }: DonorSidebarShellProps) {
   const searchParams = useSearchParams();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const sidebarRef = useRef<HTMLDivElement>(null);
+  const failedView = searchParams?.get("status") === "FAILED";
 
-  // Close mobile sidebar on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setMobileOpen(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  // Prevent background body scrolling when mobileOpen is true
-  useEffect(() => {
-    if (mobileOpen) {
-      document.body.classList.add("overflow-hidden");
-    } else {
-      document.body.classList.remove("overflow-hidden");
-    }
-    return () => {
-      document.body.classList.remove("overflow-hidden");
-    };
-  }, [mobileOpen]);
-
-  // Close mobile sidebar when clicking outside of it (on the backdrop)
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        mobileOpen &&
-        sidebarRef.current &&
-        !sidebarRef.current.contains(e.target as Node) &&
-        !(e.target as Element).closest(".mobile-hamburger-btn")
-      ) {
-        setMobileOpen(false);
-      }
-    };
-    window.addEventListener("mousedown", handleClickOutside);
-    return () => window.removeEventListener("mousedown", handleClickOutside);
-  }, [mobileOpen]);
-
-  // Active state matching rules
-  const isItemActive = (route: string) => {
-    const [routePath, routeQuery] = route.split("?");
-    
-    // Exception: /donor/donations can have any query string and still be active
-    if (pathname === "/donor/donations" && routePath === "/donor/donations") {
-      // If we are evaluating the Payment Tracking route specifically, check for status=FAILED
-      if (routeQuery && new URLSearchParams(routeQuery).get("status") === "FAILED") {
-        return searchParams.get("status") === "FAILED";
-      }
-      // Otherwise, the general Donation History item is active
-      return true;
-    }
-
-
-    // Nested pages (e.g. /donor/requirements/[id]) keep their section highlighted.
-    return pathname === routePath || pathname.startsWith(routePath + "/");
-  };
-
-  const navItems = [
+  const groups: PortalNavGroup[] = [
     {
-      label: "Dashboard",
-      subtitle: "What needs you now",
-      route: "/donor/dashboard",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" />
-        </svg>
-      )
+      label: "Main",
+      items: [
+        { label: "Dashboard", subtitle: "What needs you now", href: "/donor/dashboard", icon: LayoutDashboard },
+        { label: "Impact Report", subtitle: "Verified outcomes · PDF/CSV", href: "/donor/impact-report", icon: BarChart3 },
+        { label: "Impact Feed", subtitle: "Updates from projects", href: "/donor/impact", icon: Newspaper, exact: true },
+        { label: "Impact Portfolio", subtitle: "Your giving story", href: "/donor/portfolio", icon: PieChart },
+      ],
     },
     {
-      label: "Impact Report",
-      subtitle: "Verified outcomes · PDF/CSV",
-      route: "/donor/impact-report",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-6m4 6V7m4 10v-3M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
-        </svg>
-      )
+      label: "Giving",
+      items: [
+        {
+          label: "Donation History",
+          subtitle: "All transactions",
+          href: "/donor/donations",
+          icon: Receipt,
+          isActive: (p) => (p === "/donor/donations" ? !failedView : p.startsWith("/donor/donations/")),
+        },
+        {
+          label: "Payment Tracking",
+          subtitle: "Failed & pending",
+          href: "/donor/donations?status=FAILED",
+          icon: CreditCard,
+          badge: failedPayments,
+          isActive: (p) => p === "/donor/donations" && failedView,
+        },
+      ],
     },
     {
-      label: "Impact Feed",
-      subtitle: "Updates from projects",
-      route: "/donor/impact",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l4 4v10a2 2 0 01-2 2zM7 8h5m-5 4h10m-10 4h10" />
-        </svg>
-      )
+      label: "CSR & grants",
+      items: [
+        { label: "CSR Requirements", subtitle: "Upload & review specs", href: "/donor/requirements", icon: FileText },
+        { label: "Contracts & Grants", subtitle: "Milestone agreements", href: "/donor/contracts", icon: FileSignature },
+        { label: "Team", subtitle: "Who acts for your organisation", href: "/donor/team", icon: Users },
+      ],
     },
     {
-      label: "Impact Portfolio",
-      subtitle: "Your giving story",
-      route: "/donor/portfolio",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      )
+      label: "Account",
+      items: [
+        { label: "Activity", subtitle: "Audit trail", href: "/donor/activity", icon: Activity },
+        { label: "Notifications", subtitle: "Everything we told you", href: "/notifications", icon: Bell },
+        { label: "My Profile", subtitle: "Account & preferences", href: "/donor/profile", icon: UserRound },
+        { label: "Help", subtitle: "Support & FAQs", href: "/help", icon: HelpCircle },
+      ],
     },
-    {
-      label: "Donation History",
-      subtitle: "All transactions",
-      route: "/donor/donations",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-        </svg>
-      )
-    },
-    {
-      label: "Payment Tracking",
-      subtitle: "Failed & pending",
-      route: "/donor/donations?status=FAILED",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-        </svg>
-      )
-    },
-    {
-      label: "CSR Requirements",
-      subtitle: "Upload & review specs",
-      route: "/donor/requirements",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-        </svg>
-      )
-    },
-    {
-      label: "Contracts & Grants",
-      subtitle: "Milestone agreements",
-      route: "/donor/contracts",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      )
-    },
-    {
-      label: "Team",
-      subtitle: "Who acts for your organisation",
-      route: "/donor/team",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-5-3.87M9 20H4v-2a4 4 0 015-3.87m8-4.13a3 3 0 11-6 0 3 3 0 016 0zM7 10a3 3 0 100-6 3 3 0 000 6z" />
-        </svg>
-      )
-    },
-    {
-      label: "Activity",
-      subtitle: "Audit trail",
-      route: "/donor/activity",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )
-    },
-    {
-      label: "Notifications",
-      subtitle: "Everything we told you",
-      route: "/notifications",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0" />
-        </svg>
-      )
-    },
-    {
-      label: "My Profile",
-      subtitle: "Account & preferences",
-      route: "/donor/profile",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      )
-    },
-    {
-      label: "Help",
-      subtitle: "Support & FAQs",
-      route: "/help",
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )
-    }
   ];
 
-  const nameInitial = userName.charAt(0).toUpperCase();
-
   return (
-    <>
-      {/* Mobile Hamburger Button */}
-      {/* Sits below the global sticky navbar (h-16), not on top of its logo. */}
-      <button
-        type="button"
-        aria-label="Open donor menu"
-        aria-expanded={mobileOpen}
-        aria-controls="donor-sidebar"
-        className="mobile-hamburger-btn fixed top-20 left-4 z-40 lg:hidden w-11 h-11 bg-gray-900 border border-gray-800 rounded-xl flex items-center justify-center text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition active:scale-95 shadow-sm print:hidden"
-        onClick={() => setMobileOpen(true)}
-      >
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-
-      {/* Mobile Sidebar Backdrop Overlay */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity duration-300"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      {/* Sidebar Panel Drawer */}
-      <aside
-        id="donor-sidebar"
-        aria-label="Donor portal"
-        ref={sidebarRef}
-        className={`print:hidden fixed top-16 left-0 h-[calc(100vh-4rem)] lg:h-screen z-40 bg-gray-900 border-r border-gray-800 w-[240px] flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
-      >
-        {/* Sidebar Header / Wordmark */}
-        <div className="p-6 border-b border-gray-800/80">
-          <h2 className="text-lg font-black tracking-tight bg-gradient-to-r from-emerald-400 to-emerald-500 bg-clip-text text-transparent">
-            IMPACTBRIDGE
-          </h2>
-          <span className="block text-[9px] font-bold text-gray-500 tracking-wider uppercase mt-0.5">
-            Donor Portal
-          </span>
-        </div>
-
-        {/* User Identity Section */}
-        <div className="px-6 py-4 flex items-center gap-3 border-b border-gray-800/80">
-          <div className="w-10 h-10 rounded-full bg-emerald-600 border border-emerald-500/25 text-white font-black text-sm flex items-center justify-center select-none shrink-0 shadow-inner shadow-black/10">
-            {nameInitial}
-          </div>
-          <div className="min-w-0 text-left">
-            <h3 className="text-xs font-bold text-white truncate leading-tight">
-              {userName}
-            </h3>
-            <p className="text-[10px] text-gray-550 truncate mt-0.5">
-              {userEmail}
-            </p>
-          </div>
-        </div>
-
-        {/* Navigation Section */}
-        <div className="flex-1 overflow-y-auto py-5 space-y-4">
-          <div className="px-6 text-[9px] font-bold tracking-widest text-gray-550 uppercase">
-            My Account
-          </div>
-
-          <nav className="space-y-1 text-left">
-            {navItems.map((item) => {
-              const isActive = isItemActive(item.route);
-              return (
-                <Link
-                  key={item.label}
-                  href={item.route}
-                  onClick={() => setMobileOpen(false)}
-                  className={`
-                    flex items-center gap-3 px-4 py-2.5 rounded-xl mx-2
-                    transition-all duration-150 group relative
-                    ${isActive ? "bg-emerald-950/30 text-emerald-400 font-extrabold" : "text-gray-400 hover:bg-gray-800 hover:text-white"}
-                  `}
-                >
-                  {isActive && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-emerald-500 rounded-r-full" />
-                  )}
-                  <span className="w-4 h-4 flex-shrink-0">{item.icon}</span>
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold leading-none truncate">
-                      {item.label}
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5 truncate group-hover:text-gray-400">
-                      {item.subtitle}
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Sign Out Section Pinned to Bottom */}
-        <div className="p-4 border-t border-gray-800/80 mt-auto">
+    <PortalShell
+      id="donor-sidebar"
+      ariaLabel="Donor portal"
+      portalLabel="Donor portal"
+      openLabel="Open donor menu"
+      groups={groups}
+      user={{ name: userName, detail: userEmail }}
+      footer={(close) => (
+        <div className="space-y-2">
+          <Link
+            href="/help"
+            onClick={close}
+            className="flex items-start gap-3 rounded-xl bg-trust-50 p-3 text-xs text-trust-800 ring-1 ring-trust-100 hover:bg-trust-100"
+          >
+            <LifeBuoy className="mt-0.5 h-4 w-4 shrink-0 text-trust-600" aria-hidden="true" />
+            <span>
+              <span className="block font-semibold">Need help?</span>
+              <span className="text-trust-700">Guides for receipts, contracts and reports.</span>
+            </span>
+          </Link>
           <button
+            type="button"
             onClick={() => {
-              setMobileOpen(false);
+              close();
               signOut({ callbackUrl: "/" });
             }}
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl mx-2 transition-all duration-150 w-full text-red-400 hover:bg-red-950/20 group text-left"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-50"
           >
-            <span className="w-4 h-4 flex-shrink-0 text-red-400">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </span>
-            <div className="min-w-0">
-              <div className="text-xs font-bold leading-none truncate">
-                Sign Out
-              </div>
-              <div className="text-[10px] text-red-400/50 mt-0.5 truncate group-hover:text-red-400/80">
-                Exit session
-              </div>
-            </div>
+            <LogOut className="h-[18px] w-[18px]" aria-hidden="true" />
+            Sign Out
           </button>
         </div>
-      </aside>
-    </>
+      )}
+    >
+      {children}
+    </PortalShell>
   );
 }

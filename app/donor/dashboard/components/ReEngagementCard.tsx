@@ -41,7 +41,7 @@ export default function ReEngagementCard({
       buttonText = "Explore Tier Benefits";
       destination = "/donor/profile";
       badgeText = "Celebration";
-      gradientClass = "from-amber-500/10 via-yellow-500/5 to-transparent border-amber-500/30";
+      gradientClass = "bg-amber-50/60 border-amber-200";
       break;
 
     case "NGO_REFERRAL":
@@ -57,7 +57,7 @@ export default function ReEngagementCard({
         ? `/discover?search=${encodeURIComponent(referredNgoName)}`
         : "/discover";
       badgeText = "Matching Recommendation";
-      gradientClass = "from-emerald-500/10 via-teal-500/5 to-transparent border-emerald-500/30";
+      gradientClass = "bg-emerald-50/60 border-emerald-200";
       break;
 
     case "GRANT_MODE":
@@ -67,7 +67,7 @@ export default function ReEngagementCard({
       buttonText = "Browse Co-Funding Projects";
       destination = "/discover";
       badgeText = "CSR & Foundations";
-      gradientClass = "from-blue-500/10 via-indigo-500/5 to-transparent border-blue-500/30";
+      gradientClass = "bg-blue-50/60 border-blue-200";
       break;
 
     case "VOLUNTEER_ADVISOR":
@@ -77,7 +77,7 @@ export default function ReEngagementCard({
       buttonText = "Join Advisor Network";
       destination = "/help";
       badgeText = "Volunteering";
-      gradientClass = "from-purple-500/10 via-fuchsia-500/5 to-transparent border-purple-500/30";
+      gradientClass = "bg-purple-50/60 border-purple-200";
       break;
   }
 
@@ -100,21 +100,21 @@ export default function ReEngagementCard({
   };
 
   return (
-    <div className={`p-5 sm:p-6 rounded-2xl border bg-gradient-to-br ${gradientClass} flex flex-col md:flex-row items-start justify-between gap-6 shadow-lg mb-8 relative overflow-hidden transition-all duration-300`}>
+    <div className={`p-5 sm:p-6 rounded-2xl border ${gradientClass} flex flex-col md:flex-row items-start justify-between gap-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] mb-6`}>
       <div className="flex gap-4 items-start text-left">
-        <div className="text-3xl p-3 rounded-xl bg-gray-900/50 border border-gray-800 shrink-0 select-none shadow-inner">
+        <div className="text-3xl p-3 rounded-xl bg-white border border-gray-200 shrink-0 select-none">
           {icon}
         </div>
         <div className="space-y-1.5 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-400">
+            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">
               {badgeText}
             </span>
           </div>
-          <h3 className="text-base sm:text-lg font-black text-white leading-tight">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 leading-tight">
             {title}
           </h3>
-          <p className="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-2xl font-medium">
+          <p className="text-xs sm:text-sm text-gray-600 leading-relaxed max-w-2xl">
             {description}
           </p>
         </div>
@@ -125,7 +125,7 @@ export default function ReEngagementCard({
         <button
           onClick={handleCtaClick}
           disabled={isRedirecting}
-          className="w-full sm:w-auto px-4 py-2 text-xs font-bold text-gray-950 bg-white hover:bg-gray-100 dark:bg-emerald-400 dark:hover:bg-emerald-350 dark:text-emerald-950 rounded-xl transition duration-150 active:scale-98 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/20"
+          className="w-full sm:w-auto px-4 py-2 text-sm font-semibold text-white bg-trust-600 hover:bg-trust-700 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-1.5"
         >
           {isRedirecting ? (
             <>

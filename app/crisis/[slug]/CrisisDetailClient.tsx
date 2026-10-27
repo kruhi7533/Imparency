@@ -98,28 +98,28 @@ export default function CrisisDetailClient({
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white font-sans">
+    <div className="min-h-screen bg-canvas text-gray-900 font-sans">
       <div className="relative h-72 sm:h-96 w-full overflow-hidden">
         <img src={event.coverImage} alt={event.title} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/40 to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
         <div className="absolute bottom-0 inset-x-0 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
           <div className="flex items-center gap-2 mb-3">
             <span className="inline-flex items-center gap-1.5 bg-red-600 text-white text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full">
               <span className="w-2 h-2 rounded-full bg-white animate-pulse" /> {event.status}
             </span>
-            <span className="bg-black/50 border border-white/10 text-[11px] font-bold uppercase px-2.5 py-1 rounded-full text-gray-200">
+            <span className="bg-black/50 border border-white/10 text-[11px] font-bold uppercase px-2.5 py-1 rounded-full text-white/90">
               {event.disasterType.replace("_", " ")} · {event.severity}
             </span>
           </div>
           <h1 className="font-display text-3xl sm:text-5xl font-semibold text-white tracking-tight max-w-3xl">{event.title}</h1>
-          <p className="text-sm text-gray-300 mt-2">{event.affectedLocation}</p>
+          <p className="text-sm text-white/85 mt-2">{event.affectedLocation}</p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <div className="flex gap-1 border-b border-gray-800 mb-6 overflow-x-auto no-scrollbar">
+            <div className="flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto no-scrollbar">
               {([
                 ["overview", "Overview"],
                 ["campaigns", `Campaigns (${event.campaigns.length})`],
@@ -130,7 +130,7 @@ export default function CrisisDetailClient({
                   key={t}
                   onClick={() => setTab(t)}
                   className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition ${
-                    tab === t ? "border-red-500 text-white" : "border-transparent text-gray-500 hover:text-gray-300"
+                    tab === t ? "border-red-500 text-gray-900" : "border-transparent text-gray-500 hover:text-gray-900"
                   }`}
                 >
                   {label}
@@ -140,7 +140,7 @@ export default function CrisisDetailClient({
 
             {tab === "overview" && (
               <div className="space-y-6">
-                <p className="text-gray-300 leading-relaxed whitespace-pre-line">{event.description}</p>
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line">{event.description}</p>
                 {event.galleryImages.length > 0 && (
                   <div className="grid grid-cols-3 gap-2">
                     {event.galleryImages.map((url, i) => (
@@ -149,11 +149,11 @@ export default function CrisisDetailClient({
                   </div>
                 )}
                 {isNgoViewer && (
-                  <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-5">
-                    <h3 className="font-display font-semibold text-white mb-2">NGO relief coordination</h3>
+                  <div className="bg-white border border-gray-200 rounded-2xl p-5">
+                    <h3 className="font-display font-semibold text-gray-900 mb-2">NGO relief coordination</h3>
                     {joined ? (
                       <div>
-                        <p className="text-sm text-emerald-400 font-semibold mb-2">✓ Your NGO has joined this relief effort.</p>
+                        <p className="text-sm text-emerald-700 font-semibold mb-2">✓ Your NGO has joined this relief effort.</p>
                         <a
                           href={`/ngo/crisis/${event.id}/new-campaign`}
                           className="inline-block bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition"
@@ -163,10 +163,10 @@ export default function CrisisDetailClient({
                       </div>
                     ) : (
                       <>
-                        <p className="text-xs text-gray-400 mb-3">
+                        <p className="text-xs text-gray-600 mb-3">
                           Join to create a relief campaign under this crisis, or attach one you already run.
                         </p>
-                        {joinError && <p className="text-xs text-red-400 mb-2">{joinError}</p>}
+                        {joinError && <p className="text-xs text-red-700 mb-2">{joinError}</p>}
                         <button
                           onClick={handleJoin}
                           disabled={joining || event.status !== "ACTIVE"}
@@ -184,14 +184,14 @@ export default function CrisisDetailClient({
             {tab === "campaigns" && (
               <div className="space-y-4">
                 {event.campaigns.length === 0 ? (
-                  <p className="text-sm text-gray-400">No NGO campaigns are attached to this crisis yet.</p>
+                  <p className="text-sm text-gray-600">No NGO campaigns are attached to this crisis yet.</p>
                 ) : (
                   event.campaigns.map((c) => (
-                    <div key={c.id} className="flex gap-4 bg-gray-900/60 border border-gray-800 rounded-2xl p-4">
+                    <div key={c.id} className="flex gap-4 bg-white border border-gray-200 rounded-2xl p-4">
                       <img src={c.coverImage} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="font-mono text-[10px] uppercase tracking-widest text-gold-400">{c.ngo.orgName}</p>
-                        <h4 className="font-semibold text-white">{c.title}</h4>
+                        <p className="font-mono text-[10px] uppercase tracking-widest text-gray-500">{c.ngo.orgName}</p>
+                        <h4 className="font-semibold text-gray-900">{c.title}</h4>
                         <CrisisProgressBar totalRaised={c.raisedAmount} targetAmount={c.targetAmount} totalDonors={0} compact />
                       </div>
                       <button
@@ -209,21 +209,21 @@ export default function CrisisDetailClient({
             {tab === "initiatives" && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <p className="text-xs text-gray-400">Individual and informal-group relief efforts, verified by our team.</p>
-                  <Link href={`/relief/register?crisisEventId=${event.id}`} className="text-xs font-bold text-red-300 hover:text-red-200">
+                  <p className="text-xs text-gray-600">Individual and informal-group relief efforts, verified by our team.</p>
+                  <Link href={`/relief/register?crisisEventId=${event.id}`} className="text-xs font-bold text-red-700 hover:text-red-700">
                     + Register an initiative
                   </Link>
                 </div>
                 {event.initiatives.length === 0 ? (
-                  <p className="text-sm text-gray-400">No individual initiatives are published for this crisis yet.</p>
+                  <p className="text-sm text-gray-600">No individual initiatives are published for this crisis yet.</p>
                 ) : (
                   event.initiatives.map((i) => (
-                    <div key={i.id} className="flex gap-4 bg-gray-900/60 border border-gray-800 rounded-2xl p-4">
+                    <div key={i.id} className="flex gap-4 bg-white border border-gray-200 rounded-2xl p-4">
                       {i.images[0] && <img src={i.images[0]} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />}
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-white">{i.organizerName}</h4>
-                        <p className="text-xs text-gray-400 mb-1">{i.location}</p>
-                        <p className="text-xs text-gray-300 line-clamp-2">{i.description}</p>
+                        <h4 className="font-semibold text-gray-900">{i.organizerName}</h4>
+                        <p className="text-xs text-gray-600 mb-1">{i.location}</p>
+                        <p className="text-xs text-gray-700 line-clamp-2">{i.description}</p>
                         <CrisisProgressBar totalRaised={i.raisedAmount} targetAmount={i.requiredFunds} totalDonors={0} compact />
                       </div>
                       <button
@@ -241,18 +241,18 @@ export default function CrisisDetailClient({
             {tab === "updates" && (
               <div className="space-y-4">
                 {joined && (
-                  <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-4">
+                  <div className="bg-white border border-gray-200 rounded-2xl p-4">
                     {!showComposer ? (
-                      <button onClick={() => setShowComposer(true)} className="text-xs font-bold text-red-300 hover:text-red-200">
+                      <button onClick={() => setShowComposer(true)} className="text-xs font-bold text-red-700 hover:text-red-700">
                         + Post a transparency update
                       </button>
                     ) : (
                       <div className="space-y-3">
-                        {updateError && <p className="text-xs text-red-400">{updateError}</p>}
+                        {updateError && <p className="text-xs text-red-700">{updateError}</p>}
                         <select
                           value={updateType}
                           onChange={(e) => setUpdateType(e.target.value)}
-                          className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-xs text-white"
+                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900"
                         >
                           <option value="TEXT">General update</option>
                           <option value="FUND_UTILIZATION">Fund utilization</option>
@@ -263,14 +263,14 @@ export default function CrisisDetailClient({
                           placeholder="Update title"
                           value={updateTitle}
                           onChange={(e) => setUpdateTitle(e.target.value)}
-                          className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-xs text-white placeholder:text-gray-500"
+                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 placeholder:text-gray-500"
                         />
                         <textarea
                           placeholder="What's happened on the ground?"
                           rows={3}
                           value={updateBody}
                           onChange={(e) => setUpdateBody(e.target.value)}
-                          className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-xs text-white placeholder:text-gray-500"
+                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 placeholder:text-gray-500"
                         />
                         <div className="flex gap-2">
                           <button
@@ -280,7 +280,7 @@ export default function CrisisDetailClient({
                           >
                             {postingUpdate ? "Posting…" : "Post update"}
                           </button>
-                          <button onClick={() => setShowComposer(false)} className="text-xs text-gray-400 hover:text-white px-4 py-2">
+                          <button onClick={() => setShowComposer(false)} className="text-xs text-gray-600 hover:text-gray-900 px-4 py-2">
                             Cancel
                           </button>
                         </div>
@@ -289,19 +289,19 @@ export default function CrisisDetailClient({
                   </div>
                 )}
                 {updates.length === 0 ? (
-                  <p className="text-sm text-gray-400">No transparency updates have been posted yet.</p>
+                  <p className="text-sm text-gray-600">No transparency updates have been posted yet.</p>
                 ) : (
                   updates.map((u) => (
-                    <div key={u.id} className="bg-gray-900/60 border border-gray-800 rounded-2xl p-5">
+                    <div key={u.id} className="bg-white border border-gray-200 rounded-2xl p-5">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono text-[10px] uppercase tracking-widest text-gold-400">{u.type.replace("_", " ")}</span>
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-gray-500">{u.type.replace("_", " ")}</span>
                         <span className="text-[10px] text-gray-500">{new Date(u.createdAt).toLocaleDateString("en-IN")}</span>
                       </div>
-                      <h4 className="font-semibold text-white mb-1">{u.title}</h4>
+                      <h4 className="font-semibold text-gray-900 mb-1">{u.title}</h4>
                       {u.postedByOrgName && <p className="text-[11px] text-gray-500 mb-2">— {u.postedByOrgName}</p>}
-                      <p className="text-sm text-gray-300 leading-relaxed">{u.body}</p>
+                      <p className="text-sm text-gray-700 leading-relaxed">{u.body}</p>
                       {(u.fundsUtilized || u.beneficiariesReached) && (
-                        <div className="flex gap-4 mt-3 text-xs text-gray-400">
+                        <div className="flex gap-4 mt-3 text-xs text-gray-600">
                           {u.fundsUtilized && <span>₹{u.fundsUtilized.toLocaleString("en-IN")} utilized</span>}
                           {u.beneficiariesReached && <span>{u.beneficiariesReached.toLocaleString("en-IN")} beneficiaries reached</span>}
                         </div>
@@ -322,7 +322,7 @@ export default function CrisisDetailClient({
 
           {/* Sidebar — donate CTA + live totals */}
           <div className="lg:col-span-1">
-            <div className="sticky top-6 bg-gray-900/60 border border-gray-800 rounded-2xl p-6 space-y-5">
+            <div className="sticky top-6 bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
               <CrisisProgressBar
                 totalRaised={event.totalRaised}
                 totalDonors={event.totalDonors}
@@ -330,12 +330,12 @@ export default function CrisisDetailClient({
                 expectedEndDate={event.expectedEndDate}
               />
               <div className="grid grid-cols-2 gap-3 text-center">
-                <div className="bg-gray-950 rounded-xl py-3">
-                  <div className="text-lg font-bold text-white">{event.totalCampaigns}</div>
+                <div className="bg-white rounded-xl py-3">
+                  <div className="text-lg font-bold text-gray-900">{event.totalCampaigns}</div>
                   <div className="text-[10px] text-gray-500 uppercase tracking-wide">Campaigns</div>
                 </div>
-                <div className="bg-gray-950 rounded-xl py-3">
-                  <div className="text-lg font-bold text-white">{event.totalNgos}</div>
+                <div className="bg-white rounded-xl py-3">
+                  <div className="text-lg font-bold text-gray-900">{event.totalNgos}</div>
                   <div className="text-[10px] text-gray-500 uppercase tracking-wide">NGOs</div>
                 </div>
               </div>

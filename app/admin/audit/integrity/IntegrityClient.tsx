@@ -101,27 +101,27 @@ export default function IntegrityClient() {
 
   return (
     <div className="mt-6 grid gap-4 lg:grid-cols-2">
-      <section className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-        <h2 className="text-base font-bold text-gray-900 dark:text-white">Verify the live chain</h2>
+      <section className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="text-base font-bold text-gray-900">Verify the live chain</h2>
         <p className="mt-1 text-xs text-gray-500">Recomputes every row&apos;s hash in the database and checks links, gaps, the head and signed checkpoints.</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" onClick={verify} disabled={verifying} className={`${btn} bg-emerald-600 text-white hover:bg-emerald-700`}>
+          <button type="button" onClick={verify} disabled={verifying} className={`${btn} bg-trust-600 text-white hover:bg-trust-700`}>
             {verifying ? "Verifying…" : "Verify"}
           </button>
-          <button type="button" onClick={checkpoint} disabled={checkpointing} className={`${btn} border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800`}>
+          <button type="button" onClick={checkpoint} disabled={checkpointing} className={`${btn} border border-gray-300 text-gray-700 hover:bg-gray-50`}>
             {checkpointing ? "Recording…" : "Record checkpoint"}
           </button>
         </div>
         <div role="status" aria-live="polite" className="mt-3 text-sm">
           {chainError && <p className="text-red-600">{chainError}</p>}
-          {checkpointMsg && <p className="text-gray-600 dark:text-gray-300">{checkpointMsg}</p>}
+          {checkpointMsg && <p className="text-gray-600">{checkpointMsg}</p>}
           {chain && chain.ok && (
             <p className="font-semibold text-emerald-600">
               OK — {chain.checkedRows} rows intact up to seq {chain.head?.seq ?? 0}. Checkpoints: {chain.checkpoints.total} ({chain.checkpoints.verified} signature-verified).
             </p>
           )}
           {chain && !chain.ok && chain.firstBreak && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">
               <p className="font-semibold">
                 BROKEN at seq {chain.firstBreak.seq ?? "?"} — {chain.firstBreak.reason}
               </p>
@@ -132,8 +132,8 @@ export default function IntegrityClient() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-        <h2 className="text-base font-bold text-gray-900 dark:text-white">Verify an exported CSV</h2>
+      <section className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="text-base font-bold text-gray-900">Verify an exported CSV</h2>
         <p className="mt-1 text-xs text-gray-500">
           Upload a file from <span className="font-mono">Export CSV</span> on the audit trail. Edited, deleted or reordered rows are reported by line and seq.
         </p>
@@ -142,10 +142,10 @@ export default function IntegrityClient() {
             type="file"
             accept=".csv,text/csv"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="text-sm text-gray-700 dark:text-gray-200"
+            className="text-sm text-gray-700"
             aria-label="Exported audit CSV"
           />
-          <button type="button" onClick={upload} disabled={!file || uploading} className={`${btn} bg-emerald-600 text-white hover:bg-emerald-700`}>
+          <button type="button" onClick={upload} disabled={!file || uploading} className={`${btn} bg-trust-600 text-white hover:bg-trust-700`}>
             {uploading ? "Checking…" : "Verify file"}
           </button>
         </div>
@@ -157,7 +157,7 @@ export default function IntegrityClient() {
             </p>
           )}
           {exportResult && !exportResult.ok && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">
               <p className="font-semibold">{exportResult.problems.length} problem(s) in {exportResult.rowsChecked} rows</p>
               <ul className="mt-1 space-y-1 text-xs">
                 {exportResult.problems.slice(0, 20).map((p, i) => (

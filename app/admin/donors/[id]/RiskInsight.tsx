@@ -24,9 +24,9 @@ export default function RiskInsight({ donorId }: { donorId: string }) {
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-blue-100 dark:border-blue-900/30 bg-blue-50/50 dark:bg-blue-950/10 p-4">
+    <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold text-blue-700 dark:text-blue-400">AI Risk Insight</p>
+        <p className="text-xs font-bold text-blue-700">AI Risk Insight</p>
         <button
           onClick={fetchInsight}
           disabled={loading}
@@ -36,7 +36,7 @@ export default function RiskInsight({ donorId }: { donorId: string }) {
         </button>
       </div>
       {error && <p className="mt-2 text-xs font-semibold text-red-600">{error}</p>}
-      {insight && <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{insight}</p>}
+      {insight && <p className="mt-2 text-sm text-gray-700 leading-relaxed">{insight}</p>}
     </div>
   );
 }

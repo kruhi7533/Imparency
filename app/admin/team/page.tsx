@@ -22,17 +22,17 @@ export default async function AdminTeamPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Admin team</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Admin team</h1>
+          <p className="mt-1 text-sm text-gray-500 max-w-2xl">
             Every admin has a sub-role. <strong>Finance</strong> works only in reconciliation, exceptions and payments.{" "}
             <strong>Auditor</strong> reads everything and can export the audit trail but cannot change anything.{" "}
             <strong>Support</strong> sees the queues; an organisation&apos;s admin data needs a time-boxed break-glass grant.
             Role changes take effect within a minute and are recorded in the audit trail.
           </p>
-          <p className="mt-2 text-xs text-gray-400">You are: {ADMIN_ROLE_LABEL[myRole]}</p>
+          <p className="mt-2 text-xs text-gray-500">You are: {ADMIN_ROLE_LABEL[myRole]}</p>
         </div>
         <AdminTeamClient
           canManage={myRole === "SUPER"}

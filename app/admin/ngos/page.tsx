@@ -24,16 +24,16 @@ export const dynamic = "force-dynamic";
  */
 
 const STATUS_BADGE: Record<string, string> = {
-  VERIFIED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
-  PENDING: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  REJECTED: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+  VERIFIED: "bg-emerald-100 text-emerald-700",
+  PENDING: "bg-amber-100 text-amber-700",
+  REJECTED: "bg-red-100 text-red-700",
 };
 
 function healthTone(score: number | null): string {
-  if (score === null) return "text-gray-400 dark:text-gray-500";
-  if (score >= 70) return "text-emerald-600 dark:text-emerald-400";
-  if (score >= 40) return "text-amber-600 dark:text-amber-400";
-  return "text-red-600 dark:text-red-400";
+  if (score === null) return "text-gray-500";
+  if (score >= 70) return "text-emerald-600";
+  if (score >= 40) return "text-amber-600";
+  return "text-red-600";
 }
 
 export default async function AdminNgosPage({
@@ -89,10 +89,10 @@ export default async function AdminNgosPage({
   const alertMap = new Map(alerts.map((a) => [a.entityId, a._count]));
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-10">
+    <div className="py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Organisations</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Organisations</h1>
+        <p className="mt-1 text-sm text-gray-500">
           {ngos.length} organisation{ngos.length === 1 ? "" : "s"} shown (newest first, max 100).
           Search by name or registration number.
         </p>
@@ -105,12 +105,12 @@ export default async function AdminNgosPage({
             name="q"
             defaultValue={q}
             placeholder="Search organisation name or registration number…"
-            className="flex-1 min-w-[240px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="flex-1 min-w-[240px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-trust-500"
           />
           <AutoSubmitSelect
             name="status"
             defaultValue={status}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
           >
             <option value="">All statuses</option>
             <option value="PENDING">Pending</option>
@@ -120,7 +120,7 @@ export default async function AdminNgosPage({
           <AutoSubmitSelect
             name="flag"
             defaultValue={flag}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
           >
             <option value="">Any state</option>
             <option value="suspended">Suspended only</option>
@@ -128,53 +128,53 @@ export default async function AdminNgosPage({
           </AutoSubmitSelect>
           <button
             type="submit"
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+            className="rounded-lg bg-trust-600 px-4 py-2 text-sm font-semibold text-white hover:bg-trust-700"
           >
             Search
           </button>
           {(q || status || flag) && (
             <Link
               href="/admin/ngos"
-              className="rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
             >
               Clear
             </Link>
           )}
         </form>
 
-        <div className="mt-6 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-            <thead className="bg-gray-50 dark:bg-gray-950/40">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-gray-200 bg-white">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Organisation</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Health</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">FCRA</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Projects</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Needs attention</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Organisation</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Health</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">FCRA</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Projects</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Needs attention</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-gray-100">
               {ngos.map((ngo) => {
                 const openAlerts = alertMap.get(ngo.id) ?? 0;
                 const score = ngo.healthScore === null ? null : Number(ngo.healthScore);
                 return (
-                  <tr key={ngo.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                  <tr key={ngo.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <Link
                         href={`/admin/ngos/${ngo.id}`}
-                        className="text-sm font-bold text-gray-900 dark:text-white hover:text-emerald-600 hover:underline"
+                        className="text-sm font-bold text-gray-900 hover:text-emerald-600 hover:underline"
                       >
                         {ngo.orgName}
                       </Link>
-                      <div className="text-xs text-gray-400 dark:text-gray-500">{ngo.registrationNumber}</div>
+                      <div className="text-xs text-gray-500">{ngo.registrationNumber}</div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_BADGE[ngo.verificationStatus] ?? ""}`}>
                         {ngo.verificationStatus}
                       </span>
                       {ngo.isSuspended && (
-                        <span className="ml-1 inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-400">
+                        <span className="ml-1 inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
                           Suspended
                         </span>
                       )}
@@ -183,23 +183,23 @@ export default async function AdminNgosPage({
                       {/* "—" not "0": no score is not a bad score. */}
                       {score === null ? "—" : score.toFixed(0)}
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                    <td className="px-4 py-3 text-xs text-gray-500">
                       {ngo.compliance?.fcraStatus ?? "NONE"}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{ngo._count.projects}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{ngo._count.projects}</td>
                     <td className="px-4 py-3 text-xs">
                       {openAlerts > 0 && (
-                        <span className="mr-1 inline-flex rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-400">
+                        <span className="mr-1 inline-flex rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700">
                           {openAlerts} alert{openAlerts === 1 ? "" : "s"}
                         </span>
                       )}
                       {ngo.reverificationRequiredAt && (
-                        <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                        <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700">
                           Re-verification due
                         </span>
                       )}
                       {openAlerts === 0 && !ngo.reverificationRequiredAt && (
-                        <span className="text-gray-400 dark:text-gray-600">—</span>
+                        <span className="text-gray-500">—</span>
                       )}
                     </td>
                   </tr>
@@ -207,7 +207,7 @@ export default async function AdminNgosPage({
               })}
               {ngos.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">
                     No organisations match this search.
                     {(q || status || flag) && (
                       <>

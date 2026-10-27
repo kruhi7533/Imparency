@@ -94,7 +94,7 @@ export default function FieldEvidenceQueue() {
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Field evidence</h1>
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Field evidence</h1>
         <p className="text-sm text-gray-500">
           Automatic checks flag duplicate images and photos taken away from the project site; you decide. Donors see a photo
           only after approval — and, if it shows people, only with the beneficiary&apos;s consent to share.
@@ -110,20 +110,20 @@ export default function FieldEvidenceQueue() {
             onClick={() => setStatus(t.value)}
             className={`px-3 py-1.5 rounded-full text-xs font-bold border ${
               status === t.value
-                ? "bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900"
-                : "bg-white text-gray-700 border-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700"
+                ? "bg-trust-600 text-white border-trust-600"
+                : "bg-white text-gray-700 border-gray-200"
             }`}
           >
             {t.label}
             {t.value !== "ALL" && counts[t.value] !== undefined ? ` · ${counts[t.value]}` : ""}
           </button>
         ))}
-        <label className="ml-auto text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
+        <label className="ml-auto text-xs text-gray-600 flex items-center gap-2">
           Flags
           <select
             value={flag}
             onChange={(e) => setFlag(e.target.value)}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs"
+            className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs"
           >
             {FLAG_FILTERS.map((f) => (
               <option key={f.value} value={f.value}>
@@ -143,30 +143,30 @@ export default function FieldEvidenceQueue() {
         </div>
       )}
 
-      {!loading && !error && items.length === 0 && <p className="text-sm text-gray-400 italic">Nothing here.</p>}
+      {!loading && !error && items.length === 0 && <p className="text-sm text-gray-500 italic">Nothing here.</p>}
 
       {items.map((e) => (
-        <div key={e.id} className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+        <div key={e.id} className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl bg-white border border-gray-200/80">
           {e.photoRenderable ? (
             <a href={e.photoUrl} target="_blank" rel="noreferrer" className="shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={e.photoUrl} alt={`Field evidence for ${e.taskTitle}`} className="w-full sm:w-48 h-48 rounded-xl object-cover bg-gray-100" />
             </a>
           ) : (
-            <a href={e.photoUrl} className="w-full sm:w-48 h-48 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-700 dark:text-gray-300 underline">
+            <a href={e.photoUrl} className="w-full sm:w-48 h-48 rounded-xl bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-700 underline">
               {e.photoMime.replace("image/", "").toUpperCase()} photo — download
             </a>
           )}
           <div className="flex-1 space-y-2 text-sm">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="font-bold text-gray-900 dark:text-white">{e.taskTitle}</p>
+                <p className="font-bold text-gray-900">{e.taskTitle}</p>
                 <p className="text-xs text-gray-500">
                   {e.orgName} · {e.projectTitle}
                   {e.projectLocation ? ` · ${e.projectLocation}` : ""}
                 </p>
               </div>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
                 {e.status.replace(/_/g, " ").toLowerCase()}
               </span>
             </div>
@@ -191,16 +191,16 @@ export default function FieldEvidenceQueue() {
                 <Chip bad>{e.consentWithdrawn ? "Consent withdrawn" : "Shows people, no consent to share"} — donors will not see it</Chip>
               )}
             </div>
-            {e.note && <p className="text-gray-700 dark:text-gray-300">{e.note}</p>}
+            {e.note && <p className="text-gray-700">{e.note}</p>}
             {e.feedback && (e.feedback.text || e.feedback.rating) && (
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+              <p className="text-xs text-gray-600">
                 Beneficiary feedback{e.feedback.rating ? ` (${e.feedback.rating}/5)` : ""}: {e.feedback.text}
               </p>
             )}
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               Captured {new Date(e.capturedAt).toLocaleString("en-IN")} · synced {new Date(e.syncedAt).toLocaleString("en-IN")}
             </p>
-            {e.reviewNote && <p className="text-xs text-gray-600 dark:text-gray-400">Review note: {e.reviewNote}</p>}
+            {e.reviewNote && <p className="text-xs text-gray-600">Review note: {e.reviewNote}</p>}
             {e.status === "PENDING_REVIEW" && (
               <EvidenceReviewActions
                 evidenceId={e.id}
@@ -214,7 +214,7 @@ export default function FieldEvidenceQueue() {
 
       {loading && <p className="text-sm text-gray-500" role="status">Loading…</p>}
       {nextCursor && !loading && (
-        <button onClick={() => load(nextCursor)} className="w-full py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold">
+        <button onClick={() => load(nextCursor)} className="w-full py-2 rounded-xl border border-gray-200 text-sm font-bold">
           Load more
         </button>
       )}
