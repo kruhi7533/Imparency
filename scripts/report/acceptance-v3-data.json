@@ -2,11 +2,11 @@
  "title": "ImpactBridge — Acceptance Test Pack Report v3 (post-remediation)",
  "date": "27 October 2026",
  "branch": "fix/acceptance-v2-remediation",
- "commit": "PENDING",
+ "commit": "7486378",
  "baseline": "Report v2 (25 Oct 2026, deployment impactbridge-omega.vercel.app): 91 cases — 20 PASS, 28 PARTIAL, 22 FAIL, 7 NOT BUILT, 14 NOT RUN.",
  "method": "Each of the 91 sheet cases has a Playwright test of the same ID that drives the real UI in Chromium against the application running on a seeded PostgreSQL database (synthetic data only, sandbox/manual-test payments, no real money). Unit and integration tests run with Vitest. Same pass rule as v2: a case passes only when the visible expected result works with persisted data.",
- "verdict": "PENDING",
- "verdictDetail": "PENDING",
+ "verdict": "All 91 acceptance cases PASS — pilot gates met",
+ "verdictDetail": "Every case in the sheet now passes in a real browser with persisted data, including all five P0 defects (D1–D5) and the seven features previously not built. Every pilot gate on the sheet's dashboard passes. Remaining items before a production pilot are operational (production keys and migration rollout) and are listed under Notes.",
  "defects": [
   {
    "id": "D1",
@@ -54,31 +54,69 @@
   {
    "gate": "Stage 0 identity / verification",
    "before": "FAIL",
-   "after": "PENDING"
+   "after": "PASS"
   },
   {
    "gate": "RFP → match → proposal",
    "before": "FAIL",
-   "after": "PENDING"
+   "after": "PASS"
   },
   {
    "gate": "Funding → reconciliation → allocation",
    "before": "FAIL",
-   "after": "PENDING"
+   "after": "PASS"
   },
   {
    "gate": "Field evidence → verification → donor",
    "before": "FAIL",
-   "after": "PENDING"
+   "after": "PASS"
   },
   {
    "gate": "Outcome → impact report → feedback",
    "before": "FAIL",
-   "after": "PENDING"
+   "after": "PASS"
   }
  ],
- "runs": [],
- "notes": [],
+ "runs": [
+  {
+   "check": "Unit + integration tests (Vitest, npm test)",
+   "result": "189 files, 2,727 tests — all passed on commit 7486378 (baseline before work: 158 files / 2,230 tests)."
+  },
+  {
+   "check": "TypeScript (npx tsc --noEmit)",
+   "result": "No errors."
+  },
+  {
+   "check": "Production build (next build)",
+   "result": "Succeeded."
+  },
+  {
+   "check": "ESLint (next lint)",
+   "result": "64 errors vs 69 on main (pre-existing, non-blocking backlog per CLAUDE.md) — this work adds none and clears five."
+  },
+  {
+   "check": "Prisma migrations",
+   "result": "All migrations apply cleanly; migrate diff against the schema reports no drift (additive migrations only)."
+  },
+  {
+   "check": "Browser suite — Admin, Negative/Security, AI (45 cases)",
+   "result": "Full run: 45 passed (10.6 min). A second full run had one test-side locator issue (AI-002), fixed and re-run: passed."
+  },
+  {
+   "check": "Browser suite — NGO, Donor/CSR, Cross-portal (46 cases)",
+   "result": "Full run: 46 passed (12.6 min). After three bug fixes, the latest full run had 43 passed and 3 failed on test-side issues; those 3 were fixed and re-run: 3 passed (45.6 s)."
+  }
+ ],
+ "notes": [
+  "All data is synthetic. Payments are SANDBOX/manual-test records; no real money moved and no real NGO, company, PAN, CIN or UTR was used.",
+  "AI: document and RFP extraction ran on Claude (Anthropic) in this run. Without a model key the platform falls back to labelled rule-based extraction and template drafts — never invented values.",
+  "External delivery was not exercised live: WhatsApp (Twilio) and email providers were not configured, so notification tests verify the in-app delivery, the opt-out, the fallback order and the delivery log, where external channels are recorded as PROVIDER_NOT_CONFIGURED. Razorpay live checkout was not used; webhook handling was verified with signed test payloads.",
+  "Production rollout: apply the additive migrations with `prisma migrate deploy`. Do not deploy with the repo's current `npm run build`, which runs `prisma db push --accept-data-loss` (pre-existing risk noted in CLAUDE.md).",
+  "Production needs STORAGE_PROVIDER=cloudinary with CLOUDINARY_* keys for private uploads (the cause of D2), RAZORPAY_WEBHOOK_SECRET, and ANTHROPIC_API_KEY and/or GEMINI_API_KEY for AI extraction.",
+  "UI: the platform was redesigned to a light theme (homepage, admin console, NGO and donor portals); every figure on screen is read from the database.",
+  "Known minor UI gaps (not acceptance criteria): the donor feedback widget does not re-display the saved choice after reload; NGO claim cards do not show the method text.",
+  "Branch: fix/acceptance-v2-remediation (commits 3162a1e, 63e8344, 358858d, 7486378). Browser tests: e2e-tests/acceptance-v2-admin-security-ai.spec.ts and e2e-tests/acceptance-v2-ngo-donor-e2e.spec.ts. Full remediation notes: docs/ACCEPTANCE-V2-REMEDIATION.md."
+ ],
  "suites": [
   {
    "key": "ADM",
@@ -250,323 +288,323 @@
    "id": "NGO-001",
    "suite": "NGO",
    "prior": "FAIL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "NGO saves a partial registration (“Save draft and finish later”), leaves, returns to a prefilled form and submits; profile becomes PENDING with the draft's documents."
   },
   {
    "id": "NGO-002",
    "suite": "NGO",
    "prior": "PASS",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "NGO submits registration documents; analysis runs and the profile moves PENDING → VERIFIED after admin approval."
   },
   {
    "id": "NGO-003",
    "suite": "NGO",
    "prior": "NOT BUILT",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "NGO owner invites a Field Worker and a Program Manager; invite link accepted; reused/revoked links refused."
   },
   {
    "id": "NGO-004",
    "suite": "NGO",
    "prior": "PASS",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Project created with geography, budget and milestones; admin-approved; ACTIVE and matchable."
   },
   {
    "id": "NGO-005",
    "suite": "NGO",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "NGO match inbox lists the CSR invitation with its next action and a Respond link."
   },
   {
    "id": "NGO-006",
    "suite": "NGO",
    "prior": "PASS",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Proposal v1 submitted and versioned."
   },
   {
    "id": "NGO-007",
    "suite": "NGO",
    "prior": "PASS",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Change request → v2 submitted; revisions recorded; v2 selected for the contract."
   },
   {
    "id": "NGO-008",
    "suite": "NGO",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "After reconciliation every contract milestone shows FUNDED and the project is marked FUNDED (defect D4 fixed)."
   },
   {
    "id": "NGO-009",
    "suite": "NGO",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Field task assigned to a field worker by the owner/program manager."
   },
   {
    "id": "NGO-010",
    "suite": "NGO",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Beneficiary feedback recorded with per-purpose consent (pseudonymous reference; consent honoured downstream)."
   },
   {
    "id": "NGO-011",
    "suite": "NGO",
    "prior": "NOT RUN",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Field worker logs in, lands on the Field app and sees only the tasks assigned to them."
   },
   {
    "id": "NGO-012",
    "suite": "NGO",
    "prior": "FAIL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Offline capture syncs with photo; replaying the same clientId returns the same record (no duplicate) (defect D2 fixed)."
   },
   {
    "id": "NGO-013",
    "suite": "NGO",
    "prior": "FAIL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Normal photo with correct GPS uploads and persists; GPS check MATCH."
   },
   {
    "id": "NGO-014",
    "suite": "NGO",
    "prior": "FAIL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Duplicate / bad-GPS photo flagged → admin returns it → NGO recaptures and resubmits."
   },
   {
    "id": "NGO-015",
    "suite": "NGO",
    "prior": "NOT BUILT",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "NGO records an expense against a contract milestone with a receipt; utilisation shown; donor sees it read-only."
   },
   {
    "id": "NGO-016",
    "suite": "NGO",
    "prior": "FAIL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Baseline 42% and endline 61% claims approved; NGO impact report shows +19 pp from approved claims only."
   },
   {
    "id": "NGO-017",
    "suite": "NGO",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "NGO creates and submits a stored impact report built from approved claims; admin publishes it; donor sees approved figures only."
   },
   {
    "id": "NGO-018",
    "suite": "NGO",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "NGO sees aggregated beneficiary feedback; the donor view shows aggregates only, with no personal data."
   },
   {
    "id": "NGO-019",
    "suite": "NGO",
    "prior": "PASS",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Grievance filed by the NGO and resolved through the admin workflow."
   },
   {
    "id": "NGO-020",
    "suite": "NGO",
    "prior": "NOT BUILT",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Donor renewal / next-opportunity request appears in /ngo/reporting; NGO accepts or declines."
   },
   {
    "id": "DON-001",
    "suite": "DON",
    "prior": "PASS",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Donor registers, completes profile; organisation and PAN verified."
   },
   {
    "id": "DON-002",
    "suite": "DON",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Donor team invite with the Finance role; Finance can record payments but cannot approve proposals; Viewer cannot pay."
   },
   {
    "id": "DON-003",
    "suite": "DON",
    "prior": "PASS",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Manual (form) CSR opportunity created, validated and entered into matching."
   },
   {
    "id": "DON-004",
    "suite": "DON",
    "prior": "FAIL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "RFP PDF uploaded; fields extracted with confidence; donor corrects a field (defect D3 fixed)."
   },
   {
    "id": "DON-005",
    "suite": "DON",
    "prior": "PASS",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Ranked, explainable shortlist (score, coverage, per-dimension reasons); FCRA variant excludes ineligible NGOs."
   },
   {
    "id": "DON-006",
    "suite": "DON",
    "prior": "PASS",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Donor invites an approved NGO; NGO is notified and the proposal handoff follows."
   },
   {
    "id": "DON-007",
    "suite": "DON",
    "prior": "PASS",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Change request on v1 reaches the NGO and produces v2."
   },
   {
    "id": "DON-008",
    "suite": "DON",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Donor compares proposal v1 and v2 side by side with highlighted changes, then selects v2."
   },
   {
    "id": "DON-009",
    "suite": "DON",
    "prior": "PASS",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Contract signed by both parties and accepted by the NGO; ACTIVE."
   },
   {
    "id": "DON-010",
    "suite": "DON",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Payment lifecycle visible (pending → reconciled); UTR kept as the reference; remaining commitment shown (D4/D5 fixed)."
   },
   {
    "id": "DON-011",
    "suite": "DON",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Donor sees contract, payment summary and correct per-milestone utilisation (all milestones FUNDED)."
   },
   {
    "id": "DON-012",
    "suite": "DON",
    "prior": "NOT RUN",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Donor receives a milestone notification when a milestone is funded/completed."
   },
   {
    "id": "DON-013",
    "suite": "DON",
    "prior": "FAIL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Donor impact dashboard and CSV show approved figures, the +19 pp change, and INSUFFICIENT_DATA where unbacked."
   },
   {
    "id": "DON-014",
    "suite": "DON",
    "prior": "NOT RUN",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Consent-safe donor story visible on the contract; non-consented material excluded."
   },
   {
    "id": "DON-015",
    "suite": "DON",
    "prior": "PASS",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Donor feedback (HELPFUL + note) stored on an update."
   },
   {
    "id": "DON-016",
    "suite": "DON",
    "prior": "FAIL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Donor “Renew this grant” from a stored impact report creates a re-engagement request (no 404)."
   },
   {
    "id": "DON-017",
    "suite": "DON",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Donor pages and downloads show no beneficiary PII, risk scores or internal notes."
   },
   {
    "id": "DON-018",
    "suite": "DON",
    "prior": "NOT RUN",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Donor disables WhatsApp; notifications fall back to email/in-app and appear in the delivery log."
   },
   {
    "id": "E2E-001",
    "suite": "E2E",
    "prior": "FAIL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Sheet NGO profile verified end to end through the UI, including correcting a wrong document (D1 fixed)."
   },
   {
    "id": "E2E-002",
    "suite": "E2E",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Opportunity → match → admin-approved shortlist → invite → proposal; RFP upload path works."
   },
   {
    "id": "E2E-003",
    "suite": "E2E",
    "prior": "PASS",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "v1 → change request → v2 → donor approval → contract; version history intact."
   },
   {
    "id": "E2E-004",
    "suite": "E2E",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Contract → payment → reconciliation → allocation → milestones FUNDED."
   },
   {
    "id": "E2E-005",
    "suite": "E2E",
    "prior": "FAIL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Money → work → field evidence → admin approval → donor-safe update."
   },
   {
    "id": "E2E-006",
    "suite": "E2E",
    "prior": "FAIL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Evidence → approved outcome claims → +19 pp → donor impact report."
   },
   {
    "id": "E2E-007",
    "suite": "E2E",
    "prior": "PARTIAL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Grievance resolved, beneficiary and donor feedback stored, re-engagement started from the stored report."
   },
   {
    "id": "E2E-008",
    "suite": "E2E",
    "prior": "FAIL",
-   "verdict": "NOT RUN",
-   "evidence": "PENDING — awaiting NGO/donor/cross-portal suite results."
+   "verdict": "PASS",
+   "evidence": "Uninterrupted pilot journey through the UI from verification to re-engagement with no database manipulation."
   },
   {
    "id": "NEG-001",
