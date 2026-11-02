@@ -106,12 +106,12 @@ export default function InviteAcceptClient({ token }: { token: string }) {
           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
             Your name
             <input required minLength={2} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name"
-              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-normal bg-white text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none" />
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-normal bg-white text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none" />
           </label>
           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
             Choose a password (at least 8 characters)
             <input required minLength={8} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password"
-              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-normal bg-white text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none" />
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-normal bg-white text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none" />
           </label>
           <button disabled={busy} className="w-full bg-trust-600 hover:bg-trust-700 disabled:opacity-50 text-white font-semibold py-3 rounded-lg">
             {busy ? "Joining…" : "Create account and join"}

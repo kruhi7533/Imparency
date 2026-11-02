@@ -7,6 +7,9 @@ import { SECTOR_OPTIONS } from "@/lib/requirements/form-options";
 
 type PanStatus = "UNVERIFIED" | "VERIFIED" | "FAILED" | "PROVIDER_ERROR";
 
+// Mirrors the server-side check in app/api/donor/profile/route.ts.
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
 interface UserProfile {
   id: string;
   name: string;
@@ -136,6 +139,12 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
 
     if (!name.trim()) {
       setMessage({ type: "error", text: "Name is required" });
+      setLoading(false);
+      return;
+    }
+
+    if (panNumber && !PAN_REGEX.test(panNumber)) {
+      setMessage({ type: "error", text: "PAN must be 10 characters in the format ABCDE1234F (5 letters, 4 digits, 1 letter)." });
       setLoading(false);
       return;
     }
@@ -367,7 +376,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
                       placeholder="Your name"
                       required
                     />
@@ -395,7 +404,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
                       placeholder="Phone number"
                     />
                   </div>
@@ -409,7 +418,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                       type="text"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
                       placeholder="Mumbai, Bangalore, etc."
                     />
                   </div>
@@ -422,7 +431,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                       id="billingAddress"
                       value={billingAddress}
                       onChange={(e) => setBillingAddress(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all min-h-[80px] resize-y"
+                      className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all min-h-[80px] resize-y"
                       placeholder="Required for generating standard 80G tax certificates"
                     />
                   </div>
@@ -447,7 +456,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         type="text"
                         value={hniAdvisorName}
                         onChange={(e) => setHniAdvisorName(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
                         placeholder="Advisor Name"
                       />
                     </div>
@@ -461,7 +470,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         type="email"
                         value={hniAdvisorEmail}
                         onChange={(e) => setHniAdvisorEmail(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
                         placeholder="advisor@firm.com"
                       />
                     </div>
@@ -475,7 +484,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         type="number"
                         value={hniAnnualBudget}
                         onChange={(e) => setHniAnnualBudget(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
                         placeholder="e.g. 500000"
                       />
                     </div>
@@ -536,7 +545,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         type="text"
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
                         placeholder="ABC Private Limited"
                         required
                       />
@@ -551,7 +560,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         type="text"
                         value={cin}
                         onChange={(e) => setCin(e.target.value.toUpperCase())}
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all tracking-wider font-mono"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all tracking-wider font-mono"
                         placeholder="U99999TG2026PLC000001"
                         maxLength={21}
                         required
@@ -571,7 +580,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         type="text"
                         value={gstNumber}
                         onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all tracking-wider font-mono"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all tracking-wider font-mono"
                         placeholder="27AAAAA1111A1Z1"
                         maxLength={15}
                         required
@@ -587,7 +596,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         type="text"
                         value={csrRegistrationNumber}
                         onChange={(e) => setCsrRegistrationNumber(e.target.value.toUpperCase())}
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all tracking-wider font-mono"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all tracking-wider font-mono"
                         placeholder="CSR00000000"
                         maxLength={15}
                       />
@@ -602,7 +611,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         type="number"
                         value={csrBudget}
                         onChange={(e) => setCsrBudget(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
                         placeholder="e.g. 2000000"
                       />
                     </div>
@@ -617,7 +626,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         maxLength={4000}
                         value={csrPolicySummary}
                         onChange={(e) => setCsrPolicySummary(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
                         placeholder="What your board-approved CSR policy commits to: focus areas, geographies, how projects are chosen and monitored."
                       />
                     </div>
@@ -661,7 +670,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         type="text"
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
                         placeholder="e.g. Tata Trusts / Foundation"
                         required
                       />
@@ -676,7 +685,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         type="text"
                         value={trustRegistrationId}
                         onChange={(e) => setTrustRegistrationId(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
                         placeholder="Reg ID / Deed Number"
                       />
                     </div>
@@ -690,7 +699,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         type="text"
                         value={trust12a80gRegNo}
                         onChange={(e) => setTrust12a80gRegNo(e.target.value.toUpperCase())}
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all tracking-wider font-mono"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all tracking-wider font-mono"
                         placeholder="12A/80G Number"
                       />
                     </div>
@@ -704,7 +713,7 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                         type="number"
                         value={trustAnnualBudget}
                         onChange={(e) => setTrustAnnualBudget(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all"
                         placeholder="e.g. 5000000"
                       />
                     </div>
@@ -741,13 +750,19 @@ export default function DonorProfileClient({ user }: DonorProfileClientProps) {
                     type="text"
                     value={panNumber}
                     onChange={(e) => setPanNumber(e.target.value.toUpperCase())}
-                    className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all tracking-wider font-mono"
+                    className="w-full px-3.5 py-2.5 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 rounded-lg text-sm focus:outline-none transition-all tracking-wider font-mono"
                     placeholder="ABCDE1234F"
                     maxLength={10}
                   />
-                  <p className="text-[11px] text-gray-500">
-                    We verify your PAN against government records on save.
-                  </p>
+                  {panNumber && !PAN_REGEX.test(panNumber) ? (
+                    <p className="text-[11px] text-red-600 font-medium">
+                      Must be 10 characters in the format ABCDE1234F (5 letters, 4 digits, 1 letter).
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-gray-500">
+                      We verify your PAN against government records on save.
+                    </p>
+                  )}
                 </div>
 
                 {showClaim && (

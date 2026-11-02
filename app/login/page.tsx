@@ -27,6 +27,7 @@ function LoginContent() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<"DONOR" | "NGO">(searchParams.get("role") === "NGO" ? "NGO" : "DONOR");
 
   const [error, setError] = useState("");
@@ -74,6 +75,12 @@ function LoginContent() {
 
     if (!email || !password) {
       setError("Please fill in email and password.");
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
       setLoading(false);
       return;
     }
@@ -216,13 +223,13 @@ function LoginContent() {
       {!isForgotPassword && (
         <div className="flex border-b border-gray-200 mb-6">
           <button
-            onClick={() => { setIsSignUp(false); setError(""); setSuccess(""); }}
+            onClick={() => { setIsSignUp(false); setError(""); setSuccess(""); setConfirmPassword(""); }}
             className={`flex-1 pb-2.5 text-sm font-semibold transition ${!isSignUp ? "text-gray-900 border-b-2 border-trust-600" : "text-gray-500 hover:text-gray-900"}`}
           >
             Sign In
           </button>
           <button
-            onClick={() => { setIsSignUp(true); setError(""); setSuccess(""); }}
+            onClick={() => { setIsSignUp(true); setError(""); setSuccess(""); setConfirmPassword(""); }}
             className={`flex-1 pb-2.5 text-sm font-semibold transition ${isSignUp ? "text-gray-900 border-b-2 border-trust-600" : "text-gray-500 hover:text-gray-900"}`}
           >
             Register Account
@@ -254,7 +261,7 @@ function LoginContent() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
+                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
                 placeholder="e.g. name@organization.org"
                 required
               />
@@ -290,7 +297,7 @@ function LoginContent() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
+              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
               placeholder="e.g. John Doe"
               required
             />
@@ -303,7 +310,7 @@ function LoginContent() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
+            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
             placeholder="e.g. name@organization.org"
             required
           />
@@ -315,7 +322,7 @@ function LoginContent() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
+            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
             placeholder="••••••••"
             required
           />
@@ -332,6 +339,18 @@ function LoginContent() {
           )}
         </div>
 
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Confirm Password *</label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
+            placeholder="••••••••"
+            required
+          />
+        </div>
+
         {isSignUp && (
           <>
             <div>
@@ -339,7 +358,7 @@ function LoginContent() {
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as "DONOR" | "NGO")}
-                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
+                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
               >
                 <option value="DONOR">Donor Account (Fund projects & track impact)</option>
                 <option value="NGO">NGO Organization (Publish projects & submit proof)</option>

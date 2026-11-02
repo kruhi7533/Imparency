@@ -73,7 +73,7 @@ export default function UpdateFeedback({
             maxLength={500}
             onChange={(e) => setNote(e.target.value)}
             placeholder="What would you like to know? (optional, shared without your name)"
-            className="flex-1 min-h-[40px] rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
+            className="flex-1 min-h-[40px] rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
           />
           <button type="button" disabled={state === "saving"} onClick={() => send("NEED_MORE_DETAIL", note)} className={btn(false)}>
             Send note

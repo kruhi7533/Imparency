@@ -65,7 +65,7 @@ export default function TeamClient({
     }
   };
 
-  const input = "min-h-[44px] rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20";
+  const input = "min-h-[44px] rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20";
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">

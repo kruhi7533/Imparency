@@ -170,7 +170,7 @@ export default function NGOUserProfilePage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
-                        className="w-full bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 rounded-xl pl-12 pr-4 py-3.5 font-medium focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition-all shadow-sm"
+                        className="w-full bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 rounded-xl pl-12 pr-4 py-3.5 font-medium focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition-all shadow-sm"
                       />
                     </div>
                   </div>
