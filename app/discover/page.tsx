@@ -260,7 +260,7 @@ export default function DiscoverPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by organization name..."
-              className="w-full bg-transparent border-0 focus:outline-none pl-2 pr-4 py-2 text-sm text-gray-900 placeholder:text-gray-500"
+              className="w-full bg-transparent border-0 focus:outline-none pl-2 pr-4 py-2 text-sm text-gray-900 placeholder:text-gray-600"
             />
           </div>
         </div>
@@ -333,7 +333,7 @@ export default function DiscoverPage() {
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="City or State..."
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-900 text-xs placeholder:text-gray-500 focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-900 text-xs placeholder:text-gray-600 focus:outline-none focus:border-trust-400 focus:ring-1 focus:ring-trust-400"
               />
             </div>
 
@@ -407,7 +407,7 @@ export default function DiscoverPage() {
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="City or State..."
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-900 text-xs placeholder:text-gray-500 focus:outline-none focus:border-trust-400"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-900 text-xs placeholder:text-gray-600 focus:outline-none focus:border-trust-400"
                   />
                 </div>
 

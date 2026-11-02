@@ -83,13 +83,13 @@ export default function CrisisLandingPage() {
             placeholder="State"
             value={stateName}
             onChange={(e) => setStateName(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-900 text-xs placeholder:text-gray-500 focus:outline-none focus:border-red-500 w-28"
+            className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-900 text-xs placeholder:text-gray-600 focus:outline-none focus:border-red-500 w-28"
           />
           <input
             placeholder="City"
             value={city}
             onChange={(e) => setCity(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-900 text-xs placeholder:text-gray-500 focus:outline-none focus:border-red-500 w-28"
+            className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-900 text-xs placeholder:text-gray-600 focus:outline-none focus:border-red-500 w-28"
           />
           {(disasterType || severity || status || stateName || city) && (
             <button

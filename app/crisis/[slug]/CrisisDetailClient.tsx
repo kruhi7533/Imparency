@@ -263,14 +263,14 @@ export default function CrisisDetailClient({
                           placeholder="Update title"
                           value={updateTitle}
                           onChange={(e) => setUpdateTitle(e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 placeholder:text-gray-500"
+                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 placeholder:text-gray-600"
                         />
                         <textarea
                           placeholder="What's happened on the ground?"
                           rows={3}
                           value={updateBody}
                           onChange={(e) => setUpdateBody(e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 placeholder:text-gray-500"
+                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 placeholder:text-gray-600"
                         />
                         <div className="flex gap-2">
                           <button

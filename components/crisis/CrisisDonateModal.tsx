@@ -154,7 +154,7 @@ export default function CrisisDonateModal({ crisisEventId, crisisTitle, target, 
             placeholder="Or enter a custom amount"
             value={customAmount}
             onChange={(e) => setCustomAmount(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
 

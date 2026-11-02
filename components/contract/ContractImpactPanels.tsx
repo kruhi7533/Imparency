@@ -22,7 +22,7 @@ interface Milestone {
 
 const card = "bg-white rounded-2xl border border-gray-200/80 p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
 const btn = "px-3 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50";
-const input = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20";
+const input = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-600 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20";
 
 const inr = (v: string | number) => `₹${Number(v).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 const pct = (v: number | null) => (v === null ? "—" : `${v}%`);

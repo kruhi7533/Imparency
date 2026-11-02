@@ -261,7 +261,7 @@ function LoginContent() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
+                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-600 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
                 placeholder="e.g. name@organization.org"
                 required
               />
@@ -297,7 +297,7 @@ function LoginContent() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
+              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-600 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
               placeholder="e.g. John Doe"
               required
             />
@@ -310,7 +310,7 @@ function LoginContent() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
+            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-600 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
             placeholder="e.g. name@organization.org"
             required
           />
@@ -322,7 +322,7 @@ function LoginContent() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
+            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-600 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
             placeholder="••••••••"
             required
           />
@@ -345,7 +345,7 @@ function LoginContent() {
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
+            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-600 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
             placeholder="••••••••"
             required
           />
@@ -358,7 +358,7 @@ function LoginContent() {
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as "DONOR" | "NGO")}
-                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-500 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
+                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm placeholder:text-gray-600 focus:outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 transition"
               >
                 <option value="DONOR">Donor Account (Fund projects & track impact)</option>
                 <option value="NGO">NGO Organization (Publish projects & submit proof)</option>

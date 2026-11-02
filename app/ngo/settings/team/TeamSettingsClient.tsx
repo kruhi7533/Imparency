@@ -197,12 +197,12 @@ export default function TeamSettingsClient() {
             <label className="flex-1 w-full text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
               Email
               <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required placeholder="colleague@example.org"
-                className="mt-1.5 w-full normal-case font-normal bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none rounded-lg px-4 py-3 text-sm" />
+                className="mt-1.5 w-full normal-case font-normal bg-white border border-gray-300 text-gray-900 placeholder:text-gray-600 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none rounded-lg px-4 py-3 text-sm" />
             </label>
             <label className="w-full sm:w-56 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
               Role
               <select value={role} onChange={(e) => setRole(e.target.value as Role)}
-                className="mt-1.5 w-full normal-case font-normal bg-white border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none rounded-lg px-4 py-3 text-sm">
+                className="mt-1.5 w-full normal-case font-normal bg-white border border-gray-300 text-gray-900 placeholder:text-gray-600 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none rounded-lg px-4 py-3 text-sm">
                 {me.grantableRoles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
               </select>
             </label>

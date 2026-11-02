@@ -133,7 +133,7 @@ export default function FieldTasksPanel({
     }
   };
 
-  const input = "mt-1 w-full text-sm font-normal rounded-lg border border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none px-3 py-2";
+  const input = "mt-1 w-full text-sm font-normal rounded-lg border border-gray-300 bg-white text-gray-900 placeholder:text-gray-600 focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 outline-none px-3 py-2";
 
   return (
     <section className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-4">

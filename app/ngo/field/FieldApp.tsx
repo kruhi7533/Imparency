@@ -216,7 +216,7 @@ export default function FieldApp({ userName }: { userName: string }) {
   const pending = queued.filter((q) => !q.error);
   const failed = queued.filter((q) => q.error);
   const input =
-    "mt-1 w-full min-h-12 rounded-xl border-2 border-gray-300 bg-white px-3 py-2.5 text-base font-normal text-gray-900 placeholder:text-gray-500 focus:border-trust-600 focus:outline-none focus:ring-2 focus:ring-trust-600/30";
+    "mt-1 w-full min-h-12 rounded-xl border-2 border-gray-300 bg-white px-3 py-2.5 text-base font-normal text-gray-900 placeholder:text-gray-600 focus:border-trust-600 focus:outline-none focus:ring-2 focus:ring-trust-600/30";
 
   return (
     <div className="min-h-screen pb-24 text-gray-900">

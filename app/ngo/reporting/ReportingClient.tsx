@@ -6,7 +6,7 @@ import { TEMPLATE_LABEL } from "@/lib/impact-stories";
 
 const card = "bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
 const btn = "px-3 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50";
-const input = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20";
+const input = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-600 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20";
 const KIND_LABEL: Record<string, string> = { RENEWAL: "Renewal", NEXT_OPPORTUNITY: "Next opportunity" };
 const BADGE: Record<string, string> = {
   OPEN: "bg-blue-100 text-blue-700",

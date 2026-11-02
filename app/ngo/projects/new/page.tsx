@@ -300,7 +300,7 @@ export default function NewProjectPage() {
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                   placeholder="e.g. Clean Water for Dharavi"
                   required
                 />
@@ -328,7 +328,7 @@ export default function NewProjectPage() {
                     min="1"
                     value={targetAmount}
                     onChange={(e) => setTargetAmount(e.target.value)}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                     placeholder="e.g. 50000"
                     required
                   />
@@ -341,7 +341,7 @@ export default function NewProjectPage() {
                   type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                   placeholder="e.g. Dharavi, Mumbai"
                   required
                 />
@@ -365,7 +365,7 @@ export default function NewProjectPage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
                 placeholder="Describe the scope, objectives, and impact goals of this project..."
                 required
               />
@@ -388,7 +388,7 @@ export default function NewProjectPage() {
                 value={problemStatement}
                 onChange={(e) => setProblemStatement(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
                 placeholder="What issue or gap does this campaign address? e.g., '200 children in Dharavi lack access to basic learning materials...'"
               />
               <p className="text-[11px] text-gray-500 mt-1">Adding this helps donors understand your campaign's purpose and builds trust.</p>
@@ -411,7 +411,7 @@ export default function NewProjectPage() {
                 value={expectedOutcome}
                 onChange={(e) => setExpectedOutcome(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
                 placeholder="What does success look like once this campaign is complete? e.g., 'Improved school attendance and literacy among 200 children...'"
               />
               <p className="text-[11px] text-gray-500 mt-1">Adding this helps donors understand your campaign's purpose and builds trust.</p>
@@ -598,7 +598,7 @@ export default function NewProjectPage() {
                         type="text"
                         value={milestone.title}
                         onChange={(e) => handleMilestoneChange(idx, "title", e.target.value)}
-                        className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
+                        className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
                         placeholder="e.g. Purchase 500 textbooks"
                         required
                       />
@@ -613,7 +613,7 @@ export default function NewProjectPage() {
                           min="1"
                           value={milestone.targetAmount}
                           onChange={(e) => handleMilestoneChange(idx, "targetAmount", e.target.value)}
-                          className="w-full pl-7 pr-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
+                          className="w-full pl-7 pr-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500"
                           placeholder="e.g. 15000"
                           required
                         />
@@ -663,7 +663,7 @@ export default function NewProjectPage() {
                       value={milestone.description}
                       onChange={(e) => handleMilestoneChange(idx, "description", e.target.value)}
                       rows={2}
-                      className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 resize-none"
+                      className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 resize-none"
                       placeholder="e.g. Buy and distribute physical textbooks to primary students..."
                       required
                     />

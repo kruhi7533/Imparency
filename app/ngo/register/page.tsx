@@ -296,7 +296,7 @@ export default function NGORegistrationPage() {
                 type="text"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                 placeholder="e.g. Hope Foundation"
                 required
               />
@@ -310,7 +310,7 @@ export default function NGORegistrationPage() {
                 max={new Date().getFullYear().toString()}
                 value={foundedYear}
                 onChange={(e) => setFoundedYear(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                 placeholder="e.g. 2012"
                 required
               />
@@ -322,7 +322,7 @@ export default function NGORegistrationPage() {
                 type="text"
                 value={regNum}
                 onChange={(e) => setRegNum(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                 placeholder="e.g. U85100MH2021NPL12345"
                 required
               />
@@ -335,7 +335,7 @@ export default function NGORegistrationPage() {
                 maxLength={10}
                 value={panNum}
                 onChange={(e) => setPanNum(e.target.value.toUpperCase())}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                 placeholder="e.g. AAATH1234F"
                 required
               />
@@ -348,7 +348,7 @@ export default function NGORegistrationPage() {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
               placeholder="e.g. 101, Business Hub, Bandra West, Mumbai, Maharashtra 400050"
               required
             />
@@ -360,7 +360,7 @@ export default function NGORegistrationPage() {
               type="url"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
               placeholder="e.g. https://hopefoundation.org"
             />
           </div>
@@ -395,7 +395,7 @@ export default function NGORegistrationPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition resize-none"
               placeholder="Describe your organization's mission, goals, and focus areas..."
               required
             />
@@ -604,7 +604,7 @@ export default function NGORegistrationPage() {
                 type="text"
                 value={fcraNumber}
                 onChange={(e) => setFcraNumber(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white text-gray-900 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-trust-500/20 focus:border-trust-500 transition"
                 placeholder="e.g. 094421234"
               />
             </div>

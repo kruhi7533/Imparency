@@ -355,7 +355,7 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
                               onChange={(e) => setReply(e.target.value)}
                               rows={3}
                               placeholder="Write your reply to the admin team…"
-                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20"
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-600 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20"
                             />
                             <div className="flex justify-end">
                               <button
@@ -451,7 +451,7 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
                             onChange={(e) => setDonorReply(e.target.value)}
                             rows={3}
                             placeholder={`Reply to ${t.donorName}…`}
-                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20"
+                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-600 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20"
                           />
                           <div className="flex justify-end">
                             <button
@@ -488,7 +488,7 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
                 placeholder="Subject — e.g. Appeal against suspension"
                 required
                 maxLength={200}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-600 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20"
               />
               <textarea
                 value={appealMessage}
@@ -496,7 +496,7 @@ export default function NgoInquiriesClient({ initialThreads, initialDonorInquiri
                 rows={5}
                 required
                 placeholder="Explain why you believe the decision should be reconsidered. Include any supporting details…"
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-600 focus:border-trust-500 focus:outline-none focus:ring-2 focus:ring-trust-500/20"
               />
               <div className="flex justify-end gap-3 pt-1">
                 <button

@@ -139,7 +139,7 @@ export default function AdminSearch() {
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
         placeholder="Search NGOs, campaigns, contracts, donors…"
-        className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/80 pl-10 pr-14 text-sm text-gray-900 placeholder:text-gray-500 transition focus:border-trust-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-trust-500/20"
+        className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/80 pl-10 pr-14 text-sm text-gray-900 placeholder:text-gray-600 transition focus:border-trust-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-trust-500/20"
       />
       <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-gray-200 bg-white px-1.5 py-0.5 font-sans text-[11px] font-medium text-gray-500 sm:block">
         ⌘K
