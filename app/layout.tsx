@@ -9,19 +9,16 @@ const displayFont = Fraunces({
   variable: "--font-display",
   weight: ["500", "600", "700", "900"],
   style: ["normal", "italic"],
-  fallback: ["Georgia", "serif"],
 });
 const sansFont = IBM_Plex_Sans({
   subsets: ["latin"],
   variable: "--font-sans",
   weight: ["400", "500", "600", "700"],
-  fallback: ["ui-sans-serif", "system-ui", "sans-serif"],
 });
 const monoFont = IBM_Plex_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
   weight: ["400", "500", "600"],
-  fallback: ["ui-monospace", "monospace"],
 });
 
 import { Providers } from "./providers";
