@@ -181,7 +181,7 @@ export default function Navbar() {
                   not just the NGO side of the platform */}
               {!session?.user && (
                 <>
-                  <Link href="/login" className={linkCls(false)}>
+                  <Link href="/login?mode=signup&role=DONOR" className={linkCls(false)}>
                     Become a Donor
                   </Link>
                   <Link href="/ngo/register" aria-current={pathname === "/ngo/register" ? "page" : undefined} className={linkCls(pathname === "/ngo/register")}>
