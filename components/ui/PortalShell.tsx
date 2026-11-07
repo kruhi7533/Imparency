@@ -155,14 +155,7 @@ export default function PortalShell({
                           className={`h-[18px] w-[18px] shrink-0 ${active ? "text-trust-600" : "text-gray-500 group-hover:text-gray-700"}`}
                           aria-hidden="true"
                         />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate leading-5">{item.label}</span>
-                          {item.subtitle && (
-                            <span className={`block truncate text-[11px] font-normal leading-4 ${active ? "text-trust-700/80" : "text-gray-500"}`}>
-                              {item.subtitle}
-                            </span>
-                          )}
-                        </span>
+                        <span className="min-w-0 flex-1 truncate leading-5">{item.label}</span>
                         {!!item.badge && item.badge > 0 && (
                           <span
                             className="ml-auto inline-flex min-w-[1.25rem] justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums leading-none text-white"
