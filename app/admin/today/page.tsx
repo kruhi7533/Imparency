@@ -42,6 +42,7 @@ import { slaLabel } from "@/lib/sla";
 import { loadInboxSources } from "@/lib/today-sources";
 import ChaseCheckbox from "./ChaseCheckbox";
 import MarkVisited from "./MarkVisited";
+import InboxFilterSelect from "./InboxFilterSelect";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -188,7 +189,7 @@ export default async function TodayInboxPage({
     sources = await loadInboxSources(prisma);
   } catch (err: any) {
     if (err?.code === 'P2021' || err?.code === 'P2022') {
-      return <SchemaOutOfSync title="Today Inbox failed to load" detail={err?.meta?.table || err?.meta?.column || err?.message} />;
+      return <SchemaOutOfSync title="Action Centre failed to load" detail={err?.meta?.table || err?.meta?.column || err?.message} />;
     }
     throw err;
   }
@@ -258,7 +259,7 @@ export default async function TodayInboxPage({
             <ListChecks size={24} strokeWidth={2.2} />
           </div>
           <div>
-            <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Today</h1>
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Action Centre</h1>
             <p className="mt-1 text-sm text-gray-500 max-w-2xl">
               {showAll
                 ? "Everything still open in this queue, however long it has been waiting."
@@ -280,31 +281,16 @@ export default async function TodayInboxPage({
           </span>
         </div>
 
-        {/* Queue filter — jump straight to one kind of work. */}
+        {/* Queue filter — one dropdown, not a pill per queue shown at once. */}
         {queues.length > 1 && (
-          <div className="flex gap-2 flex-wrap">
-            <Link
-              href="/admin/today"
-              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                !activeQueue
-                  ? "bg-trust-600 text-white border-trust-600"
-                  : "border-gray-200 text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              All · {items.length}
-            </Link>
-            {breached.length > 0 && (
-              <Link
-                href={onlyBreached ? "/admin/today" : "/admin/today?breached=1"}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                  onlyBreached
-                    ? "bg-red-600 text-white border-red-600"
-                    : "border-red-200 text-red-700 hover:bg-red-50"
-                }`}
-              >
-                Past target · {breached.length}
-              </Link>
-            )}
+          <div className="flex items-center gap-3 flex-wrap">
+            <InboxFilterSelect
+              queues={queues}
+              totalCount={items.length}
+              breachedCount={breached.length}
+              activeQueue={activeQueue}
+              onlyBreached={onlyBreached}
+            />
             {(showAll || onlyBreached) && (
               <Link
                 href="/admin/today"
@@ -313,19 +299,6 @@ export default async function TodayInboxPage({
                 ← Back to today only
               </Link>
             )}
-            {queues.map(({ queue, count }) => (
-              <Link
-                key={queue}
-                href={`/admin/today?queue=${encodeURIComponent(queue)}`}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                  activeQueue === queue
-                    ? "bg-trust-600 text-white border-trust-600"
-                    : "border-gray-200 text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                {queue} · {count}
-              </Link>
-            ))}
           </div>
         )}
 

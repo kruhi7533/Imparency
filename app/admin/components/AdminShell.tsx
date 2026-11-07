@@ -113,7 +113,7 @@ export default function AdminShell({ adminRole, userName, userEmail, badges, chi
       hub.key === "insight" && hub.href === DASHBOARD ? hub.tabs.find((t) => t.href !== DASHBOARD)?.href ?? hub.href : hub.href;
     const item: SideItem = {
       key: hub.key,
-      label: hub.key === "today" ? "Today inbox" : hub.label,
+      label: hub.label,
       href,
       icon: HUB_ICON[hub.key] ?? LayoutDashboard,
       active: activeHub?.key === hub.key,

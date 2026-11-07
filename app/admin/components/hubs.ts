@@ -37,7 +37,7 @@ export interface Hub {
 export const ADMIN_HUBS: Hub[] = [
   {
     key: "today",
-    label: "Today",
+    label: "Action Centre",
     href: "/admin/today",
     // No tabs: the inbox is one surface, and giving it a tab bar with a single
     // tab would be furniture pretending to be structure.
