@@ -182,7 +182,7 @@ function LoginContent() {
           if (!personaData.personaSet) {
             router.push("/donor/onboarding");
           } else {
-            router.push(callbackUrl !== "/" ? callbackUrl : "/discover");
+            router.push(callbackUrl !== "/" ? callbackUrl : "/donor/dashboard");
           }
         }
         router.refresh();
